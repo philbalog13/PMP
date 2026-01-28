@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token Vault Simulator - Atelier 13</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --accent: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --text: #f1f5f9;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 2rem;
+            background: linear-gradient(135deg, var(--accent), #06b6d4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .panels {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 1.5rem;
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .card h2 {
+            color: var(--accent);
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            background: #0f172a;
+            color: var(--text);
+            font-family: monospace;
+            margin-bottom: 1rem;
+        }
+
+        button {
+            width: 100%;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--accent), #059669);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 0.5rem;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        button.danger {
+            background: linear-gradient(135deg, var(--danger), #dc2626);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th,
+        td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #334155;
+        }
+
+        th {
+            background: #334155;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+
+        .status-active {
+            color: var(--accent);
+        }
+
+        .status-revoked {
+            color: var(--danger);
+            text-decoration: line-through;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat {
+            background: linear-gradient(145deg, #334155, #1e293b);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat .value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .token-cell {
+            font-family: monospace;
+            font-size: 0.85rem;
+        }
+
+        .actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .actions button {
+            width: auto;
+            padding: 0.5rem 1rem;
+            font-size: 0.8rem;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--accent);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🔐 Token Vault Simulator</h1>
+
+        <div class="stats">
+            <div class="stat">
+                <div class="value" id="totalTokens">0</div>
+                <div>Total Tokens</div>
+            </div>
+            <div class="stat">
+                <div class="value" id="activeTokens">0</div>
+                <div>Actifs</div>
+            </div>
+            <div class="stat">
+                <div class="value" id="revokedTokens">0</div>
+                <div>Révoqués</div>
+            </div>
+        </div>
+
+        <div class="panels">
+            <div class="card">
+                <h2>➕ Créer un Token</h2>
+                <label>Numéro de Carte (PAN)</label>
+                <input type="text" id="pan" maxlength="16" value="4111111111111111" placeholder="16 chiffres">
+                <label>Marchand</label>
+                <select id="merchant">
+                    <option value="AMAZON">Amazon</option>
+                    <option value="NETFLIX">Netflix</option>
+                    <option value="SPOTIFY">Spotify</option>
+                    <option value="APPLE">Apple</option>
+                    <option value="OTHER">Autre</option>
+                </select>
+                <label>Type de Token</label>
+                <select id="tokenType">
+                    <option value="payment">Payment Token (16 chiffres)</option>
+                    <option value="merchant">Merchant Token (tok_xxx)</option>
+                </select>
+                <button onclick="createToken()">🔐 Tokeniser</button>
+
+                <h2 style="margin-top: 2rem;">🔍 Détokeniser</h2>
+                <label>Token</label>
+                <input type="text" id="tokenToLookup" placeholder="4900... ou tok_...">
+                <button onclick="lookupToken()">🔍 Rechercher</button>
+                <div id="lookupResult"
+                    style="margin-top: 1rem; padding: 1rem; background: #0f172a; border-radius: 8px; display: none;">
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>📋 Token Vault</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Token</th>
+                            <th>PAN</th>
+                            <th>Marchand</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="vaultTable"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const vault = [];
+        const TOKEN_BIN = '490000';
+
+        function generateLuhnCheckDigit(number) {
+            let sum = 0, alt = true;
+            for (let i = number.length - 1; i >= 0; i--) {
+                let d = parseInt(number[i], 10);
+                if (alt) { d *= 2; if (d > 9) d -= 9; }
+                sum += d; alt = !alt;
+            }
+            return ((10 - (sum % 10)) % 10).toString();
+        }
+
+        function generatePaymentToken() {
+            const random = Math.random().toString(36).substring(2, 11).toUpperCase().replace(/[^0-9]/g, '0').substring(0, 9);
+            const base = TOKEN_BIN + random;
+            return base + generateLuhnCheckDigit(base);
+        }
+
+        function generateMerchantToken() {
+            return 'tok_' + Math.random().toString(36).substring(2, 26);
+        }
+
+        function createToken() {
+            const pan = document.getElementById('pan').value;
+            const merchant = document.getElementById('merchant').value;
+            const type = document.getElementById('tokenType').value;
+
+            if (pan.length !== 16) { showToast('PAN invalide'); return; }
+
+            const token = type === 'payment' ? generatePaymentToken() : generateMerchantToken();
+            vault.push({
+                token,
+                pan,
+                maskedPan: '****' + pan.slice(-4),
+                merchant,
+                type,
+                status: 'ACTIVE',
+                createdAt: new Date().toISOString()
+            });
+
+            refreshVault();
+            showToast(`Token créé: ${token.substring(0, 12)}...`);
+        }
+
+        function revokeToken(index) {
+            vault[index].status = 'REVOKED';
+            vault[index].revokedAt = new Date().toISOString();
+            refreshVault();
+            showToast('Token révoqué');
+        }
+
+        function lookupToken() {
+            const token = document.getElementById('tokenToLookup').value;
+            const entry = vault.find(e => e.token === token);
+            const resultDiv = document.getElementById('lookupResult');
+
+            if (!entry) {
+                resultDiv.innerHTML = '<span style="color: var(--danger);">❌ Token non trouvé</span>';
+            } else if (entry.status === 'REVOKED') {
+                resultDiv.innerHTML = '<span style="color: var(--danger);">🚫 Token révoqué</span>';
+            } else {
+                resultDiv.innerHTML = `
+                    <div style="color: var(--accent);">✅ Token actif</div>
+                    <div style="margin-top: 0.5rem;">PAN: ${entry.maskedPan}</div>
+                    <div>Marchand: ${entry.merchant}</div>
+                    <div>Créé: ${new Date(entry.createdAt).toLocaleString()}</div>
+                `;
+            }
+            resultDiv.style.display = 'block';
+        }
+
+        function refreshVault() {
+            const tbody = document.getElementById('vaultTable');
+            tbody.innerHTML = vault.map((e, i) => `
+                <tr>
+                    <td class="token-cell">${e.token.length > 20 ? e.token.substring(0, 20) + '...' : e.token}</td>
+                    <td>${e.maskedPan}</td>
+                    <td>${e.merchant}</td>
+                    <td class="status-${e.status.toLowerCase()}">${e.status}</td>
+                    <td class="actions">
+                        ${e.status === 'ACTIVE' ? `<button class="danger" onclick="revokeToken(${i})">🚫</button>` : ''}
+                    </td>
+                </tr>
+            `).join('');
+
+            document.getElementById('totalTokens').textContent = vault.length;
+            document.getElementById('activeTokens').textContent = vault.filter(e => e.status === 'ACTIVE').length;
+            document.getElementById('revokedTokens').textContent = vault.filter(e => e.status === 'REVOKED').length;
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 3000);
+        }
+
+        // Pre-populate with demo tokens
+        vault.push(
+            { token: generatePaymentToken(), pan: '4111111111111111', maskedPan: '****1111', merchant: 'AMAZON', type: 'payment', status: 'ACTIVE', createdAt: new Date().toISOString() },
+            { token: generateMerchantToken(), pan: '5500000000000004', maskedPan: '****0004', merchant: 'NETFLIX', type: 'merchant', status: 'ACTIVE', createdAt: new Date().toISOString() }
+        );
+        refreshVault();
+    </script>
+</body>
+
+</html>

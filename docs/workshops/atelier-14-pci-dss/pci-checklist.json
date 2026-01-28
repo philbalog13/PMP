@@ -1,0 +1,308 @@
+{
+    "version": "PCI-DSS 4.0",
+    "lastUpdated": "2026-01-28",
+    "requirements": [
+        {
+            "number": "1",
+            "title": "Installer et maintenir des contrôles de sécurité réseau",
+            "checks": [
+                {
+                    "id": "1.1",
+                    "description": "Processus de gestion des règles de pare-feu documenté",
+                    "status": "pending"
+                },
+                {
+                    "id": "1.2",
+                    "description": "Configuration réseau sécurisée",
+                    "status": "pending"
+                },
+                {
+                    "id": "1.3",
+                    "description": "Accès réseau restreint aux composants CDE",
+                    "status": "pending"
+                }
+            ]
+        },
+        {
+            "number": "2",
+            "title": "Appliquer des configurations sécurisées à tous les composants",
+            "checks": [
+                {
+                    "id": "2.1",
+                    "description": "Pas de mots de passe par défaut",
+                    "status": "pending"
+                },
+                {
+                    "id": "2.2",
+                    "description": "Standards de configuration documentés",
+                    "status": "pending"
+                },
+                {
+                    "id": "2.3",
+                    "description": "Chiffrement fort pour l'administration",
+                    "status": "pending"
+                }
+            ]
+        },
+        {
+            "number": "3",
+            "title": "Protéger les données de compte stockées",
+            "checks": [
+                {
+                    "id": "3.1",
+                    "description": "Rétention des données minimisée",
+                    "status": "pending"
+                },
+                {
+                    "id": "3.2",
+                    "description": "Pas de stockage de données sensibles après autorisation",
+                    "status": "pending"
+                },
+                {
+                    "id": "3.3",
+                    "description": "PAN masqué lors de l'affichage",
+                    "status": "pending"
+                },
+                {
+                    "id": "3.4",
+                    "description": "PAN rendu illisible (chiffrement, tokenisation)",
+                    "status": "pending"
+                },
+                {
+                    "id": "3.5",
+                    "description": "Clés cryptographiques protégées",
+                    "status": "pending"
+                }
+            ]
+        },
+        {
+            "number": "4",
+            "title": "Protéger les données du titulaire pendant la transmission",
+            "checks": [
+                {
+                    "id": "4.1",
+                    "description": "Chiffrement fort sur réseaux ouverts",
+                    "status": "pending"
+                },
+                {
+                    "id": "4.2",
+                    "description": "Pas d'envoi de PAN par messagerie non chiffrée",
+                    "status": "pending"
+                }
+            ]
+        },
+        {
+            "number": "5",
+            "title": "Protéger tous les systèmes contre les logiciels malveillants",
+            "checks": [
+                {
+                    "id": "5.1",
+                    "description": "Anti-malware déployé sur tous les systèmes",
+                    "status": "pending"
+                },
+                {
+                    "id": "5.2",
+                    "description": "Mises à jour automatiques activées",
+                    "status": "pending"
+                },
+                {
+                    "id": "5.3",
+                    "description": "Analyses périodiques effectuées",
+                    "status": "pending"
+                }
+            ]
+        },
+        {
+            "number": "6",
+            "title": "Développer et maintenir des systèmes sécurisés",
+            "checks": [
+                {
+                    "id": "6.1",
+                    "description": "Processus de gestion des vulnérabilités",
+                    "status": "pending"
+                },
+                {
+                    "id": "6.2",
+                    "description": "Développement sécurisé (SDLC)",
+                    "status": "pending"
+                },
+                {
+                    "id": "6.3",
+                    "description": "Revue de code ou tests applicatifs",
+                    "status": "pending"
+                },
+                {
+                    "id": "6.4",
+                    "description": "Environnements de dev/test séparés",
+                    "status": "pending"
+                }
+            ]
+        },
+        {
+            "number": "7",
+            "title": "Restreindre l'accès aux données du titulaire",
+            "checks": [
+                {
+                    "id": "7.1",
+                    "description": "Accès basé sur le besoin de savoir",
+                    "status": "pending"
+                },
+                {
+                    "id": "7.2",
+                    "description": "Système de contrôle d'accès implémenté",
+                    "status": "pending"
+                },
+                {
+                    "id": "7.3",
+                    "description": "Accès par défaut = refusé",
+                    "status": "pending"
+                }
+            ]
+        },
+        {
+            "number": "8",
+            "title": "Identifier les utilisateurs et authentifier l'accès",
+            "checks": [
+                {
+                    "id": "8.1",
+                    "description": "ID unique par utilisateur",
+                    "status": "pending"
+                },
+                {
+                    "id": "8.2",
+                    "description": "Authentification forte (MFA pour accès distant)",
+                    "status": "pending"
+                },
+                {
+                    "id": "8.3",
+                    "description": "Politique de mot de passe robuste",
+                    "status": "pending"
+                },
+                {
+                    "id": "8.4",
+                    "description": "Sessions avec timeout automatique",
+                    "status": "pending"
+                }
+            ]
+        },
+        {
+            "number": "9",
+            "title": "Restreindre l'accès physique aux données",
+            "checks": [
+                {
+                    "id": "9.1",
+                    "description": "Contrôle d'accès physique aux installations",
+                    "status": "pending"
+                },
+                {
+                    "id": "9.2",
+                    "description": "Badges et logs d'accès",
+                    "status": "pending"
+                },
+                {
+                    "id": "9.3",
+                    "description": "Destruction sécurisée des supports",
+                    "status": "pending"
+                }
+            ]
+        },
+        {
+            "number": "10",
+            "title": "Journaliser et surveiller tous les accès",
+            "checks": [
+                {
+                    "id": "10.1",
+                    "description": "Processus de logging défini",
+                    "status": "pending"
+                },
+                {
+                    "id": "10.2",
+                    "description": "Logs d'audit automatisés pour tous les événements",
+                    "status": "pending"
+                },
+                {
+                    "id": "10.3",
+                    "description": "Logs contiennent toutes les informations requises",
+                    "status": "pending"
+                },
+                {
+                    "id": "10.4",
+                    "description": "Synchronisation temporelle (NTP)",
+                    "status": "pending"
+                },
+                {
+                    "id": "10.5",
+                    "description": "Logs protégés contre la modification",
+                    "status": "pending"
+                },
+                {
+                    "id": "10.6",
+                    "description": "Revue quotidienne des logs",
+                    "status": "pending"
+                },
+                {
+                    "id": "10.7",
+                    "description": "Rétention des logs ≥ 12 mois",
+                    "status": "pending"
+                }
+            ]
+        },
+        {
+            "number": "11",
+            "title": "Tester régulièrement la sécurité",
+            "checks": [
+                {
+                    "id": "11.1",
+                    "description": "Scan de vulnérabilités trimestriel (ASV)",
+                    "status": "pending"
+                },
+                {
+                    "id": "11.2",
+                    "description": "Scans internes réguliers",
+                    "status": "pending"
+                },
+                {
+                    "id": "11.3",
+                    "description": "Tests d'intrusion annuels",
+                    "status": "pending"
+                },
+                {
+                    "id": "11.4",
+                    "description": "Détection d'intrusion (IDS/IPS)",
+                    "status": "pending"
+                }
+            ]
+        },
+        {
+            "number": "12",
+            "title": "Soutenir la sécurité de l'information par une politique",
+            "checks": [
+                {
+                    "id": "12.1",
+                    "description": "Politique de sécurité documentée",
+                    "status": "pending"
+                },
+                {
+                    "id": "12.2",
+                    "description": "Évaluation des risques annuelle",
+                    "status": "pending"
+                },
+                {
+                    "id": "12.3",
+                    "description": "Formation sécurité pour le personnel",
+                    "status": "pending"
+                },
+                {
+                    "id": "12.4",
+                    "description": "Plan de réponse aux incidents",
+                    "status": "pending"
+                }
+            ]
+        }
+    ],
+    "scoring": {
+        "compliant": "Tous les contrôles validés",
+        "partiallyCompliant": "≥80% des contrôles validés",
+        "nonCompliant": "<80% des contrôles validés"
+    }
+}

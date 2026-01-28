@@ -1,27 +1,43 @@
 # 🏦 Ateliers Pédagogiques PMP
 
-> **Suite complète de 10 ateliers pour maîtriser les systèmes monétiques**
+> **Suite complète de 14 ateliers pour maîtriser les systèmes monétiques**
 
-![Workshops](https://img.shields.io/badge/Ateliers-10-blue.svg)
-![Niveau](https://img.shields.io/badge/Niveau-Intermédiaire_à_Avancé-orange.svg)
-![Durée](https://img.shields.io/badge/Durée_Totale-~20h-green.svg)
+![Workshops](https://img.shields.io/badge/Ateliers-14-blue.svg)
+![Niveau](https://img.shields.io/badge/Niveau-Débutant_à_Expert-orange.svg)
+![Durée](https://img.shields.io/badge/Durée_Totale-~28h-green.svg)
 
 ---
 
 ## 📚 Liste des Ateliers
 
+### 🟢 Niveau Débutant (Ateliers 1-3)
+
 | # | Atelier | Durée | Difficulté | Fichiers |
 |---|---------|-------|------------|----------|
 | 1 | [Flux Transactionnel Complet](./atelier-01-flux-transaction/) | 2h | ⭐⭐ | 3 |
 | 2 | [PIN Block ISO 9564](./atelier-02-pin-block/) | 2h | ⭐⭐⭐ | 3 |
-| 3 | [Attaque par Rejeu](./atelier-03-replay-attack/) | 2h | ⭐⭐⭐⭐ | 3 |
-| 4 | [Détection de Fraude](./atelier-04-fraud-detection/) | 2.5h | ⭐⭐⭐ | 3 |
+| 3 | [Attaque par Rejeu](./atelier-03-replay-attack/) | 2h | ⭐⭐⭐ | 3 |
+
+### 🟡 Niveau Intermédiaire (Ateliers 4-9)
+
+| # | Atelier | Durée | Difficulté | Fichiers |
+|---|---------|-------|------------|----------|
+| 4 | [Détection de Fraude](./atelier-04-fraud-detection/) | 2h | ⭐⭐⭐ | 3 |
 | 5 | [Gestion des Clés](./atelier-05-key-management/) | 2h | ⭐⭐⭐⭐ | 3 |
 | 6 | [Messages ISO 8583](./atelier-06-iso8583/) | 2h | ⭐⭐⭐ | 3 |
-| 7 | [MAC et Intégrité](./atelier-07-mac-integrity/) | 1.5h | ⭐⭐⭐ | 3 |
+| 7 | [MAC et Intégrité ISO 9797](./atelier-07-mac-integrity/) | 1.5h | ⭐⭐⭐ | 3 |
 | 8 | [Scénarios de Refus](./atelier-08-decline-scenarios/) | 1.5h | ⭐⭐ | 3 |
 | 9 | [Audit et Logging](./atelier-09-audit-logging/) | 1.5h | ⭐⭐ | 3 |
+
+### 🔴 Niveau Avancé (Ateliers 10-14)
+
+| # | Atelier | Durée | Difficulté | Fichiers |
+|---|---------|-------|------------|----------|
 | 10 | [Challenge Final](./atelier-10-challenge-final/) | 3h | ⭐⭐⭐⭐⭐ | 3 |
+| 11 | [CVV Statique vs Dynamique](./atelier-11-cvv/) | 1.5h | ⭐⭐⭐ | 3 |
+| 12 | [3D-Secure Pédagogique](./atelier-12-3d-secure/) | 2h | ⭐⭐⭐⭐ | 3 |
+| 13 | [Tokenisation des Cartes](./atelier-13-tokenisation/) | 1.5h | ⭐⭐⭐⭐ | 3 |
+| 14 | [Conformité PCI-DSS](./atelier-14-pci-dss/) | 2h | ⭐⭐⭐⭐ | 3 |
 
 ---
 

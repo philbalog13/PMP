@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulateur 3D-Secure - Atelier 12</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --accent: #8b5cf6;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --text: #f1f5f9;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 2rem;
+            background: linear-gradient(135deg, var(--accent), #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .panels {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .card h2 {
+            color: var(--accent);
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            background: #0f172a;
+            color: var(--text);
+            margin-bottom: 1rem;
+        }
+
+        button {
+            width: 100%;
+            padding: 1rem;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--accent), #7c3aed);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        .flow {
+            position: relative;
+            min-height: 400px;
+        }
+
+        .flow-step {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+            opacity: 0.3;
+            transition: opacity 0.5s, transform 0.5s;
+        }
+
+        .flow-step.active {
+            opacity: 1;
+            transform: translateX(10px);
+        }
+
+        .flow-step.done {
+            opacity: 0.7;
+        }
+
+        .step-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .step-icon.pending {
+            background: #334155;
+        }
+
+        .step-icon.success {
+            background: var(--success);
+        }
+
+        .step-icon.challenge {
+            background: var(--warning);
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .step-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .step-detail {
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+
+        .risk-meter {
+            height: 8px;
+            background: #334155;
+            border-radius: 4px;
+            margin: 1rem 0;
+            overflow: hidden;
+        }
+
+        .risk-fill {
+            height: 100%;
+            transition: width 0.5s, background 0.5s;
+        }
+
+        .result-box {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+
+        .result-box.frictionless {
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid var(--success);
+        }
+
+        .result-box.challenge {
+            background: rgba(245, 158, 11, 0.2);
+            border: 1px solid var(--warning);
+        }
+
+        .challenge-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .challenge-content {
+            background: var(--card);
+            padding: 2rem;
+            border-radius: 16px;
+            text-align: center;
+            max-width: 400px;
+        }
+
+        .otp-input {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            margin: 1.5rem 0;
+        }
+
+        .otp-input input {
+            width: 50px;
+            height: 60px;
+            text-align: center;
+            font-size: 1.5rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🔐 Simulateur 3D-Secure 2.0</h1>
+
+        <div class="panels">
+            <div class="card">
+                <h2>📝 Transaction</h2>
+                <label>Montant (EUR)</label>
+                <input type="number" id="amount" value="49.99">
+                <label>Marchand</label>
+                <select id="merchant">
+                    <option value="known">Amazon (connu)</option>
+                    <option value="unknown">Site inconnu</option>
+                </select>
+                <label>Device</label>
+                <select id="device">
+                    <option value="known">Mon téléphone habituel</option>
+                    <option value="new">Nouvel appareil</option>
+                </select>
+                <label>Pays</label>
+                <select id="country">
+                    <option value="FR">France 🇫🇷</option>
+                    <option value="DE">Allemagne 🇩🇪</option>
+                    <option value="US">États-Unis 🇺🇸</option>
+                </select>
+                <button onclick="startAuth()">🚀 Lancer l'authentification</button>
+            </div>
+
+            <div class="card">
+                <h2>📊 Flow 3D-Secure</h2>
+                <div class="flow">
+                    <div class="flow-step" id="step1">
+                        <div class="step-icon pending">1</div>
+                        <div class="step-content">
+                            <div class="step-title">Réception</div>
+                            <div class="step-detail">Transaction reçue par le 3DS Server</div>
+                        </div>
+                    </div>
+                    <div class="flow-step" id="step2">
+                        <div class="step-icon pending">2</div>
+                        <div class="step-content">
+                            <div class="step-title">AReq → DS</div>
+                            <div class="step-detail">Envoi au Directory Server</div>
+                        </div>
+                    </div>
+                    <div class="flow-step" id="step3">
+                        <div class="step-icon pending">3</div>
+                        <div class="step-content">
+                            <div class="step-title">DS → ACS</div>
+                            <div class="step-detail">Lookup vers l'émetteur</div>
+                        </div>
+                    </div>
+                    <div class="flow-step" id="step4">
+                        <div class="step-icon pending">📊</div>
+                        <div class="step-content">
+                            <div class="step-title">Évaluation Risque</div>
+                            <div class="step-detail" id="riskDetail">En attente...</div>
+                        </div>
+                    </div>
+                    <div class="flow-step" id="step5">
+                        <div class="step-icon pending">🎯</div>
+                        <div class="step-content">
+                            <div class="step-title">Décision</div>
+                            <div class="step-detail" id="decisionDetail">En attente...</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="risk-meter">
+                    <div class="risk-fill" id="riskFill" style="width: 0%; background: var(--success);"></div>
+                </div>
+                <div id="result"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="challenge-modal" id="challengeModal">
+        <div class="challenge-content">
+            <h2>🔐 Authentification Requise</h2>
+            <p style="margin: 1rem 0; color: #94a3b8;">Entrez le code SMS reçu au 06 ** ** ** 42</p>
+            <div class="otp-input">
+                <input type="text" maxlength="1" id="otp1">
+                <input type="text" maxlength="1" id="otp2">
+                <input type="text" maxlength="1" id="otp3">
+                <input type="text" maxlength="1" id="otp4">
+                <input type="text" maxlength="1" id="otp5">
+                <input type="text" maxlength="1" id="otp6">
+            </div>
+            <button onclick="validateOTP()">Valider</button>
+        </div>
+    </div>
+
+    <script>
+        function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+        function calculateRisk() {
+            let score = 0;
+            const amount = parseFloat(document.getElementById('amount').value);
+            const merchant = document.getElementById('merchant').value;
+            const device = document.getElementById('device').value;
+            const country = document.getElementById('country').value;
+
+            if (amount > 200) score += 25;
+            if (amount > 500) score += 20;
+            if (merchant === 'unknown') score += 20;
+            if (device === 'new') score += 25;
+            if (country !== 'FR') score += 15;
+
+            return Math.min(score, 100);
+        }
+
+        async function startAuth() {
+            // Reset
+            document.querySelectorAll('.flow-step').forEach(s => { s.className = 'flow-step'; s.querySelector('.step-icon').className = 'step-icon pending'; });
+            document.getElementById('result').innerHTML = '';
+            document.getElementById('riskFill').style.width = '0%';
+
+            // Step 1
+            await activateStep('step1');
+            await sleep(600);
+
+            // Step 2
+            await activateStep('step2');
+            await sleep(600);
+
+            // Step 3
+            await activateStep('step3');
+            await sleep(600);
+
+            // Step 4 - Risk
+            const risk = calculateRisk();
+            document.getElementById('riskDetail').textContent = `Score: ${risk}/100`;
+            document.getElementById('riskFill').style.width = `${risk}%`;
+            document.getElementById('riskFill').style.background = risk < 30 ? 'var(--success)' : risk < 60 ? 'var(--warning)' : 'var(--danger)';
+            await activateStep('step4');
+            await sleep(800);
+
+            // Step 5 - Decision
+            const decision = risk < 30 ? 'FRICTIONLESS' : 'CHALLENGE';
+            document.getElementById('decisionDetail').textContent = decision;
+            document.getElementById('step5').querySelector('.step-icon').className = decision === 'FRICTIONLESS' ? 'step-icon success' : 'step-icon challenge';
+            await activateStep('step5');
+
+            if (decision === 'FRICTIONLESS') {
+                document.getElementById('result').innerHTML = `<div class="result-box frictionless">✅ <strong>Authentification Frictionless</strong><br>Aucune action utilisateur requise. ECI=05</div>`;
+            } else {
+                document.getElementById('result').innerHTML = `<div class="result-box challenge">⚠️ <strong>Challenge Requis</strong><br>En attente de validation utilisateur...</div>`;
+                await sleep(1000);
+                document.getElementById('challengeModal').style.display = 'flex';
+            }
+        }
+
+        async function activateStep(id) {
+            const step = document.getElementById(id);
+            step.classList.add('active');
+            await sleep(100);
+            step.querySelector('.step-icon').classList.add('success');
+            step.classList.remove('active');
+            step.classList.add('done');
+        }
+
+        function validateOTP() {
+            document.getElementById('challengeModal').style.display = 'none';
+            document.getElementById('result').innerHTML = `<div class="result-box frictionless">✅ <strong>Challenge Réussi</strong><br>Authentification validée. ECI=05</div>`;
+        }
+
+        // Auto-focus OTP inputs
+        document.querySelectorAll('.otp-input input').forEach((input, i, arr) => {
+            input.addEventListener('input', () => { if (input.value && arr[i + 1]) arr[i + 1].focus(); });
+        });
+    </script>
+</body>
+
+</html>

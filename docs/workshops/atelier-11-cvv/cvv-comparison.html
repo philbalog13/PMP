@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comparateur CVV - Atelier 11</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --accent: #f59e0b;
+            --success: #22c55e;
+            --text: #f1f5f9;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 2rem;
+            background: linear-gradient(135deg, var(--accent), #ef4444);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .card h2 {
+            color: var(--accent);
+            margin-bottom: 1rem;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .input-row label {
+            flex: 1;
+        }
+
+        .input-row span {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+        input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            background: #0f172a;
+            color: var(--text);
+            font-family: monospace;
+            font-size: 1.1rem;
+        }
+
+        button {
+            width: 100%;
+            padding: 1rem;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--accent), #d97706);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+        }
+
+        .results {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .cvv-card {
+            background: linear-gradient(145deg, #334155, #1e293b);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .cvv-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-5px);
+        }
+
+        .cvv-type {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            color: #94a3b8;
+            margin-bottom: 0.5rem;
+        }
+
+        .cvv-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            font-family: monospace;
+            margin-bottom: 0.5rem;
+        }
+
+        .cvv-card.cvv1 .cvv-value {
+            color: #60a5fa;
+        }
+
+        .cvv-card.cvv2 .cvv-value {
+            color: var(--success);
+        }
+
+        .cvv-card.icvv .cvv-value {
+            color: #c084fc;
+        }
+
+        .cvv-card.dcvv .cvv-value {
+            color: #fb923c;
+        }
+
+        .cvv-location {
+            font-size: 0.75rem;
+            color: #64748b;
+        }
+
+        .explanation {
+            background: rgba(245, 158, 11, 0.1);
+            border-left: 4px solid var(--accent);
+            padding: 1rem;
+            margin-top: 1rem;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .dcvv-timer {
+            font-size: 0.9rem;
+            color: var(--accent);
+            margin-top: 0.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .results {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🔐 Comparateur de CVV</h1>
+
+        <div class="card">
+            <h2>📝 Données de la Carte</h2>
+            <div class="input-row">
+                <label>
+                    <span>Numéro de Carte (PAN)</span>
+                    <input type="text" id="pan" maxlength="16" value="4111111111111111" placeholder="16 chiffres">
+                </label>
+                <label>
+                    <span>Date d'expiration (YYMM)</span>
+                    <input type="text" id="expiry" maxlength="4" value="2812" placeholder="YYMM">
+                </label>
+            </div>
+            <button onclick="generateAllCVV()">🔐 Générer tous les CVV</button>
+
+            <div class="results" id="results" style="display: none;">
+                <div class="cvv-card cvv1">
+                    <div class="cvv-type">CVV1</div>
+                    <div class="cvv-value" id="cvv1">---</div>
+                    <div class="cvv-location">📼 Piste magnétique</div>
+                </div>
+                <div class="cvv-card cvv2">
+                    <div class="cvv-type">CVV2</div>
+                    <div class="cvv-value" id="cvv2">---</div>
+                    <div class="cvv-location">🔙 Dos de la carte</div>
+                </div>
+                <div class="cvv-card icvv">
+                    <div class="cvv-type">iCVV</div>
+                    <div class="cvv-value" id="icvv">---</div>
+                    <div class="cvv-location">💳 Puce EMV</div>
+                </div>
+                <div class="cvv-card dcvv">
+                    <div class="cvv-type">dCVV</div>
+                    <div class="cvv-value" id="dcvv">---</div>
+                    <div class="cvv-location">📱 Écran e-ink</div>
+                    <div class="dcvv-timer" id="timer">⏱️ Refresh: --:--</div>
+                </div>
+            </div>
+
+            <div class="explanation" id="explanation" style="display: none;">
+                <strong>💡 Pourquoi sont-ils différents ?</strong>
+                <ul style="margin-top: 0.5rem; margin-left: 1.5rem;">
+                    <li><strong>CVV1</strong>: Service Code = 101 (normal)</li>
+                    <li><strong>CVV2</strong>: Service Code = 000 (convention)</li>
+                    <li><strong>iCVV</strong>: Service Code = 999 (EMV)</li>
+                    <li><strong>dCVV</strong>: Inclut le timestamp (change toutes les 5 min)</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CVK = '0123456789ABCDEFFEDCBA9876543210';
+        let dcvvInterval = null;
+
+        async function hash(data) {
+            const encoder = new TextEncoder();
+            const dataBuffer = encoder.encode(CVK + data);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+            return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        function extractDigits(hex, count) {
+            let result = '';
+            for (const char of hex) {
+                if (/[0-9]/.test(char) && result.length < count) result += char;
+            }
+            return result.padStart(count, '0').substring(0, count);
+        }
+
+        async function generateCVV(pan, expiry, serviceCode) {
+            const data = pan + expiry + serviceCode;
+            const hashHex = await hash(data);
+            return extractDigits(hashHex, 3);
+        }
+
+        async function generateDCVV(pan) {
+            const timeSlot = Math.floor(Date.now() / (5 * 60 * 1000));
+            const data = pan + timeSlot.toString();
+            const hashHex = await hash(data + 'DYNAMIC');
+            return extractDigits(hashHex, 3);
+        }
+
+        async function generateAllCVV() {
+            const pan = document.getElementById('pan').value;
+            const expiry = document.getElementById('expiry').value;
+
+            if (pan.length !== 16 || expiry.length !== 4) {
+                alert('Veuillez entrer un PAN de 16 chiffres et une expiration de 4 chiffres');
+                return;
+            }
+
+            document.getElementById('cvv1').textContent = await generateCVV(pan, expiry, '101');
+            document.getElementById('cvv2').textContent = await generateCVV(pan, expiry, '000');
+            document.getElementById('icvv').textContent = await generateCVV(pan, expiry, '999');
+            document.getElementById('dcvv').textContent = await generateDCVV(pan);
+
+            document.getElementById('results').style.display = 'grid';
+            document.getElementById('explanation').style.display = 'block';
+
+            // Start dCVV timer
+            if (dcvvInterval) clearInterval(dcvvInterval);
+            dcvvInterval = setInterval(async () => {
+                document.getElementById('dcvv').textContent = await generateDCVV(pan);
+                updateTimer();
+            }, 5000);
+            updateTimer();
+        }
+
+        function updateTimer() {
+            const now = Date.now();
+            const nextRefresh = Math.ceil(now / (5 * 60 * 1000)) * (5 * 60 * 1000);
+            const remaining = Math.floor((nextRefresh - now) / 1000);
+            const mins = Math.floor(remaining / 60);
+            const secs = remaining % 60;
+            document.getElementById('timer').textContent = `⏱️ Refresh: ${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+    </script>
+</body>
+
+</html>
