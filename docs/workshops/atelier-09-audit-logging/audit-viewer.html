@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit Viewer - Atelier 9</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --accent: #38bdf8;
+            --success: #22c55e;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --text: #f1f5f9;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 1.5rem;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, var(--accent), var(--success));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .filters {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .filters select,
+        .filters input {
+            padding: 0.5rem;
+            border-radius: 6px;
+            border: 1px solid #334155;
+            background: var(--card);
+            color: var(--text);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat {
+            background: var(--card);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat .value {
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+
+        .stat.success .value {
+            color: var(--success);
+        }
+
+        .stat.danger .value {
+            color: var(--danger);
+        }
+
+        .stat.warning .value {
+            color: var(--warning);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--card);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th,
+        td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #334155;
+        }
+
+        th {
+            background: #334155;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+
+        .success {
+            color: var(--success);
+        }
+
+        .failed,
+        .declined {
+            color: var(--danger);
+        }
+
+        .time {
+            color: #94a3b8;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>📋 Audit Log Viewer</h1>
+
+    <div class="stats">
+        <div class="stat success">
+            <div class="value" id="successCount">0</div>
+            <div>Succès</div>
+        </div>
+        <div class="stat danger">
+            <div class="value" id="failedCount">0</div>
+            <div>Échecs</div>
+        </div>
+        <div class="stat warning">
+            <div class="value" id="totalAmount">0€</div>
+            <div>Volume</div>
+        </div>
+        <div class="stat">
+            <div class="value" id="totalCount">0</div>
+            <div>Total</div>
+        </div>
+    </div>
+
+    <div class="filters">
+        <select id="filterResult" onchange="renderLogs()">
+            <option value="">Tous les résultats</option>
+            <option value="SUCCESS">Succès</option>
+            <option value="DECLINED">Refusés</option>
+            <option value="FAILED">Échecs</option>
+        </select>
+        <select id="filterEvent" onchange="renderLogs()">
+            <option value="">Tous les événements</option>
+            <option value="AUTH_REQUEST">Authorization</option>
+            <option value="PIN_VERIFY">PIN Verify</option>
+            <option value="REVERSAL">Reversal</option>
+        </select>
+        <input type="text" id="filterCard" placeholder="Filtrer par carte..." oninput="renderLogs()">
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Heure</th>
+                <th>Événement</th>
+                <th>Terminal</th>
+                <th>Carte</th>
+                <th>Montant</th>
+                <th>Résultat</th>
+                <th>Code</th>
+            </tr>
+        </thead>
+        <tbody id="logTable"></tbody>
+    </table>
+
+    <script>
+        const logs = [
+            { timestamp: '2026-01-28T14:00:00Z', event: 'AUTH_REQUEST', terminal: 'TERM001', card: '****1111', amount: 50.00, result: 'SUCCESS', code: '00' },
+            { timestamp: '2026-01-28T14:01:30Z', event: 'AUTH_REQUEST', terminal: 'TERM001', card: '****2222', amount: 75.00, result: 'SUCCESS', code: '00' },
+            { timestamp: '2026-01-28T14:02:00Z', event: 'AUTH_REQUEST', terminal: 'TERM002', card: '****3333', amount: 150.00, result: 'DECLINED', code: '51' },
+            { timestamp: '2026-01-28T14:03:00Z', event: 'AUTH_REQUEST', terminal: 'TERM001', card: '****1111', amount: 25.00, result: 'SUCCESS', code: '00' },
+            { timestamp: '2026-01-28T14:03:30Z', event: 'PIN_VERIFY', terminal: 'TERM001', card: '****4444', amount: 0, result: 'FAILED', code: '55' },
+            { timestamp: '2026-01-28T14:04:00Z', event: 'PIN_VERIFY', terminal: 'TERM001', card: '****4444', amount: 0, result: 'FAILED', code: '55' },
+            { timestamp: '2026-01-28T14:04:30Z', event: 'PIN_VERIFY', terminal: 'TERM001', card: '****4444', amount: 0, result: 'FAILED', code: '75' },
+            { timestamp: '2026-01-28T14:10:00Z', event: 'AUTH_REQUEST', terminal: 'TERM003', card: '****5555', amount: 5000.00, result: 'DECLINED', code: '61' },
+            { timestamp: '2026-01-28T14:15:00Z', event: 'AUTH_REQUEST', terminal: 'TERM001', card: '****1111', amount: 30.00, result: 'SUCCESS', code: '00' },
+            { timestamp: '2026-01-28T14:16:00Z', event: 'REVERSAL', terminal: 'TERM001', card: '****1111', amount: 30.00, result: 'SUCCESS', code: '00' }
+        ];
+
+        function renderLogs() {
+            const resultFilter = document.getElementById('filterResult').value;
+            const eventFilter = document.getElementById('filterEvent').value;
+            const cardFilter = document.getElementById('filterCard').value.toLowerCase();
+
+            const filtered = logs.filter(l => {
+                if (resultFilter && l.result !== resultFilter) return false;
+                if (eventFilter && l.event !== eventFilter) return false;
+                if (cardFilter && !l.card.toLowerCase().includes(cardFilter)) return false;
+                return true;
+            });
+
+            document.getElementById('successCount').textContent = filtered.filter(l => l.result === 'SUCCESS').length;
+            document.getElementById('failedCount').textContent = filtered.filter(l => l.result !== 'SUCCESS').length;
+            document.getElementById('totalAmount').textContent = filtered.reduce((s, l) => s + l.amount, 0).toFixed(0) + '€';
+            document.getElementById('totalCount').textContent = filtered.length;
+
+            document.getElementById('logTable').innerHTML = filtered.map(l => `
+                <tr>
+                    <td class="time">${new Date(l.timestamp).toLocaleTimeString()}</td>
+                    <td>${l.event}</td>
+                    <td>${l.terminal}</td>
+                    <td>${l.card}</td>
+                    <td>${l.amount > 0 ? l.amount.toFixed(2) + '€' : '-'}</td>
+                    <td class="${l.result.toLowerCase()}">${l.result}</td>
+                    <td>${l.code}</td>
+                </tr>
+            `).join('');
+        }
+
+        renderLogs();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,192 @@
+{
+    "transaction_id": "TXN-2026-01-28-001",
+    "card": {
+        "pan_masked": "4111********1111",
+        "brand": "VISA",
+        "type": "DEBIT"
+    },
+    "merchant": {
+        "id": "MERCH0000000001",
+        "name": "Boutique Test Paris",
+        "mcc": "5411",
+        "terminal_id": "TERM0001"
+    },
+    "amount": {
+        "value": 50.00,
+        "currency": "EUR"
+    },
+    "trace": [
+        {
+            "step": 1,
+            "timestamp": "2026-01-28T10:00:00.000Z",
+            "actor": "POS_TERMINAL",
+            "action": "CARD_READ",
+            "details": "Lecture des données carte (Track 2)",
+            "latency_ms": 0
+        },
+        {
+            "step": 2,
+            "timestamp": "2026-01-28T10:00:00.150Z",
+            "actor": "POS_TERMINAL",
+            "action": "PIN_ENTRY",
+            "details": "Saisie du code PIN par le porteur",
+            "latency_ms": 150
+        },
+        {
+            "step": 3,
+            "timestamp": "2026-01-28T10:00:02.500Z",
+            "actor": "POS_TERMINAL",
+            "action": "BUILD_ISO8583",
+            "details": "Construction message MTI 0100 (Authorization Request)",
+            "latency_ms": 2350
+        },
+        {
+            "step": 4,
+            "timestamp": "2026-01-28T10:00:02.520Z",
+            "actor": "POS_TERMINAL",
+            "target": "ACQUIRER",
+            "action": "SEND_REQUEST",
+            "details": "Envoi vers la banque acquéreur",
+            "latency_ms": 20
+        },
+        {
+            "step": 5,
+            "timestamp": "2026-01-28T10:00:02.580Z",
+            "actor": "ACQUIRER",
+            "action": "VALIDATE_MERCHANT",
+            "details": "Vérification statut marchand et limites",
+            "latency_ms": 60
+        },
+        {
+            "step": 6,
+            "timestamp": "2026-01-28T10:00:02.600Z",
+            "actor": "ACQUIRER",
+            "action": "LOG_TRANSACTION",
+            "details": "Enregistrement transaction (status: PENDING)",
+            "latency_ms": 20
+        },
+        {
+            "step": 7,
+            "timestamp": "2026-01-28T10:00:02.650Z",
+            "actor": "ACQUIRER",
+            "target": "NETWORK_SWITCH",
+            "action": "ROUTE_BY_BIN",
+            "details": "Routage vers le réseau basé sur BIN 411111",
+            "latency_ms": 50
+        },
+        {
+            "step": 8,
+            "timestamp": "2026-01-28T10:00:02.720Z",
+            "actor": "NETWORK_SWITCH",
+            "action": "IDENTIFY_ISSUER",
+            "details": "Identification de la banque émettrice",
+            "latency_ms": 70
+        },
+        {
+            "step": 9,
+            "timestamp": "2026-01-28T10:00:02.800Z",
+            "actor": "NETWORK_SWITCH",
+            "target": "ISSUER",
+            "action": "FORWARD_REQUEST",
+            "details": "Transmission vers la banque émettrice",
+            "latency_ms": 80
+        },
+        {
+            "step": 10,
+            "timestamp": "2026-01-28T10:00:02.900Z",
+            "actor": "ISSUER",
+            "action": "VERIFY_CARD",
+            "details": "Vérification carte (statut, expiration)",
+            "latency_ms": 100
+        },
+        {
+            "step": 11,
+            "timestamp": "2026-01-28T10:00:02.950Z",
+            "actor": "ISSUER",
+            "action": "VERIFY_PIN",
+            "details": "Vérification du PIN Block",
+            "latency_ms": 50
+        },
+        {
+            "step": 12,
+            "timestamp": "2026-01-28T10:00:03.000Z",
+            "actor": "ISSUER",
+            "action": "CHECK_BALANCE",
+            "details": "Vérification du solde disponible (250.00 EUR)",
+            "latency_ms": 50
+        },
+        {
+            "step": 13,
+            "timestamp": "2026-01-28T10:00:03.050Z",
+            "actor": "ISSUER",
+            "action": "CHECK_FRAUD",
+            "details": "Analyse anti-fraude (score: 12/100 = LOW)",
+            "latency_ms": 50
+        },
+        {
+            "step": 14,
+            "timestamp": "2026-01-28T10:00:03.100Z",
+            "actor": "ISSUER",
+            "action": "AUTHORIZE",
+            "details": "Autorisation accordée - Response Code: 00",
+            "latency_ms": 50
+        },
+        {
+            "step": 15,
+            "timestamp": "2026-01-28T10:00:03.150Z",
+            "actor": "ISSUER",
+            "action": "UPDATE_BALANCE",
+            "details": "Débit du compte (nouveau solde: 200.00 EUR)",
+            "latency_ms": 50
+        },
+        {
+            "step": 16,
+            "timestamp": "2026-01-28T10:00:03.200Z",
+            "actor": "ISSUER",
+            "target": "NETWORK_SWITCH",
+            "action": "SEND_RESPONSE",
+            "details": "Envoi réponse MTI 0110",
+            "latency_ms": 50
+        },
+        {
+            "step": 17,
+            "timestamp": "2026-01-28T10:00:03.280Z",
+            "actor": "NETWORK_SWITCH",
+            "target": "ACQUIRER",
+            "action": "FORWARD_RESPONSE",
+            "details": "Routage réponse vers acquéreur",
+            "latency_ms": 80
+        },
+        {
+            "step": 18,
+            "timestamp": "2026-01-28T10:00:03.350Z",
+            "actor": "ACQUIRER",
+            "action": "UPDATE_TRANSACTION",
+            "details": "Mise à jour transaction (status: APPROVED)",
+            "latency_ms": 70
+        },
+        {
+            "step": 19,
+            "timestamp": "2026-01-28T10:00:03.400Z",
+            "actor": "ACQUIRER",
+            "target": "POS_TERMINAL",
+            "action": "SEND_RESPONSE",
+            "details": "Envoi réponse au terminal",
+            "latency_ms": 50
+        },
+        {
+            "step": 20,
+            "timestamp": "2026-01-28T10:00:03.420Z",
+            "actor": "POS_TERMINAL",
+            "action": "DISPLAY_RESULT",
+            "details": "Affichage: TRANSACTION APPROUVÉE",
+            "latency_ms": 20
+        }
+    ],
+    "result": {
+        "status": "APPROVED",
+        "response_code": "00",
+        "auth_code": "A12345",
+        "total_latency_ms": 3420
+    }
+}

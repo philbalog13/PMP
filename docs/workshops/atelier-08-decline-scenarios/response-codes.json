@@ -1,0 +1,166 @@
+{
+    "codes": {
+        "00": {
+            "meaning": "Approved",
+            "category": "SUCCESS",
+            "retry": false,
+            "message_fr": "Transaction approuvée"
+        },
+        "01": {
+            "meaning": "Refer to issuer",
+            "category": "REFER",
+            "retry": false,
+            "message_fr": "Contactez votre banque"
+        },
+        "03": {
+            "meaning": "Invalid merchant",
+            "category": "ERROR",
+            "retry": false,
+            "message_fr": "Marchand non reconnu"
+        },
+        "04": {
+            "meaning": "Pickup card",
+            "category": "FRAUD",
+            "retry": false,
+            "message_fr": "Carte retenue"
+        },
+        "05": {
+            "meaning": "Do not honor",
+            "category": "DECLINE",
+            "retry": false,
+            "message_fr": "Transaction refusée"
+        },
+        "12": {
+            "meaning": "Invalid transaction",
+            "category": "ERROR",
+            "retry": false,
+            "message_fr": "Transaction invalide"
+        },
+        "13": {
+            "meaning": "Invalid amount",
+            "category": "ERROR",
+            "retry": false,
+            "message_fr": "Montant incorrect"
+        },
+        "14": {
+            "meaning": "Invalid card number",
+            "category": "ERROR",
+            "retry": false,
+            "message_fr": "Numéro de carte invalide"
+        },
+        "30": {
+            "meaning": "Format error",
+            "category": "TECHNICAL",
+            "retry": true,
+            "message_fr": "Erreur technique"
+        },
+        "41": {
+            "meaning": "Lost card",
+            "category": "FRAUD",
+            "retry": false,
+            "message_fr": "Carte déclarée perdue"
+        },
+        "43": {
+            "meaning": "Stolen card",
+            "category": "FRAUD",
+            "retry": false,
+            "message_fr": "Carte déclarée volée"
+        },
+        "51": {
+            "meaning": "Insufficient funds",
+            "category": "DECLINE",
+            "retry": false,
+            "message_fr": "Fonds insuffisants"
+        },
+        "54": {
+            "meaning": "Expired card",
+            "category": "DECLINE",
+            "retry": false,
+            "message_fr": "Carte expirée"
+        },
+        "55": {
+            "meaning": "Incorrect PIN",
+            "category": "PIN",
+            "retry": true,
+            "message_fr": "Code PIN incorrect"
+        },
+        "57": {
+            "meaning": "Transaction not permitted",
+            "category": "DECLINE",
+            "retry": false,
+            "message_fr": "Opération non autorisée"
+        },
+        "61": {
+            "meaning": "Exceeds withdrawal limit",
+            "category": "LIMIT",
+            "retry": false,
+            "message_fr": "Plafond dépassé"
+        },
+        "65": {
+            "meaning": "Exceeds activity limit",
+            "category": "LIMIT",
+            "retry": false,
+            "message_fr": "Limite d'activité atteinte"
+        },
+        "75": {
+            "meaning": "PIN tries exceeded",
+            "category": "PIN",
+            "retry": false,
+            "message_fr": "Trop de tentatives PIN"
+        },
+        "91": {
+            "meaning": "Issuer unavailable",
+            "category": "TECHNICAL",
+            "retry": true,
+            "message_fr": "Réessayez plus tard"
+        },
+        "96": {
+            "meaning": "System malfunction",
+            "category": "TECHNICAL",
+            "retry": true,
+            "message_fr": "Erreur système"
+        }
+    },
+    "categories": {
+        "SUCCESS": {
+            "color": "green",
+            "icon": "✅",
+            "action": "COMPLETE"
+        },
+        "DECLINE": {
+            "color": "red",
+            "icon": "❌",
+            "action": "ABORT"
+        },
+        "REFER": {
+            "color": "yellow",
+            "icon": "📞",
+            "action": "CALL_BANK"
+        },
+        "FRAUD": {
+            "color": "red",
+            "icon": "🚨",
+            "action": "RETAIN_CARD"
+        },
+        "ERROR": {
+            "color": "orange",
+            "icon": "⚠️",
+            "action": "CHECK_DATA"
+        },
+        "TECHNICAL": {
+            "color": "blue",
+            "icon": "🔄",
+            "action": "RETRY"
+        },
+        "PIN": {
+            "color": "yellow",
+            "icon": "🔢",
+            "action": "RETRY_PIN"
+        },
+        "LIMIT": {
+            "color": "orange",
+            "icon": "📊",
+            "action": "INFORM_CUSTOMER"
+        }
+    }
+}

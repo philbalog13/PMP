@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PIN Block Simulator - Atelier 2</title>
+    <style>
+        :root {
+            --primary: #1e3a5f;
+            --accent: #00b4d8;
+            --success: #2ecc71;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+            --bg: #0a1628;
+            --card: #132337;
+            --text: #e8f1f8;
+        }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        
+        .container { max-width: 900px; margin: 0 auto; }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 2rem;
+            background: linear-gradient(135deg, var(--accent), var(--success));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .card h2 {
+            color: var(--accent);
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+        
+        .input-group {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .input-group label {
+            flex: 1;
+        }
+        
+        .input-group label span {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            background: rgba(0,0,0,0.3);
+            color: var(--text);
+            font-family: 'Consolas', monospace;
+            font-size: 1.1rem;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(0,180,216,0.2);
+        }
+        
+        button {
+            width: 100%;
+            padding: 1rem;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--accent), #0077b6);
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,180,216,0.4);
+        }
+        
+        .result-box {
+            background: rgba(0,0,0,0.4);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+            font-family: 'Consolas', monospace;
+        }
+        
+        .result-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .result-row:last-child { border-bottom: none; }
+        
+        .result-label { color: #888; }
+        
+        .result-value {
+            color: var(--success);
+            font-weight: 600;
+            word-break: break-all;
+        }
+        
+        .steps {
+            display: grid;
+            gap: 1rem;
+        }
+        
+        .step {
+            background: rgba(0,0,0,0.3);
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 3px solid var(--accent);
+        }
+        
+        .step-number {
+            background: var(--accent);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            margin-right: 0.5rem;
+        }
+        
+        .hex { color: var(--warning); }
+        .xor { color: var(--danger); }
+        .encrypted { color: var(--success); }
+        
+        .warning {
+            background: rgba(243,156,18,0.2);
+            border: 1px solid var(--warning);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 PIN Block Simulator (ISO 9564)</h1>
+        
+        <div class="warning">
+            ⚠️ <strong>Avertissement pédagogique:</strong> Ce simulateur expose les clés et PIN en clair.
+            En production, ces opérations se font UNIQUEMENT dans un HSM !
+        </div>
+        
+        <div class="card">
+            <h2>📝 Données d'entrée</h2>
+            <div class="input-group">
+                <label>
+                    <span>Code PIN (4-6 chiffres)</span>
+                    <input type="password" id="pin" maxlength="6" placeholder="1234" value="1234">
+                </label>
+                <label>
+                    <span>PAN (16 chiffres)</span>
+                    <input type="text" id="pan" maxlength="16" placeholder="4111111111111111" value="4111111111111111">
+                </label>
+            </div>
+            <div class="input-group">
+                <label>
+                    <span>Format PIN Block</span>
+                    <select id="format">
+                        <option value="0">ISO-0 (Format 0)</option>
+                        <option value="1">ISO-1 (Format 1)</option>
+                    </select>
+                </label>
+                <label>
+                    <span>Clé ZPK (32 hex)</span>
+                    <input type="text" id="zpk" maxlength="32" placeholder="0123456789ABCDEF..." value="0123456789ABCDEF0123456789ABCDEF">
+                </label>
+            </div>
+            <button onclick="generatePinBlock()">🔐 Générer PIN Block</button>
+        </div>
+        
+        <div class="card" id="result" style="display:none;">
+            <h2>📊 Résultat</h2>
+            <div class="steps" id="steps"></div>
+            <div class="result-box" id="output"></div>
+        </div>
+    </div>
+
+    <script>
+        function padRight(str, length, char = 'F') {
+            return str.padEnd(length, char);
+        }
+        
+        function xorHex(hex1, hex2) {
+            let result = '';
+            for (let i = 0; i < hex1.length; i++) {
+                const a = parseInt(hex1[i], 16);
+                const b = parseInt(hex2[i], 16);
+                result += (a ^ b).toString(16).toUpperCase();
+            }
+            return result;
+        }
+        
+        function simpleEncrypt(data, key) {
+            // Simulation simplifiée (XOR basique - pas cryptographiquement sûr!)
+            // En production: utiliser 3DES-CBC ou AES
+            return xorHex(data, key.substring(0, 16));
+        }
+        
+        function generatePinBlock() {
+            const pin = document.getElementById('pin').value;
+            const pan = document.getElementById('pan').value;
+            const format = document.getElementById('format').value;
+            const zpk = document.getElementById('zpk').value.toUpperCase();
+            
+            // Validation
+            if (!/^\d{4,6}$/.test(pin)) {
+                alert('PIN invalide: 4 à 6 chiffres requis');
+                return;
+            }
+            if (!/^\d{16}$/.test(pan)) {
+                alert('PAN invalide: 16 chiffres requis');
+                return;
+            }
+            if (!/^[0-9A-F]{32}$/i.test(zpk)) {
+                alert('ZPK invalide: 32 caractères hex requis');
+                return;
+            }
+            
+            // Étape 1: Construire le bloc PIN
+            const pinLength = pin.length.toString(16).toUpperCase();
+            const pinPadded = padRight(pin, 14, 'F');
+            const pinBlock1 = format + pinLength + pinPadded;
+            
+            // Étape 2: Construire le bloc PAN
+            const panDigits = pan.substring(3, 15); // 12 rightmost sans check digit
+            const panBlock = '0000' + panDigits;
+            
+            // Étape 3: XOR
+            const clearPinBlock = xorHex(pinBlock1, panBlock);
+            
+            // Étape 4: Chiffrer
+            const encryptedPinBlock = simpleEncrypt(clearPinBlock, zpk);
+            
+            // Afficher les étapes
+            const stepsDiv = document.getElementById('steps');
+            stepsDiv.innerHTML = `
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <strong>Construction bloc PIN:</strong><br>
+                    Format=${format}, Longueur=${pinLength}, PIN padded=${pinPadded}<br>
+                    <span class="hex">Bloc PIN = ${pinBlock1}</span>
+                </div>
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <strong>Construction bloc PAN:</strong><br>
+                    12 derniers chiffres (sans check): ${panDigits}<br>
+                    <span class="hex">Bloc PAN = ${panBlock}</span>
+                </div>
+                <div class="step">
+                    <span class="step-number">3</span>
+                    <strong>XOR des deux blocs:</strong><br>
+                    ${pinBlock1} ⊕ ${panBlock}<br>
+                    <span class="xor">PIN Block clair = ${clearPinBlock}</span>
+                </div>
+                <div class="step">
+                    <span class="step-number">4</span>
+                    <strong>Chiffrement avec ZPK:</strong><br>
+                    <span class="encrypted">PIN Block chiffré = ${encryptedPinBlock}</span>
+                </div>
+            `;
+            
+            // Afficher le résultat final
+            const outputDiv = document.getElementById('output');
+            outputDiv.innerHTML = `
+                <div class="result-row">
+                    <span class="result-label">PIN Block (clair)</span>
+                    <span class="result-value">${clearPinBlock}</span>
+                </div>
+                <div class="result-row">
+                    <span class="result-label">PIN Block (chiffré)</span>
+                    <span class="result-value encrypted">${encryptedPinBlock}</span>
+                </div>
+                <div class="result-row">
+                    <span class="result-label">Format</span>
+                    <span class="result-value">ISO-${format}</span>
+                </div>
+            `;
+            
+            document.getElementById('result').style.display = 'block';
+        }
+    </script>
+</body>
+</html>

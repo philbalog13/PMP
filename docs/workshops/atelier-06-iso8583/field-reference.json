@@ -1,0 +1,256 @@
+{
+    "version": "ISO 8583:1993",
+    "description": "Référence des champs ISO 8583 - Atelier 6 PMP",
+    "mti": {
+        "0100": {
+            "name": "Authorization Request",
+            "description": "Demande d'autorisation"
+        },
+        "0110": {
+            "name": "Authorization Response",
+            "description": "Réponse d'autorisation"
+        },
+        "0200": {
+            "name": "Financial Request",
+            "description": "Demande financière"
+        },
+        "0210": {
+            "name": "Financial Response",
+            "description": "Réponse financière"
+        },
+        "0400": {
+            "name": "Reversal Request",
+            "description": "Demande d'annulation"
+        },
+        "0410": {
+            "name": "Reversal Response",
+            "description": "Réponse d'annulation"
+        },
+        "0800": {
+            "name": "Network Management Request",
+            "description": "Gestion réseau"
+        },
+        "0810": {
+            "name": "Network Management Response",
+            "description": "Réponse gestion réseau"
+        }
+    },
+    "dataElements": {
+        "2": {
+            "name": "Primary Account Number (PAN)",
+            "format": "n..19",
+            "type": "LLVAR",
+            "description": "Numéro de carte",
+            "example": "4111111111111111"
+        },
+        "3": {
+            "name": "Processing Code",
+            "format": "n6",
+            "type": "FIXED",
+            "description": "Code traitement (00=achat, 01=retrait, 20=remboursement)",
+            "example": "000000"
+        },
+        "4": {
+            "name": "Amount, Transaction",
+            "format": "n12",
+            "type": "FIXED",
+            "description": "Montant en centimes",
+            "example": "000000005000"
+        },
+        "7": {
+            "name": "Transmission Date/Time",
+            "format": "n10",
+            "type": "FIXED",
+            "description": "MMDDhhmmss",
+            "example": "0128143055"
+        },
+        "11": {
+            "name": "System Trace Audit Number (STAN)",
+            "format": "n6",
+            "type": "FIXED",
+            "description": "Numéro séquentiel unique",
+            "example": "123456"
+        },
+        "12": {
+            "name": "Local Transaction Time",
+            "format": "n6",
+            "type": "FIXED",
+            "description": "hhmmss",
+            "example": "143055"
+        },
+        "13": {
+            "name": "Local Transaction Date",
+            "format": "n4",
+            "type": "FIXED",
+            "description": "MMDD",
+            "example": "0128"
+        },
+        "14": {
+            "name": "Expiration Date",
+            "format": "n4",
+            "type": "FIXED",
+            "description": "YYMM",
+            "example": "2812"
+        },
+        "22": {
+            "name": "POS Entry Mode",
+            "format": "n3",
+            "type": "FIXED",
+            "description": "Mode de saisie (051=chip, 021=magstripe, 010=manual)",
+            "example": "051"
+        },
+        "23": {
+            "name": "Card Sequence Number",
+            "format": "n3",
+            "type": "FIXED",
+            "description": "Numéro de séquence carte",
+            "example": "001"
+        },
+        "25": {
+            "name": "POS Condition Code",
+            "format": "n2",
+            "type": "FIXED",
+            "description": "Condition du point de vente",
+            "example": "00"
+        },
+        "32": {
+            "name": "Acquiring Institution ID",
+            "format": "n..11",
+            "type": "LLVAR",
+            "description": "ID de l'acquéreur",
+            "example": "123456"
+        },
+        "35": {
+            "name": "Track 2 Data",
+            "format": "z..37",
+            "type": "LLVAR",
+            "description": "Données piste 2",
+            "example": "4111111111111111D2812101123400001"
+        },
+        "37": {
+            "name": "Retrieval Reference Number",
+            "format": "an12",
+            "type": "FIXED",
+            "description": "Numéro de référence",
+            "example": "012345678901"
+        },
+        "38": {
+            "name": "Authorization ID Response",
+            "format": "an6",
+            "type": "FIXED",
+            "description": "Code d'autorisation",
+            "example": "A12345"
+        },
+        "39": {
+            "name": "Response Code",
+            "format": "an2",
+            "type": "FIXED",
+            "description": "Code réponse",
+            "example": "00"
+        },
+        "41": {
+            "name": "Card Acceptor Terminal ID",
+            "format": "ans8",
+            "type": "FIXED",
+            "description": "ID du terminal",
+            "example": "TERM0001"
+        },
+        "42": {
+            "name": "Card Acceptor ID",
+            "format": "ans15",
+            "type": "FIXED",
+            "description": "ID du marchand",
+            "example": "MERCHANT0000001"
+        },
+        "43": {
+            "name": "Card Acceptor Name/Location",
+            "format": "ans40",
+            "type": "FIXED",
+            "description": "Nom et adresse du marchand",
+            "example": "BOUTIQUE TEST          PARIS        FR"
+        },
+        "49": {
+            "name": "Currency Code, Transaction",
+            "format": "n3",
+            "type": "FIXED",
+            "description": "Code devise (978=EUR)",
+            "example": "978"
+        },
+        "52": {
+            "name": "PIN Block",
+            "format": "b8",
+            "type": "FIXED",
+            "description": "PIN Block chiffré (64 bits)",
+            "example": "0123456789ABCDEF"
+        },
+        "55": {
+            "name": "EMV Data",
+            "format": "b..255",
+            "type": "LLLVAR",
+            "description": "Données EMV (ICC)",
+            "example": "9F26..."
+        }
+    },
+    "responseCodes": {
+        "00": {
+            "meaning": "Approved",
+            "action": "Transaction approuvée"
+        },
+        "01": {
+            "meaning": "Refer to issuer",
+            "action": "Appeler la banque"
+        },
+        "05": {
+            "meaning": "Do not honor",
+            "action": "Transaction refusée"
+        },
+        "12": {
+            "meaning": "Invalid transaction",
+            "action": "Transaction invalide"
+        },
+        "13": {
+            "meaning": "Invalid amount",
+            "action": "Montant invalide"
+        },
+        "14": {
+            "meaning": "Invalid card number",
+            "action": "Numéro de carte invalide"
+        },
+        "30": {
+            "meaning": "Format error",
+            "action": "Erreur de format"
+        },
+        "41": {
+            "meaning": "Lost card",
+            "action": "Carte déclarée perdue"
+        },
+        "43": {
+            "meaning": "Stolen card",
+            "action": "Carte déclarée volée"
+        },
+        "51": {
+            "meaning": "Insufficient funds",
+            "action": "Fonds insuffisants"
+        },
+        "54": {
+            "meaning": "Expired card",
+            "action": "Carte expirée"
+        },
+        "55": {
+            "meaning": "Incorrect PIN",
+            "action": "PIN incorrect"
+        },
+        "61": {
+            "meaning": "Exceeds withdrawal limit",
+            "action": "Limite de retrait dépassée"
+        },
+        "91": {
+            "meaning": "Issuer unavailable",
+            "action": "Émetteur indisponible"
+        },
+        "96": {
+            "meaning": "System malfunction",
+            "action": "Erreur système"
+        }
+    }
+}

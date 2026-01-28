@@ -1,0 +1,175 @@
+{
+    "version": "1.0",
+    "description": "Règles de détection de fraude - Atelier 4 PMP",
+    "riskThresholds": {
+        "low": {
+            "min": 0,
+            "max": 30,
+            "action": "APPROVE"
+        },
+        "medium": {
+            "min": 31,
+            "max": 60,
+            "action": "REVIEW_OPTIONAL"
+        },
+        "high": {
+            "min": 61,
+            "max": 80,
+            "action": "ALERT_AND_REVIEW"
+        },
+        "critical": {
+            "min": 81,
+            "max": 100,
+            "action": "BLOCK"
+        }
+    },
+    "rules": [
+        {
+            "id": "VELOCITY_10MIN",
+            "name": "Velocity - 10 minutes",
+            "description": "Plus de 3 transactions en 10 minutes",
+            "type": "velocity",
+            "params": {
+                "maxTransactions": 3,
+                "windowMinutes": 10
+            },
+            "weight": 20,
+            "enabled": true
+        },
+        {
+            "id": "VELOCITY_1HOUR",
+            "name": "Velocity - 1 heure",
+            "description": "Plus de 10 transactions en 1 heure",
+            "type": "velocity",
+            "params": {
+                "maxTransactions": 10,
+                "windowMinutes": 60
+            },
+            "weight": 25,
+            "enabled": true
+        },
+        {
+            "id": "VELOCITY_24HOUR",
+            "name": "Velocity - 24 heures",
+            "description": "Plus de 20 transactions en 24 heures",
+            "type": "velocity",
+            "params": {
+                "maxTransactions": 20,
+                "windowMinutes": 1440
+            },
+            "weight": 15,
+            "enabled": true
+        },
+        {
+            "id": "HIGH_AMOUNT",
+            "name": "Transaction montant élevé",
+            "description": "Montant supérieur à 5000 EUR",
+            "type": "amount",
+            "params": {
+                "threshold": 5000,
+                "currency": "EUR"
+            },
+            "weight": 30,
+            "enabled": true
+        },
+        {
+            "id": "IMPOSSIBLE_TRAVEL",
+            "name": "Voyage impossible",
+            "description": "Distance vs temps depuis dernière transaction",
+            "type": "geography",
+            "params": {
+                "maxSpeedKmh": 900,
+                "comment": "Vitesse max avion commercial ~900 km/h"
+            },
+            "weight": 50,
+            "enabled": true
+        },
+        {
+            "id": "NIGHT_TRANSACTION",
+            "name": "Transaction nocturne",
+            "description": "Transaction entre 2h et 5h du matin",
+            "type": "time",
+            "params": {
+                "startHour": 2,
+                "endHour": 5
+            },
+            "weight": 10,
+            "enabled": true
+        },
+        {
+            "id": "NEW_COUNTRY",
+            "name": "Nouveau pays",
+            "description": "Premier achat dans ce pays",
+            "type": "behavior",
+            "params": {
+                "checkHistoryDays": 365
+            },
+            "weight": 15,
+            "enabled": true
+        },
+        {
+            "id": "HIGH_RISK_MCC",
+            "name": "MCC à haut risque",
+            "description": "Catégorie marchande à risque élevé",
+            "type": "merchant",
+            "params": {
+                "riskyMCCs": [
+                    "5993",
+                    "5994",
+                    "7995",
+                    "6012",
+                    "6051"
+                ]
+            },
+            "weight": 25,
+            "enabled": true
+        },
+        {
+            "id": "AMOUNT_ANOMALY",
+            "name": "Montant anormal",
+            "description": "Montant 5x supérieur à la moyenne du client",
+            "type": "behavior",
+            "params": {
+                "multiplier": 5
+            },
+            "weight": 35,
+            "enabled": true
+        },
+        {
+            "id": "CARD_NOT_PRESENT",
+            "name": "Carte non présente",
+            "description": "Transaction CNP (e-commerce)",
+            "type": "channel",
+            "params": {
+                "posEntryModes": [
+                    "01",
+                    "81"
+                ]
+            },
+            "weight": 10,
+            "enabled": true
+        }
+    ],
+    "mccRiskCategories": {
+        "5993": {
+            "name": "Cigars, Tobacco",
+            "risk": "HIGH"
+        },
+        "5994": {
+            "name": "Newspapers",
+            "risk": "LOW"
+        },
+        "7995": {
+            "name": "Gambling",
+            "risk": "VERY_HIGH"
+        },
+        "6012": {
+            "name": "Financial Institutions",
+            "risk": "MEDIUM"
+        },
+        "6051": {
+            "name": "Quasi-Cash",
+            "risk": "HIGH"
+        }
+    }
+}
