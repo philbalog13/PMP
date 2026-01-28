@@ -1328,24 +1328,35 @@ lock:{resource}                     → Distributed lock
 
 ```bash
 # 1. Cloner le projet
-git clone https://github.com/votre-org/pmp.git
-cd pmp
+git clone https://github.com/philbalog13/PMP.git
+cd PMP
 
-# 2. Démarrer l'infrastructure
-docker-compose up -d
+# 2. Configurer l'environnement (IMPORTANT)
+cp .env.example .env
+# Optionnel : Modifier les mots de passe dans .env
 
-# 3. Initialiser la base de données
-docker-compose exec postgres psql -U pmp_user -d pmp_db -f /docker-entrypoint-initdb.d/init.sql
+# 3. Générer les clés cryptographiques
+make keys
 
-# 4. Vérifier les services
-docker-compose ps
+# 4. Démarrer l'infrastructure complète
+make deploy
 
-# 5. Accéder aux interfaces
-# - Interface Client: http://localhost:3000
-# - Interface Marchand: http://localhost:3001
+# 5. Vérifier la santé des services
+make health
+
+# 6. Accéder aux interfaces
+# - Interface Client: http://localhost:3000 ou https://localhost
+# - Interface Marchand: http://localhost:3001 ou https://localhost/merchant
 # - API Gateway: http://localhost:8000
-# - Grafana: http://localhost:3002
+# - PgAdmin: http://localhost:5050 (admin@pmp.local / pgadmin_pass_2024)
+# - Grafana: http://localhost:3002 (admin / grafana_pass_2024)
+# - Prometheus: http://localhost:9090
 ```
+
+**Pour plus de détails sur le déploiement Docker :**
+- Voir [DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md) - Guide complet
+- Voir [DOCKER_IMPROVED.md](DOCKER_IMPROVED.md) - Améliorations sécurité
+
 
 ---
 

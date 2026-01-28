@@ -1,0 +1,145 @@
+# =======================================================
+# Prometheus Configuration
+# Plateforme Monétique Pédagogique (PMP)
+# =======================================================
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'pmp-pedagogical'
+    environment: 'development'
+
+# Alertmanager configuration (optional)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+          # - alertmanager:9093
+
+# Load rules once and periodically evaluate them
+rule_files:
+  # - "alerts/*.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+
+  # Nginx metrics
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx:9113']
+        labels:
+          service: 'nginx'
+          layer: 'proxy'
+
+  # API Gateway
+  - job_name: 'api-gateway'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['api-gateway:8000']
+        labels:
+          service: 'api-gateway'
+          layer: 'gateway'
+
+  # Core Microservices
+  - job_name: 'sim-card-service'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['sim-card-service:8001']
+        labels:
+          service: 'sim-card-service'
+          layer: 'core'
+
+  - job_name: 'sim-pos-service'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['sim-pos-service:8002']
+        labels:
+          service: 'sim-pos-service'
+          layer: 'core'
+
+  - job_name: 'sim-acquirer-service'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['sim-acquirer-service:8003']
+        labels:
+          service: 'sim-acquirer-service'
+          layer: 'core'
+
+  - job_name: 'sim-network-switch'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['sim-network-switch:8004']
+        labels:
+          service: 'sim-network-switch'
+          layer: 'core'
+
+  - job_name: 'sim-issuer-service'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['sim-issuer-service:8005']
+        labels:
+          service: 'sim-issuer-service'
+          layer: 'core'
+
+  - job_name: 'sim-auth-engine'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['sim-auth-engine:8006']
+        labels:
+          service: 'sim-auth-engine'
+          layer: 'core'
+
+  - job_name: 'sim-fraud-detection'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['sim-fraud-detection:8007']
+        labels:
+          service: 'sim-fraud-detection'
+          layer: 'core'
+
+  # Security Services
+  - job_name: 'crypto-service'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['crypto-service:8010']
+        labels:
+          service: 'crypto-service'
+          layer: 'security'
+
+  - job_name: 'hsm-simulator'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['hsm-simulator:8011']
+        labels:
+          service: 'hsm-simulator'
+          layer: 'security'
+
+  - job_name: 'key-management'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['key-management:8012']
+        labels:
+          service: 'key-management'
+          layer: 'security'
+
+  # Database monitoring
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+        labels:
+          service: 'postgresql'
+          layer: 'database'
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+        labels:
+          service: 'redis'
+          layer: 'cache'
