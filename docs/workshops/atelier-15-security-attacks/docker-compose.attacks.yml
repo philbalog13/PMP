@@ -1,0 +1,271 @@
+# Docker Compose pour Scénarios d'Attaque
+
+version: '3.8'
+
+services:
+  # =============================================================
+  # Services cibles (vulnérables pour la démo)
+  # =============================================================
+  
+  # Serveur d'autorisation simulé
+  auth-server:
+    build:
+      context: ../../backend/sim-auth-engine
+      dockerfile: Dockerfile
+    ports:
+      - "8583:8583"
+    environment:
+      - NODE_ENV=development
+      - ENABLE_MAC_VERIFICATION=${ENABLE_MAC:-false}
+      - ENABLE_RATE_LIMITING=${ENABLE_RATE_LIMIT:-false}
+      - LOG_LEVEL=debug
+    networks:
+      - attack-lab
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8583/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # HSM Simulé
+  hsm-simulator:
+    build:
+      context: ../../backend/hsm-simulator
+      dockerfile: Dockerfile
+    ports:
+      - "9000:9000"
+    environment:
+      - KEY_ROTATION_ENABLED=${KEY_ROTATION:-false}
+      - USE_DUKPT=${USE_DUKPT:-false}
+    networks:
+      - attack-lab
+
+  # =============================================================
+  # Scénario 1 : Man-in-the-Middle
+  # =============================================================
+  
+  mitm-attacker:
+    build:
+      context: ./scenario-01-mitm
+      dockerfile: Dockerfile.attacker
+    depends_on:
+      - auth-server
+    environment:
+      - TARGET_HOST=auth-server
+      - TARGET_PORT=8583
+      - LISTEN_PORT=8584
+      - MODIFY_AMOUNT_RATIO=0.1
+    networks:
+      - attack-lab
+    profiles:
+      - attack-mitm
+
+  mitm-detector:
+    build:
+      context: ./scenario-01-mitm
+      dockerfile: Dockerfile.detector
+    depends_on:
+      - auth-server
+    environment:
+      - MONITOR_HOST=auth-server
+      - ALERT_WEBHOOK=http://logger:3000/alerts
+    networks:
+      - attack-lab
+    profiles:
+      - detect-mitm
+
+  # =============================================================
+  # Scénario 2 : PAN Harvesting
+  # =============================================================
+  
+  pan-harvester:
+    build:
+      context: ./scenario-02-pan-harvesting
+      dockerfile: Dockerfile.attacker
+    volumes:
+      - auth-logs:/var/log/auth:ro
+    environment:
+      - SCAN_PATHS=/var/log/auth
+      - OUTPUT_FILE=/tmp/extracted_pans.txt
+    networks:
+      - attack-lab
+    profiles:
+      - attack-pan
+
+  pci-scanner:
+    build:
+      context: ./scenario-02-pan-harvesting
+      dockerfile: Dockerfile.scanner
+    volumes:
+      - auth-logs:/var/log/auth:ro
+    environment:
+      - SCAN_PATHS=/var/log/auth
+      - PCI_STRICT_MODE=true
+    networks:
+      - attack-lab
+    profiles:
+      - detect-pan
+
+  # =============================================================
+  # Scénario 3 : Weak PIN Encryption
+  # =============================================================
+  
+  pin-cracker:
+    build:
+      context: ./scenario-03-weak-pin
+      dockerfile: Dockerfile.attacker
+    depends_on:
+      - hsm-simulator
+    environment:
+      - TARGET_HOST=hsm-simulator
+      - MAX_ATTEMPTS=10000
+    networks:
+      - attack-lab
+    profiles:
+      - attack-pin
+
+  key-auditor:
+    build:
+      context: ./scenario-03-weak-pin
+      dockerfile: Dockerfile.auditor
+    depends_on:
+      - hsm-simulator
+    environment:
+      - HSM_HOST=hsm-simulator
+      - MIN_KEY_LENGTH=256
+      - CHECK_ROTATION=true
+    networks:
+      - attack-lab
+    profiles:
+      - detect-pin
+
+  # =============================================================
+  # Scénario 4 : Authorization Bypass
+  # =============================================================
+  
+  auth-bypasser:
+    build:
+      context: ./scenario-04-auth-bypass
+      dockerfile: Dockerfile.attacker
+    depends_on:
+      - auth-server
+    environment:
+      - TARGET_HOST=auth-server
+      - TARGET_PORT=8583
+      - FORCE_APPROVE=true
+    networks:
+      - attack-lab
+    profiles:
+      - attack-bypass
+
+  consistency-checker:
+    build:
+      context: ./scenario-04-auth-bypass
+      dockerfile: Dockerfile.checker
+    depends_on:
+      - auth-server
+    environment:
+      - MONITOR_HOST=auth-server
+      - CHECK_SIGNATURES=true
+    networks:
+      - attack-lab
+    profiles:
+      - detect-bypass
+
+  # =============================================================
+  # Scénario 5 : DoS Attack
+  # =============================================================
+  
+  dos-flooder:
+    build:
+      context: ./scenario-05-dos
+      dockerfile: Dockerfile.attacker
+    depends_on:
+      - auth-server
+    environment:
+      - TARGET_HOST=auth-server
+      - TARGET_PORT=8583
+      - REQUESTS_PER_SECOND=1000
+      - DURATION_SECONDS=30
+    networks:
+      - attack-lab
+    profiles:
+      - attack-dos
+
+  slowloris-attacker:
+    build:
+      context: ./scenario-05-dos
+      dockerfile: Dockerfile.slowloris
+    depends_on:
+      - auth-server
+    environment:
+      - TARGET_HOST=auth-server
+      - TARGET_PORT=8583
+      - NUM_CONNECTIONS=200
+    networks:
+      - attack-lab
+    profiles:
+      - attack-slowloris
+
+  traffic-monitor:
+    build:
+      context: ./scenario-05-dos
+      dockerfile: Dockerfile.monitor
+    depends_on:
+      - auth-server
+    environment:
+      - MONITOR_INTERFACE=eth0
+      - ALERT_THRESHOLD=500
+    networks:
+      - attack-lab
+    profiles:
+      - detect-dos
+
+  # =============================================================
+  # Services de support
+  # =============================================================
+  
+  # Collecteur de logs centralisé
+  logger:
+    image: fluent/fluentd:latest
+    ports:
+      - "3000:3000"
+      - "24224:24224"
+    volumes:
+      - ./logging/fluentd.conf:/fluentd/etc/fluent.conf:ro
+      - attack-logs:/var/log/attacks
+    networks:
+      - attack-lab
+
+  # Dashboard de monitoring
+  dashboard:
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - attack-lab
+    profiles:
+      - monitoring
+
+# =============================================================
+# Réseaux
+# =============================================================
+networks:
+  attack-lab:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+# =============================================================
+# Volumes
+# =============================================================
+volumes:
+  auth-logs:
+  attack-logs:
+  grafana-data:
