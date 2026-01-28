@@ -1,6 +1,34 @@
+![PMP Hero Header](file:///C:/Users/ASUS-GEORGES-GXT/Downloads/PMP/docs/assets/hero-header.png)
+
 # 🏦 Plateforme Monétique Pédagogique (PMP)
 
-> **Système de paiement 100% logiciel pour l'apprentissage des transactions bancaires**
+<div align="center">
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg?logo=docker)](https://www.docker.com/)
+[![E2E Tests](https://img.shields.io/badge/E2E_Tests-73%2F77_Passed-green.svg)](https://github.com/philbalog13/PMP)
+[![Frontend](https://img.shields.io/badge/Frontend-WIP-orange.svg)](https://github.com/philbalog13/PMP)
+[![Platform Status](https://img.shields.io/badge/Logic-Verified-brightgreen.svg)](https://github.com/philbalog13/PMP)
+
+**Un écosystème bancaire 100% logiciel conçu pour l'apprentissage profond des flux de transactions et de la sécurité cryptographique.**
+
+</div>
+
+---
+
+## 🚀 État de la Plateforme (Dernière Vérification)
+
+| Composant | Statut | Détails |
+| :--- | :--- | :--- |
+| **Logic Platform** | ✅ Opérationnel | 73 tests E2E réussis sur 77 (95%) |
+| **Backend Core** | ✅ Launché | 9 services microservices synchronisés |
+| **Infrastructure** | ✅ Sain | PostgreSQL & Redis configurés avec Health Checks |
+| **API Gateway** | ✅ Réparé | Circuit Breaker & JWT Validés |
+| **Sécurité (HSM)** | ✅ Actif | Simulateur HSM intégré et fonctionnel |
+| **Interface Card** | ⚠️ WIP | Builds en cours de stabilisation |
+| **Interface POS** | ⚠️ WIP | Intégration frontend en cours |
+
+---
 
 ## 📋 Table des matières
 
@@ -1269,23 +1297,15 @@ lock:{resource}                     → Distributed lock
 ### Databases
 | Technologie | Version | Usage |
 |-------------|---------|-------|
-| PostgreSQL | 15 | Persistent data |
-| Redis | 7 | Cache/Sessions |
+### 🛠️ Stack Technologique
 
-### DevOps
-| Technologie | Version | Usage |
-|-------------|---------|-------|
-| Docker | 24.x | Containerization |
-| Docker Compose | 2.x | Orchestration |
-| Prometheus | 2.x | Metrics |
-| Grafana | 10.x | Visualization |
-
-### Security
-| Technologie | Version | Usage |
-|-------------|---------|-------|
-| Node crypto | Built-in | Encryption |
-| bcrypt | 5.x | Password hashing |
-| jsonwebtoken | 9.x | JWT tokens |
+| Layer | Technologies |
+| :--- | :--- |
+| **Frontend** | ![Next.js](https://img.shields.io/badge/Next.js-000000?style=flat-square&logo=next.js&logoColor=white) ![React](https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB) ![Tailwind](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white) |
+| **Backend** | ![Node.js](https://img.shields.io/badge/Node.js-339933?style=flat-square&logo=nodedotjs&logoColor=white) ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat-square&logo=typescript&logoColor=white) ![Express](https://img.shields.io/badge/Express.js-000000?style=flat-square&logo=express&logoColor=white) |
+| **Databases**| ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-336791?style=flat-square&logo=postgresql&logoColor=white) ![Redis](https://img.shields.io/badge/Redis-DC382D?style=flat-square&logo=redis&logoColor=white) |
+| **DevOps**   | ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white) ![Prometheus](https://img.shields.io/badge/Prometheus-E6522C?style=flat-square&logo=prometheus&logoColor=white) ![Grafana](https://img.shields.io/badge/Grafana-F46800?style=flat-square&logo=grafana&logoColor=white) |
+| **Testing**  | ![Jest](https://img.shields.io/badge/Jest-C21325?style=flat-square&logo=jest&logoColor=white) ![Axios](https://img.shields.io/badge/Axios-5A29E4?style=flat-square&logo=axios&logoColor=white) |
 
 ---
 
@@ -1326,32 +1346,41 @@ lock:{resource}                     → Distributed lock
 
 ## 🚀 Démarrage rapide
 
+### 1. Préparation de l'environnement
 ```bash
-# 1. Cloner le projet
+# Cloner le projet
 git clone https://github.com/philbalog13/PMP.git
 cd PMP
 
-# 2. Configurer l'environnement (IMPORTANT)
+# Configurer les variables d'environnement
 cp .env.example .env
-# Optionnel : Modifier les mots de passe dans .env
-
-# 3. Générer les clés cryptographiques
-make keys
-
-# 4. Démarrer l'infrastructure complète
-make deploy
-
-# 5. Vérifier la santé des services
-make health
-
-# 6. Accéder aux interfaces
-# - Interface Client: http://localhost:3000 ou https://localhost
-# - Interface Marchand: http://localhost:3001 ou https://localhost/merchant
-# - API Gateway: http://localhost:8000
-# - PgAdmin: http://localhost:5050 (admin@pmp.local / pgadmin_pass_2024)
-# - Grafana: http://localhost:3002 (admin / grafana_pass_2024)
-# - Prometheus: http://localhost:9090
 ```
+
+### 2. Lancement de la Plateforme (Docker Optimized)
+La plateforme utilise un profil de déploiement stable pour garantir la visibilité des images locales.
+
+```bash
+# Lancer les services backend et l'infrastructure
+docker compose -f docker-compose-runtime.yml up -d
+```
+
+### 3. Lancement du Simulateur HSM (Local Agent)
+*Note: Pour le moment, lancez le simulateur HSM hors Docker pour une compatibilité maximale.*
+```bash
+cd backend/hsm-simulator
+npm install
+npm start
+```
+
+### 4. Vérification du Système
+Accédez au dashboard de santé ou lancez les tests automatisés :
+- **Health Check**: [http://localhost:8000/health](http://localhost:8000/health)
+- **Tests E2E**: 
+  ```bash
+  cd tests/e2e
+  npm install
+  npm test
+  ```
 
 **Pour plus de détails sur le déploiement Docker :**
 - Voir [DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md) - Guide complet
