@@ -1,0 +1,257 @@
+{
+    "description": "Clés de test prédéfinies pour environnement pédagogique HSM",
+    "version": "1.0.0",
+    "warning": "⚠️ CES CLÉS SONT POUR USAGE PÉDAGOGIQUE UNIQUEMENT - NE JAMAIS UTILISER EN PRODUCTION",
+    "educational_notes": {
+        "purpose": "Clés fixes pour tests reproductibles et apprentissage",
+        "real_world": "En production, les clés sont générées aléatoirement et stockées dans un HSM physique",
+        "key_types": [
+            "LMK - Local Master Key (protège toutes les autres clés)",
+            "ZMK - Zone Master Key (échange entre organisations)",
+            "ZPK - Zone PIN Key (chiffrement PIN inter-banques)",
+            "TPK - Terminal PIN Key (chiffrement PIN TPE)",
+            "TMK - Terminal Master Key (clé maître terminal)",
+            "TAK - Terminal Authentication Key (authentification)",
+            "PVK - PIN Verification Key (vérification PIN IBM)",
+            "CVK - Card Verification Key (génération CVV)",
+            "DEK - Data Encryption Key (chiffrement données)"
+        ]
+    },
+    "keys": {
+        "lmk": {
+            "id": "LMK_TEST_001",
+            "type": "LMK",
+            "description": "Local Master Key - Clé maître locale simulée",
+            "algorithm": "3DES",
+            "length_bits": 192,
+            "value_hex": "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF",
+            "kcv": "A0B1C2",
+            "created_at": "2026-01-01T00:00:00Z",
+            "usage_notes": "Utilisée pour chiffrer toutes les autres clés en stockage"
+        },
+        "zmk": {
+            "id": "ZMK_TEST_001",
+            "type": "ZMK",
+            "description": "Zone Master Key - Échange inter-organisations",
+            "algorithm": "3DES",
+            "length_bits": 192,
+            "value_hex": "FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210",
+            "kcv": "D3E4F5",
+            "created_at": "2026-01-01T00:00:00Z",
+            "usage_notes": "Utilisée pour importer/exporter des clés entre systèmes",
+            "component_a": "AAAA1111BBBB2222CCCC3333DDDD4444EEEE5555FFFF6666",
+            "component_b": "1111AAAA2222BBBB3333CCCC4444DDDD5555EEEE6666FFFF",
+            "component_c": "5555666677778888999900001111222233334444AAAABBBB"
+        },
+        "zpk": {
+            "id": "ZPK_TEST_001",
+            "type": "ZPK",
+            "description": "Zone PIN Key - Chiffrement PIN inter-banques",
+            "algorithm": "3DES",
+            "length_bits": 128,
+            "value_hex": "1234567890ABCDEF1234567890ABCDEF",
+            "kcv": "1A2B3C",
+            "created_at": "2026-01-01T00:00:00Z",
+            "usage_notes": "Utilisée pour transporter les PIN blocks entre réseaux"
+        },
+        "tpk": {
+            "id": "TPK_TEST_001",
+            "type": "TPK",
+            "description": "Terminal PIN Key - Chiffrement PIN terminal",
+            "algorithm": "3DES",
+            "length_bits": 128,
+            "value_hex": "AABBCCDDEEFF00112233445566778899",
+            "kcv": "4D5E6F",
+            "created_at": "2026-01-01T00:00:00Z",
+            "usage_notes": "Injectée dans le TPE pour chiffrer les PIN saisis",
+            "terminal_id": "TPE_SIM_001"
+        },
+        "tmk": {
+            "id": "TMK_TEST_001",
+            "type": "TMK",
+            "description": "Terminal Master Key - Clé maître terminal",
+            "algorithm": "3DES",
+            "length_bits": 192,
+            "value_hex": "00112233445566778899AABBCCDDEEFF0011223344556677",
+            "kcv": "7A8B9C",
+            "created_at": "2026-01-01T00:00:00Z",
+            "usage_notes": "Clé racine du terminal pour dériver TPK et TAK",
+            "terminal_id": "TPE_SIM_001"
+        },
+        "tak": {
+            "id": "TAK_TEST_001",
+            "type": "TAK",
+            "description": "Terminal Authentication Key - Authentification messages",
+            "algorithm": "3DES",
+            "length_bits": 128,
+            "value_hex": "9988776655443322110099887766554433",
+            "kcv": "1F2E3D",
+            "created_at": "2026-01-01T00:00:00Z",
+            "usage_notes": "Utilisée pour calculer le MAC des messages ISO 8583"
+        },
+        "pvk_pair": {
+            "id": "PVK_TEST_001",
+            "type": "PVK",
+            "description": "PIN Verification Key Pair - Méthode IBM",
+            "algorithm": "3DES",
+            "length_bits": 128,
+            "pvk_a": "1111222233334444",
+            "pvk_b": "5555666677778888",
+            "combined_hex": "11112222333344445555666677778888",
+            "kcv": "C0D1E2",
+            "created_at": "2026-01-01T00:00:00Z",
+            "usage_notes": "Paire de clés pour calcul PIN naturel méthode IBM",
+            "decimalisation_table": "0123456789012345"
+        },
+        "cvk_pair": {
+            "id": "CVK_TEST_001",
+            "type": "CVK",
+            "description": "Card Verification Key Pair - Génération CVV",
+            "algorithm": "3DES",
+            "length_bits": 128,
+            "cvk_a": "AAAA0000BBBB1111",
+            "cvk_b": "CCCC2222DDDD3333",
+            "combined_hex": "AAAA0000BBBB1111CCCC2222DDDD3333",
+            "kcv": "F3A4B5",
+            "created_at": "2026-01-01T00:00:00Z",
+            "usage_notes": "Paire de clés pour générer/vérifier CVV Visa"
+        },
+        "dek": {
+            "id": "DEK_TEST_001",
+            "type": "DEK",
+            "description": "Data Encryption Key - Chiffrement données sensibles",
+            "algorithm": "AES",
+            "length_bits": 256,
+            "value_hex": "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF",
+            "kcv": "A1B2C3",
+            "created_at": "2026-01-01T00:00:00Z",
+            "usage_notes": "Chiffrement AES-256 des données sensibles"
+        }
+    },
+    "dukpt_keys": {
+        "bdk": {
+            "id": "BDK_TEST_001",
+            "type": "BDK",
+            "description": "Base Derivation Key - DUKPT",
+            "algorithm": "3DES",
+            "length_bits": 128,
+            "value_hex": "0123456789ABCDEFFEDCBA9876543210",
+            "kcv": "D4E5F6",
+            "created_at": "2026-01-01T00:00:00Z",
+            "usage_notes": "Clé de base pour dérivation DUKPT",
+            "ksn_base": "FFFF9876543210E00000"
+        },
+        "ipek": {
+            "id": "IPEK_TEST_001",
+            "type": "IPEK",
+            "description": "Initial PIN Encryption Key - DUKPT",
+            "algorithm": "3DES",
+            "length_bits": 128,
+            "value_hex": "6AC292FAA1315B4D6AC292FAA1315B4D",
+            "derived_from": "BDK_TEST_001",
+            "ksn": "FFFF9876543210E00000",
+            "created_at": "2026-01-01T00:00:00Z",
+            "usage_notes": "Première clé dérivée de BDK pour terminal"
+        }
+    },
+    "test_cards": {
+        "visa_test_1": {
+            "pan": "4111111111111111",
+            "expiry": "2612",
+            "cvv": "123",
+            "pin": "1234",
+            "pin_offset": "0000",
+            "cardholder": "TEST CARDHOLDER",
+            "card_type": "VISA",
+            "notes": "Carte de test standard Visa"
+        },
+        "mastercard_test_1": {
+            "pan": "5500000000000004",
+            "expiry": "2612",
+            "cvv": "456",
+            "pin": "5678",
+            "pin_offset": "1234",
+            "cardholder": "TEST MC HOLDER",
+            "card_type": "MASTERCARD",
+            "notes": "Carte de test standard Mastercard"
+        },
+        "visa_declined": {
+            "pan": "4000000000000002",
+            "expiry": "2612",
+            "cvv": "789",
+            "pin": "0000",
+            "cardholder": "DECLINED CARD",
+            "card_type": "VISA",
+            "force_response": "05",
+            "notes": "Carte configurée pour refus systématique (code 05)"
+        },
+        "visa_insufficient_funds": {
+            "pan": "4000000000000051",
+            "expiry": "2612",
+            "cvv": "321",
+            "pin": "2222",
+            "cardholder": "NO FUNDS",
+            "card_type": "VISA",
+            "force_response": "51",
+            "balance": 0,
+            "notes": "Carte configurée pour solde insuffisant (code 51)"
+        }
+    },
+    "test_scenarios": {
+        "approved_purchase": {
+            "description": "Transaction d'achat approuvée standard",
+            "card": "visa_test_1",
+            "amount": 5000,
+            "expected_response": "00",
+            "auth_code_pattern": "^[A-Z0-9]{6}$"
+        },
+        "declined_insufficient": {
+            "description": "Transaction refusée - Solde insuffisant",
+            "card": "visa_insufficient_funds",
+            "amount": 10000,
+            "expected_response": "51"
+        },
+        "pin_verification": {
+            "description": "Test vérification PIN",
+            "card": "visa_test_1",
+            "correct_pin": "1234",
+            "wrong_pins": [
+                "0000",
+                "1111",
+                "9999"
+            ]
+        },
+        "cvv_verification": {
+            "description": "Test vérification CVV",
+            "card": "visa_test_1",
+            "correct_cvv": "123",
+            "wrong_cvvs": [
+                "000",
+                "111",
+                "999"
+            ]
+        }
+    },
+    "crypto_test_vectors": {
+        "pin_block_iso0": {
+            "description": "Test vector PIN Block ISO 9564-1 Format 0",
+            "pan": "43219876543210987",
+            "pin": "1234",
+            "expected_clear_block": "041234FFFFFFFFFF",
+            "expected_xored_block": "0412CB89ABCDEF12"
+        },
+        "pin_translation": {
+            "description": "Test translation PIN Block TPK → ZPK",
+            "source_key": "AABBCCDDEEFF00112233445566778899",
+            "dest_key": "1234567890ABCDEF1234567890ABCDEF",
+            "encrypted_source": "1A2B3C4D5E6F7A8B",
+            "expected_encrypted_dest": "9F8E7D6C5B4A3928"
+        },
+        "mac_retail": {
+            "description": "Test MAC Retail (ISO 9797-1)",
+            "key": "9988776655443322110099887766554433",
+            "message_hex": "00112233445566778899AABBCCDDEEFF",
+            "expected_mac": "A1B2C3D4E5F6A7B8"
+        }
+    }
+}

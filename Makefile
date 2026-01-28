@@ -247,6 +247,24 @@ metrics: ## Display Prometheus metrics
 	@curl -s http://localhost:9090/metrics | head -50
 
 # ==============================================
+# HSM Simulator
+# ==============================================
+
+hsm-backend: ## Start HSM Simulator Backend
+	@echo "$(GREEN)Starting HSM Backend...$(NC)"
+	@cd backend/hsm-sim && npm run dev
+
+hsm-frontend: ## Start HSM Admin Interface
+	@echo "$(GREEN)Starting HSM Frontend...$(NC)"
+	@cd frontend/hsm-web && npm run dev
+
+hsm-install: ## Install dependencies for HSM
+	@echo "$(GREEN)Installing HSM Backend dependencies...$(NC)"
+	@cd backend/hsm-sim && npm install
+	@echo "$(GREEN)Installing HSM Frontend dependencies...$(NC)"
+	@cd frontend/hsm-web && npm install
+
+# ==============================================
 # Quick deployment
 # ==============================================
 
