@@ -39,6 +39,16 @@
 | 13 | [Tokenisation des Cartes](./atelier-13-tokenisation/) | 1.5h | ⭐⭐⭐⭐ | 3 |
 | 14 | [Conformité PCI-DSS](./atelier-14-pci-dss/) | 2h | ⭐⭐⭐⭐ | 3 |
 
+### 🔥 Red Team / Blue Team (Atelier 15)
+
+| # | Scénario | Exploit | Détection | Correctif |
+|---|----------|---------|-----------|-----------|
+| 15.1 | [MitM ISO 8583](./atelier-15-security-attacks/scenario-01-mitm/) | `mitm-attack.js` | `mac-verification-tool.js` | MAC obligatoire |
+| 15.2 | [PAN Harvesting](./atelier-15-security-attacks/scenario-02-pan-harvesting/) | `pan-extractor.py` | `pci-scanner.sh` | Masking + chiffrement |
+| 15.3 | [Weak PIN Encryption](./atelier-15-security-attacks/scenario-03-weak-pin/) | `pin-cracker.go` | `key-rotation-checker.js` | DUKPT |
+| 15.4 | [Authorization Bypass](./atelier-15-security-attacks/scenario-04-auth-bypass/) | `auth-bypass.py` | `consistency-verifier.js` | Signature réponses |
+| 15.5 | [DoS Attack](./atelier-15-security-attacks/scenario-05-dos/) | `auth-flooder.js` | `traffic-analyzer.py` | Rate limiting |
+
 ---
 
 ## 🎯 Objectifs Pédagogiques
