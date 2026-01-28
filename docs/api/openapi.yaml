@@ -1,0 +1,403 @@
+openapi: 3.0.3
+info:
+  title: PMP - API Gateway
+  description: |
+    API Gateway pour la Plateforme Monétique Pédagogique.
+    Point d'entrée unique pour tous les microservices.
+  version: 1.0.0
+  contact:
+    name: PMP Team
+
+servers:
+  - url: http://localhost:8000
+    description: Local development
+
+tags:
+  - name: Health
+    description: Health check endpoints
+  - name: Auth
+    description: Authentication
+  - name: Cards
+    description: Card management (proxy to sim-card-service)
+  - name: Transactions
+    description: Transaction processing (proxy to sim-pos-service)
+  - name: Crypto
+    description: Cryptographic operations (proxy to crypto-service)
+  - name: Keys
+    description: Key management (proxy to key-management)
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Gateway health check
+      responses:
+        '200':
+          description: Gateway is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /api/auth/token:
+    post:
+      tags: [Auth]
+      summary: Generate JWT token (dev only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId:
+                  type: string
+                  example: "user-001"
+                role:
+                  type: string
+                  enum: [user, admin, operator]
+      responses:
+        '200':
+          description: Token generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  expiresIn:
+                    type: string
+
+  /api/cards:
+    get:
+      tags: [Cards]
+      summary: List all cards
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: List of cards
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardList'
+    post:
+      tags: [Cards]
+      summary: Create new card
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCardRequest'
+      responses:
+        '201':
+          description: Card created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Card'
+
+  /api/cards/{pan}:
+    get:
+      tags: [Cards]
+      summary: Get card by PAN
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pan
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Card details
+        '404':
+          description: Card not found
+
+  /api/cards/validate:
+    post:
+      tags: [Cards]
+      summary: Validate PAN using Luhn algorithm
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                pan:
+                  type: string
+                  example: "4111111111111111"
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LuhnValidation'
+
+  /api/transactions:
+    post:
+      tags: [Transactions]
+      summary: Initiate a transaction
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionRequest'
+      responses:
+        '200':
+          description: Transaction result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionResponse'
+
+  /api/crypto/encrypt:
+    post:
+      tags: [Crypto]
+      summary: Encrypt data
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EncryptRequest'
+      responses:
+        '200':
+          description: Encrypted data
+
+  /api/crypto/pin/encode:
+    post:
+      tags: [Crypto]
+      summary: Generate PIN Block (ISO 9564)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pin, pan]
+              properties:
+                pin:
+                  type: string
+                  example: "1234"
+                pan:
+                  type: string
+                  example: "4111111111111111"
+                format:
+                  type: integer
+                  enum: [0, 1, 3]
+                  default: 0
+      responses:
+        '200':
+          description: PIN Block generated
+
+  /api/keys:
+    get:
+      tags: [Keys]
+      summary: List cryptographic keys
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of keys (without key data)
+    post:
+      tags: [Keys]
+      summary: Generate new key
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateKeyRequest'
+      responses:
+        '201':
+          description: Key generated
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "healthy"
+        service:
+          type: string
+          example: "api-gateway"
+        timestamp:
+          type: string
+          format: date-time
+
+    Card:
+      type: object
+      properties:
+        pan:
+          type: string
+        maskedPan:
+          type: string
+          example: "4111****1111"
+        cardType:
+          type: string
+          enum: [VISA, MASTERCARD]
+        status:
+          type: string
+          enum: [ACTIVE, BLOCKED, EXPIRED]
+        cardholderName:
+          type: string
+        expiryMonth:
+          type: integer
+        expiryYear:
+          type: integer
+
+    CardList:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Card'
+        pagination:
+          type: object
+          properties:
+            page:
+              type: integer
+            limit:
+              type: integer
+            total:
+              type: integer
+
+    CreateCardRequest:
+      type: object
+      required: [cardholderName]
+      properties:
+        cardholderName:
+          type: string
+          example: "JOHN DOE"
+        cardType:
+          type: string
+          enum: [VISA, MASTERCARD]
+          default: VISA
+
+    LuhnValidation:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            valid:
+              type: boolean
+            network:
+              type: string
+              enum: [VISA, MASTERCARD, AMEX, DISCOVER, UNKNOWN]
+        _educational:
+          type: object
+          properties:
+            algorithm:
+              type: string
+            steps:
+              type: array
+              items:
+                type: string
+
+    TransactionRequest:
+      type: object
+      required: [pan, amount, currency]
+      properties:
+        pan:
+          type: string
+          example: "4111111111111111"
+        amount:
+          type: number
+          example: 50.00
+        currency:
+          type: string
+          example: "EUR"
+        transactionType:
+          type: string
+          enum: [PURCHASE, REFUND, PREAUTH]
+          default: PURCHASE
+        merchantId:
+          type: string
+          example: "MERCHANT001"
+
+    TransactionResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            transactionId:
+              type: string
+            status:
+              type: string
+              enum: [APPROVED, DECLINED, ERROR]
+            responseCode:
+              type: string
+              example: "00"
+            authorizationCode:
+              type: string
+        _educational:
+          type: object
+
+    EncryptRequest:
+      type: object
+      required: [data, key]
+      properties:
+        data:
+          type: string
+        key:
+          type: string
+        algorithm:
+          type: string
+          enum: [aes-128-cbc, aes-256-cbc, des-cbc, des-ede3-cbc]
+          default: aes-256-cbc
+
+    GenerateKeyRequest:
+      type: object
+      required: [name, type]
+      properties:
+        name:
+          type: string
+          example: "MY-KEY-001"
+        type:
+          type: string
+          enum: [ZMK, TMK, ZPK, PVK, CVK, KEK, DEK, MAC]
+        algorithm:
+          type: string
+          enum: [AES-128, AES-256, 3DES, DES]
+          default: AES-256

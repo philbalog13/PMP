@@ -10,11 +10,9 @@ WORKDIR /app
 
 # Install dependencies (layer caching)
 COPY package*.json ./
-RUN npm ci --only=production=false
+RUN npm install
 
-# Copy source code
-COPY tsconfig.json ./
-COPY src ./src
+COPY . .
 
 # Build TypeScript
 RUN npm run build

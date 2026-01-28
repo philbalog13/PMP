@@ -1,0 +1,129 @@
+openapi: 3.0.3
+info:
+  title: sim-card-service API
+  description: Service de gestion des cartes virtuelles
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8001
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: Service healthy
+
+  /cards:
+    get:
+      summary: Liste des cartes
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Liste paginée
+    post:
+      summary: Créer une carte
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cardholderName]
+              properties:
+                cardholderName:
+                  type: string
+                cardType:
+                  type: string
+                  enum: [VISA, MASTERCARD]
+      responses:
+        '201':
+          description: Carte créée
+
+  /cards/{pan}:
+    get:
+      summary: Détails carte
+      parameters:
+        - name: pan
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Détails
+        '404':
+          description: Non trouvée
+    delete:
+      summary: Supprimer carte
+      parameters:
+        - name: pan
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Supprimée
+
+  /cards/{pan}/status:
+    patch:
+      summary: Modifier statut
+      parameters:
+        - name: pan
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [ACTIVE, BLOCKED, SUSPENDED]
+      responses:
+        '200':
+          description: Statut modifié
+
+  /cards/validate:
+    post:
+      summary: Valider PAN (Luhn)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                pan:
+                  type: string
+      responses:
+        '200':
+          description: Résultat validation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      valid:
+                        type: boolean
+                      network:
+                        type: string
+                  _educational:
+                    type: object

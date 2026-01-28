@@ -68,7 +68,7 @@ VALUES
 INSERT INTO cards.virtual_cards 
 (pan, cardholder_name, expiry_month, expiry_year, cvv_hash, pin_hash, balance, daily_limit, status, bin) 
 VALUES
-('378282246310005', 'PIERRE Bernard', 03, 2024,
+('378282246310005', 'PIERRE Bernard', 01, 2026, -- Expires soon (Jan 2026) for testing near-expiry scenarios
  'c6f3ac57f5f7e9d2fcbdec8c8c6c6e5c6d2f0e1a5c8c6d2f0e1a5c8c6d2f0e1a', -- SHA256('789')
  '$2b$10$rKJVO8YQKlN.4b5FtT1kNOqH3xYQf5WqX5h7QKL8JpVr5R9KqVl9K', -- bcrypt('9012')
  1000.00, 800.00, 'EXPIRED', '378282');

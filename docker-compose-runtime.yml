@@ -1,0 +1,596 @@
+version: '3.8'
+
+# Network configuration
+networks:
+  monetic-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# Persistent volumes
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+  pgadmin-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+
+services:
+  # ============================================
+  # DATABASE SERVICES
+  # ============================================
+  
+  postgres:
+    image: postgres:14-alpine
+    container_name: pmp-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: ${POSTGRES_INITDB_ARGS}
+      PGDATA: ${PGDATA}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/init-databases.sh:/docker-entrypoint-initdb.d/01-init-databases.sh:ro
+      - ./scripts/seed-pedagogical-data.sql:/docker-entrypoint-initdb.d/02-seed-data.sql:ro
+    ports:
+      - "5432:5432"
+    networks:
+      monetic-network:
+        ipv4_address: 172.20.0.10
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    image: redis:7-alpine
+    container_name: pmp-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      monetic-network:
+        ipv4_address: 172.20.0.11
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  pgadmin:
+    image: dpage/pgadmin4:6
+    container_name: pmp-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    ports:
+      - "5050:80"
+    networks:
+      - monetic-network
+    depends_on:
+      - postgres
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ============================================
+  # API GATEWAY
+  # ============================================
+
+  api-gateway:
+    image: pmp-api-gateway
+    pull_policy: never
+    container_name: pmp-api-gateway
+    restart: unless-stopped
+    user: "node:node"
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - PORT=8000
+      - LOG_LEVEL=${LOG_LEVEL}
+      - JWT_SECRET=${JWT_SECRET}
+      - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS}
+      - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS}
+      - CARD_SERVICE_URL=http://sim-card-service:8001
+      - POS_SERVICE_URL=http://sim-pos-service:8002
+      - ACQUIRER_SERVICE_URL=http://sim-acquirer-service:8003
+    ports:
+      - "8000:8000"
+    networks:
+      - monetic-network
+    depends_on:
+      redis:
+        condition: service_healthy
+      sim-card-service:
+        condition: service_started
+      sim-pos-service:
+        condition: service_started
+      sim-acquirer-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    cap_drop:
+      - ALL
+
+  # ============================================
+  # CORE SIMULATION SERVICES
+  # ============================================
+
+  sim-card-service:
+    image: pmp-sim-card-service
+    pull_policy: never
+    container_name: pmp-sim-card-service
+    restart: unless-stopped
+    user: "node:node"
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - PORT=8001
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+      - CRYPTO_SERVICE_URL=http://crypto-service:8010
+      - AUTH_ENGINE_URL=http://sim-auth-engine:8006
+    ports:
+      - "8001:8001"
+    networks:
+      - monetic-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      crypto-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8001/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    cap_drop:
+      - ALL
+
+  sim-pos-service:
+    image: pmp-sim-pos-service
+    pull_policy: never
+    container_name: pmp-sim-pos-service
+    restart: unless-stopped
+    user: "node:node"
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - PORT=8002
+      - ACQUIRER_SERVICE_URL=http://sim-acquirer-service:8003
+      - CRYPTO_SERVICE_URL=http://crypto-service:8010
+    ports:
+      - "8002:8002"
+    networks:
+      - monetic-network
+    depends_on:
+      - sim-acquirer-service
+      - crypto-service
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8002/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    cap_drop:
+      - ALL
+
+  sim-acquirer-service:
+    image: pmp-sim-acquirer-service
+    pull_policy: never
+    container_name: pmp-sim-acquirer-service
+    restart: unless-stopped
+    user: "node:node"
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - PORT=8003
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - NETWORK_SWITCH_URL=http://sim-network-switch:8004
+      - FRAUD_DETECTION_URL=http://sim-fraud-detection:8007
+    ports:
+      - "8003:8003"
+    networks:
+      - monetic-network
+    depends_on:
+      - postgres
+      - sim-network-switch
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8003/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    cap_drop:
+      - ALL
+
+  sim-network-switch:
+    image: pmp-sim-network-switch
+    pull_policy: never
+    container_name: pmp-sim-network-switch
+    restart: unless-stopped
+    user: "node:node"
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - PORT=8004
+      - ISSUER_SERVICE_URL=http://sim-issuer-service:8005
+    ports:
+      - "8004:8004"
+    networks:
+      - monetic-network
+    depends_on:
+      - sim-issuer-service
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8004/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    cap_drop:
+      - ALL
+
+  sim-issuer-service:
+    image: pmp-sim-issuer-service
+    pull_policy: never
+    container_name: pmp-sim-issuer-service
+    restart: unless-stopped
+    user: "node:node"
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - PORT=8005
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+      - AUTH_ENGINE_URL=http://sim-auth-engine:8006
+      - CRYPTO_SERVICE_URL=http://crypto-service:8010
+      - CARD_SERVICE_URL=http://sim-card-service:8001
+    ports:
+      - "8005:8005"
+    networks:
+      - monetic-network
+    depends_on:
+      - postgres
+      - redis
+      - sim-auth-engine
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8005/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    cap_drop:
+      - ALL
+
+  sim-auth-engine:
+    image: pmp-sim-auth-engine
+    pull_policy: never
+    container_name: pmp-sim-auth-engine
+    restart: unless-stopped
+    user: "node:node"
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - PORT=8006
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - ISSUER_SERVICE_URL=http://sim-issuer-service:8005
+      - FRAUD_DETECTION_URL=http://sim-fraud-detection:8007
+    ports:
+      - "8006:8006"
+    networks:
+      - monetic-network
+    depends_on:
+      - postgres
+      - sim-fraud-detection
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8006/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    cap_drop:
+      - ALL
+
+  sim-fraud-detection:
+    image: pmp-sim-fraud-detection
+    pull_policy: never
+    container_name: pmp-sim-fraud-detection
+    restart: unless-stopped
+    user: "node:node"
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - PORT=8007
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+    ports:
+      - "8007:8007"
+    networks:
+      - monetic-network
+    depends_on:
+      - postgres
+      - redis
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8007/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    cap_drop:
+      - ALL
+
+  # ============================================
+  # SECURITY SERVICES
+  # ============================================
+
+  crypto-service:
+    image: pmp-crypto-service
+    pull_policy: never
+    container_name: pmp-crypto-service
+    restart: unless-stopped
+    user: "node:node"
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - PORT=8010
+      - KEY_MANAGEMENT_URL=http://key-management:8012
+      - HSM_URL=http://host.docker.internal:8011
+    ports:
+      - "8010:8010"
+    networks:
+      - monetic-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - key-management
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8010/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    cap_drop:
+      - ALL
+
+  # hsm-simulator:
+  #   image: pmp-hsm-simulator
+  #   pull_policy: never
+  #   container_name: pmp-hsm-simulator
+  #   restart: unless-stopped
+  #   environment:
+  #     - NODE_ENV=${NODE_ENV}
+  #     - PORT=8011
+  #   ports:
+  #     - "8011:8011"
+  #   networks:
+  #     - monetic-network
+  #   healthcheck:
+  #     test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8011/health"]
+  #     interval: 15s
+  #     timeout: 5s
+  #     retries: 3
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '0.5'
+  #         memory: 256M
+  #       reservations:
+  #         cpus: '0.25'
+  #         memory: 128M
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "10m"
+  #       max-file: "3"
+  #   cap_drop:
+  #     - ALL
+
+  key-management:
+    image: pmp-key-management
+    pull_policy: never
+    container_name: pmp-key-management
+    restart: unless-stopped
+    user: "node:node"
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - PORT=8012
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    ports:
+      - "8012:8012"
+    networks:
+      - monetic-network
+    depends_on:
+      - postgres
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8012/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    cap_drop:
+      - ALL
+      
+  # ============================================
+  # FRONTEND SERVICES (Temporarily Disabled)
+  # ============================================
+
+  # client-interface:
+  #   image: pmp-client-interface

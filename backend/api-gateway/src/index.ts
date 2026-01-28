@@ -1,0 +1,56 @@
+import app from './app';
+import { config } from './config';
+import { logger } from './utils/logger';
+
+const PORT = config.port;
+
+// Graceful shutdown handling
+let server: ReturnType<typeof app.listen>;
+
+const gracefulShutdown = (signal: string) => {
+    logger.info(`${signal} received, starting graceful shutdown`);
+
+    server.close(() => {
+        logger.info('HTTP server closed');
+        process.exit(0);
+    });
+
+    // Force shutdown after 10 seconds
+    setTimeout(() => {
+        logger.error('Forced shutdown after timeout');
+        process.exit(1);
+    }, 10000);
+};
+
+// Start server
+server = app.listen(PORT, () => {
+    logger.info('🚀 API Gateway started', {
+        port: PORT,
+        env: config.nodeEnv,
+        rateLimit: `${config.rateLimit.max} req/min`
+    });
+
+    logger.info('📋 Routing table:', {
+        cards: 'POST /api/cards → sim-card-service:8001',
+        transactions: 'POST /api/transactions → sim-pos-service:8002',
+        authorize: 'POST /api/authorize → sim-auth-engine:8006',
+        crypto: 'POST /api/crypto/* → crypto-service:8010',
+        keys: 'GET /api/keys → key-management:8012'
+    });
+});
+
+// Register shutdown handlers
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Unhandled rejection handler
+process.on('unhandledRejection', (reason, promise) => {
+    logger.error('Unhandled Rejection', { reason, promise });
+});
+
+process.on('uncaughtException', (error) => {
+    logger.error('Uncaught Exception', { error: error.message, stack: error.stack });
+    process.exit(1);
+});
+
+export default server;
