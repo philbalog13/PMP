@@ -1,0 +1,1 @@
+{"version":3,"file":"VelocityRule.d.ts","sourceRoot":"","sources":["../../src/rules/VelocityRule.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,oBAAoB,EAAE,MAAM,WAAW,CAAC;AACjD,OAAO,EAAE,YAAY,EAAE,MAAM,gBAAgB,CAAC;AAE9C,qBAAa,YAAa,SAAQ,YAAY;IAC1C,EAAE,SAAmB;IACrB,IAAI,SAAgC;IACpC,WAAW,SAAsD;IACjE,QAAQ,SAAM;IACd,QAAQ,EAAG,UAAU,CAAU;;IAM/B,SAAS,GAAI,KAAK,oBAAoB,aAIpC;CACL"}

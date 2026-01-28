@@ -1,0 +1,1 @@
+{"version":3,"file":"ZeroAmountRule.d.ts","sourceRoot":"","sources":["../../src/rules/ZeroAmountRule.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,oBAAoB,EAAE,MAAM,WAAW,CAAC;AACjD,OAAO,EAAE,YAAY,EAAE,MAAM,gBAAgB,CAAC;AAE9C,qBAAa,cAAe,SAAQ,YAAY;IAC5C,EAAE,SAAsB;IACxB,IAAI,SAAuB;IAC3B,WAAW,SAAsC;IACjD,QAAQ,SAAK;IACb,QAAQ,EAAG,SAAS,CAAU;;IAM9B,SAAS,GAAI,KAAK,oBAAoB,aAEpC;CACL"}

@@ -1,0 +1,1 @@
+{"version":3,"file":"MonthlyLimitRule.d.ts","sourceRoot":"","sources":["../../src/rules/MonthlyLimitRule.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,oBAAoB,EAAE,MAAM,WAAW,CAAC;AACjD,OAAO,EAAE,YAAY,EAAE,MAAM,gBAAgB,CAAC;AAE9C,qBAAa,gBAAiB,SAAQ,YAAY;IAC9C,EAAE,SAAwB;IAC1B,IAAI,SAAyB;IAC7B,WAAW,SAAgD;IAC3D,QAAQ,SAAM;IACd,QAAQ,EAAG,QAAQ,CAAU;;IAM7B,SAAS,GAAI,KAAK,oBAAoB,aAGpC;CACL"}

@@ -1,0 +1,1 @@
+{"version":3,"file":"InactiveCardRule.d.ts","sourceRoot":"","sources":["../../src/rules/InactiveCardRule.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,oBAAoB,EAAE,MAAM,WAAW,CAAC;AACjD,OAAO,EAAE,YAAY,EAAE,MAAM,gBAAgB,CAAC;AAE9C,qBAAa,gBAAiB,SAAQ,YAAY;IAC9C,EAAE,SAAwB;IAC1B,IAAI,SAAyB;IAC7B,WAAW,SAA4B;IACvC,QAAQ,SAAK;IACb,QAAQ,EAAG,aAAa,CAAU;;IAMlC,SAAS,GAAI,KAAK,oBAAoB,aAEpC;CACL"}

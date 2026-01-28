@@ -1,0 +1,1 @@
+{"version":3,"file":"EcommerceRule.d.ts","sourceRoot":"","sources":["../../src/rules/EcommerceRule.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,oBAAoB,EAAE,MAAM,WAAW,CAAC;AACjD,OAAO,EAAE,YAAY,EAAE,MAAM,gBAAgB,CAAC;AAE9C,qBAAa,aAAc,SAAQ,YAAY;IAC3C,EAAE,SAA4B;IAC9B,IAAI,SAAkC;IACtC,WAAW,SAAoD;IAC/D,QAAQ,SAAM;IACd,QAAQ,EAAG,UAAU,CAAU;;IAM/B,SAAS,GAAI,KAAK,oBAAoB,aAGpC;CACL"}

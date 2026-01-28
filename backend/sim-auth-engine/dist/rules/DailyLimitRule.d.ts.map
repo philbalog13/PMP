@@ -1,0 +1,1 @@
+{"version":3,"file":"DailyLimitRule.d.ts","sourceRoot":"","sources":["../../src/rules/DailyLimitRule.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,oBAAoB,EAAE,MAAM,WAAW,CAAC;AACjD,OAAO,EAAE,YAAY,EAAE,MAAM,gBAAgB,CAAC;AAE9C,qBAAa,cAAe,SAAQ,YAAY;IAC5C,EAAE,SAAsB;IACxB,IAAI,SAAuB;IAC3B,WAAW,SAA8C;IACzD,QAAQ,SAAM;IACd,QAAQ,EAAG,QAAQ,CAAU;;IAM7B,SAAS,GAAI,KAAK,oBAAoB,aAGpC;CACL"}

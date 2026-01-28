@@ -1,0 +1,108 @@
+# ==============================================
+# Docker Compose for Testing
+# Starts minimal dependencies for integration tests
+# ==============================================
+
+version: '3.8'
+
+services:
+  # Redis for testing
+  test-redis:
+    image: redis:7-alpine
+    container_name: pmp-test-redis
+    command: redis-server --appendonly no --maxmemory 64mb
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    networks:
+      - test-network
+
+  # Mock issuer service for testing
+  mock-issuer:
+    image: node:20-alpine
+    container_name: pmp-mock-issuer
+    working_dir: /app
+    command: >
+      sh -c "cat > server.js << 'EOF'
+      const http = require('http');
+      const server = http.createServer((req, res) => {
+        res.setHeader('Content-Type', 'application/json');
+        
+        if (req.url === '/health') {
+          res.writeHead(200);
+          res.end(JSON.stringify({ status: 'ok' }));
+          return;
+        }
+        
+        if (req.url === '/transaction/authorize' && req.method === 'POST') {
+          let body = '';
+          req.on('data', chunk => body += chunk);
+          req.on('end', () => {
+            const transaction = JSON.parse(body);
+            const approved = Math.random() > 0.1; // 90% approval rate
+            res.writeHead(200);
+            res.end(JSON.stringify({
+              stan: transaction.stan,
+              acquirerReferenceNumber: transaction.acquirerReferenceNumber,
+              responseCode: approved ? '00' : '51',
+              responseMessage: approved ? 'Approved' : 'Insufficient funds',
+              authorizationCode: approved ? Math.random().toString(36).substr(2, 6).toUpperCase() : undefined,
+              processedAt: new Date().toISOString(),
+            }));
+          });
+          return;
+        }
+        
+        res.writeHead(404);
+        res.end(JSON.stringify({ error: 'Not found' }));
+      });
+      server.listen(8005, () => console.log('Mock issuer running on 8005'));
+      EOF
+      node server.js"
+    ports:
+      - "8005:8005"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8005/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    networks:
+      - test-network
+
+  # Service under test
+  sim-network-switch:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pmp-test-network-switch
+    environment:
+      - NODE_ENV=test
+      - PORT=8004
+      - HOST=0.0.0.0
+      - LOG_LEVEL=error
+      - REDIS_URL=redis://test-redis:6379
+      - ISSUER_SERVICE_URL=http://mock-issuer:8005
+      - METRICS_ENABLED=true
+    ports:
+      - "8004:8004"
+    depends_on:
+      test-redis:
+        condition: service_healthy
+      mock-issuer:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8004/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    networks:
+      - test-network
+
+networks:
+  test-network:
+    driver: bridge

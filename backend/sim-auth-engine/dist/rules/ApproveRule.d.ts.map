@@ -1,0 +1,1 @@
+{"version":3,"file":"ApproveRule.d.ts","sourceRoot":"","sources":["../../src/rules/ApproveRule.ts"],"names":[],"mappings":"AACA,OAAO,EAAE,YAAY,EAAE,MAAM,gBAAgB,CAAC;AAE9C,qBAAa,WAAY,SAAQ,YAAY;IACzC,EAAE,SAA0B;IAC5B,IAAI,SAAsB;IAC1B,WAAW,SAAmD;IAC9D,QAAQ,SAAO;IACf,QAAQ,EAAG,QAAQ,CAAU;;IAM7B,SAAS,gBAAc;CAC1B"}

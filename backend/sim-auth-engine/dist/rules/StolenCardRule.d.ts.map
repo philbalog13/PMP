@@ -1,0 +1,1 @@
+{"version":3,"file":"StolenCardRule.d.ts","sourceRoot":"","sources":["../../src/rules/StolenCardRule.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,oBAAoB,EAAE,MAAM,WAAW,CAAC;AACjD,OAAO,EAAE,YAAY,EAAE,MAAM,gBAAgB,CAAC;AAE9C,qBAAa,cAAe,SAAQ,YAAY;IAC5C,EAAE,SAAsB;IACxB,IAAI,SAAuB;IAC3B,WAAW,SAA0B;IACrC,QAAQ,SAAK;IACb,QAAQ,EAAG,aAAa,CAAU;;IAMlC,SAAS,GAAI,KAAK,oBAAoB,aAEpC;CACL"}

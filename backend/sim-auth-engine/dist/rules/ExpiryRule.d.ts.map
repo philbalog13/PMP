@@ -1,0 +1,1 @@
+{"version":3,"file":"ExpiryRule.d.ts","sourceRoot":"","sources":["../../src/rules/ExpiryRule.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,oBAAoB,EAAE,MAAM,WAAW,CAAC;AACjD,OAAO,EAAE,YAAY,EAAE,MAAM,gBAAgB,CAAC;AAG9C,qBAAa,UAAW,SAAQ,YAAY;IACxC,EAAE,SAAuB;IACzB,IAAI,SAAwB;IAC5B,WAAW,SAAiC;IAC5C,QAAQ,SAAK;IACb,QAAQ,EAAG,aAAa,CAAU;;IAMlC,SAAS,GAAI,KAAK,oBAAoB,aAGpC;CACL"}

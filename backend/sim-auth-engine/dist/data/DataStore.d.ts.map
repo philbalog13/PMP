@@ -1,0 +1,1 @@
+{"version":3,"file":"DataStore.d.ts","sourceRoot":"","sources":["../../src/data/DataStore.ts"],"names":[],"mappings":"AAEA,OAAO,EAAE,iBAAiB,EAAE,MAAM,WAAW,CAAC;AAI9C,qBAAa,SAAS;WACL,SAAS,CAAC,KAAK,EAAE,iBAAiB,EAAE,GAAG,OAAO,CAAC,IAAI,CAAC;WA0BpD,SAAS,IAAI,OAAO,CAAC,OAAO,CAAC,iBAAiB,CAAC,EAAE,CAAC;CAUlE"}
