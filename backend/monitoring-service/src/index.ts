@@ -1,6 +1,6 @@
 /**
  * PMP Monitoring Service
- * Backend avec WebSockets pour le dashboard temps réel
+ * Backend avec WebSockets, Prometheus et API REST
  */
 
 import express from 'express';
@@ -9,6 +9,7 @@ import { createServer } from 'http';
 import { WebSocketServer } from './websocket/server.js';
 import { ElasticsearchService } from './services/elasticsearch.js';
 import { MetricsService } from './services/metrics.js';
+import { register } from './services/prometheus.js';
 import transactionsRouter from './routes/transactions.js';
 import analyticsRouter from './routes/analytics.js';
 import debugRouter from './routes/debug.js';
@@ -29,6 +30,16 @@ app.use('/api/transactions', transactionsRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/debug', debugRouter);
 
+// Endpoint Prometheus Metrics
+app.get('/metrics', async (req, res) => {
+    try {
+        res.set('Content-Type', register.contentType);
+        res.end(await register.metrics());
+    } catch (ex) {
+        res.status(500).end(ex);
+    }
+});
+
 // Health check
 app.get('/health', (req, res) => {
     res.json({
@@ -46,9 +57,10 @@ app.get('/health', (req, res) => {
 app.get('/', (req, res) => {
     res.json({
         name: 'PMP Monitoring Service',
-        version: '1.0.0',
+        version: '1.1.0',
         endpoints: {
             api: '/api',
+            metrics: '/metrics',
             websocket: `ws://localhost:${PORT}/ws`,
             health: '/health'
         }
@@ -64,18 +76,17 @@ const wsServer = new WebSocketServer(server);
 // Démarrer le serveur
 server.listen(PORT, () => {
     console.log('═'.repeat(60));
-    console.log('  📊 PMP MONITORING SERVICE');
+    console.log('  📊 PMP MONITORING SERVICE v1.1');
     console.log('═'.repeat(60));
     console.log(`
   🌐 HTTP API:    http://localhost:${PORT}
+  📈 Prometheus:  http://localhost:${PORT}/metrics
   🔌 WebSocket:   ws://localhost:${PORT}/ws
-  📋 Health:      http://localhost:${PORT}/health
   
   📡 Endpoints:
     - GET  /api/transactions
     - GET  /api/analytics
     - GET  /api/debug/trace/:id
-    - POST /api/debug/decode
 `);
     console.log('═'.repeat(60));
 });

@@ -1,0 +1,427 @@
+{
+    "scenarios": [
+        {
+            "name": "transaction_standard_approved",
+            "description": "Standard purchase transaction that should be approved",
+            "steps": [
+                {
+                    "service": "pos",
+                    "action": "init_transaction",
+                    "amount": 50.00,
+                    "currency": "EUR"
+                },
+                {
+                    "service": "pos",
+                    "action": "read_card",
+                    "pan": "4111111111111111",
+                    "expiry": "1225"
+                },
+                {
+                    "service": "pos",
+                    "action": "enter_pin",
+                    "pin": "1234"
+                },
+                {
+                    "service": "acquirer",
+                    "action": "build_iso_message",
+                    "mti": "0100"
+                },
+                {
+                    "service": "acquirer",
+                    "action": "forward_to_network"
+                },
+                {
+                    "service": "switch",
+                    "action": "route_to_issuer"
+                },
+                {
+                    "service": "issuer",
+                    "action": "check_balance",
+                    "expected": "sufficient"
+                },
+                {
+                    "service": "issuer",
+                    "action": "verify_pin",
+                    "expected": "valid"
+                },
+                {
+                    "service": "fraud",
+                    "action": "check_fraud_rules",
+                    "expected": "low_risk"
+                },
+                {
+                    "service": "auth",
+                    "action": "approve",
+                    "code": "00"
+                }
+            ],
+            "expected_result": "APPROVED",
+            "expected_response_code": "00"
+        },
+        {
+            "name": "transaction_insufficient_funds",
+            "description": "Transaction declined due to insufficient funds",
+            "steps": [
+                {
+                    "service": "pos",
+                    "action": "init_transaction",
+                    "amount": 5000.00,
+                    "currency": "EUR"
+                },
+                {
+                    "service": "pos",
+                    "action": "read_card",
+                    "pan": "5500000000000004",
+                    "expiry": "1226"
+                },
+                {
+                    "service": "pos",
+                    "action": "enter_pin",
+                    "pin": "5678"
+                },
+                {
+                    "service": "acquirer",
+                    "action": "build_iso_message",
+                    "mti": "0100"
+                },
+                {
+                    "service": "acquirer",
+                    "action": "forward_to_network"
+                },
+                {
+                    "service": "switch",
+                    "action": "route_to_issuer"
+                },
+                {
+                    "service": "issuer",
+                    "action": "check_balance",
+                    "expected": "insufficient"
+                },
+                {
+                    "service": "auth",
+                    "action": "decline",
+                    "code": "51"
+                }
+            ],
+            "expected_result": "DECLINED",
+            "expected_response_code": "51"
+        },
+        {
+            "name": "transaction_invalid_pin",
+            "description": "Transaction declined due to invalid PIN",
+            "steps": [
+                {
+                    "service": "pos",
+                    "action": "init_transaction",
+                    "amount": 100.00,
+                    "currency": "EUR"
+                },
+                {
+                    "service": "pos",
+                    "action": "read_card",
+                    "pan": "4111111111111111",
+                    "expiry": "1225"
+                },
+                {
+                    "service": "pos",
+                    "action": "enter_pin",
+                    "pin": "0000"
+                },
+                {
+                    "service": "acquirer",
+                    "action": "build_iso_message",
+                    "mti": "0100"
+                },
+                {
+                    "service": "acquirer",
+                    "action": "forward_to_network"
+                },
+                {
+                    "service": "switch",
+                    "action": "route_to_issuer"
+                },
+                {
+                    "service": "issuer",
+                    "action": "verify_pin",
+                    "expected": "invalid"
+                },
+                {
+                    "service": "auth",
+                    "action": "decline",
+                    "code": "55"
+                }
+            ],
+            "expected_result": "DECLINED",
+            "expected_response_code": "55"
+        },
+        {
+            "name": "transaction_expired_card",
+            "description": "Transaction declined due to expired card",
+            "steps": [
+                {
+                    "service": "pos",
+                    "action": "init_transaction",
+                    "amount": 25.00,
+                    "currency": "EUR"
+                },
+                {
+                    "service": "pos",
+                    "action": "read_card",
+                    "pan": "4111111111111111",
+                    "expiry": "0120"
+                },
+                {
+                    "service": "acquirer",
+                    "action": "validate_expiry",
+                    "expected": "expired"
+                },
+                {
+                    "service": "auth",
+                    "action": "decline",
+                    "code": "54"
+                }
+            ],
+            "expected_result": "DECLINED",
+            "expected_response_code": "54"
+        },
+        {
+            "name": "transaction_fraud_detected",
+            "description": "Transaction declined due to fraud detection",
+            "steps": [
+                {
+                    "service": "pos",
+                    "action": "init_transaction",
+                    "amount": 9999.00,
+                    "currency": "EUR"
+                },
+                {
+                    "service": "pos",
+                    "action": "read_card",
+                    "pan": "4111111111111111",
+                    "expiry": "1225"
+                },
+                {
+                    "service": "pos",
+                    "action": "enter_pin",
+                    "pin": "1234"
+                },
+                {
+                    "service": "acquirer",
+                    "action": "build_iso_message",
+                    "mti": "0100"
+                },
+                {
+                    "service": "acquirer",
+                    "action": "forward_to_network"
+                },
+                {
+                    "service": "switch",
+                    "action": "route_to_issuer"
+                },
+                {
+                    "service": "fraud",
+                    "action": "check_fraud_rules",
+                    "expected": "high_risk"
+                },
+                {
+                    "service": "auth",
+                    "action": "decline",
+                    "code": "59"
+                }
+            ],
+            "expected_result": "DECLINED",
+            "expected_response_code": "59"
+        },
+        {
+            "name": "transaction_refund",
+            "description": "Refund transaction processing",
+            "steps": [
+                {
+                    "service": "pos",
+                    "action": "init_refund",
+                    "amount": 50.00,
+                    "currency": "EUR",
+                    "original_txn_id": "TXN123456"
+                },
+                {
+                    "service": "pos",
+                    "action": "read_card",
+                    "pan": "4111111111111111",
+                    "expiry": "1225"
+                },
+                {
+                    "service": "acquirer",
+                    "action": "build_iso_message",
+                    "mti": "0420"
+                },
+                {
+                    "service": "acquirer",
+                    "action": "forward_to_network"
+                },
+                {
+                    "service": "switch",
+                    "action": "route_to_issuer"
+                },
+                {
+                    "service": "issuer",
+                    "action": "process_refund",
+                    "expected": "success"
+                },
+                {
+                    "service": "auth",
+                    "action": "approve",
+                    "code": "00"
+                }
+            ],
+            "expected_result": "APPROVED",
+            "expected_response_code": "00"
+        },
+        {
+            "name": "transaction_reversal",
+            "description": "Transaction reversal after timeout",
+            "steps": [
+                {
+                    "service": "pos",
+                    "action": "init_transaction",
+                    "amount": 75.00,
+                    "currency": "EUR"
+                },
+                {
+                    "service": "pos",
+                    "action": "read_card",
+                    "pan": "4111111111111111",
+                    "expiry": "1225"
+                },
+                {
+                    "service": "pos",
+                    "action": "enter_pin",
+                    "pin": "1234"
+                },
+                {
+                    "service": "acquirer",
+                    "action": "forward_to_network"
+                },
+                {
+                    "service": "switch",
+                    "action": "timeout",
+                    "delay_ms": 30000
+                },
+                {
+                    "service": "acquirer",
+                    "action": "send_reversal",
+                    "mti": "0400"
+                },
+                {
+                    "service": "switch",
+                    "action": "route_to_issuer"
+                },
+                {
+                    "service": "issuer",
+                    "action": "reverse_transaction",
+                    "expected": "success"
+                },
+                {
+                    "service": "auth",
+                    "action": "approve_reversal",
+                    "code": "00"
+                }
+            ],
+            "expected_result": "REVERSED",
+            "expected_response_code": "00"
+        },
+        {
+            "name": "transaction_contactless",
+            "description": "Contactless payment under floor limit (no PIN required)",
+            "steps": [
+                {
+                    "service": "pos",
+                    "action": "init_transaction",
+                    "amount": 25.00,
+                    "currency": "EUR",
+                    "entry_mode": "contactless"
+                },
+                {
+                    "service": "pos",
+                    "action": "tap_card",
+                    "pan": "4111111111111111",
+                    "expiry": "1225"
+                },
+                {
+                    "service": "acquirer",
+                    "action": "build_iso_message",
+                    "mti": "0100",
+                    "pos_entry_mode": "07"
+                },
+                {
+                    "service": "acquirer",
+                    "action": "forward_to_network"
+                },
+                {
+                    "service": "switch",
+                    "action": "route_to_issuer"
+                },
+                {
+                    "service": "issuer",
+                    "action": "check_balance",
+                    "expected": "sufficient"
+                },
+                {
+                    "service": "auth",
+                    "action": "approve",
+                    "code": "00"
+                }
+            ],
+            "expected_result": "APPROVED",
+            "expected_response_code": "00"
+        }
+    ],
+    "failure_scenarios": [
+        {
+            "name": "issuer_timeout",
+            "description": "Issuer does not respond in time",
+            "inject_failure": {
+                "service": "issuer",
+                "type": "timeout",
+                "delay_ms": 60000
+            },
+            "expected_result": "TIMEOUT",
+            "expected_response_code": "91"
+        },
+        {
+            "name": "hsm_unavailable",
+            "description": "HSM service is down",
+            "inject_failure": {
+                "service": "hsm",
+                "type": "unavailable"
+            },
+            "expected_result": "SYSTEM_ERROR",
+            "expected_response_code": "96"
+        },
+        {
+            "name": "network_partition",
+            "description": "Network connectivity lost between acquirer and switch",
+            "inject_failure": {
+                "service": "switch",
+                "type": "network_error"
+            },
+            "expected_result": "NETWORK_ERROR",
+            "expected_response_code": "91"
+        },
+        {
+            "name": "database_failure",
+            "description": "Database connection lost during authorization",
+            "inject_failure": {
+                "service": "issuer",
+                "type": "database_error"
+            },
+            "expected_result": "SYSTEM_ERROR",
+            "expected_response_code": "96"
+        }
+    ],
+    "performance_thresholds": {
+        "max_latency_p95_ms": 100,
+        "max_latency_p99_ms": 500,
+        "min_throughput_tpm": 1000,
+        "max_error_rate_percent": 0.1
+    }
+}

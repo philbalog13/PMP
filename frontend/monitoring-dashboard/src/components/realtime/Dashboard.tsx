@@ -1,5 +1,6 @@
 /**
  * Main Dashboard - Real-time monitoring view
+ * Updated to include 3D Map
  */
 
 import { useMemo } from 'react';
@@ -7,6 +8,7 @@ import { Transaction, Metrics } from '../../hooks/useWebSocket';
 import ResponseCodeStats from './ResponseCodeStats';
 import ServiceLatency from './ServiceLatency';
 import SuccessRateGauge from './SuccessRateGauge';
+import TransactionMap from './TransactionMap';
 
 interface DashboardProps {
     transactions: Transaction[];
@@ -96,6 +98,19 @@ export default function Dashboard({ transactions, metrics }: DashboardProps) {
                     <div className="stat-change positive">
                         {transactions.length} transactions
                     </div>
+                </div>
+            </div>
+
+            {/* 3D Map (Full Width) */}
+            <div className="card card-full" style={{ marginBottom: '24px' }}>
+                <div className="card-header">
+                    <h3 className="card-title">
+                        <span className="card-title-icon">🌍</span>
+                        Carte des Transactions Temps Réel
+                    </h3>
+                </div>
+                <div className="card-body" style={{ padding: 0 }}>
+                    <TransactionMap />
                 </div>
             </div>
 

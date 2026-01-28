@@ -1,13 +1,13 @@
-# PMP Monitoring Stack
+# PMP Monitoring Stack v1.1
 # Docker Compose configuration for the monitoring dashboard
-# Includes: Backend, Frontend, Elasticsearch, Grafana
+# Includes: Backend, Frontend, Elasticsearch, Grafana, Prometheus
 
 version: '3.8'
 
 services:
   # ═══════════════════════════════════════════════════════════
   # MONITORING BACKEND
-  # Node.js API with WebSocket support
+  # Node.js API with WebSocket and Prometheus support
   # ═══════════════════════════════════════════════════════════
   monitoring-api:
     build:
@@ -74,6 +74,27 @@ services:
       retries: 5
 
   # ═══════════════════════════════════════════════════════════
+  # PROMETHEUS
+  # Metrics collection
+  # ═══════════════════════════════════════════════════════════
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: pmp-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    networks:
+      - pmp-monitoring
+    restart: unless-stopped
+
+  # ═══════════════════════════════════════════════════════════
   # GRAFANA
   # Dashboards and visualization (pedagogical)
   # ═══════════════════════════════════════════════════════════
@@ -93,28 +114,10 @@ services:
       - ./docker/grafana/dashboards:/var/lib/grafana/dashboards
     depends_on:
       - elasticsearch
+      - prometheus
     networks:
       - pmp-monitoring
     restart: unless-stopped
-
-  # ═══════════════════════════════════════════════════════════
-  # KIBANA (Optional)
-  # Elasticsearch visualization
-  # ═══════════════════════════════════════════════════════════
-  kibana:
-    image: docker.elastic.co/kibana/kibana:8.11.0
-    container_name: pmp-kibana
-    ports:
-      - "5601:5601"
-    environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-    depends_on:
-      - elasticsearch
-    networks:
-      - pmp-monitoring
-    restart: unless-stopped
-    profiles:
-      - full  # Only starts with --profile full
 
 networks:
   pmp-monitoring:
@@ -125,4 +128,6 @@ volumes:
   elasticsearch-data:
     driver: local
   grafana-data:
+    driver: local
+  prometheus-data:
     driver: local
