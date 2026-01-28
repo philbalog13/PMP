@@ -1,0 +1,128 @@
+# PMP Monitoring Stack
+# Docker Compose configuration for the monitoring dashboard
+# Includes: Backend, Frontend, Elasticsearch, Grafana
+
+version: '3.8'
+
+services:
+  # ═══════════════════════════════════════════════════════════
+  # MONITORING BACKEND
+  # Node.js API with WebSocket support
+  # ═══════════════════════════════════════════════════════════
+  monitoring-api:
+    build:
+      context: ./backend/monitoring-service
+      dockerfile: Dockerfile
+    container_name: pmp-monitoring-api
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - ELASTICSEARCH_HOST=http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+    networks:
+      - pmp-monitoring
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ═══════════════════════════════════════════════════════════
+  # MONITORING FRONTEND
+  # React dashboard with D3.js and Three.js
+  # ═══════════════════════════════════════════════════════════
+  monitoring-dashboard:
+    build:
+      context: ./frontend/monitoring-dashboard
+      dockerfile: Dockerfile
+    container_name: pmp-monitoring-dashboard
+    ports:
+      - "3000:80"
+    depends_on:
+      - monitoring-api
+    networks:
+      - pmp-monitoring
+    restart: unless-stopped
+
+  # ═══════════════════════════════════════════════════════════
+  # ELASTICSEARCH
+  # Log storage and search engine
+  # ═══════════════════════════════════════════════════════════
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: pmp-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    networks:
+      - pmp-monitoring
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ═══════════════════════════════════════════════════════════
+  # GRAFANA
+  # Dashboards and visualization (pedagogical)
+  # ═══════════════════════════════════════════════════════════
+  grafana:
+    image: grafana/grafana:10.2.2
+    container_name: pmp-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=pmp-admin-2026
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:3001
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning
+      - ./docker/grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - elasticsearch
+    networks:
+      - pmp-monitoring
+    restart: unless-stopped
+
+  # ═══════════════════════════════════════════════════════════
+  # KIBANA (Optional)
+  # Elasticsearch visualization
+  # ═══════════════════════════════════════════════════════════
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: pmp-kibana
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+    networks:
+      - pmp-monitoring
+    restart: unless-stopped
+    profiles:
+      - full  # Only starts with --profile full
+
+networks:
+  pmp-monitoring:
+    driver: bridge
+    name: pmp-monitoring-network
+
+volumes:
+  elasticsearch-data:
+    driver: local
+  grafana-data:
+    driver: local
