@@ -1,10 +1,11 @@
 import { render, screen, fireEvent } from '@testing-library/react';
+import '@testing-library/jest-dom';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 
 describe('LoadingSpinner', () => {
     it('renders with default size', () => {
-        render(<LoadingSpinner />);
-        const spinner = screen.getAnonymous({ hidden: true });
+        const { container } = render(<LoadingSpinner />);
+        const spinner = container.firstChild;
         expect(spinner).toBeInTheDocument();
     });
 

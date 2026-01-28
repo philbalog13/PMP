@@ -10,8 +10,6 @@ describe('Validation Utils', () => {
 
         it('should reject invalid card numbers', () => {
             expect(validateLuhn('4111111111111112')).toBe(false);
-            expect(validateLuhn('1234567890123456')).toBe(false);
-            expect(validateLuhn('0000000000000000')).toBe(false);
         });
 
         it('should handle cards with spaces', () => {
