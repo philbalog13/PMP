@@ -1,5 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { proxyRequest, getAllServicesHealth } from '../services/proxy.service';
+import { orchestrator } from '../services/integration-orchestrator';
 import { logger } from '../utils/logger';
 import { strictRateLimitMiddleware } from '../middleware/rateLimit.middleware';
 import { generateToken } from '../middleware/auth.middleware';
@@ -20,8 +21,11 @@ const routeConfig: Record<string, { service: string; pathRewrite?: (path: string
     '/api/fraud': { service: 'sim-fraud-detection', pathRewrite: (p) => p.replace('/api/fraud', '') },
     '/api/crypto': { service: 'crypto-service', pathRewrite: (p) => p.replace('/api/crypto', '') },
     '/api/hsm': { service: 'hsm-simulator', pathRewrite: (p) => p.replace('/api/hsm', '/api/hsm') },
-    '/api/keys': { service: 'key-management', pathRewrite: (p) => p.replace('/api/keys', '/keys') }
+    '/api/keys': { service: 'key-management', pathRewrite: (p) => p.replace('/api/keys', '/keys') },
+    '/api/3ds': { service: 'acs-simulator', pathRewrite: (p) => p.replace('/api/3ds', '') },
+    '/api/tokenization': { service: 'tokenization-service', pathRewrite: (p) => p.replace('/api/tokenization', '') }
 };
+
 
 /**
  * Health check endpoint
@@ -58,6 +62,81 @@ router.post('/api/auth/token', strictRateLimitMiddleware, (req: Request, res: Re
         token,
         expiresIn: '24h',
         note: 'Development token - do not use in production'
+    });
+});
+
+/**
+ * Orchestrated Transaction Processing
+ * Unified endpoint that coordinates Fraud -> 3DS -> Authorization flow
+ */
+router.post('/api/transaction/process', async (req: Request, res: Response) => {
+    const correlationId = (req as any).correlationId;
+
+    try {
+        const { pan, amount, currency, merchantId, terminalId, mcc, country, isEcommerce } = req.body;
+
+        if (!pan || !amount || !merchantId) {
+            res.status(400).json({
+                success: false,
+                error: 'Missing required fields: pan, amount, merchantId',
+                correlationId
+            });
+            return;
+        }
+
+        const result = await orchestrator.processTransaction({
+            pan,
+            amount: parseFloat(amount),
+            currency: currency || 'EUR',
+            merchantId,
+            terminalId: terminalId || 'WEB001',
+            mcc,
+            country,
+            isEcommerce
+        });
+
+        res.status(result.approved ? 200 : 402).json({
+            success: result.approved,
+            ...result,
+            correlationId
+        });
+    } catch (error: any) {
+        logger.error('Transaction processing error', { correlationId, error: error.message });
+        res.status(500).json({
+            success: false,
+            error: 'Transaction processing failed',
+            correlationId
+        });
+    }
+});
+
+/**
+ * Verify 3DS Challenge
+ */
+router.post('/api/transaction/verify-challenge', async (req: Request, res: Response) => {
+    const { acsTransId, otp } = req.body;
+
+    if (!acsTransId || !otp) {
+        res.status(400).json({
+            success: false,
+            error: 'Missing acsTransId or otp'
+        });
+        return;
+    }
+
+    const result = await orchestrator.verifyChallenge(acsTransId, otp);
+    res.json({ success: result.approved, ...result });
+});
+
+/**
+ * Integration health check
+ */
+router.get('/api/integration/health', async (req: Request, res: Response) => {
+    const health = await orchestrator.getHealth();
+    res.json({
+        status: 'ok',
+        services: health,
+        timestamp: new Date().toISOString()
     });
 });
 

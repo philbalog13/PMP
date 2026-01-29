@@ -1,0 +1,69 @@
+{
+  "generated_at": "2026-01-28T22:10:07Z",
+  "keys": {
+    "lmk": {
+      "file": "lmk.key",
+      "type": "LMK",
+      "algorithm": "AES-256",
+      "usage": "HSM Local Master Key",
+      "length_bits": 256
+    },
+    "master": {
+      "file": "master.key",
+      "type": "KEK",
+      "algorithm": "AES-256",
+      "usage": "Master Encryption Key for KEK",
+      "length_bits": 256
+    },
+    "pin_encryption": {
+      "file": "pin_encryption.key",
+      "type": "PIN_ENC",
+      "algorithm": "3DES",
+      "usage": "PIN Block Encryption",
+      "length_bits": 192
+    },
+    "mac": {
+      "file": "mac.key",
+      "type": "MAC",
+      "algorithm": "HMAC-SHA256",
+      "usage": "Message Authentication Code",
+      "length_bits": 256
+    },
+    "cvv": {
+      "file": "cvv.key",
+      "type": "CVV_KEY",
+      "algorithm": "3DES",
+      "usage": "CVV/CVV2 Generation",
+      "length_bits": 192
+    },
+    "data_encryption": {
+      "file": "data_encryption.key",
+      "type": "DATA_ENC",
+      "algorithm": "AES-256",
+      "usage": "General Data Encryption",
+      "length_bits": 256
+    },
+    "rsa_signature": {
+      "private_file": "rsa_private.pem",
+      "public_file": "rsa_public.pem",
+      "type": "SIGNATURE",
+      "algorithm": "RSA-2048",
+      "usage": "Digital Signatures",
+      "length_bits": 2048
+    }
+  },
+  "ssl": {
+    "certificate": "../nginx/ssl/cert.pem",
+    "private_key": "../nginx/ssl/key.pem",
+    "type": "SSL/TLS",
+    "algorithm": "RSA-2048",
+    "validity_days": 365,
+    "usage": "Nginx HTTPS"
+  },
+  "notes": [
+    "⚠️  These keys are for PEDAGOGICAL purposes ONLY",
+    "⚠️  DO NOT use in production environments",
+    "⚠️  Keys are stored unencrypted for educational clarity",
+    "✓  In production, use HSM and proper key management"
+  ]
+}

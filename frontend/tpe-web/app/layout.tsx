@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Outfit, Inter } from 'next/font/google';
 import './globals.css';
 
-const inter = Inter({ subsets: ['latin'] });
+const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit' });
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
     title: 'TPE Web Pédagogique - PMP',
@@ -15,8 +16,10 @@ export default function RootLayout({
     children: React.ReactNode;
 }) {
     return (
-        <html lang="fr">
-            <body className={inter.className}>{children}</body>
+        <html lang="fr" className={`${outfit.variable} ${inter.variable}`}>
+            <body className="font-sans bg-slate-950 text-slate-50 antialiased selection:bg-blue-500/30 overflow-x-hidden">
+                {children}
+            </body>
         </html>
     );
 }

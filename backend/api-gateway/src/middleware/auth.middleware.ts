@@ -18,7 +18,7 @@ export interface AuthenticatedRequest extends Request {
  */
 export const authMiddleware = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
     // Skip auth for health checks and public endpoints
-    const publicPaths = ['/health', '/api/health', '/metrics', '/api/auth/login'];
+    const publicPaths = ['/health', '/api/health', '/metrics', '/api/auth/login', '/api/cards/generate', '/api/pos/transaction'];
     if (publicPaths.some(path => req.path.startsWith(path))) {
         return next();
     }

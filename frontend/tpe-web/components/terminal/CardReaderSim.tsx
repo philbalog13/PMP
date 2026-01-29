@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useTerminalStore } from '@/lib/store';
-import { CreditCard, QrCode, Smartphone } from 'lucide-react';
+import { CreditCard, QrCode, Smartphone, Clipboard, Sparkles } from 'lucide-react';
 import type { CardData } from '@/types/transaction';
 import { validateLuhn, validateExpiryDate, validateCVV } from '@/lib/utils/validation';
 
@@ -58,6 +58,24 @@ export default function CardReaderSim({ onCardRead }: CardReaderSimProps) {
         setCvv(card.cvv);
     };
 
+    const handlePaste = async () => {
+        try {
+            const text = await navigator.clipboard.readText();
+            // Simple clean up
+            const cleanPan = text.replace(/\D/g, '').slice(0, 19);
+            if (cleanPan.length >= 13) {
+                setPan(cleanPan);
+                // Try to infer standard test card details if missing
+                if (!expiry) setExpiry('12/28');
+                if (!cvv) setCvv('123');
+            }
+        } catch (err) {
+            console.error('Failed to read clipboard', err);
+            // Fallback or error msg
+            setErrors(['Impossible de lire le presse-papier (Check permissions)']);
+        }
+    };
+
     const isDisabled = state !== 'card-wait';
 
     return (
@@ -108,15 +126,18 @@ export default function CardReaderSim({ onCardRead }: CardReaderSimProps) {
                                 key={card.pan}
                                 onClick={() => handlePresetCard(card)}
                                 disabled={isDisabled}
-                                className="p-3 text-left bg-slate-100 hover:bg-slate-200 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed transition"
+                                className="p-3 text-left bg-slate-100 hover:bg-blue-50 hover:border-blue-200 border border-transparent rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed transition group"
                             >
-                                <p className="font-semibold text-slate-800">{card.name}</p>
+                                <p className="font-semibold text-slate-800 group-hover:text-blue-700 flex items-center justify-between">
+                                    {card.name}
+                                    <Sparkles size={12} className="text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </p>
                                 <p className="text-xs text-slate-600 font-mono">**** **** **** {card.pan.slice(-4)}</p>
                             </button>
                         ))}
                     </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-3">
+                    <form onSubmit={handleSubmit} className="space-y-3" autoComplete="off">
                         {errors.length > 0 && (
                             <div className="bg-red-50 border border-red-200 rounded p-3">
                                 {errors.map((error, idx) => (
@@ -129,14 +150,26 @@ export default function CardReaderSim({ onCardRead }: CardReaderSimProps) {
                             <label className="block text-sm font-medium text-slate-700 mb-1">
                                 Numéro de carte (PAN)
                             </label>
-                            <input
-                                type="text"
-                                value={pan}
-                                onChange={(e) => setPan(e.target.value.replace(/\D/g, '').slice(0, 19))}
-                                placeholder="4111111111111111"
-                                disabled={isDisabled}
-                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-100 disabled:cursor-not-allowed font-mono"
-                            />
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={pan}
+                                    onChange={(e) => setPan(e.target.value.replace(/\D/g, '').slice(0, 19))}
+                                    placeholder="4111111111111111"
+                                    disabled={isDisabled}
+                                    autoComplete="off"
+                                    className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-100 disabled:cursor-not-allowed font-mono"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handlePaste}
+                                    disabled={isDisabled}
+                                    className="bg-slate-100 hover:bg-slate-200 text-slate-600 p-2 rounded-lg border border-slate-300 disabled:opacity-50 transition"
+                                    title="Coller depuis le presse-papier"
+                                >
+                                    <Clipboard size={20} />
+                                </button>
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">

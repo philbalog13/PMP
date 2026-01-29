@@ -758,6 +758,78 @@ services:
       - ALL
 
   # ============================================
+  # ADVANCED EXTENSIONS
+  # ============================================
+
+  acs-simulator:
+    build:
+      context: ./backend/acs-simulator
+      dockerfile: Dockerfile
+    container_name: pmp-acs-simulator
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - PORT=8013
+      - THREE_DS_VERSION=2.2.0
+    ports:
+      - "8013:8013"
+    networks:
+      - monetic-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8013/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  tokenization-service:
+    build:
+      context: ./backend/tokenization-service
+      dockerfile: Dockerfile
+    container_name: pmp-tokenization-service
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - PORT=8014
+      - CRYPTO_SERVICE_URL=http://crypto-service:8010
+    ports:
+      - "8014:8014"
+    networks:
+      - monetic-network
+    depends_on:
+      - crypto-service
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8014/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ============================================
   # NGINX REVERSE PROXY
   # ============================================
 

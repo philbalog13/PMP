@@ -1,0 +1,79 @@
+site_name: Fined-Sim Platform Documentation
+site_url: https://fined-sim.local/
+site_description: Pedagogical Payment Platform Documentation
+site_author: Fined-Sim Team
+
+repo_name: Fined-Sim/PMP
+repo_url: https://github.com/Fined-Sim/PMP
+
+theme:
+  name: material
+  palette:
+    # Palette toggle for light mode
+    - scheme: default
+      primary: indigo
+      accent: deep purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+    # Palette toggle for dark mode
+    - scheme: slate
+      primary: indigo
+      accent: deep purple
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+  icon:
+    logo: material/credit-card-outline
+
+plugins:
+  - search
+  # - mermaid2  # Requires mkdocs-mermaid2-plugin to be installed
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - attr_list
+
+nav:
+  - Home: index.md
+  - Architecture:
+    - Overview: architecture/overview.md
+    - Diagrams: architecture/diagrams.md
+    - Decisions (ADR): architecture/decisions.md
+    - Alternatives: architecture/alternatives.md
+  - Installation:
+    - Prerequisites: installation/prerequisites.md
+    - Setup Guide: installation/setup.md
+    - Configuration: installation/configuration.md
+    - Troubleshooting: installation/troubleshooting.md
+  - Pedagogy:
+    - Learning Path: pedagogy/learning-path.md
+    - Workshops: pedagogy/workshops.md
+    - Quizzes: pedagogy/quizzes.md
+    - Advanced Projects: pedagogy/advanced-projects.md
+  - API Reference:
+    - Overview: api/overview.md
+    - Endpoints: api/endpoints.md
+    - Authentication: api/authentication.md
+    - Error Codes: api/errors.md
+  - Security:
+    - Best Practices: security/best-practices.md
+    - Configuration: security/configuration.md
+    - Audit: security/audit.md
+    - Compliance: security/compliance.md

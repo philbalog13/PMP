@@ -1,0 +1,12 @@
+# Ignore all key files (security)
+*.key
+*.pem
+*.crt
+
+# Except the registry
+!key_registry.json
+!.gitignore
+
+# Nginx SSL
+../nginx/ssl/*.pem
+../nginx/ssl/*.key

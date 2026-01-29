@@ -1,0 +1,20 @@
+[
+    {
+        "pan": "4111111111111111",
+        "expiry": "12/25",
+        "cvv": "123",
+        "pin": "1234",
+        "holder": "John Doe",
+        "type": "VISA_CLASSIC",
+        "balance": 1000
+    },
+    {
+        "pan": "5500000000000004",
+        "expiry": "10/24",
+        "cvv": "456",
+        "pin": "5678",
+        "holder": "Jane Smith",
+        "type": "MASTERCARD_STD",
+        "balance": 5000
+    }
+]

@@ -1,0 +1,14 @@
+[
+    {
+        "ruleId": "R001",
+        "name": "Velocity Check",
+        "threshold": 5,
+        "timeWindowMinutes": 10
+    },
+    {
+        "ruleId": "R002",
+        "name": "High Amount",
+        "thresholdAmount": 5000,
+        "currency": "EUR"
+    }
+]

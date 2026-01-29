@@ -21,6 +21,30 @@ export interface CryptoKey {
 // In-memory key store (simulates HSM secure storage)
 const keys: Map<string, CryptoKey> = new Map();
 
+/**
+ * Calculate Key Check Value (encrypt zeros with key, take first 6 hex chars)
+ */
+const calculateKcv = (keyData: string): string => {
+    try {
+        const keyBuffer = Buffer.from(keyData, 'hex');
+        const zeros = Buffer.alloc(8, 0);
+
+        let algorithm: string;
+        if (keyBuffer.length === 8) algorithm = 'des-ecb';
+        else if (keyBuffer.length === 16) algorithm = 'aes-128-ecb';
+        else if (keyBuffer.length === 24) algorithm = 'des-ede3';
+        else algorithm = 'aes-256-ecb';
+
+        const cipher = crypto.createCipheriv(algorithm, keyBuffer, null);
+        cipher.setAutoPadding(false);
+        const encrypted = cipher.update(zeros);
+
+        return encrypted.toString('hex').substring(0, 6).toUpperCase();
+    } catch {
+        return '000000';
+    }
+};
+
 // Pre-populate with test keys
 const initTestKeys = () => {
     const testKeys: Omit<CryptoKey, 'id' | 'createdAt' | 'kcv'>[] = [
@@ -75,29 +99,7 @@ const initTestKeys = () => {
 
 initTestKeys();
 
-/**
- * Calculate Key Check Value (encrypt zeros with key, take first 6 hex chars)
- */
-const calculateKcv = (keyData: string): string => {
-    try {
-        const keyBuffer = Buffer.from(keyData, 'hex');
-        const zeros = Buffer.alloc(8, 0);
 
-        let algorithm: string;
-        if (keyBuffer.length === 8) algorithm = 'des-ecb';
-        else if (keyBuffer.length === 16) algorithm = 'aes-128-ecb';
-        else if (keyBuffer.length === 24) algorithm = 'des-ede3';
-        else algorithm = 'aes-256-ecb';
-
-        const cipher = crypto.createCipheriv(algorithm, keyBuffer, null);
-        cipher.setAutoPadding(false);
-        const encrypted = cipher.update(zeros);
-
-        return encrypted.toString('hex').substring(0, 6).toUpperCase();
-    } catch {
-        return '000000';
-    }
-};
 
 /**
  * Generate a new cryptographic key

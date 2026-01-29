@@ -19,7 +19,7 @@ const envSchema = Joi.object({
     LOG_FORMAT: Joi.string().valid('json', 'simple').default('json'),
 
     // Redis
-    REDIS_URL: Joi.string().uri().required(),
+    REDIS_URL: Joi.string().uri().default('redis://:redis_pass_2024@redis:6379'),
     REDIS_PREFIX: Joi.string().default('network-switch:'),
 
     // Connected Services
