@@ -25,8 +25,10 @@
 | **Infrastructure** | ✅ Sain | PostgreSQL & Redis configurés avec Health Checks |
 | **API Gateway** | ✅ Réparé | Circuit Breaker & JWT Validés |
 | **Sécurité (HSM)** | ✅ Actif | Simulateur HSM intégré et fonctionnel |
-| **Interface Card** | ⚠️ WIP | Builds en cours de stabilisation |
-| **Interface POS** | ⚠️ WIP | Intégration frontend en cours |
+| **Interface Client** | ✅ Complète | 6 pages avec Dark Neon Glassmorphism |
+| **Interface Marchand** | ✅ Complète | Terminal NEO avec mode simulation |
+| **Interface HSM** | ✅ Complète | Dashboard, Keys, Vulnerabilities |
+| **Mobile Wallet** | ✅ Nouvelle | Carte virtuelle + paiements |
 
 ---
 
@@ -34,6 +36,8 @@
 
 - [Vue d'ensemble](#-vue-densemble)
 - [Architecture générale](#-architecture-générale)
+- [Applications Frontend](#-applications-frontend)
+- [Connexion Frontend-Backend](docs/FRONTEND_BACKEND_CONNECTION.md)
 - [Diagrammes](#-diagrammes)
   - [Déploiement Docker Compose](#1-diagramme-de-déploiement-docker-compose)
   - [Transaction approuvée](#2-diagramme-de-séquence---transaction-approuvée)
@@ -57,7 +61,35 @@ La Plateforme Monétique Pédagogique (PMP) est un système éducatif permettant
 
 ---
 
-## 🏗️ Architecture générale
+## 🎨 Applications Frontend
+
+Toutes les interfaces utilisent le **Dark Neon Glassmorphism** design system.
+
+| Application | Port | Description |
+|-------------|------|-------------|
+| **user-cards-web** | 3000 | Interface client (cartes, transactions, stats) |
+| **tpe-web** | 3001 | Terminal de paiement marchand |
+| **hsm-web** | 3002 | Simulateur HSM (clés, vulnérabilités) |
+| **3ds-challenge-ui** | 3088 | Page OTP 3D Secure |
+| **mobile-wallet** | 3002 | Portefeuille mobile |
+
+### Design System
+
+```
+┌─────────────────────────────────────┐
+│     Dark Neon Glassmorphism         │
+├─────────────────────────────────────┤
+│  Background:  #020617 (Slate 950)   │
+│  Glass:       rgba(15,23,42,0.7)    │
+│  Primary:     #3b82f6 (Blue 500)    │
+│  Secondary:   #a855f7 (Purple 500)  │
+│  Fonts:       Outfit + Inter        │
+└─────────────────────────────────────┘
+```
+
+📖 **[Guide de connexion Frontend-Backend](docs/FRONTEND_BACKEND_CONNECTION.md)**
+
+---
 
 ```mermaid
 graph TB
