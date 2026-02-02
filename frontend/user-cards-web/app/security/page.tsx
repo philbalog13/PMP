@@ -1,171 +1,143 @@
 'use client';
 
-import GlassCard from '@/components/ui/GlassCard';
-import PremiumButton from '@/components/ui/PremiumButton';
-import { ShieldCheck, Lock, Globe, AlertTriangle, Smartphone, Zap, Eye, EyeOff } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowLeft, Shield, Lock, Smartphone, Globe, Bell } from 'lucide-react';
 import { useState } from 'react';
 
 export default function SecurityPage() {
-    const [limits, setLimits] = useState({
-        daily: 500,
-        monthly: 2000,
-        contactless: 50,
+    const [settings, setSettings] = useState({
+        threeDS: true,
+        contactless: true,
+        onlinePayments: true,
+        notifications: true,
+        locationCheck: false
     });
 
-    const [toggles, setToggles] = useState([
-        { id: 'online', label: 'Paiements en ligne', icon: Globe, enabled: true },
-        { id: 'contactless', label: 'Sans contact (NFC)', icon: Smartphone, enabled: true },
-        { id: 'abroad', label: 'Paiements à l\'étranger', icon: Globe, enabled: false },
-        { id: 'atm', label: 'Retraits DAB', icon: Zap, enabled: true },
-    ]);
-
-    const handleToggle = (id: string) => {
-        setToggles(toggles.map(t => t.id === id ? { ...t, enabled: !t.enabled } : t));
-    };
-
     return (
-        <div className="min-h-screen p-6 md:p-10 max-w-[1200px] mx-auto space-y-10">
+        <div className="min-h-screen p-6 md:p-10 max-w-[1600px] mx-auto">
             {/* Header */}
-            <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
-                    <ShieldCheck size={32} className="text-white" />
-                </div>
-                <div>
-                    <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent font-heading">
-                        Centre de Sécurité
-                    </h1>
-                    <p className="text-slate-400 mt-1">Protégez vos cartes avec des contrôles avancés.</p>
-                </div>
-            </div>
+            <header className="mb-10">
+                <Link href="/" className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition mb-4">
+                    <ArrowLeft className="w-4 h-4" />
+                    Retour au Dashboard
+                </Link>
+                <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
+                    <Shield className="w-8 h-8 text-green-500" />
+                    Sécurité & Limites
+                </h1>
+                <p className="text-slate-400">Gérez la sécurité de vos cartes et méthodes de paiement</p>
+            </header>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Limits Section */}
-                <GlassCard className="p-8">
-                    <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-blue-600/20 flex items-center justify-center">
-                            <Zap size={20} className="text-blue-400" />
-                        </div>
-                        Plafonds & Limites
-                    </h3>
+            <div className="grid lg:grid-cols-2 gap-8">
+                {/* Main Security Settings */}
+                <div className="space-y-6">
+                    <div className="p-6 rounded-2xl bg-white/5 border border-white/5">
+                        <h2 className="text-xl font-bold text-white mb-6">Paramètres de Carte</h2>
 
-                    <div className="space-y-8">
-                        <div>
-                            <div className="flex justify-between mb-3">
-                                <label className="text-sm font-medium text-slate-300">Plafond Journalier</label>
-                                <span className="text-lg font-bold text-blue-400">{limits.daily} €</span>
-                            </div>
-                            <input
-                                type="range"
-                                min="100"
-                                max="2000"
-                                step="50"
-                                value={limits.daily}
-                                onChange={(e) => setLimits({ ...limits, daily: Number(e.target.value) })}
-                                className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                            />
-                            <div className="flex justify-between text-xs text-slate-500 mt-1">
-                                <span>100 €</span>
-                                <span>2000 €</span>
-                            </div>
-                        </div>
-
-                        <div>
-                            <div className="flex justify-between mb-3">
-                                <label className="text-sm font-medium text-slate-300">Plafond Mensuel</label>
-                                <span className="text-lg font-bold text-purple-400">{limits.monthly} €</span>
-                            </div>
-                            <input
-                                type="range"
-                                min="500"
-                                max="10000"
-                                step="100"
-                                value={limits.monthly}
-                                onChange={(e) => setLimits({ ...limits, monthly: Number(e.target.value) })}
-                                className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
-                            />
-                            <div className="flex justify-between text-xs text-slate-500 mt-1">
-                                <span>500 €</span>
-                                <span>10 000 €</span>
-                            </div>
-                        </div>
-
-                        <div>
-                            <div className="flex justify-between mb-3">
-                                <label className="text-sm font-medium text-slate-300">Limite Sans Contact</label>
-                                <span className="text-lg font-bold text-green-400">{limits.contactless} €</span>
-                            </div>
-                            <input
-                                type="range"
-                                min="20"
-                                max="150"
-                                step="10"
-                                value={limits.contactless}
-                                onChange={(e) => setLimits({ ...limits, contactless: Number(e.target.value) })}
-                                className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-green-500"
-                            />
-                            <div className="flex justify-between text-xs text-slate-500 mt-1">
-                                <span>20 €</span>
-                                <span>150 €</span>
-                            </div>
-                        </div>
-                    </div>
-                </GlassCard>
-
-                {/* Toggles Section */}
-                <GlassCard className="p-8">
-                    <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-purple-600/20 flex items-center justify-center">
-                            <Lock size={20} className="text-purple-400" />
-                        </div>
-                        Canaux de Paiement
-                    </h3>
-
-                    <div className="space-y-3">
-                        {toggles.map((toggle) => (
-                            <div
-                                key={toggle.id}
-                                onClick={() => handleToggle(toggle.id)}
-                                className={`flex items-center justify-between p-4 rounded-xl cursor-pointer transition-all duration-300 border ${toggle.enabled
-                                        ? 'bg-white/5 border-white/10 hover:bg-white/10'
-                                        : 'bg-slate-900/50 border-slate-800 opacity-60'
-                                    }`}
-                            >
+                        <div className="space-y-6">
+                            <label className="flex items-center justify-between cursor-pointer group">
                                 <div className="flex items-center gap-4">
-                                    <div className={`p-3 rounded-xl ${toggle.enabled ? 'bg-blue-600/20 text-blue-400' : 'bg-slate-800 text-slate-600'}`}>
-                                        <toggle.icon size={20} />
+                                    <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                                        <Shield className="w-5 h-5 text-blue-500" />
                                     </div>
                                     <div>
-                                        <span className="font-semibold text-white">{toggle.label}</span>
-                                        <p className="text-xs text-slate-500">{toggle.enabled ? 'Activé' : 'Désactivé'}</p>
+                                        <div className="font-medium text-white group-hover:text-blue-400 transition">3D Secure v2</div>
+                                        <div className="text-sm text-slate-400">Authentification forte pour achats en ligne</div>
                                     </div>
                                 </div>
-                                <div className={`w-12 h-7 rounded-full p-1 transition-colors ${toggle.enabled ? 'bg-blue-600' : 'bg-slate-700'}`}>
-                                    <div className={`w-5 h-5 rounded-full bg-white shadow-md transition-transform ${toggle.enabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                                <input
+                                    type="checkbox"
+                                    checked={settings.threeDS}
+                                    onChange={(e) => setSettings({ ...settings, threeDS: e.target.checked })}
+                                    className="w-6 h-6 rounded bg-white/10 border-white/10 text-blue-500 focus:ring-blue-500/20"
+                                />
+                            </label>
+
+                            <label className="flex items-center justify-between cursor-pointer group">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                                        <Smartphone className="w-5 h-5 text-purple-500" />
+                                    </div>
+                                    <div>
+                                        <div className="font-medium text-white group-hover:text-purple-400 transition">Paiement Sans Contact</div>
+                                        <div className="text-sm text-slate-400">Activer le NFC pour les terminaux physiques</div>
+                                    </div>
+                                </div>
+                                <input
+                                    type="checkbox"
+                                    checked={settings.contactless}
+                                    onChange={(e) => setSettings({ ...settings, contactless: e.target.checked })}
+                                    className="w-6 h-6 rounded bg-white/10 border-white/10 text-purple-500 focus:ring-purple-500/20"
+                                />
+                            </label>
+
+                            <label className="flex items-center justify-between cursor-pointer group">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
+                                        <Globe className="w-5 h-5 text-green-500" />
+                                    </div>
+                                    <div>
+                                        <div className="font-medium text-white group-hover:text-green-400 transition">Paiements en Ligne</div>
+                                        <div className="text-sm text-slate-400">Autoriser les transactions e-commerce</div>
+                                    </div>
+                                </div>
+                                <input
+                                    type="checkbox"
+                                    checked={settings.onlinePayments}
+                                    onChange={(e) => setSettings({ ...settings, onlinePayments: e.target.checked })}
+                                    className="w-6 h-6 rounded bg-white/10 border-white/10 text-green-500 focus:ring-green-500/20"
+                                />
+                            </label>
+                        </div>
+                    </div>
+
+                    <div className="p-6 rounded-2xl bg-white/5 border border-white/5">
+                        <h2 className="text-xl font-bold text-white mb-6">Notifications</h2>
+
+                        <label className="flex items-center justify-between cursor-pointer group">
+                            <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                                    <Bell className="w-5 h-5 text-amber-500" />
+                                </div>
+                                <div>
+                                    <div className="font-medium text-white group-hover:text-amber-400 transition">Alertes Transaction</div>
+                                    <div className="text-sm text-slate-400">Push notification à chaque dépense</div>
                                 </div>
                             </div>
-                        ))}
+                            <input
+                                type="checkbox"
+                                checked={settings.notifications}
+                                onChange={(e) => setSettings({ ...settings, notifications: e.target.checked })}
+                                className="w-6 h-6 rounded bg-white/10 border-white/10 text-amber-500 focus:ring-amber-500/20"
+                            />
+                        </label>
                     </div>
-                </GlassCard>
-            </div>
-
-            {/* Danger Zone */}
-            <GlassCard className="p-8 border-red-500/20 bg-red-950/20">
-                <h3 className="text-xl font-bold text-red-400 mb-6 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-red-600/20 flex items-center justify-center">
-                        <AlertTriangle size={20} className="text-red-400" />
-                    </div>
-                    Zone de Danger
-                </h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <PremiumButton variant="secondary" className="border-red-500/30 hover:bg-red-950/30 text-red-400">
-                        <EyeOff size={16} className="mr-2" /> Masquer le Numéro de Carte
-                    </PremiumButton>
-                    <PremiumButton variant="secondary" className="border-red-500/50 hover:bg-red-600/20 text-red-400">
-                        <Lock size={16} className="mr-2" /> Bloquer Temporairement
-                    </PremiumButton>
                 </div>
-            </GlassCard>
+
+                {/* Change PIN / Limits */}
+                <div className="space-y-6">
+                    <div className="p-6 rounded-2xl bg-white/5 border border-white/5">
+                        <h2 className="text-xl font-bold text-white mb-6">Code PIN</h2>
+                        <p className="text-slate-400 text-sm mb-6">
+                            Ne communiquez jamais votre code PIN. Changez-le immédiatement si vous pensez qu'il a été compromis.
+                        </p>
+                        <button className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white font-medium transition flex items-center justify-center gap-2">
+                            <Lock className="w-4 h-4" />
+                            Changer le Code PIN
+                        </button>
+                    </div>
+
+                    <div className="p-6 rounded-2xl bg-gradient-to-br from-red-600/20 to-red-500/10 border border-red-500/20">
+                        <h2 className="text-xl font-bold text-white mb-4">Zone Danger</h2>
+                        <p className="text-red-200/70 text-sm mb-6">
+                            En cas de perte ou de vol, bloquez immédiatement votre carte pour empêcher toute utilisation frauduleuse.
+                        </p>
+                        <button className="w-full py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition shadow-lg shadow-red-500/20">
+                            Faire Opposition
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }

@@ -5,6 +5,10 @@ import { authenticate } from '../middleware/auth.middleware';
 
 const router = Router();
 
+router.get('/health', (req: Request, res: Response) => {
+    res.json({ status: 'healthy', service: 'crypto-service', timestamp: new Date().toISOString() });
+});
+
 router.post('/encrypt', authenticate, (req: Request, res: Response) => {
     res.json({ status: 'healthy', service: 'crypto-service', timestamp: new Date().toISOString() });
 });

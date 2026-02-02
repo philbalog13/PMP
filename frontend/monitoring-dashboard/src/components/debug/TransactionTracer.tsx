@@ -155,7 +155,7 @@ export default function TransactionTracer() {
                                     paddingLeft: '24px',
                                     borderLeft: '2px solid var(--border-color)'
                                 }}>
-                                    {trace.steps.map((step, index) => (
+                                    {trace.steps.map((step) => (
                                         <div
                                             key={step.id}
                                             onClick={() => setSelectedStep(step)}
@@ -211,8 +211,7 @@ export default function TransactionTracer() {
                                                 {new Date(step.timestamp).toLocaleTimeString('fr-FR', {
                                                     hour: '2-digit',
                                                     minute: '2-digit',
-                                                    second: '2-digit',
-                                                    fractionalSecondDigits: 3
+                                                    second: '2-digit'
                                                 })}
                                             </div>
                                         </div>

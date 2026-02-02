@@ -4,8 +4,8 @@ import type { TransactionRequest, TransactionResponse, TransactionRecord } from 
 // API Gateway URL - unified entry point for all services
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-// Check if we are in simulation/demo mode
-const IS_SIMULATION = true; // Force simulation for the visual demo
+// Simulation mode - enabled only if API_BASE_URL is not provided or explicitly requested
+const IS_SIMULATION = process.env.NEXT_PUBLIC_ENABLE_SIMULATION === 'true';
 
 const apiClient = axios.create({
     baseURL: API_BASE_URL,
@@ -106,13 +106,32 @@ export async function simulateScenario(scenario: string): Promise<TransactionRes
 }
 
 /**
- * Get integration health status
+ * Get integration health status (Service Orchestration Health)
  */
 export async function getIntegrationHealth(): Promise<Record<string, boolean>> {
     const response = await apiClient.get<{ services: Record<string, boolean> }>(
         '/api/integration/health'
     );
     return response.data.services;
+}
+
+/**
+ * System Health Check (Boot Sequence)
+ * Calls GET /api/health as defined in sequence diagram
+ */
+export async function checkSystemHealth(): Promise<boolean> {
+    if (IS_SIMULATION) {
+        await new Promise(resolve => setTimeout(resolve, 1500)); // Network delay simulation
+        return true;
+    }
+
+    try {
+        const response = await apiClient.get('/api/health');
+        return response.status === 200 || response.status === 207;
+    } catch (e) {
+        console.error('Boot health check failed', e);
+        return false;
+    }
 }
 
 /**

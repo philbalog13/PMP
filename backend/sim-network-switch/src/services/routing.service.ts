@@ -157,19 +157,29 @@ export class RoutingService {
 
         try {
             // Send to issuer via circuit breaker
+            // Map fields from network switch format to issuer format
+            const issuerRequest = {
+                transactionId: transaction.transactionId || transaction.stan,
+                pan: transaction.pan,
+                amount: transaction.amount,
+                currency: transaction.currency,
+                merchantId: transaction.merchantId,
+                mcc: transaction.merchantCategoryCode, // Map to issuer expected field
+                transactionType: transaction.transactionType || 'PURCHASE', // Default to PURCHASE
+                pinBlock: transaction.pinBlock,
+                networkRoutingInfo: {
+                    network: routingDecision.network,
+                    issuer: routingDecision.issuerUrl,
+                    routingReason: routingDecision.routingReason,
+                },
+            };
+
             const response = await executeWithCircuitBreaker<TransactionResponse>(
                 'issuer-service',
                 {
                     method: 'POST',
-                    url: `${routingDecision.issuerUrl}/transaction/authorize`,
-                    data: {
-                        ...transaction,
-                        networkRoutingInfo: {
-                            network: routingDecision.network,
-                            issuer: routingDecision.issuerUrl,
-                            routingReason: routingDecision.routingReason,
-                        },
-                    },
+                    url: `${routingDecision.issuerUrl}/authorize`,
+                    data: issuerRequest,
                     timeout: config.timeout,
                 }
             );
@@ -260,6 +270,17 @@ export class RoutingService {
      */
     getBinTable(): BinConfig[] {
         return BIN_ROUTING_TABLE;
+    }
+    /**
+     * Route response back to acquirer (Phase 7.1)
+     */
+    async routeBack(response: TransactionResponse): Promise<TransactionResponse> {
+        // Logic to determine return route could go here.
+        // For now, it simply passes through, possibly adding network metadata.
+        return {
+            ...response,
+            // networkTimestamp: new Date().toISOString()
+        };
     }
 }
 

@@ -15,7 +15,7 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "react-jsx",
+    "jsx": "preserve",
     "incremental": true,
     "plugins": [
       {
@@ -25,7 +25,8 @@
     "paths": {
       "@/*": [
         "./*"
-      ]
+      ],
+      "@shared/*": ["../shared/*"]
     }
   },
   "include": [
@@ -35,7 +36,9 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts",
-    "jest.setup.js"
+    "jest.setup.js",
+    "../shared/**/*.ts",
+    "../shared/**/*.tsx"
   ],
   "exclude": [
     "node_modules"

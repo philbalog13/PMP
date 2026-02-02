@@ -20,11 +20,21 @@ export class ACSController {
     authenticate = async (req: Request, res: Response) => {
         try {
             const result = await this.threeDSService.authenticate(req.body);
-            res.json(result);
+
+            // Add educational metadata
+            const eduHint = result.transStatus === 'C'
+                ? "L'ACS demande un Challenge (C) car le score de risque est élevé. Le client doit être redirigé vers l'URL de challenge."
+                : "L'ACS a validé l'authentification sans friction (Frictionless). Le transStatus est 'Y'.";
+
+            res.json({
+                ...result,
+                _eduHint: eduHint
+            });
         } catch (error: any) {
             res.status(500).json({
                 transStatus: 'U',
-                error: error.message
+                error: error.message,
+                _eduHint: "Une erreur système s'est produite (U - Unique/Unavailable)."
             });
         }
     };
@@ -37,7 +47,15 @@ export class ACSController {
         try {
             const { acsTransId, otp } = req.body;
             const result = await this.threeDSService.verifyChallenge(acsTransId, otp);
-            res.json(result);
+
+            const eduHint = result.transStatus === 'Y'
+                ? "Succès : L'OTP est valide. L'ACS génère un CAVV/AAV pour prouver l'authentification."
+                : "Échec : L'OTP est incorrect. La transaction doit être refusée (N).";
+
+            res.json({
+                ...result,
+                _eduHint: eduHint
+            });
         } catch (error: any) {
             res.status(500).json({
                 transStatus: 'U',

@@ -29,7 +29,7 @@ Write-Host ""
 
 # 1. INFRASTRUCTURE
 Write-Host "[1/5] Starting Infrastructure (Docker)..." -ForegroundColor White
-docker run -d --name pmp-postgres -e POSTGRES_DB=pmp_db -e POSTGRES_USER=pmp_user -e POSTGRES_PASSWORD=pmp_secure_pass_2024 -p 5432:5432 -v "c:\Users\ASUS-GEORGES-GXT\Downloads\PMP\scripts\init-databases.sh:/docker-entrypoint-initdb.d/01-init-databases.sh" postgres:15-alpine
+docker run -d --name pmp-postgres -e POSTGRES_DB=pmp_db -e POSTGRES_USER=pmp_user -e POSTGRES_PASSWORD=pmp_secure_pass_2024 -e POSTGRES_HOST_AUTH_METHOD=trust -p 5435:5432 -v "c:\Users\ASUS-GEORGES-GXT\Downloads\PMP\scripts\init-databases.sh:/docker-entrypoint-initdb.d/01-init-databases.sh" -v "c:\Users\ASUS-GEORGES-GXT\Downloads\PMP\scripts\seed-pedagogical-data.sql:/docker-entrypoint-initdb.d/02-seed-data.sql" postgres:15-alpine
 docker run -d --name pmp-redis -p 6379:6379 redis:7-alpine redis-server --requirepass redis_pass_2024
 
 Write-Host "Waiting 10s for databases..."
@@ -42,6 +42,8 @@ Write-Host "[2/5] Starting Security Services..." -ForegroundColor White
 Start-Service-Window -Name "HSM Simulator" -Path "backend\hsm-simulator" -Port 8011
 Start-Service-Window -Name "Key Management" -Path "backend\key-management" -Port 8012
 Start-Service-Window -Name "Crypto Service" -Path "backend\crypto-service" -Port 8010
+Start-Service-Window -Name "ACS Simulator" -Path "backend\acs-simulator" -Port 8013
+Start-Service-Window -Name "Tokenization Service" -Path "backend\tokenization-service" -Port 8014
 Write-Host ""
 
 # 3. BUSINESS CORE
@@ -60,19 +62,32 @@ Start-Service-Window -Name "Fraud Detection" -Path "backend\sim-fraud-detection"
 Start-Service-Window -Name "API Gateway" -Path "backend\api-gateway" -Port 8000
 Write-Host ""
 
-# 5. FRONTEND
-Write-Host "[5/5] Starting Frontends..." -ForegroundColor White
-Start-Process cmd -ArgumentList "/c set NEXT_PUBLIC_API_URL=http://localhost:8000 && cd frontend\user-cards-web && npm run dev -- -p 3000" -WindowStyle Minimized
-Write-Host "  Client Interface started on port 3000"
+# 5. FRONTEND & MONITORING
+Write-Host "[5/5] Starting Frontends & Monitoring..." -ForegroundColor White
+Start-Process cmd -ArgumentList "/k set PORT=3003 && cd frontend\tpe-web && npm run dev" -WindowStyle Minimized
+Write-Host "  Merchant Interface started on port 3003"
 
-Start-Process cmd -ArgumentList "/c set NEXT_PUBLIC_API_URL=http://localhost:8000 && cd frontend\tpe-web && npm run dev -- -p 3001" -WindowStyle Minimized
-Write-Host "  Merchant Interface started on port 3001"
+Start-Process cmd -ArgumentList "/k set PORT=3000 && cd frontend\portal && npm run dev" -WindowStyle Minimized
+Write-Host "  Portal started on port 3000"
+
+Start-Process cmd -ArgumentList "/k set PORT=3004 && cd frontend\user-cards-web && npm run dev" -WindowStyle Minimized
+Write-Host "  User Cards Web started on port 3004"
+
+Start-Process cmd -ArgumentList "/k set PORT=3005 && cd frontend\monitoring-dashboard && npm run dev" -WindowStyle Minimized
+Write-Host "  Monitoring Dashboard started on port 3005"
+
+Start-Process cmd -ArgumentList "/k set PORT=3006 && cd frontend\hsm-web && npm run dev" -WindowStyle Minimized
+Write-Host "  HSM Admin started on port 3006"
 
 Write-Host ""
 Write-Host "==========================================" -ForegroundColor Green
 Write-Host "   PLATFORM FULLY LAUNCHED!" -ForegroundColor Green
 Write-Host "==========================================" -ForegroundColor Green
-Write-Host "Client:   http://localhost:3000"
-Write-Host "Merchant: http://localhost:3001"
-Write-Host "Gateway:  http://localhost:8000"
+Write-Host "Client (TPE):   http://localhost:3003"
+Write-Host "Wallet:         http://localhost:3004"
+Write-Host "Monitor:        http://localhost:3005"
+Write-Host "HSM Admin:      http://localhost:3006"
+Write-Host "Gateway:        http://localhost:8000"
+Write-Host "ACS Sim:        http://localhost:8013"
+Write-Host "Tokenization:   http://localhost:8014"
 Write-Host ""

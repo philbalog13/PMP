@@ -157,7 +157,7 @@ export default function AnalyticsDashboard() {
                         </h3>
                     </div>
                     <div className="card-body">
-                        <FraudHeatmap data={data?.fraud} />
+                        <FraudHeatmap data={data?.fraud || null} />
                     </div>
                 </div>
             )}

@@ -181,9 +181,16 @@ export class IntegrationOrchestrator {
                 country: request.country
             });
             return response.data;
-        } catch (error) {
-            console.log('[ORCHESTRATOR] Fraud service unavailable, using fallback');
-            // Fallback: return low risk if fraud service is down
+        } catch (error: any) {
+            console.log('[ORCHESTRATOR] Fraud service check failed');
+            if (error.response) {
+                console.error('[ORCHESTRATOR] Fraud Error Data:', JSON.stringify(error.response.data));
+                console.error('[ORCHESTRATOR] Fraud Error Status:', error.response.status);
+            } else {
+                console.error('[ORCHESTRATOR] Fraud Error:', error.message);
+            }
+            // Fallback: return low risk if fraud service is down (but for 400 we should arguably fail?)
+            // For now, let's keep fallback but log loudly.
             return { riskScore: 0, riskLevel: 'LOW', recommendation: 'APPROVE' };
         }
     }
@@ -237,17 +244,30 @@ export class IntegrationOrchestrator {
         authCode?: string;
     }> {
         try {
+            const stan = Math.floor(100000 + Math.random() * 900000).toString();
+            const safeTerminalId = request.terminalId ? request.terminalId.substring(0, 8) : 'TERM0001';
+
             const response = await this.httpClient.post(`${CONFIG.authEngine}/authorize`, {
+                stan: stan,
                 pan: request.pan,
                 amount: request.amount,
-                currency: request.currency,
+                currency: request.currency || 'EUR',
                 merchantId: request.merchantId,
-                terminalId: request.terminalId,
-                mcc: request.mcc || '5999'
+                terminalId: safeTerminalId,
+                mcc: request.mcc || '5999',
+                location: {
+                    country: request.country || 'FR'
+                }
             });
             return response.data;
-        } catch (error) {
-            console.log('[ORCHESTRATOR] Auth engine unavailable');
+        } catch (error: any) {
+            console.error('[ORCHESTRATOR] Auth engine authorization failed');
+            if (error.response) {
+                console.error('[ORCHESTRATOR] Auth Error Data:', JSON.stringify(error.response.data));
+                console.error('[ORCHESTRATOR] Auth Error Status:', error.response.status);
+            } else {
+                console.error('[ORCHESTRATOR] Auth Error:', error.message);
+            }
             return {
                 approved: false,
                 responseCode: '96',

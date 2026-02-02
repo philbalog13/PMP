@@ -1,15 +1,12 @@
 @import "tailwindcss";
+@import "../../shared/styles/design-tokens.css";
+@import "../../shared/styles/themes.css";
 
 @layer base {
-  :root {
-    --bg-deep: #020617;
-    --bg-surface: #0f172a;
-    --bg-glass: rgba(15, 23, 42, 0.6);
-    --primary-500: #10b981;
-    --primary-glow: rgba(16, 185, 129, 0.5);
-    --secondary-500: #3b82f6;
-    --text-primary: #f8fafc;
-    --text-secondary: #94a3b8;
+  /* HSM-Web now uses standard design tokens from shared/styles/design-tokens.css */
+  /* No color overrides - maintaining Dark Neon Glassmorphism consistency */
+  body {
+    @apply bg-slate-950 text-slate-50;
   }
 }
 
@@ -23,7 +20,7 @@
   }
 
   .glass-card:hover {
-    @apply bg-white/10 border-white/10 -translate-y-1 shadow-green-500/20;
+    @apply bg-white/10 border-white/10 -translate-y-1 shadow-blue-500/20;
   }
 
   .neon-text-green {

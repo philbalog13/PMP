@@ -28,7 +28,6 @@
 | **Interface Client** | ✅ Complète | 6 pages avec Dark Neon Glassmorphism |
 | **Interface Marchand** | ✅ Complète | Terminal NEO avec mode simulation |
 | **Interface HSM** | ✅ Complète | Dashboard, Keys, Vulnerabilities |
-| **Mobile Wallet** | ✅ Nouvelle | Carte virtuelle + paiements |
 
 ---
 
@@ -67,11 +66,12 @@ Toutes les interfaces utilisent le **Dark Neon Glassmorphism** design system.
 
 | Application | Port | Description |
 |-------------|------|-------------|
-| **user-cards-web** | 3000 | Interface client (cartes, transactions, stats) |
-| **tpe-web** | 3001 | Terminal de paiement marchand |
-| **hsm-web** | 3002 | Simulateur HSM (clés, vulnérabilités) |
+| **portal** | 3001 | Hub central multi-rôles (Client, Merchant, Student, Trainer) |
+| **user-cards-web** | 3006 | Interface client (cartes, transactions, stats) |
+| **tpe-web** | 3000 | Terminal de paiement marchand |
+| **hsm-web** | 3081 | Simulateur HSM (clés, vulnérabilités) |
 | **3ds-challenge-ui** | 3088 | Page OTP 3D Secure |
-| **mobile-wallet** | 3002 | Portefeuille mobile |
+| **monitoring-dashboard** | 3082 | Dashboard de supervision temps réel |
 
 ### Design System
 

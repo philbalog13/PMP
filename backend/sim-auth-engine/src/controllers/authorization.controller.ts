@@ -41,6 +41,7 @@ export const authorize = async (req: Request, res: Response, next: NextFunction)
     try {
         const { error, value } = transactionSchema.validate(req.body, { abortEarly: false });
         if (error) {
+            console.error('[AUTH-ENGINE] Validation Error:', JSON.stringify(error.details));
             res.status(400).json({
                 success: false,
                 error: { code: 'VALIDATION_ERROR', message: 'Invalid request', details: error.details },

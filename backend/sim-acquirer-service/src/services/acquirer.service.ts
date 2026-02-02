@@ -47,47 +47,60 @@ export const processTransaction = async (request: AcquirerRequest): Promise<Acqu
 
     const merchant = merchantValidation.merchant!;
 
+    // Generate ISO 8583 fields
+    const now = new Date();
+    const mm = (now.getMonth() + 1).toString().padStart(2, '0');
+    const dd = now.getDate().toString().padStart(2, '0');
+    const hh = now.getHours().toString().padStart(2, '0');
+    const min = now.getMinutes().toString().padStart(2, '0');
+    const ss = now.getSeconds().toString().padStart(2, '0');
+
+    // Format Expiry (YYMM) - default to 2026/12 if not provided
+    const expYear = (request.expiryYear || 2026).toString().slice(-2).padStart(2, '0');
+    const expMonth = (request.expiryMonth || 12).toString().padStart(2, '0');
+
     // Build network switch request (ISO 8583-like)
     const networkRequest = {
-        transactionId: request.transactionId,
-        messageType: request.transactionType === 'PURCHASE' ? '0100' : '0400',
+        mti: request.transactionType === 'PURCHASE' ? '0100' : '0400',
         pan: request.pan,
+        processingCode: '000000', // Purchase/Default
         amount: request.amount,
         currency: request.currency,
-        mcc: merchant.mcc,
-        merchantId: request.merchantId,
-        merchantName: merchant.name,
-        merchantCity: merchant.city,
-        merchantCountry: merchant.country,
-        acquirerId: config.acquirerId,
+        transmissionDateTime: `${mm}${dd}${hh}${min}${ss}`,
+        localTransactionTime: `${hh}${min}${ss}`,
+        localTransactionDate: `${mm}${dd}`,
+        stan: Math.floor(Math.random() * 999999).toString().padStart(6, '0'),
         terminalId: request.terminalId,
-        transactionType: request.transactionType,
-        cvv: request.cvv,
-        expiryMonth: request.expiryMonth,
-        expiryYear: request.expiryYear,
-        timestamp: request.timestamp,
-        localTime: new Date().toISOString()
+        merchantId: request.merchantId,
+        merchantCategoryCode: merchant.mcc,
+        expiryDate: `${expYear}${expMonth}`,
+        posEntryMode: '010', // Manual/Unknown
+        acquirerReferenceNumber: `ARN${Date.now().toString().slice(-12)}`.padEnd(23, '0'),
+        // Optional extras if allowed by schema (stripUnknown is true)
+        transactionId: request.transactionId,
+        transactionType: request.transactionType
     };
 
     try {
         console.log(`[ACQUIRER] Forwarding to network switch`);
 
         const response = await axios.post(
-            `${config.networkSwitch.url}/route`,
+            `${config.networkSwitch.url}/transaction`,
             networkRequest,
             { timeout: config.networkSwitch.timeout }
         );
 
-        console.log(`[ACQUIRER] Network response: ${response.data.responseCode}`);
+        const networkData = response.data.data || response.data;
+        console.log(`[ACQUIRER] Network response: ${networkData.responseCode}`);
 
         return {
             transactionId: request.transactionId,
-            approved: response.data.responseCode === '00',
-            responseCode: response.data.responseCode,
-            authorizationCode: response.data.authorizationCode,
+            approved: networkData.responseCode === '00',
+            responseCode: networkData.responseCode,
+            authorizationCode: networkData.authorizationCode,
             merchantId: request.merchantId,
             acquirerId: config.acquirerId,
-            networkResponse: response.data
+            networkResponse: networkData
         };
 
     } catch (error: any) {
@@ -112,4 +125,25 @@ export const processTransaction = async (request: AcquirerRequest): Promise<Acqu
             acquirerId: config.acquirerId
         };
     }
+};
+
+/**
+ * Process network response (Phase 7.2)
+ */
+export const processResponse = async (networkResponse: any): Promise<AcquirerResponse> => {
+    console.log(`[ACQUIRER] Processing network response for ${networkResponse.transactionId}`);
+
+    // Simulate some acquirer-side processing or logging
+    const processingTime = Math.floor(Math.random() * 50); // 0-50ms delay
+
+    return {
+        transactionId: networkResponse.transactionId,
+        approved: networkResponse.responseCode === '00',
+        responseCode: networkResponse.responseCode,
+        authorizationCode: networkResponse.authorizationCode,
+        merchantId: networkResponse.merchantId,
+        acquirerId: config.acquirerId,
+        networkResponse: networkResponse,
+        // timestamp: new Date().toISOString()
+    };
 };

@@ -1,51 +1,64 @@
-FROM node:20-alpine AS base
+# Stage 1: Dependencies
+FROM node:20-alpine AS deps
 
-# Install dependencies only when needed
-FROM base AS deps
-WORKDIR /app
-COPY package.json package-lock.json* ./
-RUN npm ci
+WORKDIR /app/user-cards-web
 
-# Rebuild the source code only when needed
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+# Copy package files
+COPY user-cards-web/package.json ./
 
-# Next.js collects completely anonymous telemetry data about general usage.
-# Learn more here: https://nextjs.org/telemetry
-# Uncomment the following line in case you want to disable telemetry during the build.
-# ENV NEXT_TELEMETRY_DISABLED 1
+# Install dependencies
+RUN npm install
 
+# Stage 2: Builder
+FROM node:20-alpine AS builder
+
+WORKDIR /app/user-cards-web
+
+# Build arguments for Next.js public env vars (needed at build time)
+ARG NEXT_PUBLIC_API_URL=http://localhost:8000
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
+# Copy dependencies from deps stage
+COPY --from=deps /app/user-cards-web/node_modules ./node_modules
+
+# Copy shared directory and install its dependencies
+COPY shared ../shared
+RUN cd ../shared && npm install
+
+# Copy application code
+COPY user-cards-web .
+
+# Set environment to production for build
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Build Next.js application
 RUN npm run build
 
-# Production image, copy all the files and run next
-FROM base AS runner
+# Stage 3: Runner
+FROM node:20-alpine AS runner
+
 WORKDIR /app
-ENV NODE_ENV production
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
 
-COPY --from=builder /app/public ./public
-# Set the correct permission for prerender cache
-RUN mkdir .next
-RUN chown nextjs:nodejs .next
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
 
-# Automatically leverage output traces to reduce image size
-# https://nextjs.org/docs/advanced-features/output-file-tracing
-# We are NOT using standalone mode for simplicity unless configured in next.config.ts
-# So we copy the full build and node_modules (less efficient but safer without config change)
-# Actually, let's copy the build artifacts needed for "npm start"
-COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
+# Copy built application
+COPY --from=builder /app/user-cards-web/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/user-cards-web/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/user-cards-web/.next/static ./.next/static
 
 USER nextjs
 
 EXPOSE 3000
-ENV PORT 3000
-# set hostname to localhost
-ENV HOSTNAME "0.0.0.0"
 
-CMD ["npm", "start"]
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))" || exit 1
+
+CMD ["node", "server.js"]

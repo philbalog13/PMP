@@ -6,63 +6,28 @@ import { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
 import { useWebSocket } from './hooks/useWebSocket';
 
+// Icons
+import {
+    LayoutDashboard,
+    PieChart,
+    ShieldAlert,
+    Terminal,
+    Globe,
+    Users,
+    Server,
+    Activity,
+    FileText,
+    Zap
+} from 'lucide-react';
+
 // Pages
 import Dashboard from './components/realtime/Dashboard';
 import Analytics from './components/analytics/AnalyticsDashboard';
 import DebugTools from './components/debug/DebugTools';
-
-// Icons (using inline SVG for simplicity)
-const Icons = {
-    Dashboard: () => (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <rect x="3" y="3" width="7" height="7" rx="1" />
-            <rect x="14" y="3" width="7" height="7" rx="1" />
-            <rect x="3" y="14" width="7" height="7" rx="1" />
-            <rect x="14" y="14" width="7" height="7" rx="1" />
-        </svg>
-    ),
-    Analytics: () => (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M18 20V10M12 20V4M6 20v-6" strokeLinecap="round" />
-        </svg>
-    ),
-    Debug: () => (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M12 12h.01M16 16c0 2.21-1.79 4-4 4s-4-1.79-4-4 1.79-4 4-4 4 1.79 4 4z" />
-            <path d="M12 8V4M12 20v-4M8 12H4M20 12h-4M7.05 7.05 4.22 4.22M19.78 4.22l-2.83 2.83M7.05 16.95l-2.83 2.83M19.78 19.78l-2.83-2.83" strokeLinecap="round" />
-        </svg>
-    ),
-    Transactions: () => (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M12 2v20M17 5l-5-3-5 3M7 19l5 3 5-3" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-    ),
-    Security: () => (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-        </svg>
-    ),
-    Users: () => (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-            <circle cx="9" cy="7" r="4" />
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
-        </svg>
-    ),
-    Terminal: () => (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <polyline points="4 17 10 11 4 5" />
-            <line x1="12" y1="19" x2="20" y2="19" />
-        </svg>
-    ),
-    Globe: () => (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="2" y1="12" x2="22" y2="12" />
-            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-        </svg>
-    )
-};
+import Terminals from './components/monitoring/Terminals';
+import SecurityLogs from './components/security/SecurityLogs';
+import HSMManager from './components/hsm/HSMManager';
+import FraudDetection from './components/fraud/FraudDetection';
 
 interface NavItemProps {
     to: string;
@@ -97,8 +62,12 @@ function App() {
     const getPageTitle = useCallback(() => {
         switch (location.pathname) {
             case '/': return 'Vue Globale du Système';
+            case '/terminals': return 'Monitoring des Terminaux';
             case '/analytics': return 'Analytics Pédagogiques';
+            case '/logs': return 'Logs de Sécurité';
+            case '/hsm': return 'Gestion HSM';
             case '/debug': return 'Outils de Débogage';
+            case '/fraud': return 'AI Fraud Detection';
             default: return 'Dashboard';
         }
     }, [location.pathname]);
@@ -109,37 +78,55 @@ function App() {
                 {/* Sidebar */}
                 <aside className="sidebar">
                     <div className="sidebar-header">
-                        <span className="sidebar-logo">📊 PMP Monitor</span>
+                        <span className="sidebar-logo flex items-center gap-2">
+                            <Activity className="text-blue-500" />
+                            PMP Monitor
+                        </span>
                     </div>
 
                     <nav className="sidebar-nav">
                         <div className="nav-section">
                             <div className="nav-section-title">Vue Globale</div>
-                            <NavItem to="/" icon={<Icons.Dashboard />} label="Dashboard" />
-                            <NavItem to="/transactions" icon={<Icons.Transactions />} label="Transactions" />
-                            <NavItem to="/map" icon={<Icons.Globe />} label="Carte 3D" />
+                            <NavItem to="/" icon={<LayoutDashboard size={20} />} label="Dashboard" />
+                            <NavItem to="/terminals" icon={<Terminal size={20} />} label="Terminaux" />
+                            <NavItem to="/map" icon={<Globe size={20} />} label="Carte 3D" />
+                        </div>
+
+                        <div className="nav-section">
+                            <div className="nav-section-title">Sécurité & Infra</div>
+                            <NavItem to="/logs" icon={<ShieldAlert size={20} />} label="Logs Sécurité" />
+                            <NavItem to="/hsm" icon={<Server size={20} />} label="HSM Master" />
+                            <NavItem to="/fraud" icon={<Zap size={20} />} label="Anti-Fraude" />
                         </div>
 
                         <div className="nav-section">
                             <div className="nav-section-title">Analytics</div>
-                            <NavItem to="/analytics" icon={<Icons.Analytics />} label="Vue Générale" />
-                            <NavItem to="/fraud" icon={<Icons.Security />} label="Détection Fraudes" />
-                            <NavItem to="/students" icon={<Icons.Users />} label="Progression" />
+                            <NavItem to="/analytics" icon={<PieChart size={20} />} label="Performance" />
+                            <NavItem to="/students" icon={<Users size={20} />} label="Utilisateurs" />
                         </div>
 
                         <div className="nav-section">
-                            <div className="nav-section-title">Debug</div>
-                            <NavItem to="/debug" icon={<Icons.Debug />} label="Outils Debug" />
-                            <NavItem to="/trace" icon={<Icons.Terminal />} label="Tracer" />
+                            <div className="nav-section-title">Technique</div>
+                            <NavItem to="/debug" icon={<FileText size={20} />} label="Outils Debug" />
                         </div>
                     </nav>
 
                     {/* Connection Status */}
                     <div style={{ padding: 'var(--spacing-md)', borderTop: '1px solid var(--border-color)' }}>
+                        <a href={import.meta.env.VITE_PORTAL_URL || "http://localhost:3000"} className="flex items-center gap-2 text-slate-400 hover:text-white mb-4 transition">
+                            <LayoutDashboard size={16} />
+                            <span className="text-sm">Retour Portail</span>
+                        </a>
                         <div className="status-indicator">
                             <span className={`status-dot ${connected ? 'connected' : 'disconnected'}`} />
                             <span>{connected ? 'Connecté' : 'Déconnecté'}</span>
                         </div>
+                        {metrics && (
+                            <div className="text-xs text-slate-500 mt-2 flex justify-between">
+                                <span>Ping: {metrics.avgLatency?.toFixed(0) || 0}ms</span>
+                                <span>Conns: {metrics.activeConnections || 0}</span>
+                            </div>
+                        )}
                     </div>
                 </aside>
 
@@ -152,7 +139,7 @@ function App() {
                                 {currentTime.toLocaleTimeString('fr-FR')}
                             </span>
                             {metrics && (
-                                <span className="status-indicator">
+                                <span className="status-indicator ml-4 bg-white/5 py-1 px-3 rounded-full border border-white/5">
                                     <span style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>
                                         {metrics.requestsPerSecond?.toFixed(0) || 0} req/s
                                     </span>
@@ -164,8 +151,12 @@ function App() {
                     <main className="main-content">
                         <Routes>
                             <Route path="/" element={<Dashboard transactions={transactions} metrics={metrics} />} />
+                            <Route path="/terminals" element={<Terminals />} />
+                            <Route path="/logs" element={<SecurityLogs />} />
+                            <Route path="/hsm" element={<HSMManager />} />
                             <Route path="/analytics" element={<Analytics />} />
                             <Route path="/debug" element={<DebugTools />} />
+                            <Route path="/fraud" element={<FraudDetection />} />
                             <Route path="*" element={<Dashboard transactions={transactions} metrics={metrics} />} />
                         </Routes>
                     </main>

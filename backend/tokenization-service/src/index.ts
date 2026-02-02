@@ -11,7 +11,7 @@ import { TokenController } from './controllers/token.controller';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 8085;
+const PORT = process.env.PORT || 8014;
 const REDIS_URL = process.env.REDIS_URL || 'redis://redis:6379';
 
 // Middleware

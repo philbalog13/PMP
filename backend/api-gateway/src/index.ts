@@ -1,14 +1,18 @@
 import app from './app';
 import { config } from './config';
 import { logger } from './utils/logger';
+import { tokenBlacklist } from './services/tokenBlacklist.service';
 
 const PORT = config.port;
 
 // Graceful shutdown handling
 let server: ReturnType<typeof app.listen>;
 
-const gracefulShutdown = (signal: string) => {
+const gracefulShutdown = async (signal: string) => {
     logger.info(`${signal} received, starting graceful shutdown`);
+
+    // Close token blacklist service
+    await tokenBlacklist.close();
 
     server.close(() => {
         logger.info('HTTP server closed');
@@ -23,12 +27,15 @@ const gracefulShutdown = (signal: string) => {
 };
 
 // Start server
-server = app.listen(PORT, () => {
+server = app.listen(PORT, async () => {
     logger.info('🚀 API Gateway started', {
         port: PORT,
         env: config.nodeEnv,
         rateLimit: `${config.rateLimit.max} req/min`
     });
+
+    // Initialize security services
+    await tokenBlacklist.init();
 
     logger.info('📋 Routing table:', {
         cards: 'POST /api/cards → sim-card-service:8001',

@@ -43,8 +43,7 @@ services:
     ports:
       - "5432:5432"
     networks:
-      monetic-network:
-        ipv4_address: 172.20.0.10
+      - monetic-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
@@ -81,8 +80,7 @@ services:
     ports:
       - "6379:6379"
     networks:
-      monetic-network:
-        ipv4_address: 172.20.0.11
+      - monetic-network
     healthcheck:
       test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
       interval: 10s
@@ -149,11 +147,17 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS}
       - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS}
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - CARD_SERVICE_URL=http://sim-card-service:8001
       - POS_SERVICE_URL=http://sim-pos-service:8002
       - ACQUIRER_SERVICE_URL=http://sim-acquirer-service:8003
     ports:
       - "8000:8000"
+    volumes:
+      - ./backend/api-gateway/src:/app/src
+      - ./backend/api-gateway/package.json:/app/package.json
+      - ./backend/api-gateway/tsconfig.json:/app/tsconfig.json
+    command: npm run dev
     networks:
       - monetic-network
     depends_on:
@@ -166,7 +170,7 @@ services:
       sim-acquirer-service:
         condition: service_started
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8000/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8000/health"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -216,7 +220,7 @@ services:
       crypto-service:
         condition: service_started
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8001/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8001/health"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -255,7 +259,7 @@ services:
       - sim-acquirer-service
       - crypto-service
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8002/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8002/health"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -295,7 +299,7 @@ services:
       - postgres
       - sim-network-switch
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8003/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8003/health"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -325,6 +329,7 @@ services:
       - NODE_ENV=${NODE_ENV}
       - PORT=8004
       - ISSUER_SERVICE_URL=http://sim-issuer-service:8005
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
     ports:
       - "8004:8004"
     networks:
@@ -332,7 +337,7 @@ services:
     depends_on:
       - sim-issuer-service
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8004/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8004/health"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -364,6 +369,8 @@ services:
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
       - AUTH_ENGINE_URL=http://sim-auth-engine:8006
+      - FRAUD_DETECTION_URL=http://sim-fraud-detection:8007
+      - HSM_SIMULATOR_URL=http://hsm-simulator:8011
       - CRYPTO_SERVICE_URL=http://crypto-service:8010
       - CARD_SERVICE_URL=http://sim-card-service:8001
     ports:
@@ -375,7 +382,7 @@ services:
       - redis
       - sim-auth-engine
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8005/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8005/health"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -415,7 +422,7 @@ services:
       - postgres
       - sim-fraud-detection
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8006/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8006/health"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -454,7 +461,7 @@ services:
       - postgres
       - redis
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8007/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8007/health"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -488,7 +495,7 @@ services:
       - NODE_ENV=${NODE_ENV}
       - PORT=8010
       - KEY_MANAGEMENT_URL=http://key-management:8012
-      - HSM_URL=http://host.docker.internal:8011
+      - HSM_URL=http://hsm-simulator:8011
     ports:
       - "8010:8010"
     networks:
@@ -498,7 +505,7 @@ services:
     depends_on:
       - key-management
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8010/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8010/health"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -518,38 +525,38 @@ services:
     cap_drop:
       - ALL
 
-  # hsm-simulator:
-  #   image: pmp-hsm-simulator
-  #   pull_policy: never
-  #   container_name: pmp-hsm-simulator
-  #   restart: unless-stopped
-  #   environment:
-  #     - NODE_ENV=${NODE_ENV}
-  #     - PORT=8011
-  #   ports:
-  #     - "8011:8011"
-  #   networks:
-  #     - monetic-network
-  #   healthcheck:
-  #     test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8011/health"]
-  #     interval: 15s
-  #     timeout: 5s
-  #     retries: 3
-  #   deploy:
-  #     resources:
-  #       limits:
-  #         cpus: '0.5'
-  #         memory: 256M
-  #       reservations:
-  #         cpus: '0.25'
-  #         memory: 128M
-  #   logging:
-  #     driver: "json-file"
-  #     options:
-  #       max-size: "10m"
-  #       max-file: "3"
-  #   cap_drop:
-  #     - ALL
+  hsm-simulator:
+    image: pmp-hsm-simulator
+    pull_policy: never
+    container_name: pmp-hsm-simulator
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - PORT=8011
+    ports:
+      - "8011:8011"
+    networks:
+      - monetic-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8011/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    cap_drop:
+      - ALL
 
   key-management:
     image: pmp-key-management
@@ -568,7 +575,7 @@ services:
     depends_on:
       - postgres
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8012/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8012/health"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -592,5 +599,86 @@ services:
   # FRONTEND SERVICES (Temporarily Disabled)
   # ============================================
 
-  # client-interface:
-  #   image: pmp-client-interface
+  client-interface:
+    image: pmp-client-interface
+    pull_policy: never
+    container_name: pmp-client-interface
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - REACT_APP_API_URL=http://localhost:8000
+    ports:
+      - "3003:3000"
+    networks:
+      - monetic-network
+    depends_on:
+      - api-gateway
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  portal:
+    image: pmp-portal
+    pull_policy: never
+    container_name: pmp-portal
+    restart: unless-stopped
+    user: root
+    working_dir: /app/frontend/portal
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/frontend/portal/node_modules
+      - ./frontend/shared:/app/frontend/portal/shared
+    command: sh -c "npm install && npm run dev"
+    networks:
+      - monetic-network
+    depends_on:
+      - api-gateway
+
+  user-cards-web:
+    image: pmp-user-cards-web
+    pull_policy: never
+    container_name: pmp-user-cards-web
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - PORT=3000
+    ports:
+      - "3004:3000"
+    networks:
+      - monetic-network
+    depends_on:
+      - api-gateway
+
+  monitoring-dashboard:
+    image: pmp-sim-monitoring-service
+    pull_policy: never
+    container_name: pmp-monitoring-dashboard
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - PORT=3005
+    ports:
+      - "3007:3005"
+    networks:
+      - monetic-network
+
+  hsm-web:
+    image: pmp-hsm-web
+    pull_policy: never
+    container_name: pmp-hsm-web
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - PORT=3000
+    ports:
+      - "3006:3000"
+    networks:
+      - monetic-network
+

@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useTerminalStore } from '@/lib/store';
 import { processTransaction } from '@/lib/api-client';
 import { generateSTAN } from '@/lib/utils';
-import { Bug, FileText, Settings, Wifi, Activity } from 'lucide-react';
+import { Bug, FileText, Settings, Wifi, Activity, GraduationCap } from 'lucide-react';
 
 import TerminalScreen from '@/components/terminal/TerminalScreen';
 import Keypad from '@/components/terminal/Keypad';
@@ -14,8 +15,8 @@ import ConfigPanel from '@/components/config/ConfigPanel';
 import DebugView from '@/components/pedagogy/DebugView';
 import StepFlow from '@/components/pedagogy/StepFlow';
 import TechnicalDetail from '@/components/pedagogy/TechnicalDetail';
-import GlassCard from '@/components/ui/GlassCard';
-import PremiumButton from '@/components/ui/PremiumButton';
+import GlassCard from '@shared/components/GlassCard';
+import PremiumButton from '@shared/components/PremiumButton';
 
 export default function Home() {
     const {
@@ -34,12 +35,37 @@ export default function Home() {
     } = useTerminalStore();
 
     const [isBooting, setIsBooting] = useState(true);
+    const [bootError, setBootError] = useState<string | null>(null);
 
     useEffect(() => {
-        setTimeout(() => setIsBooting(false), 2000);
-        if (state === 'idle') {
-            setState('amount-input');
-        }
+        const bootSequence = async () => {
+            // Sequence Diagram Step: TPE->>GW: GET /api/health
+            try {
+                // Initial logic
+                await new Promise(resolve => setTimeout(resolve, 800)); // UI boot animation delay
+
+                // Real health check
+                const { checkSystemHealth } = await import('@/lib/api-client');
+                const isHealthy = await checkSystemHealth();
+
+                if (isHealthy) {
+                    setIsBooting(false);
+                    if (state === 'idle') {
+                        setState('amount-input');
+                    }
+                } else {
+                    setBootError("Erreur de connexion Gateway");
+                    // Still boot to allow debug, but showing error
+                    setTimeout(() => setIsBooting(false), 2000);
+                }
+            } catch (err) {
+                console.error("Boot failed", err);
+                setBootError("System Failure");
+                setIsBooting(false);
+            }
+        };
+
+        bootSequence();
     }, [state, setState]);
 
     const handleAmountComplete = (amt: number) => {
@@ -51,11 +77,30 @@ export default function Home() {
         setCardData(cardData);
 
         try {
-            const transactionRequest = {
-                stan: generateSTAN(),
+            // 1. Transaction Preparation (Offline Logic)
+            // Dynamic Import to ensure client-side execution if needed, though here standard import works too.
+            const { TransactionPreparationService } = await import('@/lib/services/TransactionPreparation.service');
+            const preparationService = new TransactionPreparationService();
+
+            // Input from Keypad
+            const userInput = { amount, currency: 'EUR' };
+
+            // Run the workflow: Card Read -> Offline Checks -> CVM -> ISO Build
+            const preparedTx = await preparationService.prepareTransaction(userInput, {
                 pan: cardData.pan,
-                mti: '0100',
-                processingCode: '000000',
+                expiryDate: cardData.expiryDate,
+                holderName: "CARDHOLDER", // Simulé, non capturé par l'UI actuel
+                track2: undefined,
+                serviceCode: "101"
+            });
+
+            // If we reach here, Offline Checks passed!
+
+            const transactionRequest = {
+                stan: preparedTx.isoMessage.auditNumber, // Use generated STAN from service
+                pan: preparedTx.isoMessage.cardData.pan,
+                mti: preparedTx.isoMessage.mti,
+                processingCode: preparedTx.isoMessage.processingCode,
                 amount,
                 currency: 'EUR',
                 type: selectedType,
@@ -63,13 +108,15 @@ export default function Home() {
                 terminalId: 'TERM_WEB_01',
                 mcc: '5411',
                 posEntryMode: '012',
-                pinEntered: false,
+                pinEntered: !!preparedTx.isoMessage.pinBlock, // Check if PIN was required/captured
                 cvvProvided: !!cardData.cvv,
                 threeDsAuthenticated: false,
                 isRecurring: false,
                 isEcommerce: true,
                 location: { country: 'FR', city: 'Paris' },
-                timestamp: new Date(),
+                timestamp: preparedTx.timestamp,
+                // Add extra debug info about the offline steps
+                offlineAudit: preparedTx.riskAssessment.auditTrace
             };
 
             const response = await processTransaction(transactionRequest) as any;
@@ -97,13 +144,19 @@ export default function Home() {
                 reset();
                 setState('amount-input');
             }, 3000);
-        } catch (error) {
+        } catch (error: any) {
             console.error('Transaction error:', error);
+
+            // Handle Offline Declines specifically
+            // The service throws standard Errors, we can improve this check
+            const errorMessage = error.message || 'System error';
+            const isOfflineDecline = errorMessage.includes('(OFFLINE)');
+
             setState('declined');
             setCurrentTransaction({
                 approved: false,
-                responseCode: '96',
-                responseMessage: 'System error',
+                responseCode: isOfflineDecline ? 'OF' : '96', // 'OF' for Offline Failure custom code
+                responseMessage: isOfflineDecline ? errorMessage.replace('TRANSACTION REFUSED (OFFLINE): ', '') : 'System Error',
                 matchedRules: [],
                 processingTime: 0,
                 timestamp: new Date(),
@@ -112,7 +165,7 @@ export default function Home() {
             setTimeout(() => {
                 reset();
                 setState('amount-input');
-            }, 3000);
+            }, 3500); // Slightly longer to read error
         }
     };
 
@@ -172,22 +225,53 @@ export default function Home() {
 
                 {/* RIGHT COLUMN: CONTROLS & LOGS */}
                 <div className="space-y-6">
+                    {/* Navigation Menu */}
+                    <GlassCard className="p-4 border border-white/10 bg-slate-900/50">
+                        <div className="grid grid-cols-4 gap-2">
+                            <Link href="/transactions" className="flex flex-col items-center justify-center p-3 rounded-xl hover:bg-white/5 transition text-slate-400 hover:text-white gap-2">
+                                <FileText size={20} className="text-blue-500" />
+                                <span className="text-xs font-medium">Historique</span>
+                            </Link>
+                            <Link href="/settings" className="flex flex-col items-center justify-center p-3 rounded-xl hover:bg-white/5 transition text-slate-400 hover:text-white gap-2">
+                                <Settings size={20} className="text-slate-400" />
+                                <span className="text-xs font-medium">Réglages</span>
+                            </Link>
+                            <Link href="/simulation" className="flex flex-col items-center justify-center p-3 rounded-xl hover:bg-white/5 transition text-slate-400 hover:text-white gap-2">
+                                <Activity size={20} className="text-purple-500" />
+                                <span className="text-xs font-medium">Simuler</span>
+                            </Link>
+                            <Link href="/help" className="flex flex-col items-center justify-center p-3 rounded-xl hover:bg-white/5 transition text-slate-400 hover:text-white gap-2">
+                                <div className="w-5 h-5 rounded-full border-2 border-slate-500 flex items-center justify-center text-xs font-bold">?</div>
+                                <span className="text-xs font-medium">Aide</span>
+                            </Link>
+                            <Link href="/learn" className="col-span-4 mt-2 flex items-center justify-center p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 transition gap-2 group">
+                                <GraduationCap size={20} className="group-hover:scale-110 transition" />
+                                <span className="text-sm font-bold">Centre de Formation</span>
+                            </Link>
+
+                            <Link href={process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:3000'} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition group">
+                                <span className="text-sm font-medium">← Retour Portail</span>
+                            </Link>
+                        </div>
+                    </GlassCard>
+
                     <GlassCard className="p-6 border border-white/10 bg-slate-900/50">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="font-bold text-xl text-white flex items-center gap-2">
                                 <Settings size={20} className="text-blue-500" />
-                                Panneau de Contrôle
+                                <span className="text-sm uppercase tracking-wider text-slate-400">Contrôles Rapides</span>
                             </h2>
                             <div className="flex gap-3">
-                                <PremiumButton
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={toggleDebugMode}
-                                    className={debugMode ? 'text-blue-400 bg-blue-500/10 border border-blue-500/20' : ''}
-                                >
-                                    <Bug size={16} className="mr-2" />
-                                    Debug
-                                </PremiumButton>
+                                <Link href="/debug">
+                                    <PremiumButton
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-amber-400 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20"
+                                    >
+                                        <Bug size={16} className="mr-2" />
+                                        Advanced Debug
+                                    </PremiumButton>
+                                </Link>
                                 <PremiumButton
                                     variant="secondary"
                                     size="sm"
@@ -201,7 +285,7 @@ export default function Home() {
 
                         <div className="space-y-4">
                             <div className="p-5 bg-black/40 rounded-xl border border-white/5">
-                                <h3 className="font-semibold text-xs text-slate-400 uppercase tracking-wider mb-4">Simulation</h3>
+                                <h3 className="font-semibold text-xs text-slate-400 uppercase tracking-wider mb-4">Simulation Carte</h3>
                                 <CardReaderSim onCardRead={handleCardRead} />
                             </div>
 
@@ -212,12 +296,15 @@ export default function Home() {
                     {/* Transaction History / Logs */}
                     <GlassCard className="p-6 border border-white/10 bg-slate-900/50">
                         <h3 className="font-bold text-lg mb-4 text-white flex items-center gap-2">
-                            <FileText size={18} className="text-purple-500" />
-                            Historique des Transactions
+                            <FileText size={18} className="text-green-500" />
+                            Dernières Transactions
                         </h3>
                         <div className="max-h-64 overflow-y-auto pr-2 custom-scrollbar">
                             <TransactionLog />
                         </div>
+                        <Link href="/transactions" className="block mt-4 text-center text-sm text-blue-400 hover:text-blue-300 transition">
+                            Voir tout l'historique →
+                        </Link>
                     </GlassCard>
 
                     {debugMode && (

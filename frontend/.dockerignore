@@ -1,0 +1,10 @@
+
+**/node_modules
+**/dist
+**/.next
+**/.git
+**/build
+**/coverage
+**/*.log
+**/.env.local
+**/.DS_Store

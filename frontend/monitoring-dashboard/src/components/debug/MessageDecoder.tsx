@@ -5,19 +5,9 @@
 
 import { useState } from 'react';
 
-interface DecodedField {
-    value: string;
-    name: string;
-    formatted?: string;
-    masked?: string | boolean;
-    description?: string;
-}
 
-interface DecodedMessage {
-    mti: string;
-    bitmap: string;
-    fields: Record<number, DecodedField>;
-}
+
+
 
 export default function MessageDecoder() {
     const [mode, setMode] = useState<'decode' | 'encode'>('decode');

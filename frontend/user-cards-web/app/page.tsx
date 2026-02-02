@@ -3,8 +3,8 @@
 import { useUserStore } from '@/lib/store';
 import Card3D from '@/components/card/Card3D';
 import CardGenerator from '@/components/card/CardGenerator';
-import GlassCard from '@/components/ui/GlassCard';
-import PremiumButton from '@/components/ui/PremiumButton';
+import GlassCard from '@shared/components/GlassCard';
+import PremiumButton from '@shared/components/PremiumButton';
 import {
   Wallet,
   Bell,
@@ -15,6 +15,7 @@ import {
   MoreHorizontal
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 
 export default function Dashboard() {
   const { cards } = useUserStore();
@@ -57,6 +58,38 @@ export default function Dashboard() {
           </div>
         </div>
       </header>
+
+      {/* Navigation Bar */}
+      <GlassCard className="p-2 flex items-center justify-between md:justify-start gap-2 md:gap-6 overflow-x-auto scrollbar-hide">
+        <Link
+          href="/"
+          className="px-6 py-3 rounded-xl bg-blue-600 shadow-lg shadow-blue-500/20 text-white font-medium flex items-center gap-2 whitespace-nowrap"
+        >
+          <LayoutGrid size={18} />
+          Dashboard
+        </Link>
+        <Link
+          href="/cards"
+          className="px-6 py-3 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white font-medium transition flex items-center gap-2 whitespace-nowrap"
+        >
+          <CreditCardIcon />
+          Mes Cartes
+        </Link>
+        <Link
+          href="/history"
+          className="px-6 py-3 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white font-medium transition flex items-center gap-2 whitespace-nowrap"
+        >
+          <ArrowUpRight size={18} />
+          Historique
+        </Link>
+        <Link
+          href="/security"
+          className="px-6 py-3 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white font-medium transition flex items-center gap-2 whitespace-nowrap"
+        >
+          <div className="w-5 h-5 rounded-full border-2 border-slate-500 flex items-center justify-center text-[10px] font-bold">?</div>
+          Sécurité
+        </Link>
+      </GlassCard>
 
       {/* Stats Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -169,10 +202,12 @@ export default function Dashboard() {
           </div>
 
           <div className="p-4 bg-white/[0.02]">
-            <PremiumButton variant="ghost" className="w-full justify-between group">
-              Voir tout l'historique
-              <ArrowUpRight size={16} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
-            </PremiumButton>
+            <Link href="/history" className="block w-full">
+              <PremiumButton variant="ghost" className="w-full justify-between group">
+                Voir tout l'historique
+                <ArrowUpRight size={16} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+              </PremiumButton>
+            </Link>
           </div>
         </GlassCard>
       </div>

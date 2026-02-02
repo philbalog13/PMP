@@ -1,92 +1,13 @@
 @import "tailwindcss";
+@import "../../shared/styles/design-tokens.css";
+@import "../../shared/styles/themes.css";
+
+/* 
+ * WALLET SPECIFIC STYLES 
+ */
 
 @layer base {
-  :root {
-    /* 
-     * THEME PRESETS 
-     * Using a deep midnight palette inspired by modern fintech + sci-fi interfaces 
-     */
-
-    /* Backgrounds */
-    --bg-deep: #020617;
-    /* Slate 950 */
-    --bg-surface: #0f172a;
-    /* Slate 900 */
-    --bg-glass: rgba(15, 23, 42, 0.6);
-
-    /* Primary Accents (Neon Blue/Purple) */
-    --primary-500: #3b82f6;
-    --primary-600: #2563eb;
-    --primary-glow: rgba(59, 130, 246, 0.5);
-
-    --secondary-500: #8b5cf6;
-    --secondary-glow: rgba(139, 92, 246, 0.5);
-
-    /* Text */
-    --text-primary: #f8fafc;
-    --text-secondary: #94a3b8;
-    --text-muted: #64748b;
-
-    /* Status */
-    --success: #10b981;
-    --danger: #ef4444;
-    --warning: #f59e0b;
+  body {
+    background: radial-gradient(ellipse at top left, var(--bg-surface) 0%, var(--bg-deep) 100%);
   }
-}
-
-@layer utilities {
-
-  /* 
-   * GLASSMORPHISM UTILITIES 
-   * The core of the "Premium" look
-   */
-  .glass-panel {
-    @apply bg-slate-900/60 backdrop-blur-xl border border-white/10 shadow-2xl;
-  }
-
-  .glass-card {
-    @apply bg-white/5 backdrop-blur-lg border border-white/5 shadow-lg transition-all duration-300;
-  }
-
-  .glass-card:hover {
-    @apply bg-white/10 border-white/10 -translate-y-1 shadow-blue-500/20;
-  }
-
-  /* 
-   * NEON GLOWS
-   */
-  .neon-text {
-    text-shadow: 0 0 10px var(--primary-glow);
-  }
-
-  .neon-border {
-    box-shadow: 0 0 15px -3px var(--primary-glow);
-  }
-
-  /* 
-   * TEXTURES
-   * Subtle noise to prevent banding in dark gradients
-   */
-  .bg-noise {
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
-  }
-}
-
-body {
-  @apply bg-slate-950 text-slate-50 antialiased selection:bg-blue-500/30;
-  background: radial-gradient(circle at top center, #1e293b 0%, #020617 100%);
-  min-height: 100vh;
-}
-
-/* Scrollbar Polish */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  @apply bg-slate-950;
-}
-
-::-webkit-scrollbar-thumb {
-  @apply bg-slate-800 rounded-full hover:bg-slate-700 transition;
 }

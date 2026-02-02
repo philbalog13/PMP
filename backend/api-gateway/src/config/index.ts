@@ -1,13 +1,49 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+// ========================================
+// SECURITY VALIDATION
+// ========================================
+// CRITICAL: Validate JWT_SECRET at startup
+if (!process.env.JWT_SECRET) {
+    throw new Error(
+        'FATAL: JWT_SECRET environment variable is required. ' +
+        'Generate one with: openssl rand -base64 64'
+    );
+}
+
+if (process.env.JWT_SECRET.length < 32) {
+    throw new Error(
+        'FATAL: JWT_SECRET must be at least 32 characters. ' +
+        'Current length: ' + process.env.JWT_SECRET.length
+    );
+}
+
+// Warn about weak development secrets in production
+if (process.env.NODE_ENV === 'production') {
+    const weakSecrets = ['dev', 'test', 'demo', 'change', 'example', 'secret'];
+    const secretLower = process.env.JWT_SECRET.toLowerCase();
+
+    if (weakSecrets.some(weak => secretLower.includes(weak))) {
+        throw new Error(
+            'FATAL: JWT_SECRET appears to be a development/test secret. ' +
+            'Use a strong, randomly generated secret in production.'
+        );
+    }
+}
+
 export const config = {
     port: parseInt(process.env.GATEWAY_PORT || '8000'),
     nodeEnv: process.env.NODE_ENV || 'development',
 
     jwt: {
-        secret: process.env.JWT_SECRET || 'pmp-dev-secret-change-in-production',
-        expiresIn: process.env.JWT_EXPIRES_IN || '24h'
+        secret: process.env.JWT_SECRET, // NO FALLBACK - Validated above
+        expiresIn: process.env.JWT_EXPIRES_IN || '2h' // Changed from 24h
+    },
+
+    // Bcrypt security settings
+    bcrypt: {
+        saltRounds: 12 // Increased from 10 to 12 for better security
     },
 
     rateLimit: {
@@ -35,7 +71,13 @@ export const config = {
     },
 
     cors: {
-        origin: process.env.CORS_ORIGIN || '*',
-        credentials: true
+        // SECURITY: Strict origin whitelist (no wildcard)
+        // Set CORS_ORIGIN in .env as comma-separated list: http://localhost:3000,http://localhost:5173
+        origin: process.env.CORS_ORIGIN?.split(',').map(o => o.trim()) || [
+            'http://localhost:3000',
+            'http://localhost:5173'
+        ],
+        credentials: true,
+        maxAge: 600 // Cache preflight for 10 minutes
     }
 };

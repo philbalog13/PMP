@@ -1,5 +1,7 @@
 'use client';
 
+import { use } from 'react';
+
 // Handle dynamic router params
 import { useUserStore } from '@/lib/store';
 import { useParams, useRouter } from 'next/navigation';
@@ -9,10 +11,9 @@ import SecuritySettings from '@/components/security/SecuritySettings';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
-export default function CardDetailPage() {
+export default function CardDetailPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = use(params);
     const router = useRouter();
-    const params = useParams();
-    const id = params.id as string;
     const card = useUserStore(state => state.cards.find(c => c.id === id));
 
     if (!card) {

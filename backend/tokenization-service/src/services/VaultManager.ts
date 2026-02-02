@@ -13,7 +13,7 @@ export interface VaultBackend {
 }
 
 export class RedisVault implements VaultBackend {
-    private client: RedisClientType;
+    private client!: RedisClientType;
 
     constructor(private url: string) { }
 

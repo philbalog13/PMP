@@ -42,10 +42,12 @@ export const rateLimitMiddleware = rateLimit({
 
 /**
  * Stricter rate limit for sensitive endpoints (auth, crypto)
+ * ADJUSTED: Higher limit in development for testing
  */
 export const strictRateLimitMiddleware = rateLimit({
     windowMs: 60 * 1000,
-    max: 20, // 20 requests per minute for sensitive endpoints
+    // Development: 200 req/min for testing, Production: 20 req/min for security
+    max: process.env.NODE_ENV === 'production' ? 20 : 200,
     standardHeaders: true,
     message: {
         success: false,

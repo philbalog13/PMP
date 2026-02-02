@@ -8,7 +8,7 @@ import axios from 'axios';
 export class TokenizationClient {
     private tokenServiceUrl: string;
 
-    constructor(tokenServiceUrl: string = 'http://localhost:8085') {
+    constructor(tokenServiceUrl: string = process.env.NEXT_PUBLIC_TOKEN_SERVICE_URL || 'http://localhost:8085') {
         this.tokenServiceUrl = tokenServiceUrl;
     }
 

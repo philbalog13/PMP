@@ -1,9 +1,10 @@
 /**
  * Authentication Middleware
  * JWT-based authentication for protected routes
- * NOTE: Simplified for pedagogical purposes
+ * SECURITY: Full JWT signature verification enabled
  */
 import { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
 import { logger } from '../utils/logger';
 import { ApiError } from './errorHandler';
 
@@ -71,23 +72,40 @@ const extractBearerToken = (authHeader: string | undefined): string | null => {
 };
 
 /**
- * Decode JWT token (simplified - no signature validation for pedagogical purposes)
- * In production: Use jsonwebtoken library with proper key validation
+ * Verify JWT token with signature validation
+ * SECURITY FIX: Now properly verifies signature instead of just decoding
  */
-const decodeToken = (token: string): TokenPayload | null => {
+const verifyToken = (token: string): TokenPayload => {
     try {
-        const parts = token.split('.');
-        if (parts.length !== 3) return null;
+        // CRITICAL: Verify signature using JWT_SECRET
+        if (!process.env.JWT_SECRET) {
+            throw new AuthenticationError('Server configuration error: JWT_SECRET not set');
+        }
 
-        // Decode payload (middle part)
-        const payload = JSON.parse(
-            Buffer.from(parts[1], 'base64url').toString('utf8')
-        );
+        const decoded = jwt.verify(token, process.env.JWT_SECRET) as TokenPayload;
 
-        return payload as TokenPayload;
+        return decoded;
     } catch (error) {
-        return null;
+        if (error instanceof jwt.TokenExpiredError) {
+            throw new AuthenticationError('Token has expired');
+        }
+        if (error instanceof jwt.JsonWebTokenError) {
+            throw new AuthenticationError('Invalid token signature');
+        }
+        if (error instanceof jwt.NotBeforeError) {
+            throw new AuthenticationError('Token not yet valid');
+        }
+
+        logger.error('Token verification failed', { error });
+        throw new AuthenticationError('Token verification failed');
     }
+};
+
+/**
+ * Decode token without verification (for debugging/internal use)
+ */
+const decodeToken = (token: string): any => {
+    return jwt.decode(token);
 };
 
 /**
@@ -135,16 +153,12 @@ export const authMiddleware = async (
             throw new AuthenticationError('No authentication token provided');
         }
 
-        // Decode token (simplified)
-        const payload = decodeToken(token);
+        // SECURITY FIX: Verify token signature (replaces decode-only approach)
+        const payload = verifyToken(token);
 
-        if (!payload) {
-            throw new AuthenticationError('Invalid token format');
-        }
-
-        // Validate payload
+        // Additional payload validation
         if (!validatePayload(payload)) {
-            throw new AuthenticationError('Token expired or invalid');
+            throw new AuthenticationError('Token payload invalid');
         }
 
         // Add auth info to request

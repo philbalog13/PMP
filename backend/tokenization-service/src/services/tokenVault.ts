@@ -16,7 +16,7 @@ export interface TokenMetadata {
 }
 
 export class TokenVault {
-    private redis: RedisClientType;
+    private redis!: RedisClientType;
     private connected: boolean = false;
 
     constructor(private redisUrl: string = 'redis://localhost:6379') { }

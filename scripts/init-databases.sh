@@ -222,6 +222,123 @@ CREATE INDEX idx_audit_logs_severity ON security.audit_logs(severity, created_at
 echo "✓ Security tables created"
 
 # ==============================================
+# Create Tables - Users Schema
+# ==============================================
+
+echo "Creating users schema tables..."
+
+execute_sql "
+CREATE SCHEMA IF NOT EXISTS users;
+GRANT ALL PRIVILEGES ON SCHEMA users TO $POSTGRES_USER;
+
+CREATE TABLE IF NOT EXISTS users.users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
+    role VARCHAR(20) DEFAULT 'USER' CHECK (role IN ('USER', 'ADMIN', 'MERCHANT')),
+    status VARCHAR(20) DEFAULT 'ACTIVE',
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_email ON users.users(email);
+CREATE INDEX IF NOT EXISTS idx_users_username ON users.users(username);
+"
+
+echo "✓ Users tables created"
+
+# ==============================================
+# Create Tables - Learning Schema
+# ==============================================
+
+echo "Creating learning schema tables..."
+
+execute_sql "
+CREATE SCHEMA IF NOT EXISTS learning;
+GRANT ALL PRIVILEGES ON SCHEMA learning TO $POSTGRES_USER;
+
+CREATE TABLE IF NOT EXISTS learning.student_progress (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    student_id UUID REFERENCES users.users(id),
+    workshop_id VARCHAR(50) NOT NULL,
+    status VARCHAR(20) DEFAULT 'NOT_STARTED',
+    progress_percent INTEGER DEFAULT 0,
+    current_section INTEGER DEFAULT 0,
+    started_at TIMESTAMP,
+    completed_at TIMESTAMP,
+    time_spent_minutes INTEGER DEFAULT 0,
+    UNIQUE(student_id, workshop_id)
+);
+
+CREATE TABLE IF NOT EXISTS learning.quiz_results (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    student_id UUID REFERENCES users.users(id),
+    quiz_id VARCHAR(50) NOT NULL,
+    score INTEGER NOT NULL,
+    max_score INTEGER NOT NULL,
+    percentage INTEGER NOT NULL,
+    passed BOOLEAN NOT NULL,
+    answers JSONB,
+    submitted_at TIMESTAMP DEFAULT NOW(),
+    time_taken_seconds INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS learning.badges (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    student_id UUID REFERENCES users.users(id),
+    badge_type VARCHAR(50) NOT NULL,
+    badge_name VARCHAR(100) NOT NULL,
+    earned_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(student_id, badge_type)
+);
+
+CREATE TABLE IF NOT EXISTS learning.exercises (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_by UUID REFERENCES users.users(id),
+    title VARCHAR(200) NOT NULL,
+    description TEXT,
+    type VARCHAR(50),
+    difficulty VARCHAR(20),
+    points INTEGER DEFAULT 100,
+    content JSONB,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS learning.exercise_assignments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    exercise_id UUID REFERENCES learning.exercises(id),
+    student_id UUID REFERENCES users.users(id),
+    status VARCHAR(20) DEFAULT 'ASSIGNED',
+    due_date TIMESTAMP,
+    submitted_at TIMESTAMP,
+    grade INTEGER,
+    feedback TEXT,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(exercise_id, student_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_student_progress_student ON learning.student_progress(student_id);
+CREATE INDEX IF NOT EXISTS idx_quiz_results_student ON learning.quiz_results(student_id);
+CREATE INDEX IF NOT EXISTS idx_badges_student ON learning.badges(student_id);
+"
+
+echo "✓ Learning tables created"
+
+# ==============================================
+# Grant Learning Permissions
+# ==============================================
+
+execute_sql "
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA learning TO $POSTGRES_USER;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA learning TO $POSTGRES_USER;
+"
+
+# ==============================================
 # Create Functions and Triggers
 # ==============================================
 
@@ -310,6 +427,10 @@ GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA cards TO $POSTGRES_USER;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA transactions TO $POSTGRES_USER;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA security TO $POSTGRES_USER;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA merchants TO $POSTGRES_USER;
+
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA users TO $POSTGRES_USER;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA users TO $POSTGRES_USER;
+
 "
 
 echo "✓ Permissions granted"

@@ -23,9 +23,7 @@ export interface AuthenticationRequest {
     messageVersion: string;
     messageCategory: string;
     deviceChannel: string;
-    acct
-
-    Number: string;
+    accountNumber: string;
     purchaseAmount: string;
     purchaseCurrency: string;
     purchaseDate: string;

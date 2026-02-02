@@ -10,5 +10,10 @@ export const config = {
         timeout: 10000
     },
 
+    tokenizationService: {
+        url: process.env.TOKENIZATION_SERVICE_URL || 'http://localhost:8014',
+        timeout: 2000
+    },
+
     merchantId: process.env.DEFAULT_MERCHANT_ID || 'MERCHANT001'
 };

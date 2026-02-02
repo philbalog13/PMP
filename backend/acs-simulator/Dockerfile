@@ -3,11 +3,14 @@ FROM node:18-alpine
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm ci
 
-COPY . .
+COPY tsconfig.json ./
+COPY src ./src
 RUN npm run build
 
-EXPOSE 8088
+RUN npm prune --production
+
+EXPOSE 8013
 
 CMD ["npm", "start"]

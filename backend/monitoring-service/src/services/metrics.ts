@@ -216,4 +216,27 @@ export class MetricsService {
             fraud: this.getFraudMetrics()
         };
     }
+
+    // Phase 8: Regulatory & Business Metrics
+
+    trackComplianceEvent(type: string, details: any): void {
+        console.log(`[COMPLIANCE] Event tracked: ${type}`, details);
+        // In real impl, this would go to a secure WORM storage
+    }
+
+    trackFrauds(amount: number, merchantId: string): void {
+        // Update fraud metrics
+        const existing = this.fraudMetrics.find(f => f.type === 'real_time_detection');
+        if (existing) {
+            existing.count++;
+        } else {
+            this.fraudMetrics.push({ type: 'real_time_detection', count: 1, severity: 'high' });
+        }
+    }
+
+    calculateApprovalRate(): number {
+        const stats = this.getSuccessRate() as any;
+        return stats.successRate || 0;
+    }
 }
+

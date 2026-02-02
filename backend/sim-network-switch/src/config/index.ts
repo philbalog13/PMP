@@ -78,6 +78,9 @@ export const config = {
     services: {
         issuer: envVars.ISSUER_SERVICE_URL as string,
         acquirer: envVars.ACQUIRER_SERVICE_URL as string,
+        pos: envVars.POS_SERVICE_URL || 'http://localhost:8001',
+        blockchain: envVars.BLOCKCHAIN_SERVICE_URL || 'http://localhost:8008',
+        monitoring: envVars.MONITORING_SERVICE_URL || 'http://localhost:4000',
     },
 
     circuitBreaker: {

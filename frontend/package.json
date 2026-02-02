@@ -1,0 +1,23 @@
+{
+    "name": "pmp-frontend",
+    "version": "1.0.0",
+    "private": true,
+    "workspaces": [
+        "shared",
+        "portal",
+        "hsm-web",
+        "tpe-web",
+        "user-cards-web",
+        "3ds-challenge-ui",
+        "monitoring-dashboard"
+    ],
+    "scripts": {
+        "install:all": "npm install",
+        "build:portal": "npm run build -w portal",
+        "build:hsm": "npm run build -w hsm-web",
+        "build:tpe": "npm run build -w tpe-web",
+        "build:cards": "npm run build -w user-cards-web",
+        "build:3ds": "npm run build -w 3ds-challenge-ui",
+        "build:monitoring": "npm run build -w monitoring-dashboard"
+    }
+}

@@ -72,6 +72,24 @@ export const getAccountByPan = (pan: string): Account | null => {
     return accounts.get(pan) || null;
 };
 
+export const createAccount = (data: Partial<Account> & { pan: string }): Account => {
+    const account: Account = {
+        id: data.id || `ACC${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
+        pan: data.pan,
+        balance: data.balance ?? 1000.00,
+        currency: data.currency || 'EUR',
+        dailyLimit: data.dailyLimit || 1000,
+        monthlyLimit: data.monthlyLimit || 5000,
+        dailySpent: 0,
+        monthlySpent: 0,
+        status: 'ACTIVE',
+        cardholderName: data.cardholderName || 'NEW USER',
+        issuerId: data.issuerId || 'ISS001'
+    };
+    accounts.set(account.pan, account);
+    return account;
+};
+
 export const debitAccount = (pan: string, amount: number): { success: boolean; newBalance?: number; error?: string } => {
     const account = accounts.get(pan);
     if (!account) {

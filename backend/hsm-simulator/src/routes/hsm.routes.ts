@@ -6,11 +6,16 @@ const controller = new HSMController();
 
 // PIN Operations
 router.post('/encrypt-pin', controller.encryptPin);
+router.post('/decrypt-pin', controller.decryptPin);
 // router.post('/translate-pin', controller.translatePin);
 
 // MAC Operations
 router.post('/generate-mac', controller.generateMac);
 router.post('/verify-mac', controller.verifyMac);
+
+// Crypto & Data
+router.post('/encrypt-data', controller.encryptData);
+router.post('/calculate-kcv', controller.calculateKcv);
 
 // Key Management
 router.post('/translate-key', controller.translateKey);

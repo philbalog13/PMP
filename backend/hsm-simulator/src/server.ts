@@ -4,7 +4,7 @@ import { KeyStore } from './services/KeyStore';
 
 dotenv.config();
 
-const PORT = process.env.HSM_PORT || 3004;
+const PORT = process.env.HSM_PORT || 8011;
 
 // Initialize KeyStore
 KeyStore.initialize();

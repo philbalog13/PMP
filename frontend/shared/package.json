@@ -1,0 +1,32 @@
+{
+  "name": "@pmp/shared",
+  "version": "1.0.0",
+  "description": "Shared components, hooks, and utilities for PMP frontend applications",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./components/*": "./components/*",
+    "./context/*": "./context/*",
+    "./hooks/*": "./hooks/*",
+    "./lib/*": "./lib/*",
+    "./middleware/*": "./middleware/*",
+    "./styles/*": "./styles/*",
+    "./types/*": "./types/*",
+    "./workshops/*": "./workshops/*"
+  },
+  "dependencies": {
+    "@heroicons/react": "^2.1.0",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.6.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "next": "^16.1.6",
+    "lucide-react": "^0.563.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "typescript": "^5"
+  }
+}

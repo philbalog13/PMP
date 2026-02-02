@@ -158,7 +158,8 @@ export default function CardReaderSim({ onCardRead }: CardReaderSimProps) {
                                     placeholder="4111111111111111"
                                     disabled={isDisabled}
                                     autoComplete="off"
-                                    className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-100 disabled:cursor-not-allowed font-mono"
+                                    className="flex-1 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 border-2 border-slate-400 font-mono font-semibold"
+                                    style={{ color: 'rgba(0,0,0,1)', backgroundColor: 'rgb(255,255,255)', WebkitTextFillColor: 'rgba(0,0,0,1)' }}
                                 />
                                 <button
                                     type="button"
@@ -189,7 +190,8 @@ export default function CardReaderSim({ onCardRead }: CardReaderSimProps) {
                                     }}
                                     placeholder="12/26"
                                     disabled={isDisabled}
-                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-100 disabled:cursor-not-allowed font-mono"
+                                    className="w-full px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 border-2 border-slate-400 font-mono font-semibold"
+                                    style={{ color: 'rgba(0,0,0,1)', backgroundColor: 'rgb(255,255,255)', WebkitTextFillColor: 'rgba(0,0,0,1)' }}
                                 />
                             </div>
 
@@ -203,7 +205,8 @@ export default function CardReaderSim({ onCardRead }: CardReaderSimProps) {
                                     onChange={(e) => setCvv(e.target.value.replace(/\D/g, '').slice(0, 4))}
                                     placeholder="123"
                                     disabled={isDisabled}
-                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-100 disabled:cursor-not-allowed font-mono"
+                                    className="w-full px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 border-2 border-slate-400 font-mono font-semibold"
+                                    style={{ color: 'rgba(0,0,0,1)', backgroundColor: 'rgb(255,255,255)', WebkitTextFillColor: 'rgba(0,0,0,1)' }}
                                 />
                             </div>
                         </div>

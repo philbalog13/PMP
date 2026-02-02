@@ -15,5 +15,11 @@ export const config = {
         timeout: 3000
     },
 
+    // HSM Simulator for cryptographic operations (PIN Block decryption, response signing)
+    hsmSimulator: {
+        url: process.env.HSM_SIMULATOR_URL || 'http://localhost:8009',
+        timeout: 2000
+    },
+
     issuerId: process.env.ISSUER_ID || 'ISS001'
 };

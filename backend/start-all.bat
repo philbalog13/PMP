@@ -7,7 +7,7 @@ REM Installer les dépendances
 if "%1"=="install" (
     echo 📦 Installation des dépendances...
     
-    for %%s in (api-gateway sim-card-service sim-pos-service sim-acquirer-service sim-issuer-service sim-fraud-detection crypto-service key-management) do (
+    for %%s in (api-gateway sim-card-service sim-pos-service sim-acquirer-service sim-issuer-service sim-fraud-detection crypto-service key-management acs-simulator tokenization-service) do (
         if exist "%%s\package.json" (
             echo Installing %%s...
             cd %%s
@@ -33,6 +33,8 @@ if "%1"=="start" (
     start "sim-fraud-detection" cmd /k "cd sim-fraud-detection && npm run dev"
     start "crypto-service" cmd /k "cd crypto-service && npm run dev"
     start "key-management" cmd /k "cd key-management && npm run dev"
+    start "acs-simulator" cmd /k "cd acs-simulator && npm run dev"
+    start "tokenization-service" cmd /k "cd tokenization-service && npm run dev"
     
     echo ✅ Tous les services démarrés!
     echo.
@@ -45,6 +47,8 @@ if "%1"=="start" (
     echo   Fraud Detection:  http://localhost:8007
     echo   Crypto Service:   http://localhost:8010
     echo   Key Management:   http://localhost:8012
+    echo   ACS Simulator:    http://localhost:8013
+    echo   Tokenization:     http://localhost:8014
     goto :eof
 )
 

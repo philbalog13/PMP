@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Outfit, Inter } from 'next/font/google';
 import './globals.css';
 import Sidebar from '@/components/Sidebar';
+import { AuthProvider } from '@shared/context/AuthContext';
 
 const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit' });
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
@@ -22,10 +23,12 @@ export default function RootLayout({
         <link rel="icon" href="/favicon.ico" />
       </head>
       <body className="font-sans bg-slate-950 text-slate-50 selection:bg-blue-500/30 overflow-x-hidden antialiased">
-        <Sidebar />
-        <main className="md:ml-64 min-h-screen">
-          {children}
-        </main>
+        <AuthProvider>
+          <Sidebar />
+          <main className="md:ml-64 min-h-screen">
+            {children}
+          </main>
+        </AuthProvider>
       </body>
     </html>
   );

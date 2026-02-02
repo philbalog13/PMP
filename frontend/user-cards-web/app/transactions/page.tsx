@@ -1,7 +1,7 @@
 'use client';
 
-import GlassCard from '@/components/ui/GlassCard';
-import PremiumButton from '@/components/ui/PremiumButton';
+import GlassCard from '@shared/components/GlassCard';
+import PremiumButton from '@shared/components/PremiumButton';
 import { Search, Filter, Download, ArrowUpRight, ArrowDownLeft, Store, CreditCard } from 'lucide-react';
 
 export default function TransactionsPage() {

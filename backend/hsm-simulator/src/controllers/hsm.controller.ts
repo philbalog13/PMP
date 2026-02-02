@@ -29,6 +29,10 @@ export class HSMController {
         new HSMController().handleCommand('encrypt-pin', req, res);
     }
 
+    decryptPin(req: Request, res: Response) {
+        new HSMController().handleCommand('decrypt-pin', req, res);
+    }
+
     generateMac(req: Request, res: Response) {
         new HSMController().handleCommand('generate-mac', req, res);
     }
@@ -43,6 +47,14 @@ export class HSMController {
 
     generateCvv(req: Request, res: Response) {
         new HSMController().handleCommand('generate-cvv', req, res);
+    }
+
+    encryptData(req: Request, res: Response) {
+        new HSMController().handleCommand('encrypt-data', req, res);
+    }
+
+    calculateKcv(req: Request, res: Response) {
+        new HSMController().handleCommand('calculate-kcv', req, res);
     }
 
     // Admin Endpoints - Direct Access to Firmware Internals for Education

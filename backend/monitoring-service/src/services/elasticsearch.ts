@@ -7,15 +7,15 @@ import { Client } from '@elastic/elasticsearch';
 interface IndexedDocument {
     id: string;
     index: string;
-    body: object;
+    body: Record<string, any>;
 }
 
 interface SearchQuery {
     index: string;
-    query?: object;
+    query?: Record<string, any>;
     size?: number;
     from?: number;
-    sort?: object[];
+    sort?: Record<string, any>[];
 }
 
 export class ElasticsearchService {
@@ -70,8 +70,8 @@ export class ElasticsearchService {
         }
     }
 
-    private getIndexMapping(indexName: string): object {
-        const mappings: Record<string, object> = {
+    private getIndexMapping(indexName: string): Record<string, any> {
+        const mappings: Record<string, Record<string, any>> = {
             transactions: {
                 mappings: {
                     properties: {
@@ -171,7 +171,7 @@ export class ElasticsearchService {
                     query: query.query || { match_all: {} },
                     size: query.size || 100,
                     from: query.from || 0,
-                    sort: query.sort || [{ timestamp: { order: 'desc' } }]
+                    sort: (query.sort || [{ timestamp: { order: 'desc' } }]) as any
                 }
             });
 
@@ -216,7 +216,7 @@ export class ElasticsearchService {
     }
 
     // Agrégations
-    async aggregate(index: string, aggs: object): Promise<any> {
+    async aggregate(index: string, aggs: Record<string, any>): Promise<any> {
         if (!this.client || !this.connected) {
             return this.simulateAggregation(index, aggs);
         }
@@ -236,7 +236,7 @@ export class ElasticsearchService {
         }
     }
 
-    private simulateAggregation(index: string, aggs: object): any {
+    private simulateAggregation(index: string, aggs: Record<string, any>): any {
         // Retourner des agrégations simulées
         return {
             byResponseCode: {
@@ -255,7 +255,7 @@ export class ElasticsearchService {
     }
 
     // Obtenir les métriques en temps réel
-    async getRealtimeMetrics(): Promise<object> {
+    async getRealtimeMetrics(): Promise<Record<string, any>> {
         const now = new Date();
         const oneMinuteAgo = new Date(now.getTime() - 60000);
 

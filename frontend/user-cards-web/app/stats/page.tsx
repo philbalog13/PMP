@@ -1,6 +1,6 @@
 'use client';
 
-import GlassCard from '@/components/ui/GlassCard';
+import GlassCard from '@shared/components/GlassCard';
 import { PieChart, TrendingUp, BarChart3, Calendar } from 'lucide-react';
 
 export default function StatsPage() {

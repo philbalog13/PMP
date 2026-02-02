@@ -164,6 +164,22 @@ VALUES
 \echo '✓ Audit logs inserted'
 
 -- ==============================================
+-- Insert Test Users
+-- ==============================================
+
+\echo 'Inserting test users...'
+
+INSERT INTO users.users (username, email, password_hash, first_name, last_name, role) VALUES
+('formateur', 'trainer@pmp.local', '$2b$10$rKJVO8YQKlN.4b5FtT1kNOqH3xYQf5WqX5h7QKL8JpVr5R9KqVl9K', 'System', 'Formateur', 'ROLE_FORMATEUR'),
+('etudiant', 'student@pmp.local', '$2b$10$rKJVO8YQKlN.4b5FtT1kNOqH3xYQf5WqX5h7QKL8JpVr5R9KqVl9K', 'Jean', 'Etudiant', 'ROLE_ETUDIANT'),
+('client', 'client@pmp.local', '$2b$10$rKJVO8YQKlN.4b5FtT1kNOqH3xYQf5WqX5h7QKL8JpVr5R9KqVl9K', 'Sophie', 'Client', 'ROLE_CLIENT'),
+('marchand', 'merchant@pmp.local', '$2b$10$rKJVO8YQKlN.4b5FtT1kNOqH3xYQf5WqX5h7QKL8JpVr5R9KqVl9K', 'Pierre', 'Commercant', 'ROLE_MARCHAND')
+ON CONFLICT (username) DO UPDATE 
+SET role = EXCLUDED.role, email = EXCLUDED.email;
+
+\echo '✓ Test users inserted'
+
+-- ==============================================
 -- Summary
 -- ==============================================
 

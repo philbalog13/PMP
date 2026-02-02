@@ -6,7 +6,8 @@ import {
     History,
     Settings,
     LogOut,
-    PieChart
+    PieChart,
+    GraduationCap
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -19,6 +20,7 @@ export default function Sidebar() {
         { icon: CreditCard, label: 'Mes Cartes', href: '/cards' },
         { icon: History, label: 'Transactions', href: '/transactions' },
         { icon: PieChart, label: 'Statistiques', href: '/stats' },
+        { icon: GraduationCap, label: 'Formation', href: '/learn' },
     ];
 
     return (
@@ -58,6 +60,13 @@ export default function Sidebar() {
             </div>
 
             <div className="mt-auto p-8 border-t border-slate-800">
+                <a
+                    href={`${process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:3000'}/`}
+                    className="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white transition-colors mb-2"
+                >
+                    <LogOut size={20} />
+                    <span className="font-medium">Retour Portail</span>
+                </a>
                 <Link
                     href="/settings"
                     className="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white transition-colors"

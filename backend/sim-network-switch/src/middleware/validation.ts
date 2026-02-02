@@ -93,6 +93,14 @@ export const transactionRequestSchema = Joi.object({
     additionalData: Joi.object()
         .optional()
         .description('Additional transaction data'),
+
+    transactionId: Joi.string()
+        .optional()
+        .description('Internal transaction ID'),
+
+    transactionType: Joi.string()
+        .optional()
+        .description('Simplified transaction type'),
 });
 
 /**

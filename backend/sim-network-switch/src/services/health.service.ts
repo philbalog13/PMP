@@ -211,9 +211,11 @@ export class HealthService {
      */
     private performMemoryCheck(): HealthCheckResponse['checks'][0] {
         const memoryUsage = process.memoryUsage();
+        // Check against a reasonable max heap size (e.g., 512MB) instead of current heap total
+        // V8 expands heap dynamically, so heapUsed/heapTotal is often high
+        const MAX_HEAP_SIZE_MB = 512;
         const heapUsedMB = Math.round(memoryUsage.heapUsed / 1024 / 1024);
-        const heapTotalMB = Math.round(memoryUsage.heapTotal / 1024 / 1024);
-        const usagePercent = (heapUsedMB / heapTotalMB) * 100;
+        const usagePercent = (heapUsedMB / MAX_HEAP_SIZE_MB) * 100;
 
         let status: 'pass' | 'warn' | 'fail' = 'pass';
         if (usagePercent > 90) status = 'fail';
@@ -222,7 +224,7 @@ export class HealthService {
         return {
             name: 'memory',
             status,
-            message: `Heap: ${heapUsedMB}MB / ${heapTotalMB}MB (${usagePercent.toFixed(1)}%)`,
+            message: `Heap: ${heapUsedMB}MB / ${MAX_HEAP_SIZE_MB}MB (${usagePercent.toFixed(1)}%)`,
         };
     }
 

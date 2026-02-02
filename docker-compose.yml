@@ -20,6 +20,8 @@ volumes:
     driver: local
   grafana-data:
     driver: local
+  elasticsearch-data:
+    driver: local
 
 services:
   # ============================================
@@ -36,15 +38,15 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_INITDB_ARGS: ${POSTGRES_INITDB_ARGS}
       PGDATA: ${PGDATA}
+      POSTGRES_HOST_AUTH_METHOD: trust
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./scripts/init-databases.sh:/docker-entrypoint-initdb.d/01-init-databases.sh:ro
       - ./scripts/seed-pedagogical-data.sql:/docker-entrypoint-initdb.d/02-seed-data.sql:ro
     ports:
-      - "5432:5432"
+      - "5435:5432"
     networks:
-      monetic-network:
-        ipv4_address: 172.20.0.10
+      monetic-network: {}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
@@ -81,8 +83,7 @@ services:
     ports:
       - "6379:6379"
     networks:
-      monetic-network:
-        ipv4_address: 172.20.0.11
+      monetic-network: {}
     healthcheck:
       test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
       interval: 10s
@@ -141,28 +142,102 @@ services:
   # FRONTEND SERVICES
   # ============================================
 
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.9
+    container_name: pmp-elasticsearch
+    environment:
+      - node.name=elasticsearch
+      - cluster.name=es-docker-cluster
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - monetic-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q 'status.*green\\|status.*yellow'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.17.9
+    container_name: pmp-kibana
+    ports:
+      - "5601:5601"
+    environment:
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      ELASTICSEARCH_HOSTS: '["http://elasticsearch:9200"]'
+    networks:
+      - monetic-network
+    depends_on:
+      - elasticsearch
+
+  portal:
+    build:
+      context: ./frontend
+      dockerfile: portal/Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=http://localhost:8000
+    container_name: pmp-portal
+    restart: unless-stopped
+    user: "node:node"
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - PORT=3000
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    ports:
+      - "3000:3000"
+    networks:
+      - monetic-network
+    depends_on:
+      - api-gateway
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
   client-interface:
     build:
-      context: ./frontend/tpe-web
-      dockerfile: Dockerfile
+      context: ./frontend
+      dockerfile: tpe-web/Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=http://api-gateway:8000
     container_name: pmp-client-interface
     restart: unless-stopped
     user: "node:node"
     environment:
       - NODE_ENV=${NODE_ENV}
-      - REACT_APP_API_URL=http://nginx/api
-      - REACT_APP_WS_URL=ws://nginx/ws
+      - NEXT_PUBLIC_API_URL=http://api-gateway:8000
     ports:
-      - "3000:80"
+      - "3003:3000"
     networks:
       - monetic-network
     depends_on:
       - api-gateway
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80"]
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 60s
     deploy:
       resources:
         limits:
@@ -179,26 +254,30 @@ services:
     cap_drop:
       - ALL
 
-  merchant-interface:
+
+  sim-monitoring-service:
     build:
-      context: ./frontend/merchant
+      context: ./backend/monitoring-service
       dockerfile: Dockerfile
-    container_name: pmp-merchant-interface
+    container_name: pmp-monitoring-service
     restart: unless-stopped
     user: "node:node"
     environment:
       - NODE_ENV=${NODE_ENV}
-      - VITE_API_URL=http://nginx/api
+      - PORT=3005
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
     ports:
-      - "3001:80"
+      - "3005:3005"
     networks:
       - monetic-network
     depends_on:
-      - api-gateway
+      redis:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80"]
-      interval: 30s
-      timeout: 10s
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3005/health"]
+      interval: 15s
+      timeout: 5s
       retries: 3
     deploy:
       resources:
@@ -210,27 +289,133 @@ services:
           memory: 128M
     logging:
       driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    cap_drop:
-      - ALL
+    labels:
+      - "prometheus.scrape=true"
+      - "prometheus.port=3005"
+      - "prometheus.path=/metrics"
 
   user-cards-web:
     build:
-      context: ./frontend/user-cards-web
-      dockerfile: Dockerfile
+      context: ./frontend
+      dockerfile: user-cards-web/Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=http://api-gateway:8000
     container_name: pmp-user-cards-web
     restart: unless-stopped
     environment:
       - NODE_ENV=${NODE_ENV}
       - PORT=3000
+      - NEXT_PUBLIC_API_URL=http://api-gateway:8000
     ports:
       - "3004:3000"
     networks:
       - monetic-network
     depends_on:
       - api-gateway
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    cap_drop:
+      - ALL
+
+  hsm-web:
+    build:
+      context: ./frontend
+      dockerfile: hsm-web/Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=http://api-gateway:8000
+    container_name: pmp-hsm-web
+    restart: unless-stopped
+    user: "node:node"
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - PORT=3000
+      - NEXT_PUBLIC_API_URL=http://api-gateway:8000
+    ports:
+      - "3006:3000"
+    networks:
+      - monetic-network
+    depends_on:
+      - api-gateway
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  threeds-challenge-ui:
+    build:
+      context: ./frontend
+      dockerfile: 3ds-challenge-ui/Dockerfile
+    container_name: pmp-3ds-challenge-ui
+    restart: unless-stopped
+    ports:
+      - "3088:3088"
+    networks:
+      - monetic-network
+    depends_on:
+      - api-gateway
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3088"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  monitoring-dashboard:
+    build:
+      context: ./frontend
+      dockerfile: monitoring-dashboard/Dockerfile
+    container_name: pmp-monitoring-dashboard
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    networks:
+      - monetic-network
+    depends_on:
+      - sim-monitoring-service
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000"]
       interval: 30s
@@ -249,8 +434,6 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-    cap_drop:
-      - ALL
 
   # ============================================
   # API GATEWAY
@@ -270,14 +453,29 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS}
       - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS}
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - CARD_SERVICE_URL=http://sim-card-service:8001
       - POS_SERVICE_URL=http://sim-pos-service:8002
       - ACQUIRER_SERVICE_URL=http://sim-acquirer-service:8003
+      - SIM_CARD_SERVICE_URL=http://sim-card-service:8001
+      - SIM_POS_SERVICE_URL=http://sim-pos-service:8002
+      - SIM_ACQUIRER_SERVICE_URL=http://sim-acquirer-service:8003
+      - SIM_NETWORK_SWITCH_URL=http://sim-network-switch:8004
+      - SIM_ISSUER_SERVICE_URL=http://sim-issuer-service:8005
+      - SIM_AUTH_ENGINE_URL=http://sim-auth-engine:8006
+      - SIM_FRAUD_DETECTION_URL=http://sim-fraud-detection:8007
+      - CRYPTO_SERVICE_URL=http://crypto-service:8010
+      - HSM_SIMULATOR_URL=http://hsm-simulator:8011
+      - KEY_MANAGEMENT_URL=http://key-management:8012
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
     ports:
       - "8000:8000"
     networks:
       - monetic-network
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
       sim-card-service:
@@ -287,7 +485,7 @@ services:
       sim-acquirer-service:
         condition: service_started
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8000/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8000/health"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -329,6 +527,8 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
       - CRYPTO_SERVICE_URL=http://crypto-service:8010
+    ports:
+      - "8001:8001"
     networks:
       - monetic-network
     depends_on:
@@ -375,6 +575,8 @@ services:
       - PORT=8002
       - CRYPTO_SERVICE_URL=http://crypto-service:8010
       - ACQUIRER_SERVICE_URL=http://sim-acquirer-service:8003
+    ports:
+      - "8002:8002"
     networks:
       - monetic-network
     depends_on:
@@ -416,6 +618,8 @@ services:
       - PORT=8003
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - NETWORK_SWITCH_URL=http://sim-network-switch:8004
+    ports:
+      - "8003:8003"
     networks:
       - monetic-network
     depends_on:
@@ -458,13 +662,15 @@ services:
       - PORT=8004
       - ISSUER_SERVICE_URL=http://sim-issuer-service:8005
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+    ports:
+      - "8004:8004"
     networks:
       - monetic-network
     depends_on:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8004/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8004/health"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -500,6 +706,8 @@ services:
       - PORT=8005
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - AUTH_ENGINE_URL=http://sim-auth-engine:8006
+    ports:
+      - "8005:8005"
     networks:
       - monetic-network
     depends_on:
@@ -544,6 +752,8 @@ services:
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
       - CRYPTO_SERVICE_URL=http://crypto-service:8010
       - FRAUD_DETECTION_URL=http://sim-fraud-detection:8007
+    ports:
+      - "8006:8006"
     networks:
       - monetic-network
     depends_on:
@@ -554,7 +764,7 @@ services:
       crypto-service:
         condition: service_started
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8006/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8006/health"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -592,13 +802,15 @@ services:
       - FRAUD_THRESHOLD_LOW=${FRAUD_THRESHOLD_LOW}
       - FRAUD_THRESHOLD_MEDIUM=${FRAUD_THRESHOLD_MEDIUM}
       - FRAUD_THRESHOLD_HIGH=${FRAUD_THRESHOLD_HIGH}
+    ports:
+      - "8007:8007"
     networks:
       - monetic-network
     depends_on:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8007/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8007/health"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -640,6 +852,8 @@ services:
       - KEY_MANAGEMENT_URL=http://key-management:8012
       - PIN_ENCRYPTION_ALGORITHM=${PIN_ENCRYPTION_ALGORITHM}
       - MAC_ALGORITHM=${MAC_ALGORITHM}
+    ports:
+      - "8010:8010"
     networks:
       - monetic-network
     depends_on:
@@ -683,6 +897,8 @@ services:
       - NODE_ENV=${NODE_ENV}
       - PORT=8011
       - LMK_KEY_FILE=${LMK_KEY_FILE}
+    ports:
+      - "8011:8011"
     networks:
       - monetic-network
     volumes:
@@ -725,6 +941,8 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - KEY_ROTATION_INTERVAL_DAYS=${KEY_ROTATION_INTERVAL_DAYS}
       - MASTER_KEY_FILE=${MASTER_KEY_FILE}
+    ports:
+      - "8012:8012"
     networks:
       - monetic-network
     depends_on:
@@ -767,10 +985,10 @@ services:
       dockerfile: Dockerfile
     container_name: pmp-acs-simulator
     restart: unless-stopped
+    user: "node:node"
     environment:
       - NODE_ENV=${NODE_ENV}
       - PORT=8013
-      - THREE_DS_VERSION=2.2.0
     ports:
       - "8013:8013"
     networks:
@@ -783,16 +1001,22 @@ services:
     deploy:
       resources:
         limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
           cpus: '0.25'
           memory: 128M
-        reservations:
-          cpus: '0.1'
-          memory: 64M
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
+    labels:
+      - "prometheus.scrape=true"
+      - "prometheus.port=8013"
+      - "prometheus.path=/metrics"
+    cap_drop:
+      - ALL
 
   tokenization-service:
     build:
@@ -800,16 +1024,18 @@ services:
       dockerfile: Dockerfile
     container_name: pmp-tokenization-service
     restart: unless-stopped
+    user: "node:node"
     environment:
       - NODE_ENV=${NODE_ENV}
       - PORT=8014
-      - CRYPTO_SERVICE_URL=http://crypto-service:8010
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
     ports:
       - "8014:8014"
     networks:
       - monetic-network
     depends_on:
-      - crypto-service
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8014/health"]
       interval: 15s
@@ -818,16 +1044,67 @@ services:
     deploy:
       resources:
         limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
           cpus: '0.25'
           memory: 128M
-        reservations:
-          cpus: '0.1'
-          memory: 64M
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
+    labels:
+      - "prometheus.scrape=true"
+      - "prometheus.port=8014"
+      - "prometheus.path=/metrics"
+    cap_drop:
+      - ALL
+
+  directory-server:
+    build:
+      context: ./backend/directory-server
+      dockerfile: Dockerfile
+    container_name: pmp-directory-server
+    restart: unless-stopped
+    user: "node:node"
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - PORT=8015
+      - ACS_SIMULATOR_URL=http://acs-simulator:8013
+    ports:
+      - "8015:8015"
+    networks:
+      - monetic-network
+    depends_on:
+      - acs-simulator
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8015/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "prometheus.scrape=true"
+      - "prometheus.port=8015"
+      - "prometheus.path=/metrics"
+    cap_drop:
+      - ALL
+
+
+
 
   # ============================================
   # NGINX REVERSE PROXY
@@ -850,7 +1127,6 @@ services:
     depends_on:
       - api-gateway
       - client-interface
-      - merchant-interface
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
       interval: 10s

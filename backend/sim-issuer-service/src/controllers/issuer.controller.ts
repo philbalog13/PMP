@@ -61,3 +61,13 @@ export const updateBalance = (req: Request, res: Response): void => {
 
     res.json({ success: true, message: 'Balance updated', newBalance: balance });
 };
+
+export const createAccount = (req: Request, res: Response): void => {
+    const { pan, balance, cardholderName } = req.body;
+    if (!pan) {
+        res.status(400).json({ success: false, error: 'pan is required' });
+        return;
+    }
+    const account = accountService.createAccount({ pan, balance, cardholderName });
+    res.status(201).json({ success: true, data: account });
+};

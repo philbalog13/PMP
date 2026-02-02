@@ -117,6 +117,10 @@ export interface TransactionRequest {
 
     // Additional Data
     additionalData?: Record<string, unknown>;
+
+    // Optional fields from acquirer
+    transactionId?: string;
+    transactionType?: string; // 'PURCHASE' | 'PREAUTH' | 'REFUND' | 'CANCEL'
 }
 
 /**

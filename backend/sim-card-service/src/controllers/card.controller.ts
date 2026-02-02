@@ -5,9 +5,12 @@ import { validateLuhn, getCardNetwork, maskPan } from '../services/luhn.service'
 /**
  * Create a new card
  */
-export const createCard = (req: Request, res: Response): void => {
+/**
+ * Create a new card
+ */
+export const createCard = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { cardholderName, cardType, issuerId } = req.body;
+        const { cardholderName, cardType, issuerId, balance } = req.body;
 
         if (!cardholderName) {
             res.status(400).json({
@@ -17,7 +20,7 @@ export const createCard = (req: Request, res: Response): void => {
             return;
         }
 
-        const card = cardService.createCard({ cardholderName, cardType, issuerId });
+        const card = await cardService.createCard({ cardholderName, cardType, issuerId, balance });
 
         res.status(201).json({
             success: true,
@@ -50,11 +53,11 @@ export const createCard = (req: Request, res: Response): void => {
 /**
  * Get all cards (paginated)
  */
-export const getAllCards = (req: Request, res: Response): void => {
+export const getAllCards = async (req: Request, res: Response): Promise<void> => {
     const page = parseInt(req.query.page as string) || 1;
     const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
 
-    const result = cardService.getAllCards(page, limit);
+    const result = await cardService.getAllCards(page, limit);
 
     res.json({
         success: true,
@@ -71,10 +74,10 @@ export const getAllCards = (req: Request, res: Response): void => {
 /**
  * Get card by PAN
  */
-export const getCardByPan = (req: Request, res: Response): void => {
+export const getCardByPan = async (req: Request, res: Response): Promise<void> => {
     const { pan } = req.params;
 
-    const card = cardService.getCardByPan(pan);
+    const card = await cardService.getCardByPan(pan);
 
     if (!card) {
         res.status(404).json({
@@ -101,7 +104,7 @@ export const getCardByPan = (req: Request, res: Response): void => {
 /**
  * Update card status
  */
-export const updateCardStatus = (req: Request, res: Response): void => {
+export const updateCardStatus = async (req: Request, res: Response): Promise<void> => {
     const { pan } = req.params;
     const { status } = req.body;
 
@@ -114,7 +117,7 @@ export const updateCardStatus = (req: Request, res: Response): void => {
         return;
     }
 
-    const card = cardService.updateCardStatus(pan, status);
+    const card = await cardService.updateCardStatus(pan, status);
 
     if (!card) {
         res.status(404).json({
@@ -137,10 +140,10 @@ export const updateCardStatus = (req: Request, res: Response): void => {
 /**
  * Delete card
  */
-export const deleteCard = (req: Request, res: Response): void => {
+export const deleteCard = async (req: Request, res: Response): Promise<void> => {
     const { pan } = req.params;
 
-    const deleted = cardService.deleteCard(pan);
+    const deleted = await cardService.deleteCard(pan);
 
     if (!deleted) {
         res.status(404).json({
@@ -197,7 +200,7 @@ export const validatePan = (req: Request, res: Response): void => {
 /**
  * Validate card for transaction
  */
-export const validateCardForTransaction = (req: Request, res: Response): void => {
+export const validateCardForTransaction = async (req: Request, res: Response): Promise<void> => {
     const { pan, cvv, expiryMonth, expiryYear } = req.body;
 
     if (!pan || !cvv || !expiryMonth || !expiryYear) {
@@ -208,7 +211,7 @@ export const validateCardForTransaction = (req: Request, res: Response): void =>
         return;
     }
 
-    const result = cardService.validateCard(pan, cvv, expiryMonth, expiryYear);
+    const result = await cardService.validateCard(pan, cvv, expiryMonth, expiryYear);
 
     res.json({
         success: result.valid,

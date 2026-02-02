@@ -1,76 +1,122 @@
 'use client';
 
-import { useUserStore } from '@/lib/store';
-import Card3D from '@/components/card/Card3D';
-import CardGenerator from '@/components/card/CardGenerator';
-import GlassCard from '@/components/ui/GlassCard';
-import PremiumButton from '@/components/ui/PremiumButton';
-import { Plus, CreditCard, ShieldCheck, Globe } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowLeft, CreditCard, Plus, Shield, Check } from 'lucide-react';
+import GlassCard from '@shared/components/GlassCard';
+import { useState } from 'react';
+
+// Mock cards data
+const initialCards = [
+    {
+        id: '1',
+        type: 'mastercard',
+        number: '**** **** **** 4242',
+        holder: 'Jean Dupont',
+        expiry: '12/28',
+        status: 'active',
+        balance: 2450.50,
+        color: 'from-purple-600 to-blue-600'
+    },
+    {
+        id: '2',
+        type: 'visa',
+        number: '**** **** **** 8899',
+        holder: 'Jean Dupont',
+        expiry: '09/27',
+        status: 'active',
+        balance: 120.00,
+        color: 'from-emerald-600 to-teal-600'
+    }
+];
 
 export default function CardsPage() {
-    const { cards } = useUserStore();
+    const [cards] = useState(initialCards);
 
     return (
-        <div className="min-h-screen p-6 md:p-10 max-w-[1600px] mx-auto space-y-10">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="min-h-screen p-6 md:p-10 max-w-[1600px] mx-auto">
+            {/* Header */}
+            <header className="mb-12 flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
-                    <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent font-heading">
-                        Vos Cartes
+                    <Link href="/" className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition mb-2">
+                        <ArrowLeft className="w-4 h-4" />
+                        Retour au Dashboard
+                    </Link>
+                    <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+                        <CreditCard className="w-8 h-8 text-blue-500" />
+                        Mes Cartes
                     </h1>
-                    <p className="text-slate-400 mt-2">Gérez vos cartes virtuelles et physiques.</p>
                 </div>
-                <CardGenerator />
-            </div>
 
-            {cards.length === 0 ? (
-                <GlassCard className="py-24 flex flex-col items-center justify-center border-dashed border-slate-700">
-                    <div className="w-24 h-24 bg-slate-800/50 rounded-full flex items-center justify-center mb-6 shadow-inner border border-white/5">
-                        <CreditCard size={40} className="text-slate-600" />
-                    </div>
-                    <h3 className="text-xl font-bold text-slate-300">Aucune carte active</h3>
-                    <p className="text-slate-500 mt-2 mb-8 text-center max-w-md">
-                        Commencez par générer une carte virtuelle sécurisée pour vos achats en ligne.
-                    </p>
-                </GlassCard>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-                    {cards.map(card => (
-                        <div key={card.id} className="space-y-6">
-                            <div className="group relative perspective-1000">
-                                <div className="absolute -inset-4 bg-gradient-to-r from-blue-600/30 to-purple-600/30 blur-2xl rounded-[30px] opacity-0 group-hover:opacity-100 transition duration-700" />
-                                <Card3D card={card} showDetails={true} />
+                <Link
+                    href="/cards/add"
+                    className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2"
+                >
+                    <Plus className="w-5 h-5" />
+                    Nouvelle Carte
+                </Link>
+            </header>
+
+            {/* Cards Grid */}
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {cards.map((card) => (
+                    <div key={card.id} className="group relative">
+                        <div className={`absolute inset-0 bg-gradient-to-br ${card.color} opacity-20 blur-xl group-hover:opacity-30 transition duration-500`} />
+                        <GlassCard className="h-full relative overflow-hidden group-hover:-translate-y-1 transition-transform duration-300">
+                            {/* Card Visual */}
+                            <div className={`h-48 rounded-2xl bg-gradient-to-br ${card.color} p-6 relative overflow-hidden shadow-lg mb-6`}>
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10" />
+                                <div className="absolute bottom-0 left-0 w-24 h-24 bg-black/10 rounded-full blur-xl -ml-5 -mb-5" />
+
+                                <div className="flex justify-between items-start mb-8 relative z-10">
+                                    <div className="w-12 h-8 bg-white/20 rounded-md backdrop-blur-sm border border-white/10" />
+                                    <span className="font-bold text-white italic tracking-wider uppercase">{card.type}</span>
+                                </div>
+
+                                <div className="text-xl font-mono text-white tracking-widest mb-4 relative z-10 shadow-black drop-shadow-md">
+                                    {card.number}
+                                </div>
+
+                                <div className="flex justify-between items-end relative z-10">
+                                    <div>
+                                        <div className="text-[10px] text-white/70 uppercase mb-1">Titulaire</div>
+                                        <div className="text-sm font-medium text-white tracking-wide">{card.holder}</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-[10px] text-white/70 uppercase mb-1">Expires</div>
+                                        <div className="text-sm font-medium text-white tracking-wide">{card.expiry}</div>
+                                    </div>
+                                </div>
                             </div>
 
-                            <GlassCard className="p-4 space-y-3">
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="text-slate-400">Statut</span>
-                                    <span className="text-green-400 font-semibold bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20">Active</span>
+                            {/* Details & Actions */}
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-center pb-4 border-b border-white/5">
+                                    <span className="text-slate-400">Solde disponible</span>
+                                    <span className="text-xl font-bold text-white">{card.balance.toFixed(2)} €</span>
                                 </div>
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="text-slate-400">Plafond</span>
-                                    <span className="text-white font-medium">2,500.00 €</span>
-                                </div>
-                                <div className="pt-2 flex gap-2">
-                                    <PremiumButton variant="secondary" size="sm" className="w-full">
-                                        <ShieldCheck size={14} className="mr-2" /> Options
-                                    </PremiumButton>
-                                    <PremiumButton variant="secondary" size="sm" className="w-full">
-                                        <Globe size={14} className="mr-2" /> Limites
-                                    </PremiumButton>
-                                </div>
-                            </GlassCard>
-                        </div>
-                    ))}
 
-                    {/* Add New Card Slot */}
-                    <GlassCard variant="interactive" className="min-h-[300px] flex flex-col items-center justify-center border-dashed border-slate-700 hover:border-blue-500/50 group h-full">
-                        <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
-                            <Plus size={32} />
-                        </div>
-                        <span className="font-semibold text-slate-300 group-hover:text-white transition">Nouvelle Carte</span>
-                    </GlassCard>
-                </div>
-            )}
+                                <div className="flex gap-2">
+                                    <button className="flex-1 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-sm font-medium transition border border-white/5 flex items-center justify-center gap-2">
+                                        <Shield className="w-4 h-4" />
+                                        Sécurité
+                                    </button>
+                                    <button className="flex-1 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-sm font-medium transition border border-white/5">
+                                        Détails
+                                    </button>
+                                </div>
+                            </div>
+                        </GlassCard>
+                    </div>
+                ))}
+
+                {/* Add New Card Placeholder */}
+                <Link href="/cards/add" className="group rounded-3xl border-2 border-dashed border-white/10 hover:border-blue-500/50 bg-white/[0.02] hover:bg-white/[0.05] transition flex flex-col items-center justify-center min-h-[300px]">
+                    <div className="w-16 h-16 rounded-full bg-white/5 group-hover:bg-blue-500/20 flex items-center justify-center mb-4 transition">
+                        <Plus className="w-8 h-8 text-slate-500 group-hover:text-blue-400 transition" />
+                    </div>
+                    <span className="font-medium text-slate-400 group-hover:text-blue-400 transition">Ajouter une carte</span>
+                </Link>
+            </div>
         </div>
     );
 }

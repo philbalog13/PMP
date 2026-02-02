@@ -35,14 +35,42 @@ export class ThreeDSecureService {
     private readonly VERY_HIGH_RISK_THRESHOLD = 80;
 
     /**
-     * Perform risk-based authentication
+     * Perform risk-based authentication (RBA)
+     * EDUCATIONAL TIP: This is the "Frictionless" entry point. 
+     * The Directory Server (DS) asks the ACS if the transaction is risky.
      */
     async authenticate(request: ThreeDSRequest): Promise<ThreeDSResult> {
+        console.log(`\n[3DS-ACS] 🛡️ Incoming Authentication Request (AReq)`);
+        console.log(`[3DS-ACS] Transaction ID: ${request.transactionId}`);
+        console.log(`[3DS-ACS] Amount: ${request.amount} ${request.currency}`);
+
         const riskScore = this.calculateRiskScore(request);
         const protocolVersion = this.determineProtocolVersion(request);
 
+        // PEDAGOGICAL SCENARIOS
+        if (request.cardholderName?.toUpperCase() === 'SUCCESS') {
+            console.log(`[3DS-ACS] ✅ Scenario FORCE_SUCCESS detected.`);
+            return {
+                transStatus: 'Y',
+                authenticationValue: this.generateAuthValue(),
+                eci: '05',
+                riskScore: 0,
+                protocolVersion
+            };
+        }
+
+        if (request.cardholderName?.toUpperCase() === 'FAILURE') {
+            console.log(`[3DS-ACS] ❌ Scenario FORCE_FAILURE detected.`);
+            return {
+                transStatus: 'N',
+                riskScore: 95,
+                protocolVersion
+            };
+        }
+
         // Frictionless flow (low risk)
         if (riskScore < this.HIGH_RISK_THRESHOLD) {
+            console.log(`[3DS-ACS] ✌️ Low Risk (${riskScore}). Proceeding with Frictionless Flow (transStatus: Y).`);
             return {
                 transStatus: 'Y',
                 authenticationValue: this.generateAuthValue(),
@@ -53,6 +81,7 @@ export class ThreeDSecureService {
         }
 
         // Challenge required
+        console.log(`[3DS-ACS] ⚠️ Medium/High Risk (${riskScore}). Challenge Required (transStatus: C).`);
         return {
             transStatus: 'C',
             challengeUrl: `http://localhost:3005/3ds-challenge?txId=${request.transactionId}`,
@@ -64,52 +93,58 @@ export class ThreeDSecureService {
 
     /**
      * Calculate transaction risk score
+     * EDUCATIONAL TIP: Banks use IP address, device fingerprinting, and history to calculate this.
      */
     private calculateRiskScore(request: ThreeDSRequest): number {
         let score = 0;
 
         // Amount-based risk
-        if (request.amount > 500) score += 30;
-        else if (request.amount > 100) score += 15;
+        if (request.amount > 500) score += 40;
+        else if (request.amount > 100) score += 20;
 
-        // Random behavioral factor
-        score += Math.floor(Math.random() * 40);
+        // Name-based simulation
+        if (request.cardholderName?.includes('TEST')) score += 10;
+
+        // Random factor to simulate reality
+        score += Math.floor(Math.random() * 20);
 
         return Math.min(score, 100);
     }
 
-    /**
-     * Determine 3DS protocol version
-     */
     private determineProtocolVersion(request: ThreeDSRequest): string {
-        // In real implementation, this would check card BIN and merchant config
         return '2.2.0';
     }
 
-    /**
-     * Generate authentication value (CAVV/AAV)
-     */
     private generateAuthValue(): string {
-        return Buffer.from(`AAV_${Date.now()}_${Math.random()}`).toString('base64').substring(0, 28);
+        return Buffer.from(`AAV_EDU_${Date.now()}`).toString('base64').substring(0, 28);
     }
 
     /**
      * Verify OTP for challenge flow
+     * EDUCATIONAL TIP: The CReq (Challenge Request) carries the OTP. 
+     * The ACS verifies it and returns a CRes (Challenge Response).
      */
     async verifyChallenge(acsTransId: string, otp: string): Promise<ThreeDSResult> {
-        // Simplified OTP verification
+        console.log(`\n[3DS-ACS] 🔑 Received Challenge Verification (CReq)`);
+        console.log(`[3DS-ACS] ACS Trans ID: ${acsTransId}`);
+        console.log(`[3DS-ACS] OTP provided: ${otp}`);
+
+        // Simplified Pedagogical OTP verification
+        // Code 123456 is ALWAYS valid in this lab
         const isValid = otp === '123456';
 
         if (isValid) {
+            console.log(`[3DS-ACS] ✅ OTP Verified. Returning transStatus: Y`);
             return {
                 transStatus: 'Y',
                 authenticationValue: this.generateAuthValue(),
                 eci: '05',
-                riskScore: 45,
+                riskScore: 30,
                 protocolVersion: '2.2.0'
             };
         }
 
+        console.log(`[3DS-ACS] ❌ Invalid OTP. Returning transStatus: N`);
         return {
             transStatus: 'N',
             riskScore: 100,

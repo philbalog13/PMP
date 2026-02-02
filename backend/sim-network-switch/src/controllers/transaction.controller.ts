@@ -21,9 +21,19 @@ export const routeTransaction = async (
     const startTime = Date.now();
 
     try {
+        // Log incoming request for debugging
+        logger.info('Received transaction request', {
+            body: JSON.stringify(req.body).substring(0, 500),
+            requestId: req.requestId,
+        });
+
         // Validate input
         const { error, value } = validateTransactionRequest(req.body);
         if (error) {
+            logger.error('Validation failed', {
+                details: JSON.stringify(error.details),
+                requestId: req.requestId,
+            });
             throw new ValidationError('Invalid transaction request', error.details);
         }
 
