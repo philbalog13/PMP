@@ -32,3 +32,11 @@ logs/
 *.njsproj
 *.sln
 *.sw?
+
+# Local tooling / assistant config (never commit)
+.claude/settings.local.json
+
+# Local debug artifacts
+login.json
+token.json
+nul

@@ -8,7 +8,7 @@ export function normalizeRole(role: any): UserRole {
     if (!role) return role as UserRole;
 
     // Convert to string and handle possible "ROLE_" prefix inconsistencies or legacy strings
-    const r = String(role).toUpperCase();
+    const r = String(role).trim().toUpperCase();
 
     if (r === 'STUDENT' || r === 'ETUDIANT' || r === 'ROLE_ETUDIANT') return UserRole.ETUDIANT;
     if (r === 'TRAINER' || r === 'FORMATEUR' || r === 'ROLE_FORMATEUR') return UserRole.FORMATEUR;

@@ -3,22 +3,47 @@
  * Interactive globe with transaction arcs using Three.js / React Three Fiber
  */
 
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Stars, Html } from '@react-three/drei';
+import { OrbitControls, Stars } from '@react-three/drei';
 import * as THREE from 'three';
+import type { Transaction } from '../../hooks/useWebSocket';
 
-// Types
-interface TransactionLoc {
-    id: string;
+interface MapPoint {
+    key: string;
     lat: number;
     lng: number;
-    amount: number;
     status: 'success' | 'error';
-    timestamp: number;
 }
 
-// Convert Lat/Lng to Vector3
+interface TransactionMapProps {
+    transactions: Transaction[];
+    maxPoints?: number;
+}
+
+const FALLBACK_POINTS: Array<[number, number, 'success' | 'error']> = [
+    [48.8566, 2.3522, 'success'],
+    [51.5074, -0.1278, 'success'],
+    [40.7128, -74.006, 'success'],
+    [35.6762, 139.6503, 'success'],
+    [6.5244, 3.3792, 'error'],
+    [34.0522, -118.2437, 'success'],
+    [25.2048, 55.2708, 'error'],
+    [52.52, 13.405, 'success'],
+    [45.4642, 9.19, 'success'],
+    [-33.8688, 151.2093, 'error'],
+    [-23.5505, -46.6333, 'success'],
+    [19.4326, -99.1332, 'success']
+];
+
+function hasValidLocation(txn: Transaction): txn is Transaction & { location: { lat: number; lng: number } } {
+    return Boolean(
+        txn.location &&
+        Number.isFinite(txn.location.lat) &&
+        Number.isFinite(txn.location.lng)
+    );
+}
+
 function latLngToVector3(lat: number, lng: number, radius: number): THREE.Vector3 {
     const phi = (90 - lat) * (Math.PI / 180);
     const theta = (lng + 180) * (Math.PI / 180);
@@ -28,38 +53,42 @@ function latLngToVector3(lat: number, lng: number, radius: number): THREE.Vector
     return new THREE.Vector3(x, y, z);
 }
 
-// Globe Mesh
 function Globe() {
-    // Using a simple color map for reliability instead of external URL that might fail
-    // In a real app, use: useLoader(THREE.TextureLoader, '/textures/earth.jpg')
-
     return (
         <mesh>
-            <sphereGeometry args={[2, 64, 64]} />
+            <sphereGeometry args={[2, 48, 48]} />
             <meshStandardMaterial
-                color="#1a1a2e"
-                emissive="#0f0f23"
-                emissiveIntensity={0.5}
-                wireframe={true}
+                color="#10213f"
+                emissive="#081124"
+                emissiveIntensity={0.55}
+                wireframe
                 transparent
-                opacity={0.8}
+                opacity={0.85}
             />
             <mesh>
-                <sphereGeometry args={[1.98, 64, 64]} />
-                <meshBasicMaterial color="#000000" />
+                <sphereGeometry args={[1.98, 48, 48]} />
+                <meshBasicMaterial color="#030712" />
             </mesh>
         </mesh>
     );
 }
 
-// Transaction Arc
 function Arc({ start, end, color }: { start: THREE.Vector3; end: THREE.Vector3; color: string }) {
-    const curve = useMemo(() => {
-        const mid = start.clone().add(end).multiplyScalar(0.5).normalize().multiplyScalar(2.5); // 2.5 is arc height
-        return new THREE.QuadraticBezierCurve3(start, mid, end);
+    const points = useMemo(() => {
+        const mid = start
+            .clone()
+            .add(end)
+            .multiplyScalar(0.5)
+            .normalize()
+            .multiplyScalar(2.45);
+        const curve = new THREE.QuadraticBezierCurve3(start, mid, end);
+        return curve.getPoints(44);
     }, [start, end]);
 
-    const points = useMemo(() => curve.getPoints(50), [curve]);
+    const arcPositions = useMemo(
+        () => new Float32Array(points.flatMap((point) => [point.x, point.y, point.z])),
+        [points]
+    );
 
     return (
         <line>
@@ -67,129 +96,119 @@ function Arc({ start, end, color }: { start: THREE.Vector3; end: THREE.Vector3; 
                 <bufferAttribute
                     attach="attributes-position"
                     count={points.length}
-                    array={new Float32Array(points.flatMap(p => [p.x, p.y, p.z]))}
+                    array={arcPositions}
                     itemSize={3}
                 />
             </bufferGeometry>
-            <lineBasicMaterial color={color} opacity={0.6} transparent linewidth={2} />
+            <lineBasicMaterial color={color} opacity={0.68} transparent />
         </line>
     );
 }
 
-// Transaction Marker (Ping)
 function Marker({ position, color, size }: { position: THREE.Vector3; color: string; size: number }) {
     return (
         <mesh position={position}>
-            <sphereGeometry args={[size, 16, 16]} />
-            <meshBasicMaterial color={color} />
-            <Html distanceFactor={10}>
-                <div style={{
-                    width: '10px',
-                    height: '10px',
-                    background: color,
-                    borderRadius: '50%',
-                    boxShadow: `0 0 10px ${color}`
-                }} />
-            </Html>
+            <sphereGeometry args={[size, 12, 12]} />
+            <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.65} />
         </mesh>
     );
 }
 
-// Animated Transactions
-function Transactions({ data }: { data: TransactionLoc[] }) {
-    // Center is approx Paris (Server location)
-    const serverPos = useMemo(() => latLngToVector3(48.8566, 2.3522, 2), []);
+function Transactions({ points }: { points: MapPoint[] }) {
+    const serverPosition = useMemo(() => latLngToVector3(48.8566, 2.3522, 2), []);
+    const renderedPoints = useMemo(
+        () =>
+            points.map((point) => ({
+                ...point,
+                vector: latLngToVector3(point.lat, point.lng, 2),
+                color: point.status === 'success' ? '#22c55e' : '#ef4444'
+            })),
+        [points]
+    );
 
     return (
         <group>
-            {/* Server Node */}
-            <Marker position={serverPos} color="#7c3aed" size={0.05} />
-
-            {/* Transaction Lines and Nodes */}
-            {data.map((txn) => {
-                const pos = latLngToVector3(txn.lat, txn.lng, 2);
-                const color = txn.status === 'success' ? '#22c55e' : '#ef4444';
-
-                return (
-                    <group key={txn.id}>
-                        <Marker position={pos} color={color} size={0.03} />
-                        <Arc start={pos} end={serverPos} color={color} />
-                    </group>
-                );
-            })}
+            <Marker position={serverPosition} color="#60a5fa" size={0.06} />
+            {renderedPoints.map((point) => (
+                <group key={point.key}>
+                    <Marker position={point.vector} color={point.color} size={0.034} />
+                    <Arc start={point.vector} end={serverPosition} color={point.color} />
+                </group>
+            ))}
         </group>
     );
 }
 
-// Main Map Component
-export default function TransactionMap() {
-    // Simulated data
-    const [transactions, setTransactions] = useState<TransactionLoc[]>([]);
+export default function TransactionMap({ transactions, maxPoints = 20 }: TransactionMapProps) {
+    const points = useMemo(() => {
+        const withLocation: MapPoint[] = transactions
+            .filter(hasValidLocation)
+            .slice(0, maxPoints)
+            .map((txn): MapPoint => ({
+                key: txn.id,
+                lat: txn.location.lat,
+                lng: txn.location.lng,
+                status: txn.responseCode === '00' ? 'success' : 'error'
+            }));
 
-    useEffect(() => {
-        // Initial data
-        const generateTxn = () => ({
-            id: Math.random().toString(36),
-            lat: (Math.random() - 0.5) * 160,
-            lng: (Math.random() - 0.5) * 360,
-            amount: Math.random() * 1000,
-            status: Math.random() > 0.1 ? 'success' as const : 'error' as const,
-            timestamp: Date.now()
-        });
+        if (withLocation.length > 0) {
+            return withLocation;
+        }
 
-        setTransactions(Array.from({ length: 15 }, generateTxn));
+        return FALLBACK_POINTS.slice(0, Math.min(maxPoints, FALLBACK_POINTS.length)).map((point, index): MapPoint => ({
+            key: `fallback-${index}`,
+            lat: point[0],
+            lng: point[1],
+            status: point[2]
+        }));
+    }, [transactions, maxPoints]);
 
-        // Live updates
-        const interval = setInterval(() => {
-            setTransactions(prev => [
-                generateTxn(),
-                ...prev.slice(0, 19)
-            ]);
-        }, 2000);
-
-        return () => clearInterval(interval);
-    }, []);
+    const totals = useMemo(
+        () =>
+            points.reduce(
+                (acc, point) => {
+                    if (point.status === 'success') {
+                        acc.success += 1;
+                    } else {
+                        acc.error += 1;
+                    }
+                    return acc;
+                },
+                { success: 0, error: 0 }
+            ),
+        [points]
+    );
 
     return (
-        <div style={{ width: '100%', height: '500px', background: '#0f0f23', borderRadius: '12px', overflow: 'hidden' }}>
-            <Canvas camera={{ position: [0, 0, 5], fov: 45 }}>
-                <ambientLight intensity={0.5} />
-                <pointLight position={[10, 10, 10]} />
-                <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
+        <div className="map-shell">
+            <Canvas camera={{ position: [0, 0, 5], fov: 45 }} dpr={[1, 1.5]}>
+                <color attach="background" args={['#060d1f']} />
+                <ambientLight intensity={0.55} />
+                <pointLight position={[10, 10, 10]} intensity={1.2} />
+                <Stars radius={90} depth={45} count={1800} factor={3} saturation={0} fade speed={0.5} />
                 <Globe />
-                <Transactions data={transactions} />
+                <Transactions points={points} />
                 <OrbitControls
                     enablePan={false}
-                    enableZoom={true}
+                    enableZoom
                     minDistance={3}
                     maxDistance={8}
                     autoRotate
-                    autoRotateSpeed={0.5}
+                    autoRotateSpeed={0.45}
                 />
             </Canvas>
 
-            {/* Overlay Stats */}
-            <div style={{
-                position: 'absolute',
-                bottom: '20px',
-                left: '20px',
-                background: 'rgba(15, 15, 35, 0.8)',
-                padding: '12px',
-                borderRadius: '8px',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                backdropFilter: 'blur(5px)',
-                pointerEvents: 'none'
-            }}>
-                <div style={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}>Flux Temps Réel</div>
-                <div style={{ display: 'flex', gap: '10px', marginTop: '5px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e' }}></div>
-                        <span style={{ color: '#aaa', fontSize: '10px' }}>Succès</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444' }}></div>
-                        <span style={{ color: '#aaa', fontSize: '10px' }}>Échec</span>
-                    </div>
+            <div className="map-overlay">
+                <div className="map-overlay-title">Flux temps reel</div>
+                <div className="map-legend">
+                    <span className="map-legend-item">
+                        <span className="map-dot success" />
+                        Succes: {totals.success}
+                    </span>
+                    <span className="map-legend-item">
+                        <span className="map-dot error" />
+                        Echecs: {totals.error}
+                    </span>
                 </div>
             </div>
         </div>

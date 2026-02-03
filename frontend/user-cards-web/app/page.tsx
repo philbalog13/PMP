@@ -1,225 +1,382 @@
 'use client';
 
-import { useUserStore } from '@/lib/store';
-import Card3D from '@/components/card/Card3D';
-import CardGenerator from '@/components/card/CardGenerator';
-import GlassCard from '@shared/components/GlassCard';
-import PremiumButton from '@shared/components/PremiumButton';
-import {
-  Wallet,
-  Bell,
-  ArrowUpRight,
-  ArrowDownLeft,
-  LayoutGrid,
-  Search,
-  MoreHorizontal
-} from 'lucide-react';
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useState } from 'react';
+import { useAuth } from '@shared/context/AuthContext';
+import {
+    CreditCard,
+    ArrowUpRight,
+    ArrowDownLeft,
+    TrendingUp,
+    Shield,
+    AlertCircle,
+    ChevronRight,
+    Plus,
+    Eye,
+    EyeOff,
+    Wallet,
+    Clock,
+    CheckCircle2,
+} from 'lucide-react';
 
-export default function Dashboard() {
-  const { cards } = useUserStore();
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  if (!isClient) return null;
-
-  return (
-    <div className="min-h-screen p-6 md:p-10 max-w-[1600px] mx-auto space-y-12">
-      {/* Header */}
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-        <div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-white via-blue-100 to-slate-400 bg-clip-text text-transparent font-heading">
-            Bonsoir, Georges 👋
-          </h1>
-          <p className="text-slate-400 mt-2 text-lg">Voici un aperçu de vos finances.</p>
-        </div>
-
-        <div className="flex items-center gap-4 w-full md:w-auto">
-          <div className="relative group w-full md:w-auto">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition" size={20} />
-            <input
-              type="text"
-              placeholder="Rechercher une transaction..."
-              className="w-full md:w-80 bg-slate-900/50 border border-slate-800 rounded-full py-3 pl-12 pr-6 text-sm focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition backdrop-blur-sm"
-            />
-          </div>
-          <button className="relative p-3 bg-slate-900/50 rounded-full border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition backdrop-blur-sm group">
-            <Bell size={20} className="group-hover:animate-swing" />
-            <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-slate-900 animate-pulse"></span>
-          </button>
-          <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-600 to-purple-600 p-[2px] cursor-pointer hover:scale-105 transition shadow-lg shadow-blue-500/20">
-            <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center font-bold text-sm text-white">
-              GD
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Navigation Bar */}
-      <GlassCard className="p-2 flex items-center justify-between md:justify-start gap-2 md:gap-6 overflow-x-auto scrollbar-hide">
-        <Link
-          href="/"
-          className="px-6 py-3 rounded-xl bg-blue-600 shadow-lg shadow-blue-500/20 text-white font-medium flex items-center gap-2 whitespace-nowrap"
-        >
-          <LayoutGrid size={18} />
-          Dashboard
-        </Link>
-        <Link
-          href="/cards"
-          className="px-6 py-3 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white font-medium transition flex items-center gap-2 whitespace-nowrap"
-        >
-          <CreditCardIcon />
-          Mes Cartes
-        </Link>
-        <Link
-          href="/history"
-          className="px-6 py-3 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white font-medium transition flex items-center gap-2 whitespace-nowrap"
-        >
-          <ArrowUpRight size={18} />
-          Historique
-        </Link>
-        <Link
-          href="/security"
-          className="px-6 py-3 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white font-medium transition flex items-center gap-2 whitespace-nowrap"
-        >
-          <div className="w-5 h-5 rounded-full border-2 border-slate-500 flex items-center justify-center text-[10px] font-bold">?</div>
-          Sécurité
-        </Link>
-      </GlassCard>
-
-      {/* Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <GlassCard variant="interactive" glowColor="blue" className="p-8 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-48 h-48 bg-blue-600/10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-blue-600/20 transition duration-700" />
-          <div className="relative z-10">
-            <div className="text-slate-400 text-sm font-medium mb-2 uppercase tracking-wider">Solde Total</div>
-            <div className="text-4xl font-bold text-white mb-4 tracking-tight">2,450.80 €</div>
-            <div className="flex items-center text-green-400 text-sm gap-2 bg-green-500/10 w-fit px-3 py-1 rounded-full border border-green-500/20">
-              <ArrowUpRight size={16} />
-              <span className="font-semibold">+12.5%</span>
-              <span className="text-slate-500 ml-1">vs mois dernier</span>
-            </div>
-          </div>
-        </GlassCard>
-
-        <GlassCard variant="interactive" glowColor="purple" className="p-8 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-48 h-48 bg-purple-600/10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-purple-600/20 transition duration-700" />
-          <div className="relative z-10">
-            <div className="text-slate-400 text-sm font-medium mb-2 uppercase tracking-wider">Dépenses (Jan)</div>
-            <div className="text-4xl font-bold text-white mb-4 tracking-tight">842.00 €</div>
-            <div className="flex items-center text-red-400 text-sm gap-2 bg-red-500/10 w-fit px-3 py-1 rounded-full border border-red-500/20">
-              <ArrowDownLeft size={16} />
-              <span className="font-semibold">+5.2%</span>
-              <span className="text-slate-500 ml-1">vs mois dernier</span>
-            </div>
-          </div>
-        </GlassCard>
-
-        <GlassCard variant="highlight" className="p-8 relative overflow-hidden text-white flex flex-col justify-center items-start">
-          <div className="absolute -right-10 -bottom-10 opacity-20 rotate-12">
-            <LayoutGrid size={120} />
-          </div>
-          <h3 className="font-bold text-2xl mb-3 bg-gradient-to-r from-blue-200 to-white bg-clip-text text-transparent">PMP Premium</h3>
-          <p className="text-blue-100/80 text-sm mb-6 max-w-[80%] leading-relaxed">
-            Profitez de plafonds élevés, d'assurances exclusives et d'un support prioritaire 24/7.
-          </p>
-          <PremiumButton variant="glass" size="sm">
-            Découvrir le Premium
-          </PremiumButton>
-        </GlassCard>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Col: Cards */}
-        <div className="lg:col-span-2 space-y-8">
-          <div className="flex justify-between items-center px-2">
-            <h2 className="text-2xl font-bold flex items-center gap-3">
-              <div className="p-2 bg-blue-500/10 rounded-lg">
-                <Wallet className="text-blue-500" size={24} />
-              </div>
-              Vos Cartes
-            </h2>
-            <CardGenerator />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
-            {cards.map(card => (
-              <div key={card.id} className="group relative perspective-1000">
-                <div className="absolute -inset-4 bg-gradient-to-r from-blue-600/20 to-purple-600/20 blur-2xl rounded-[30px] opacity-0 group-hover:opacity-100 transition duration-700" />
-                <Card3D card={card} showDetails={true} />
-              </div>
-            ))}
-
-            {cards.length === 0 && (
-              <GlassCard className="col-span-2 py-20 flex flex-col items-center justify-center border-dashed border-slate-700 opacity-80 hover:opacity-100 transition hover:border-slate-600">
-                <div className="w-20 h-20 bg-slate-800/50 rounded-full flex items-center justify-center mb-6 shadow-inner border border-white/5">
-                  <CreditCardIcon />
-                </div>
-                <p className="font-medium text-lg text-slate-200">Aucune carte active</p>
-                <p className="text-slate-400 mt-2">Générez votre première carte virtuelle ci-dessus.</p>
-              </GlassCard>
-            )}
-          </div>
-        </div>
-
-        {/* Right Col: Transactions */}
-        <GlassCard className="p-0 h-fit overflow-hidden border-white/10">
-          <div className="p-6 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
-            <h2 className="font-bold text-lg">Transactions Récentes</h2>
-            <button className="text-slate-500 hover:text-white transition p-2 hover:bg-white/5 rounded-full">
-              <MoreHorizontal size={20} />
-            </button>
-          </div>
-
-          <div className="divide-y divide-white/5">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="flex items-center justify-between group cursor-pointer hover:bg-white/[0.03] p-5 transition-all duration-200">
-                <div className="flex items-center gap-4">
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-lg border border-white/5 transition-transform group-hover:scale-105 ${i % 2 === 0 ? 'bg-blue-500/10 text-blue-400' : 'bg-purple-500/10 text-purple-400'}`}>
-                    {i % 2 === 0 ? '🛒' : '🎬'}
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-slate-200 group-hover:text-blue-400 transition-colors">
-                      {i % 2 === 0 ? 'Supermarché Bio' : 'Netflix Sub'}
-                    </h4>
-                    <p className="text-xs text-slate-500 mt-1 font-medium">Aujourd'hui, 14:30</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="font-bold text-slate-200 group-hover:text-white transition-colors">
-                    -{(Math.random() * 50 + 10).toFixed(2)} €
-                  </div>
-                  <div className="text-[10px] text-green-400/80 font-semibold bg-green-500/10 px-2 py-0.5 rounded-full inline-block mt-1">
-                    Terminé
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="p-4 bg-white/[0.02]">
-            <Link href="/history" className="block w-full">
-              <PremiumButton variant="ghost" className="w-full justify-between group">
-                Voir tout l'historique
-                <ArrowUpRight size={16} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
-              </PremiumButton>
-            </Link>
-          </div>
-        </GlassCard>
-      </div>
-    </div>
-  );
+interface VirtualCard {
+    id: string;
+    lastFour: string;
+    type: 'visa' | 'mastercard';
+    expiryDate: string;
+    balance: number;
+    limit: number;
+    status: 'active' | 'blocked' | 'expired';
+    is3dsEnabled: boolean;
 }
 
-function CreditCardIcon() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect width="20" height="14" x="2" y="5" rx="2" />
-      <line x1="2" x2="22" y1="10" y2="10" />
-    </svg>
-  );
+interface Transaction {
+    id: string;
+    type: 'debit' | 'credit';
+    amount: number;
+    merchant: string;
+    category: string;
+    date: string;
+    status: 'completed' | 'pending' | 'failed';
+    cardLastFour: string;
+}
+
+const mockCards: VirtualCard[] = [
+    {
+        id: '1',
+        lastFour: '4532',
+        type: 'visa',
+        expiryDate: '12/27',
+        balance: 2450.75,
+        limit: 5000,
+        status: 'active',
+        is3dsEnabled: true,
+    },
+    {
+        id: '2',
+        lastFour: '8921',
+        type: 'mastercard',
+        expiryDate: '06/26',
+        balance: 890.5,
+        limit: 2000,
+        status: 'active',
+        is3dsEnabled: false,
+    },
+];
+
+const mockTransactions: Transaction[] = [
+    { id: '1', type: 'debit', amount: 45.99, merchant: 'Amazon', category: 'Shopping', date: '2024-01-15 14:32', status: 'completed', cardLastFour: '4532' },
+    { id: '2', type: 'debit', amount: 12.5, merchant: 'Spotify', category: 'Subscription', date: '2024-01-14 09:00', status: 'completed', cardLastFour: '4532' },
+    { id: '3', type: 'credit', amount: 500.0, merchant: 'Virement entrant', category: 'Transfer', date: '2024-01-13 16:45', status: 'completed', cardLastFour: '4532' },
+    { id: '4', type: 'debit', amount: 89.9, merchant: 'Carrefour', category: 'Groceries', date: '2024-01-12 18:20', status: 'completed', cardLastFour: '8921' },
+    { id: '5', type: 'debit', amount: 250.0, merchant: 'FNAC', category: 'Electronics', date: '2024-01-11 11:15', status: 'pending', cardLastFour: '4532' },
+];
+
+export default function ClientDashboardHome() {
+    const { user, isLoading, isAuthenticated } = useAuth();
+    const [cards] = useState<VirtualCard[]>(mockCards);
+    const [transactions] = useState<Transaction[]>(mockTransactions);
+    const [showBalance, setShowBalance] = useState(true);
+    const [selectedCard, setSelectedCard] = useState<VirtualCard | null>(mockCards[0]);
+
+    const totalBalance = cards.reduce((acc, card) => acc + card.balance, 0);
+    const totalLimit = cards.reduce((acc, card) => acc + card.limit, 0);
+    const monthlySpending = transactions
+        .filter((t) => t.type === 'debit' && t.status === 'completed')
+        .reduce((acc, t) => acc + t.amount, 0);
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-500"></div>
+            </div>
+        );
+    }
+
+    if (!isAuthenticated) {
+        return (
+            <div className="min-h-screen bg-slate-950 flex items-center justify-center px-6">
+                <div className="max-w-md w-full rounded-3xl border border-white/10 bg-slate-900/70 p-8 text-center space-y-4">
+                    <h1 className="text-2xl font-bold text-white">Session expirée</h1>
+                    <p className="text-slate-400">Reconnectez-vous sur le portail pour accéder à votre espace client.</p>
+                    <a
+                        href={`${process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:3000'}/login`}
+                        className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-amber-500 text-slate-950 font-semibold hover:bg-amber-400 transition-colors"
+                    >
+                        Retour au login
+                    </a>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="min-h-screen bg-slate-950 py-8 pb-12">
+            <div className="max-w-7xl mx-auto px-6">
+                <div className="mb-8">
+                    <h1 className="text-3xl font-bold text-white mb-2">
+                        Bonjour, {user?.name || user?.email?.split('@')[0] || 'Client'} !
+                    </h1>
+                    <p className="text-slate-400">
+                        Gérez vos cartes virtuelles et suivez vos transactions en temps réel.
+                    </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                    <div className="bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/30 rounded-2xl p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="p-3 bg-amber-500/20 rounded-xl">
+                                <Wallet className="w-6 h-6 text-amber-400" />
+                            </div>
+                            <button
+                                onClick={() => setShowBalance(!showBalance)}
+                                className="p-2 hover:bg-white/5 rounded-lg transition-colors"
+                            >
+                                {showBalance ? (
+                                    <Eye className="w-5 h-5 text-slate-400" />
+                                ) : (
+                                    <EyeOff className="w-5 h-5 text-slate-400" />
+                                )}
+                            </button>
+                        </div>
+                        <p className="text-sm text-slate-400 mb-1">Solde total</p>
+                        <p className="text-2xl font-bold text-white">
+                            {showBalance ? `${totalBalance.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} EUR` : '••••••'}
+                        </p>
+                    </div>
+
+                    <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
+                        <div className="p-3 bg-blue-500/20 rounded-xl w-fit mb-4">
+                            <TrendingUp className="w-6 h-6 text-blue-400" />
+                        </div>
+                        <p className="text-sm text-slate-400 mb-1">Limite totale</p>
+                        <p className="text-2xl font-bold text-white">
+                            {totalLimit.toLocaleString('fr-FR')} EUR
+                        </p>
+                        <div className="mt-3 h-2 bg-slate-700 rounded-full overflow-hidden">
+                            <div
+                                className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full"
+                                style={{ width: `${(totalBalance / totalLimit) * 100}%` }}
+                            ></div>
+                        </div>
+                    </div>
+
+                    <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
+                        <div className="p-3 bg-purple-500/20 rounded-xl w-fit mb-4">
+                            <ArrowUpRight className="w-6 h-6 text-purple-400" />
+                        </div>
+                        <p className="text-sm text-slate-400 mb-1">Dépenses ce mois</p>
+                        <p className="text-2xl font-bold text-white">
+                            {monthlySpending.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} EUR
+                        </p>
+                    </div>
+
+                    <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
+                        <div className="p-3 bg-emerald-500/20 rounded-xl w-fit mb-4">
+                            <CreditCard className="w-6 h-6 text-emerald-400" />
+                        </div>
+                        <p className="text-sm text-slate-400 mb-1">Cartes actives</p>
+                        <p className="text-2xl font-bold text-white">{cards.filter((c) => c.status === 'active').length}</p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="lg:col-span-1">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-xl font-semibold text-white">Mes cartes</h2>
+                            <Link
+                                href="/cards"
+                                className="text-sm text-amber-400 hover:text-amber-300 flex items-center gap-1"
+                            >
+                                Voir tout <ChevronRight size={16} />
+                            </Link>
+                        </div>
+
+                        <div className="space-y-4">
+                            {cards.map((card) => (
+                                <div
+                                    key={card.id}
+                                    onClick={() => setSelectedCard(card)}
+                                    className={`relative overflow-hidden rounded-2xl p-6 cursor-pointer transition-all ${
+                                        selectedCard?.id === card.id
+                                            ? 'ring-2 ring-amber-500 scale-[1.02]'
+                                            : 'hover:scale-[1.01]'
+                                    } ${
+                                        card.type === 'visa'
+                                            ? 'bg-gradient-to-br from-slate-800 via-slate-800 to-blue-900'
+                                            : 'bg-gradient-to-br from-slate-800 via-slate-800 to-orange-900'
+                                    }`}
+                                >
+                                    <div className="absolute inset-0 opacity-10">
+                                        <div className="absolute top-4 right-4 w-32 h-32 rounded-full bg-white/20 blur-2xl"></div>
+                                        <div className="absolute bottom-4 left-4 w-24 h-24 rounded-full bg-white/10 blur-xl"></div>
+                                    </div>
+
+                                    <div className="relative">
+                                        <div className="flex items-center justify-between mb-6">
+                                            <div className="w-10 h-7 rounded bg-gradient-to-br from-yellow-400 to-yellow-600"></div>
+                                            <span className="text-xs font-medium text-white/60 uppercase">
+                                                {card.type}
+                                            </span>
+                                        </div>
+
+                                        <p className="text-lg font-mono text-white/90 tracking-widest mb-4">
+                                            •••• •••• •••• {card.lastFour}
+                                        </p>
+
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-xs text-white/40 mb-1">Solde</p>
+                                                <p className="text-white font-semibold">
+                                                    {showBalance ? `${card.balance.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} EUR` : '••••'}
+                                                </p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-xs text-white/40 mb-1">Expire</p>
+                                                <p className="text-white font-mono">{card.expiryDate}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-2 mt-4">
+                                            {card.status === 'active' && (
+                                                <span className="px-2 py-1 bg-emerald-500/20 text-emerald-400 text-xs rounded-full flex items-center gap-1">
+                                                    <CheckCircle2 size={12} /> Active
+                                                </span>
+                                            )}
+                                            {card.is3dsEnabled && (
+                                                <span className="px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded-full flex items-center gap-1">
+                                                    <Shield size={12} /> 3D Secure
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+
+                            <Link
+                                href="/cards/add"
+                                className="flex items-center justify-center gap-2 p-4 border-2 border-dashed border-slate-700 rounded-2xl text-slate-400 hover:text-amber-400 hover:border-amber-500/50 transition-colors"
+                            >
+                                <Plus size={20} />
+                                <span>Nouvelle carte</span>
+                            </Link>
+                        </div>
+                    </div>
+
+                    <div className="lg:col-span-2">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-xl font-semibold text-white">Transactions récentes</h2>
+                            <Link
+                                href="/transactions"
+                                className="text-sm text-amber-400 hover:text-amber-300 flex items-center gap-1"
+                            >
+                                Historique complet <ChevronRight size={16} />
+                            </Link>
+                        </div>
+
+                        <div className="bg-slate-800/50 border border-white/10 rounded-2xl overflow-hidden">
+                            {transactions.slice(0, 5).map((tx, index) => (
+                                <Link
+                                    key={tx.id}
+                                    href="/transactions"
+                                    className={`flex items-center justify-between p-4 hover:bg-white/5 transition-colors ${
+                                        index !== 0 ? 'border-t border-white/5' : ''
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className={`p-3 rounded-xl ${
+                                            tx.type === 'credit'
+                                                ? 'bg-emerald-500/20'
+                                                : 'bg-slate-700'
+                                        }`}>
+                                            {tx.type === 'credit' ? (
+                                                <ArrowDownLeft className="w-5 h-5 text-emerald-400" />
+                                            ) : (
+                                                <ArrowUpRight className="w-5 h-5 text-slate-400" />
+                                            )}
+                                        </div>
+                                        <div>
+                                            <p className="font-medium text-white">{tx.merchant}</p>
+                                            <div className="flex items-center gap-2 text-sm text-slate-400">
+                                                <span>{tx.category}</span>
+                                                <span>•</span>
+                                                <span>••••{tx.cardLastFour}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="text-right">
+                                        <p className={`font-semibold ${
+                                            tx.type === 'credit' ? 'text-emerald-400' : 'text-white'
+                                        }`}>
+                                            {tx.type === 'credit' ? '+' : '-'}
+                                            {tx.amount.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} EUR
+                                        </p>
+                                        <div className="flex items-center gap-2 justify-end">
+                                            <Clock size={12} className="text-slate-500" />
+                                            <span className="text-xs text-slate-500">{tx.date}</span>
+                                            {tx.status === 'pending' && (
+                                                <span className="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded">
+                                                    En cours
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="mt-8">
+                    <h2 className="text-xl font-semibold text-white mb-4">Actions rapides</h2>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <Link
+                            href="/3ds"
+                            className="p-6 bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/30 rounded-2xl hover:scale-[1.02] transition-transform"
+                        >
+                            <div className="p-3 bg-amber-500/20 rounded-xl w-fit mb-4">
+                                <ArrowUpRight className="w-6 h-6 text-amber-400" />
+                            </div>
+                            <h3 className="font-semibold text-white mb-1">Simuler un paiement</h3>
+                            <p className="text-sm text-slate-400">Testez le flux de paiement</p>
+                        </Link>
+
+                        <Link
+                            href="/cards/add"
+                            className="p-6 bg-slate-800/50 border border-white/10 rounded-2xl hover:scale-[1.02] transition-transform"
+                        >
+                            <div className="p-3 bg-blue-500/20 rounded-xl w-fit mb-4">
+                                <Plus className="w-6 h-6 text-blue-400" />
+                            </div>
+                            <h3 className="font-semibold text-white mb-1">Nouvelle carte</h3>
+                            <p className="text-sm text-slate-400">Créez une carte virtuelle</p>
+                        </Link>
+
+                        <Link
+                            href="/security"
+                            className="p-6 bg-slate-800/50 border border-white/10 rounded-2xl hover:scale-[1.02] transition-transform"
+                        >
+                            <div className="p-3 bg-purple-500/20 rounded-xl w-fit mb-4">
+                                <Shield className="w-6 h-6 text-purple-400" />
+                            </div>
+                            <h3 className="font-semibold text-white mb-1">Sécurité</h3>
+                            <p className="text-sm text-slate-400">Gérez 3D Secure</p>
+                        </Link>
+
+                        <Link
+                            href="/learn"
+                            className="p-6 bg-slate-800/50 border border-white/10 rounded-2xl hover:scale-[1.02] transition-transform"
+                        >
+                            <div className="p-3 bg-emerald-500/20 rounded-xl w-fit mb-4">
+                                <AlertCircle className="w-6 h-6 text-emerald-400" />
+                            </div>
+                            <h3 className="font-semibold text-white mb-1">Apprendre 3DS</h3>
+                            <p className="text-sm text-slate-400">Comprendre le flux</p>
+                        </Link>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 }

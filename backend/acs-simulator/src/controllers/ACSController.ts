@@ -89,9 +89,19 @@ export class ACSController {
      * Get challenge flow URL
      */
     getChallengeUrl = (req: Request, res: Response) => {
-        const { txId } = req.query;
+        const txId = typeof req.query.txId === 'string' ? req.query.txId : `TX_${Date.now()}`;
+        const acsTransId = typeof req.query.acsTransId === 'string' ? req.query.acsTransId : `ACS_${Date.now()}`;
+        const returnUrl = typeof req.query.returnUrl === 'string' ? req.query.returnUrl : undefined;
+        const challengeBaseUrl = (process.env.THREEDS_CHALLENGE_URL || 'http://localhost:3088').replace(/\/$/, '');
+        const challengeUrl = new URL(challengeBaseUrl);
+        challengeUrl.searchParams.set('txId', txId);
+        challengeUrl.searchParams.set('acsTransId', acsTransId);
+        if (returnUrl) {
+            challengeUrl.searchParams.set('returnUrl', returnUrl);
+        }
+
         res.json({
-            challengeUrl: `http://localhost:3005/3ds-challenge?txId=${txId}`,
+            challengeUrl: challengeUrl.toString(),
             method: 'GET'
         });
     };

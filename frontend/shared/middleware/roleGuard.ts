@@ -22,24 +22,26 @@ interface RouteConfig {
 export const ROUTE_CONFIGS: Record<string, RouteConfig[]> = {
     // Portal routes
     portal: [
-        // Legacy routes
-        { path: '/demo', allowedRoles: [UserRole.CLIENT] },
-        { path: '/analyze', allowedRoles: [UserRole.MARCHAND] },
+        // Legacy routes are deprecated in portal and redirected by role
+        { path: '/demo', allowedRoles: [] },
+        { path: '/analyze', allowedRoles: [] },
 
         // Student routes
+        { path: '/etudiant', allowedRoles: [UserRole.ETUDIANT] },
         { path: '/student', allowedRoles: [UserRole.ETUDIANT] },
 
         // Instructor/Trainer routes (has access to everything)
+        { path: '/formateur', allowedRoles: [UserRole.FORMATEUR] },
         { path: '/instructor', allowedRoles: [UserRole.FORMATEUR] },
 
-        // Client routes
-        { path: '/client', allowedRoles: [UserRole.CLIENT] },
+        // Client and merchant legacy portal pages are deprecated and redirected
+        { path: '/client', allowedRoles: [] },
 
         // Merchant routes
-        { path: '/merchant', allowedRoles: [UserRole.MARCHAND] },
+        { path: '/merchant', allowedRoles: [] },
 
-        // Workshops are accessible by all authenticated users
-        { path: '/workshops', allowedRoles: [UserRole.CLIENT, UserRole.MARCHAND, UserRole.ETUDIANT, UserRole.FORMATEUR] },
+        // Workshops are accessible for pedagogical roles
+        { path: '/workshops', allowedRoles: [UserRole.ETUDIANT, UserRole.FORMATEUR] },
 
         // Lab is for students and trainers
         { path: '/lab', allowedRoles: [UserRole.ETUDIANT, UserRole.FORMATEUR] },
@@ -168,9 +170,14 @@ function hasAnyPermission(userPermissions: Permission[], requiredPermissions: Pe
  */
 export function createRoleGuard(appName: string, customRoutes?: RouteConfig[]) {
     const routes = customRoutes || ROUTE_CONFIGS[appName] || [];
+    const portalLoginBase = process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:3000';
 
     return function middleware(request: NextRequest) {
         const { pathname } = request.nextUrl;
+        const forwardedHost = request.headers.get('x-forwarded-host') || request.headers.get('host');
+        const forwardedProto = request.headers.get('x-forwarded-proto');
+        const requestProtocol = forwardedProto || request.nextUrl.protocol.replace(':', '');
+        const requestOrigin = forwardedHost ? `${requestProtocol}://${forwardedHost}` : request.nextUrl.origin;
 
         console.log(`[RoleGuard] Processing request: ${pathname}`);
 
@@ -185,9 +192,12 @@ export function createRoleGuard(appName: string, customRoutes?: RouteConfig[]) {
 
         // If no user, redirect to login
         if (!authData) {
-            console.warn(`[RoleGuard] No valid auth data found for ${pathname}. Redirecting to /login.`);
-            const loginUrl = new URL('/login', request.url);
-            loginUrl.searchParams.set('redirect', pathname);
+            const isPortalApp = appName === 'portal';
+            const loginUrl = isPortalApp ? new URL('/login', requestOrigin) : new URL('/login', portalLoginBase);
+            const targetUrl = `${requestOrigin}${pathname}${request.nextUrl.search}`;
+
+            console.warn(`[RoleGuard] No valid auth data found for ${pathname}. Redirecting to login (${isPortalApp ? 'portal-local' : 'portal-central'}).`);
+            loginUrl.searchParams.set('redirect', isPortalApp ? pathname : targetUrl);
             return NextResponse.redirect(loginUrl);
         }
 
@@ -207,16 +217,22 @@ export function createRoleGuard(appName: string, customRoutes?: RouteConfig[]) {
 
         // Check role-based access
         if (routeConfig.allowedRoles) {
+            const userRoleNormalized = normalizeRole(user.role);
+            console.log(`[RoleGuard] Checking role access. User role: ${user.role} (normalized: ${userRoleNormalized}). Allowed: ${JSON.stringify(routeConfig.allowedRoles)}`);
+
             if (!hasRole(user.role, routeConfig.allowedRoles)) {
-                console.warn(`[RoleGuard] Access denied for ${pathname}. User role ${user.role} not in ${JSON.stringify(routeConfig.allowedRoles)}`);
+                console.warn(`[RoleGuard] Access denied for ${pathname}. User role ${user.role} (normalized: ${userRoleNormalized}) not in ${JSON.stringify(routeConfig.allowedRoles)}`);
                 // User doesn't have required role
-                return redirectBasedOnRole(request, normalizeRole(user.role));
+                return redirectBasedOnRole(request, userRoleNormalized);
             }
         }
 
         // Check permission-based access
         if (routeConfig.requiredPermissions) {
-            if (!hasAnyPermission(user.permissions, routeConfig.requiredPermissions)) {
+            const userPermissions = Array.isArray(user.permissions) ? user.permissions : [];
+            if (userPermissions.length === 0) {
+                console.warn(`[RoleGuard] No permissions present in token for ${pathname}. Falling back to role-based access.`);
+            } else if (!hasAnyPermission(userPermissions, routeConfig.requiredPermissions)) {
                 console.warn(`[RoleGuard] Permission denied for ${pathname}. User permissions: ${JSON.stringify(user.permissions)}`);
                 // User doesn't have required permissions
                 return redirectBasedOnRole(request, user.role);
@@ -234,19 +250,22 @@ export function createRoleGuard(appName: string, customRoutes?: RouteConfig[]) {
  */
 function redirectBasedOnRole(request: NextRequest, role: UserRole): NextResponse {
     const normalizedRole = normalizeRole(role);
+    const portalBase = process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:3000';
     console.log(`[RoleGuard] Redirecting based on role: ${role} -> normalized: ${normalizedRole}`);
 
     const roleRedirects: Record<UserRole, string> = {
-        [UserRole.CLIENT]: '/demo',
-        [UserRole.MARCHAND]: '/analyze',
-        [UserRole.ETUDIANT]: '/student',
-        [UserRole.FORMATEUR]: '/instructor',
+        [UserRole.CLIENT]: 'http://localhost:3004',
+        [UserRole.MARCHAND]: 'http://localhost:3001',
+        [UserRole.ETUDIANT]: '/etudiant/dashboard',
+        [UserRole.FORMATEUR]: '/formateur/dashboard',
     };
 
     const redirectPath = roleRedirects[normalizedRole] || '/';
     console.log(`[RoleGuard] Calculated redirect path: ${redirectPath}`);
 
-    const url = new URL(redirectPath, request.url);
+    const isAbsolute = /^https?:\/\//i.test(redirectPath);
+    const target = isAbsolute ? redirectPath : `${portalBase}${redirectPath}`;
+    const url = new URL(target);
     return NextResponse.redirect(url);
 }
 

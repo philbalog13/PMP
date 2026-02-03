@@ -10,6 +10,13 @@ interface CardReaderSimProps {
     onCardRead: (cardData: CardData) => void;
 }
 
+const presetCards = [
+    { name: 'Carte valide', pan: '4111111111111111', expiry: '12/26', cvv: '123' },
+    { name: 'Solde insuffisant', pan: '4000056655665556', expiry: '06/29', cvv: '456' },
+    { name: 'Carte expiree', pan: '4532015112830366', expiry: '01/20', cvv: '789' },
+    { name: 'Carte volee', pan: '4916338506082832', expiry: '09/27', cvv: '321' },
+];
+
 export default function CardReaderSim({ onCardRead }: CardReaderSimProps) {
     const { state } = useTerminalStore();
     const [mode, setMode] = useState<'manual' | 'qr' | 'nfc'>('manual');
@@ -18,25 +25,18 @@ export default function CardReaderSim({ onCardRead }: CardReaderSimProps) {
     const [cvv, setCvv] = useState('');
     const [errors, setErrors] = useState<string[]>([]);
 
-    const presetCards = [
-        { name: 'Carte Valide', pan: '4111111111111111', expiry: '12/26', cvv: '123' },
-        { name: 'Solde Insuffisant', pan: '4000056655665556', expiry: '06/25', cvv: '456' },
-        { name: 'Carte Expirée', pan: '4532015112830366', expiry: '01/20', cvv: '789' },
-        { name: 'Carte Volée', pan: '4916338506082832', expiry: '09/27', cvv: '321' },
-    ];
-
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        const validationErrors: string[] = [];
 
+        const validationErrors: string[] = [];
         if (!validateLuhn(pan)) {
-            validationErrors.push('Numéro de carte invalide (échec validation Luhn)');
+            validationErrors.push('Numero de carte invalide (Luhn).');
         }
         if (!validateExpiryDate(expiry)) {
-            validationErrors.push('Date d\'expiration invalide ou expirée');
+            validationErrors.push('Date d expiration invalide ou expiree.');
         }
         if (cvv && !validateCVV(cvv)) {
-            validationErrors.push('CVV invalide');
+            validationErrors.push('CVV invalide.');
         }
 
         if (validationErrors.length > 0) {
@@ -46,7 +46,6 @@ export default function CardReaderSim({ onCardRead }: CardReaderSimProps) {
 
         setErrors([]);
         onCardRead({ pan, expiryDate: expiry, cvv });
-        // Reset form
         setPan('');
         setExpiry('');
         setCvv('');
@@ -61,34 +60,30 @@ export default function CardReaderSim({ onCardRead }: CardReaderSimProps) {
     const handlePaste = async () => {
         try {
             const text = await navigator.clipboard.readText();
-            // Simple clean up
             const cleanPan = text.replace(/\D/g, '').slice(0, 19);
             if (cleanPan.length >= 13) {
                 setPan(cleanPan);
-                // Try to infer standard test card details if missing
                 if (!expiry) setExpiry('12/28');
                 if (!cvv) setCvv('123');
             }
         } catch (err) {
             console.error('Failed to read clipboard', err);
-            // Fallback or error msg
-            setErrors(['Impossible de lire le presse-papier (Check permissions)']);
+            setErrors(['Impossible de lire le presse-papiers.']);
         }
     };
 
     const isDisabled = state !== 'card-wait';
 
     return (
-        <div className="bg-white rounded-lg shadow-xl p-6">
-            <h3 className="text-lg font-bold text-slate-800 mb-4">Lecteur de Carte Virtuel</h3>
+        <div className="rounded-xl border border-white/10 bg-slate-950/60 p-5">
+            <h3 className="text-lg font-bold text-white mb-4">Lecteur de carte virtuel</h3>
 
-            {/* Mode Selector */}
             <div className="flex gap-2 mb-6">
                 <button
                     onClick={() => setMode('manual')}
                     className={`flex-1 py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition ${mode === 'manual'
                         ? 'bg-blue-600 text-white'
-                        : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                         }`}
                 >
                     <CreditCard className="w-5 h-5" />
@@ -98,17 +93,17 @@ export default function CardReaderSim({ onCardRead }: CardReaderSimProps) {
                     onClick={() => setMode('qr')}
                     className={`flex-1 py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition ${mode === 'qr'
                         ? 'bg-blue-600 text-white'
-                        : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                         }`}
                 >
                     <QrCode className="w-5 h-5" />
-                    QR Code
+                    QR
                 </button>
                 <button
                     onClick={() => setMode('nfc')}
                     className={`flex-1 py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition ${mode === 'nfc'
                         ? 'bg-blue-600 text-white'
-                        : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                         }`}
                 >
                     <Smartphone className="w-5 h-5" />
@@ -116,39 +111,37 @@ export default function CardReaderSim({ onCardRead }: CardReaderSimProps) {
                 </button>
             </div>
 
-            {/* Manual Input Mode */}
             {mode === 'manual' && (
                 <div className="space-y-4">
-                    {/* Preset Cards */}
                     <div className="grid grid-cols-2 gap-2 mb-4">
                         {presetCards.map((card) => (
                             <button
                                 key={card.pan}
                                 onClick={() => handlePresetCard(card)}
                                 disabled={isDisabled}
-                                className="p-3 text-left bg-slate-100 hover:bg-blue-50 hover:border-blue-200 border border-transparent rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed transition group"
+                                className="p-3 text-left bg-slate-900 hover:bg-slate-800 hover:border-blue-400/40 border border-white/10 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed transition group"
                             >
-                                <p className="font-semibold text-slate-800 group-hover:text-blue-700 flex items-center justify-between">
+                                <p className="font-semibold text-white group-hover:text-blue-300 flex items-center justify-between">
                                     {card.name}
                                     <Sparkles size={12} className="text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                                 </p>
-                                <p className="text-xs text-slate-600 font-mono">**** **** **** {card.pan.slice(-4)}</p>
+                                <p className="text-xs text-slate-400 font-mono">**** **** **** {card.pan.slice(-4)}</p>
                             </button>
                         ))}
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-3" autoComplete="off">
                         {errors.length > 0 && (
-                            <div className="bg-red-50 border border-red-200 rounded p-3">
+                            <div className="bg-red-500/10 border border-red-500/40 rounded p-3">
                                 {errors.map((error, idx) => (
-                                    <p key={idx} className="text-sm text-red-700">• {error}</p>
+                                    <p key={idx} className="text-sm text-red-200">- {error}</p>
                                 ))}
                             </div>
                         )}
 
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">
-                                Numéro de carte (PAN)
+                            <label className="block text-sm font-medium text-slate-300 mb-1">
+                                Numero de carte (PAN)
                             </label>
                             <div className="flex gap-2">
                                 <input
@@ -158,15 +151,14 @@ export default function CardReaderSim({ onCardRead }: CardReaderSimProps) {
                                     placeholder="4111111111111111"
                                     disabled={isDisabled}
                                     autoComplete="off"
-                                    className="flex-1 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 border-2 border-slate-400 font-mono font-semibold"
-                                    style={{ color: 'rgba(0,0,0,1)', backgroundColor: 'rgb(255,255,255)', WebkitTextFillColor: 'rgba(0,0,0,1)' }}
+                                    className="flex-1 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 border border-slate-700 font-mono font-semibold bg-slate-900 text-white"
                                 />
                                 <button
                                     type="button"
                                     onClick={handlePaste}
                                     disabled={isDisabled}
-                                    className="bg-slate-100 hover:bg-slate-200 text-slate-600 p-2 rounded-lg border border-slate-300 disabled:opacity-50 transition"
-                                    title="Coller depuis le presse-papier"
+                                    className="bg-slate-800 hover:bg-slate-700 text-slate-300 p-2 rounded-lg border border-slate-700 disabled:opacity-50 transition"
+                                    title="Coller depuis le presse-papiers"
                                 >
                                     <Clipboard size={20} />
                                 </button>
@@ -175,7 +167,7 @@ export default function CardReaderSim({ onCardRead }: CardReaderSimProps) {
 
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">
+                                <label className="block text-sm font-medium text-slate-300 mb-1">
                                     Expiration (MM/AA)
                                 </label>
                                 <input
@@ -190,13 +182,12 @@ export default function CardReaderSim({ onCardRead }: CardReaderSimProps) {
                                     }}
                                     placeholder="12/26"
                                     disabled={isDisabled}
-                                    className="w-full px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 border-2 border-slate-400 font-mono font-semibold"
-                                    style={{ color: 'rgba(0,0,0,1)', backgroundColor: 'rgb(255,255,255)', WebkitTextFillColor: 'rgba(0,0,0,1)' }}
+                                    className="w-full px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 border border-slate-700 font-mono font-semibold bg-slate-900 text-white"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">
+                                <label className="block text-sm font-medium text-slate-300 mb-1">
                                     CVV
                                 </label>
                                 <input
@@ -205,8 +196,7 @@ export default function CardReaderSim({ onCardRead }: CardReaderSimProps) {
                                     onChange={(e) => setCvv(e.target.value.replace(/\D/g, '').slice(0, 4))}
                                     placeholder="123"
                                     disabled={isDisabled}
-                                    className="w-full px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 border-2 border-slate-400 font-mono font-semibold"
-                                    style={{ color: 'rgba(0,0,0,1)', backgroundColor: 'rgb(255,255,255)', WebkitTextFillColor: 'rgba(0,0,0,1)' }}
+                                    className="w-full px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 border border-slate-700 font-mono font-semibold bg-slate-900 text-white"
                                 />
                             </div>
                         </div>
@@ -214,7 +204,7 @@ export default function CardReaderSim({ onCardRead }: CardReaderSimProps) {
                         <button
                             type="submit"
                             disabled={isDisabled || pan.length < 13 || expiry.length < 5}
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
+                            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
                         >
                             Lire la carte
                         </button>
@@ -222,21 +212,19 @@ export default function CardReaderSim({ onCardRead }: CardReaderSimProps) {
                 </div>
             )}
 
-            {/* QR Code Mode */}
             {mode === 'qr' && (
                 <div className="text-center py-8">
-                    <QrCode className="w-24 h-24 mx-auto text-slate-300 mb-4" />
-                    <p className="text-slate-600">Fonctionnalité QR Code</p>
-                    <p className="text-sm text-slate-500">À implémenter avec webcam</p>
+                    <QrCode className="w-24 h-24 mx-auto text-slate-500 mb-4" />
+                    <p className="text-slate-300">Mode QR (bientot disponible)</p>
+                    <p className="text-sm text-slate-500">Simulation webcam a ajouter.</p>
                 </div>
             )}
 
-            {/* NFC Mode */}
             {mode === 'nfc' && (
                 <div className="text-center py-8">
-                    <Smartphone className="w-24 h-24 mx-auto text-slate-300 mb-4" />
-                    <p className="text-slate-600">Fonctionnalité NFC</p>
-                    <p className="text-sm text-slate-500">Requiert Web NFC API</p>
+                    <Smartphone className="w-24 h-24 mx-auto text-slate-500 mb-4" />
+                    <p className="text-slate-300">Mode NFC (bientot disponible)</p>
+                    <p className="text-sm text-slate-500">Web NFC requis selon navigateur.</p>
                 </div>
             )}
         </div>

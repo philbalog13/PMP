@@ -18,7 +18,6 @@ import {
     Settings,
     Home,
     Receipt,
-    Send,
     Store,
     Tablet,
     BarChart,
@@ -40,29 +39,29 @@ interface NavLink {
 // Navigation par rôle
 const roleNavLinks: Record<string, NavLink[]> = {
     [UserRole.ETUDIANT]: [
-        { name: 'Mon Parcours', href: '/student', icon: GraduationCap },
+        { name: 'Mon Parcours', href: '/etudiant/dashboard', icon: GraduationCap },
         { name: 'Ateliers', href: '/workshops', icon: BookOpen },
         { name: 'Lab', href: '/lab', icon: Beaker },
         { name: 'Documentation', href: '/documentation', icon: FileText },
     ],
     [UserRole.FORMATEUR]: [
-        { name: 'Dashboard', href: '/instructor', icon: LayoutDashboard },
+        { name: 'Dashboard', href: '/formateur/dashboard', icon: LayoutDashboard },
         { name: 'Étudiants', href: '/instructor/students', icon: Users },
         { name: 'Exercices', href: '/instructor/exercises', icon: ClipboardList },
         { name: 'Analytics', href: '/instructor/analytics', icon: BarChart },
         { name: 'Lab Control', href: '/instructor/lab-control', icon: Settings },
     ],
     [UserRole.CLIENT]: [
-        { name: 'Dashboard', href: '/client', icon: Home },
-        { name: 'Mes Cartes', href: '/client/cards', icon: CreditCard },
-        { name: 'Transactions', href: '/client/transactions', icon: Receipt },
-        { name: 'Payer', href: '/client/pay', icon: Send },
+        { name: 'Dashboard', href: 'http://localhost:3004', icon: Home },
+        { name: 'Mes Cartes', href: 'http://localhost:3004/cards', icon: CreditCard },
+        { name: 'Transactions', href: 'http://localhost:3004/transactions', icon: Receipt },
+        { name: 'Sécurité', href: 'http://localhost:3004/security', icon: Shield },
     ],
     [UserRole.MARCHAND]: [
-        { name: 'Dashboard', href: '/merchant', icon: Store },
-        { name: 'Transactions', href: '/merchant/transactions', icon: Receipt },
-        { name: 'Terminal POS', href: '/merchant/pos', icon: Tablet },
-        { name: 'Rapports', href: '/merchant/reports', icon: BarChart },
+        { name: 'Dashboard', href: 'http://localhost:3001', icon: Store },
+        { name: 'Transactions', href: 'http://localhost:3001/transactions', icon: Receipt },
+        { name: 'Simulation', href: 'http://localhost:3001/simulation', icon: Tablet },
+        { name: 'Security Lab', href: 'http://localhost:3001/security-lab', icon: BarChart },
     ],
 };
 
@@ -174,7 +173,7 @@ export function Navbar() {
         <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'backdrop-blur-xl bg-slate-900/80 border-b border-white/10 py-3' : 'bg-transparent py-5'}`}>
             <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
                 {/* Logo */}
-                <Link href={role ? (role === UserRole.ETUDIANT ? '/student' : role === UserRole.FORMATEUR ? '/instructor' : role === UserRole.CLIENT ? '/client' : '/merchant') : '/'} className="flex items-center gap-3 group">
+                <Link href={role ? (role === UserRole.ETUDIANT ? '/etudiant/dashboard' : role === UserRole.FORMATEUR ? '/formateur/dashboard' : role === UserRole.CLIENT ? 'http://localhost:3004' : 'http://localhost:3001') : '/'} className="flex items-center gap-3 group">
                     <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${currentColors.bg} flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform`}>
                         <CreditCard className="w-5 h-5 text-white" />
                     </div>

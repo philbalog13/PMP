@@ -186,7 +186,7 @@ export const getUserById = async (req: Request, res: Response) => {
  */
 export const createUser = async (req: Request, res: Response) => {
     try {
-        const { username, email, password, firstName, lastName, role } = req.body;
+        const { username, email, password, firstName, lastName, role, groupName } = req.body;
 
         if (!username || !email || !password) {
             return res.status(400).json({ success: false, error: 'Missing required fields' });
@@ -209,13 +209,36 @@ export const createUser = async (req: Request, res: Response) => {
         // Validate role
         const validRoles = ['ROLE_ETUDIANT', 'ROLE_CLIENT', 'ROLE_MARCHAND', 'ROLE_FORMATEUR'];
         const userRole = validRoles.includes(role) ? role : 'ROLE_ETUDIANT';
+        const normalizedGroupName = typeof groupName === 'string' && groupName.trim() !== ''
+            ? groupName.trim()
+            : null;
 
-        const result = await query(
-            `INSERT INTO users.users (username, email, password_hash, first_name, last_name, role, status)
-             VALUES ($1, $2, $3, $4, $5, $6, 'ACTIVE')
-             RETURNING id, username, email, first_name, last_name, role, status, created_at`,
-            [username, email, passwordHash, firstName, lastName, userRole]
-        );
+        let result;
+        try {
+            result = await query(
+                `INSERT INTO users.users (username, email, password_hash, first_name, last_name, role, status, group_name)
+                 VALUES ($1, $2, $3, $4, $5, $6, 'ACTIVE', $7)
+                 RETURNING id, username, email, first_name, last_name, role, status, group_name, created_at`,
+                [username, email, passwordHash, firstName, lastName, userRole, normalizedGroupName]
+            );
+        } catch (insertError: any) {
+            // Backward compatibility if DB column is not yet migrated.
+            if (insertError.code !== '42703') {
+                throw insertError;
+            }
+
+            logger.warn('users.users.group_name column missing, creating user without groupName', {
+                username,
+                email
+            });
+
+            result = await query(
+                `INSERT INTO users.users (username, email, password_hash, first_name, last_name, role, status)
+                 VALUES ($1, $2, $3, $4, $5, $6, 'ACTIVE')
+                 RETURNING id, username, email, first_name, last_name, role, status, created_at`,
+                [username, email, passwordHash, firstName, lastName, userRole]
+            );
+        }
 
         logger.info('User created by trainer', {
             createdBy: (req as any).user?.userId,

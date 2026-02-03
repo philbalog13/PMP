@@ -20,8 +20,8 @@ app.use(VulnEngine.middleware);
 // Routes
 app.use('/hsm', hsmRoutes);
 
-// Health Check
-app.get('/health', (req, res) => {
+// Health Check (both root and /hsm for gateway compatibility)
+app.get(['/health', '/hsm/health'], (req, res) => {
     res.json({ status: 'OK', service: 'HSM Simulator', version: '1.0.0' });
 });
 

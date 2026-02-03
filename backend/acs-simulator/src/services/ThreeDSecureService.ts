@@ -9,6 +9,7 @@ export interface ThreeDSRequest {
     currency: string;
     merchantId: string;
     transactionId: string;
+    returnUrl?: string;
     cardholderName?: string;
     billingAddress?: Address;
 }
@@ -33,6 +34,7 @@ export interface ThreeDSResult {
 export class ThreeDSecureService {
     private readonly HIGH_RISK_THRESHOLD = 50;
     private readonly VERY_HIGH_RISK_THRESHOLD = 80;
+    private readonly challengeBaseUrl = (process.env.THREEDS_CHALLENGE_URL || 'http://localhost:3088').replace(/\/$/, '');
 
     /**
      * Perform risk-based authentication (RBA)
@@ -82,10 +84,11 @@ export class ThreeDSecureService {
 
         // Challenge required
         console.log(`[3DS-ACS] ⚠️ Medium/High Risk (${riskScore}). Challenge Required (transStatus: C).`);
+        const acsTransId = `ACS_${Date.now()}`;
         return {
             transStatus: 'C',
-            challengeUrl: `http://localhost:3005/3ds-challenge?txId=${request.transactionId}`,
-            acsTransId: `ACS_${Date.now()}`,
+            challengeUrl: this.buildChallengeUrl(request.transactionId, acsTransId, request.returnUrl),
+            acsTransId,
             riskScore,
             protocolVersion
         };
@@ -117,6 +120,16 @@ export class ThreeDSecureService {
 
     private generateAuthValue(): string {
         return Buffer.from(`AAV_EDU_${Date.now()}`).toString('base64').substring(0, 28);
+    }
+
+    private buildChallengeUrl(transactionId: string, acsTransId: string, returnUrl?: string): string {
+        const challengeUrl = new URL(this.challengeBaseUrl);
+        challengeUrl.searchParams.set('txId', transactionId);
+        challengeUrl.searchParams.set('acsTransId', acsTransId);
+        if (returnUrl) {
+            challengeUrl.searchParams.set('returnUrl', returnUrl);
+        }
+        return challengeUrl.toString();
     }
 
     /**

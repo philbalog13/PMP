@@ -2,11 +2,8 @@
  * PMP Monitoring Dashboard - Main App Component
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
-import { useWebSocket } from './hooks/useWebSocket';
-
-// Icons
 import {
     LayoutDashboard,
     PieChart,
@@ -17,112 +14,182 @@ import {
     Server,
     Activity,
     FileText,
-    Zap
+    Zap,
+    Menu,
+    X,
+    type LucideIcon
 } from 'lucide-react';
-
-// Pages
 import Dashboard from './components/realtime/Dashboard';
-import Analytics from './components/analytics/AnalyticsDashboard';
-import DebugTools from './components/debug/DebugTools';
-import Terminals from './components/monitoring/Terminals';
-import SecurityLogs from './components/security/SecurityLogs';
-import HSMManager from './components/hsm/HSMManager';
-import FraudDetection from './components/fraud/FraudDetection';
+import { useWebSocket } from './hooks/useWebSocket';
 
-interface NavItemProps {
+const Analytics = lazy(() => import('./components/analytics/AnalyticsDashboard'));
+const DebugTools = lazy(() => import('./components/debug/DebugTools'));
+const Terminals = lazy(() => import('./components/monitoring/Terminals'));
+const SecurityLogs = lazy(() => import('./components/security/SecurityLogs'));
+const HSMManager = lazy(() => import('./components/hsm/HSMManager'));
+const FraudDetection = lazy(() => import('./components/fraud/FraudDetection'));
+
+type NavIcon = LucideIcon;
+
+interface NavItemConfig {
     to: string;
-    icon: React.ReactNode;
+    icon: NavIcon;
     label: string;
 }
 
-function NavItem({ to, icon, label }: NavItemProps) {
+interface NavSectionConfig {
+    title: string;
+    items: NavItemConfig[];
+}
+
+const navSections: NavSectionConfig[] = [
+    {
+        title: 'Vue globale',
+        items: [
+            { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
+            { to: '/terminals', icon: Terminal, label: 'Terminaux' },
+            { to: '/map', icon: Globe, label: 'Carte 3D' }
+        ]
+    },
+    {
+        title: 'Securite et infra',
+        items: [
+            { to: '/logs', icon: ShieldAlert, label: 'Logs securite' },
+            { to: '/hsm', icon: Server, label: 'HSM master' },
+            { to: '/fraud', icon: Zap, label: 'Anti-fraude' }
+        ]
+    },
+    {
+        title: 'Analytics',
+        items: [
+            { to: '/analytics', icon: PieChart, label: 'Performance' },
+            { to: '/students', icon: Users, label: 'Utilisateurs' }
+        ]
+    },
+    {
+        title: 'Technique',
+        items: [
+            { to: '/debug', icon: FileText, label: 'Outils debug' }
+        ]
+    }
+];
+
+const routeTitles: Record<string, string> = {
+    '/': 'Vue globale du systeme',
+    '/map': 'Carte 3D des transactions',
+    '/terminals': 'Monitoring des terminaux',
+    '/analytics': 'Analytics pedagogiques',
+    '/students': 'Suivi des utilisateurs',
+    '/logs': 'Logs de securite',
+    '/hsm': 'Gestion HSM',
+    '/debug': 'Outils de debogage',
+    '/fraud': 'Detection de fraude'
+};
+
+interface NavItemProps extends NavItemConfig {
+    onNavigate?: () => void;
+}
+
+function NavItem({ to, icon: Icon, label, onNavigate }: NavItemProps) {
     return (
         <NavLink
             to={to}
+            end={to === '/'}
+            onClick={onNavigate}
             className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
         >
-            <span className="nav-icon">{icon}</span>
+            <span className="nav-icon">
+                <Icon size={18} />
+            </span>
             <span>{label}</span>
         </NavLink>
     );
 }
 
-function App() {
-    const location = useLocation();
-    const { connected, metrics, transactions } = useWebSocket();
-    const [currentTime, setCurrentTime] = useState(new Date());
+function HeaderClock() {
+    const [now, setNow] = useState(() => new Date());
 
-    // Update time every second
     useEffect(() => {
-        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-        return () => clearInterval(timer);
+        const timer = window.setInterval(() => setNow(new Date()), 1000);
+        return () => window.clearInterval(timer);
     }, []);
 
-    // Get page title based on route
-    const getPageTitle = useCallback(() => {
-        switch (location.pathname) {
-            case '/': return 'Vue Globale du Système';
-            case '/terminals': return 'Monitoring des Terminaux';
-            case '/analytics': return 'Analytics Pédagogiques';
-            case '/logs': return 'Logs de Sécurité';
-            case '/hsm': return 'Gestion HSM';
-            case '/debug': return 'Outils de Débogage';
-            case '/fraud': return 'AI Fraud Detection';
-            default: return 'Dashboard';
-        }
+    return <span className="header-clock">{now.toLocaleTimeString('fr-FR')}</span>;
+}
+
+function App() {
+    const location = useLocation();
+    const { connected, reconnecting, dataSource, metrics, transactions } = useWebSocket();
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+
+    useEffect(() => {
+        setSidebarOpen(false);
     }, [location.pathname]);
+
+    const pageTitle = useMemo(
+        () => routeTitles[location.pathname] ?? 'Dashboard monitoring',
+        [location.pathname]
+    );
+
+    const connectionState = useMemo(() => {
+        if (dataSource === 'simulated') {
+            return { label: 'Mode simulation', className: 'simulated' };
+        }
+        if (connected) {
+            return { label: 'Connecte', className: 'live' };
+        }
+        if (reconnecting) {
+            return { label: 'Reconnexion...', className: 'reconnecting' };
+        }
+        return { label: 'Deconnecte', className: 'offline' };
+    }, [connected, reconnecting, dataSource]);
 
     return (
         <div className="app">
+            <div
+                className={`sidebar-backdrop ${sidebarOpen ? 'open' : ''}`}
+                onClick={() => setSidebarOpen(false)}
+            />
+
             <div className="main-layout">
-                {/* Sidebar */}
-                <aside className="sidebar">
+                <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
                     <div className="sidebar-header">
-                        <span className="sidebar-logo flex items-center gap-2">
-                            <Activity className="text-blue-500" />
+                        <span className="sidebar-logo">
+                            <Activity size={18} />
                             PMP Monitor
                         </span>
                     </div>
 
                     <nav className="sidebar-nav">
-                        <div className="nav-section">
-                            <div className="nav-section-title">Vue Globale</div>
-                            <NavItem to="/" icon={<LayoutDashboard size={20} />} label="Dashboard" />
-                            <NavItem to="/terminals" icon={<Terminal size={20} />} label="Terminaux" />
-                            <NavItem to="/map" icon={<Globe size={20} />} label="Carte 3D" />
-                        </div>
-
-                        <div className="nav-section">
-                            <div className="nav-section-title">Sécurité & Infra</div>
-                            <NavItem to="/logs" icon={<ShieldAlert size={20} />} label="Logs Sécurité" />
-                            <NavItem to="/hsm" icon={<Server size={20} />} label="HSM Master" />
-                            <NavItem to="/fraud" icon={<Zap size={20} />} label="Anti-Fraude" />
-                        </div>
-
-                        <div className="nav-section">
-                            <div className="nav-section-title">Analytics</div>
-                            <NavItem to="/analytics" icon={<PieChart size={20} />} label="Performance" />
-                            <NavItem to="/students" icon={<Users size={20} />} label="Utilisateurs" />
-                        </div>
-
-                        <div className="nav-section">
-                            <div className="nav-section-title">Technique</div>
-                            <NavItem to="/debug" icon={<FileText size={20} />} label="Outils Debug" />
-                        </div>
+                        {navSections.map((section) => (
+                            <div className="nav-section" key={section.title}>
+                                <div className="nav-section-title">{section.title}</div>
+                                {section.items.map((item) => (
+                                    <NavItem
+                                        key={item.to}
+                                        to={item.to}
+                                        icon={item.icon}
+                                        label={item.label}
+                                        onNavigate={() => setSidebarOpen(false)}
+                                    />
+                                ))}
+                            </div>
+                        ))}
                     </nav>
 
-                    {/* Connection Status */}
-                    <div style={{ padding: 'var(--spacing-md)', borderTop: '1px solid var(--border-color)' }}>
-                        <a href={import.meta.env.VITE_PORTAL_URL || "http://localhost:3000"} className="flex items-center gap-2 text-slate-400 hover:text-white mb-4 transition">
+                    <div className="sidebar-footer">
+                        <a href={import.meta.env.VITE_PORTAL_URL || 'http://localhost:3000'} className="portal-link">
                             <LayoutDashboard size={16} />
-                            <span className="text-sm">Retour Portail</span>
+                            <span>Retour portail</span>
                         </a>
-                        <div className="status-indicator">
-                            <span className={`status-dot ${connected ? 'connected' : 'disconnected'}`} />
-                            <span>{connected ? 'Connecté' : 'Déconnecté'}</span>
+
+                        <div className={`status-indicator connection-badge ${connectionState.className}`}>
+                            <span className={`status-dot ${connectionState.className}`} />
+                            <span>{connectionState.label}</span>
                         </div>
+
                         {metrics && (
-                            <div className="text-xs text-slate-500 mt-2 flex justify-between">
+                            <div className="sidebar-meta">
                                 <span>Ping: {metrics.avgLatency?.toFixed(0) || 0}ms</span>
                                 <span>Conns: {metrics.activeConnections || 0}</span>
                             </div>
@@ -130,35 +197,51 @@ function App() {
                     </div>
                 </aside>
 
-                {/* Main Content */}
                 <div className="content-wrapper">
                     <header className="header">
-                        <h1 className="header-title">{getPageTitle()}</h1>
+                        <div className="header-left">
+                            <button
+                                type="button"
+                                className="menu-button"
+                                onClick={() => setSidebarOpen((prev) => !prev)}
+                                aria-label={sidebarOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
+                            >
+                                {sidebarOpen ? <X size={18} /> : <Menu size={18} />}
+                            </button>
+                            <h1 className="header-title">{pageTitle}</h1>
+                        </div>
+
                         <div className="header-status">
-                            <span style={{ color: 'var(--text-secondary)' }}>
-                                {currentTime.toLocaleTimeString('fr-FR')}
-                            </span>
+                            <HeaderClock />
                             {metrics && (
-                                <span className="status-indicator ml-4 bg-white/5 py-1 px-3 rounded-full border border-white/5">
-                                    <span style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>
-                                        {metrics.requestsPerSecond?.toFixed(0) || 0} req/s
-                                    </span>
+                                <span className="header-chip">
+                                    {metrics.requestsPerSecond?.toFixed(0) || 0} req/s
                                 </span>
                             )}
                         </div>
                     </header>
 
                     <main className="main-content">
-                        <Routes>
-                            <Route path="/" element={<Dashboard transactions={transactions} metrics={metrics} />} />
-                            <Route path="/terminals" element={<Terminals />} />
-                            <Route path="/logs" element={<SecurityLogs />} />
-                            <Route path="/hsm" element={<HSMManager />} />
-                            <Route path="/analytics" element={<Analytics />} />
-                            <Route path="/debug" element={<DebugTools />} />
-                            <Route path="/fraud" element={<FraudDetection />} />
-                            <Route path="*" element={<Dashboard transactions={transactions} metrics={metrics} />} />
-                        </Routes>
+                        <Suspense
+                            fallback={
+                                <div className="loading">
+                                    <div className="loading-spinner" />
+                                </div>
+                            }
+                        >
+                            <Routes>
+                                <Route path="/" element={<Dashboard transactions={transactions} metrics={metrics} />} />
+                                <Route path="/map" element={<Dashboard transactions={transactions} metrics={metrics} />} />
+                                <Route path="/terminals" element={<Terminals />} />
+                                <Route path="/logs" element={<SecurityLogs />} />
+                                <Route path="/hsm" element={<HSMManager />} />
+                                <Route path="/analytics" element={<Analytics />} />
+                                <Route path="/students" element={<Analytics initialTab="students" />} />
+                                <Route path="/debug" element={<DebugTools />} />
+                                <Route path="/fraud" element={<FraudDetection />} />
+                                <Route path="*" element={<Dashboard transactions={transactions} metrics={metrics} />} />
+                            </Routes>
+                        </Suspense>
                     </main>
                 </div>
             </div>

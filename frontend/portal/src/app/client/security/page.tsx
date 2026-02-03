@@ -34,6 +34,35 @@ interface CardSecurity {
     status: string;
 }
 
+const inferCardType = (maskedPan: string): string => {
+    const firstDigit = (maskedPan || '').trim().charAt(0);
+    if (firstDigit === '4') return 'VISA';
+    if (firstDigit === '5') return 'MASTERCARD';
+    if (firstDigit === '3') return 'AMEX';
+    return 'CARD';
+};
+
+type UnknownRecord = Record<string, unknown>;
+
+const toRecord = (value: unknown): UnknownRecord => (
+    value !== null && typeof value === 'object' ? (value as UnknownRecord) : {}
+);
+
+const normalizeCard = (raw: unknown): CardSecurity => {
+    const r = toRecord(raw);
+    const maskedPan = String(r.maskedPan ?? r.masked_pan ?? '');
+    return {
+        id: String(r.id || ''),
+        maskedPan,
+        cardType: String(r.cardType ?? r.card_type ?? inferCardType(maskedPan)),
+        threedsEnrolled: Boolean(r.threedsEnrolled ?? r.threeds_enrolled),
+        contactlessEnabled: Boolean(r.contactlessEnabled ?? r.contactless_enabled),
+        internationalEnabled: Boolean(r.internationalEnabled ?? r.international_enabled),
+        ecommerceEnabled: Boolean(r.ecommerceEnabled ?? r.ecommerce_enabled),
+        status: String(r.status ?? 'ACTIVE')
+    };
+};
+
 export default function ClientSecurityPage() {
     const { user, isLoading } = useAuth(true);
     const [cards, setCards] = useState<CardSecurity[]>([]);
@@ -54,7 +83,7 @@ export default function ClientSecurityPage() {
 
             if (response.ok) {
                 const data = await response.json();
-                setCards(data.security.cards || []);
+                setCards((data.security.cards || []).map(normalizeCard));
                 setTwoFactorEnabled(data.security.twoFactorEnabled || false);
             } else {
                 // Mock data for demo

@@ -10,9 +10,11 @@ $services = [ordered]@{
     "Crypto Service" = "http://localhost:8010/health"
     "HSM Simulator" = "http://localhost:8011/health"
     "Key Management" = "http://localhost:8012/health"
-    "Client Web (Store)" = "http://localhost:3003"
-    "Portal" = "http://localhost:3000"
-    "User Cards Web" = "http://localhost:3004"
+    "Portal" = "http://localhost:3000/api/health"
+    "TPE Web (Merchant)" = "http://localhost:3001/api/health"
+    "User Cards Web" = "http://localhost:3004/api/health"
+    "HSM Web" = "http://localhost:3006/api/health"
+    "Monitoring Dashboard UI" = "http://localhost:3082"
     "Monitoring Dashboard" = "http://localhost:3005/health"
 }
 

@@ -12,16 +12,19 @@ export const rulesEngine = new RuleEngine();
 // Initialize rules
 const initializeRules = async () => {
     // Register all built-in rules
-    Object.values(Rules).forEach(RuleClass => {
-        // Check if it's a constructable class (basic check)
-        if (typeof RuleClass === 'function' && RuleClass.prototype && RuleClass.prototype.condition) {
-            try {
-                // @ts-ignore - Dynamic instantiation
-                const ruleInstance = new RuleClass();
+    Object.values(Rules).forEach((RuleClass) => {
+        if (typeof RuleClass !== 'function') return;
+
+        try {
+            // @ts-ignore - Dynamic instantiation
+            const ruleInstance = new RuleClass();
+
+            // Accept both prototype methods and instance property functions.
+            if (ruleInstance && typeof ruleInstance.condition === 'function' && ruleInstance.id) {
                 rulesEngine.registerRule(ruleInstance);
-            } catch (e) {
-                // Ignore AbstractRule or non-rule exports
             }
+        } catch (e) {
+            // Ignore abstract base classes or helper exports.
         }
     });
 

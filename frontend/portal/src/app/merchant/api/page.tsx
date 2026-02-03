@@ -43,6 +43,57 @@ interface WebhookConfig {
     createdAt: string;
 }
 
+const toStringArray = (value: unknown): string[] => {
+    if (Array.isArray(value)) return value.map(String);
+    if (typeof value === 'string') {
+        try {
+            const parsed = JSON.parse(value);
+            if (Array.isArray(parsed)) return parsed.map(String);
+        } catch {
+            // Ignore parse error and fallback below
+        }
+        return value ? [value] : [];
+    }
+    return [];
+};
+
+type UnknownRecord = Record<string, unknown>;
+
+const toRecord = (value: unknown): UnknownRecord => (
+    value !== null && typeof value === 'object' ? (value as UnknownRecord) : {}
+);
+
+const toNullableString = (value: unknown): string | null => (
+    typeof value === 'string' ? value : null
+);
+
+const normalizeApiKey = (raw: unknown): APIKey => {
+    const r = toRecord(raw);
+    return {
+        id: String(r.id || ''),
+        keyName: String(r.keyName ?? r.key_name ?? ''),
+        apiKeyPrefix: String(r.apiKeyPrefix ?? r.api_key_prefix ?? ''),
+        permissions: toStringArray(r.permissions),
+        rateLimitPerMinute: Number(r.rateLimitPerMinute ?? r.rate_limit_per_minute ?? 60),
+        isActive: Boolean(r.isActive ?? r.is_active),
+        lastUsedAt: toNullableString(r.lastUsedAt ?? r.last_used_at),
+        createdAt: String(r.createdAt ?? r.created_at ?? '')
+    };
+};
+
+const normalizeWebhook = (raw: unknown): WebhookConfig => {
+    const r = toRecord(raw);
+    return {
+        id: String(r.id || ''),
+        url: String(r.url ?? ''),
+        events: toStringArray(r.events),
+        isActive: Boolean(r.isActive ?? r.is_active),
+        lastTriggeredAt: toNullableString(r.lastTriggeredAt ?? r.last_triggered_at),
+        consecutiveFailures: Number(r.consecutiveFailures ?? r.consecutive_failures ?? 0),
+        createdAt: String(r.createdAt ?? r.created_at ?? '')
+    };
+};
+
 export default function MerchantAPIPage() {
     const { user, isLoading } = useAuth(true);
     const [apiKeys, setApiKeys] = useState<APIKey[]>([]);
@@ -75,7 +126,7 @@ export default function MerchantAPIPage() {
 
             if (keysResponse.ok) {
                 const keysData = await keysResponse.json();
-                setApiKeys(keysData.apiKeys || []);
+                setApiKeys((keysData.apiKeys || []).map(normalizeApiKey));
             } else {
                 // Mock data
                 setApiKeys([
@@ -94,7 +145,7 @@ export default function MerchantAPIPage() {
 
             if (webhooksResponse.ok) {
                 const webhooksData = await webhooksResponse.json();
-                setWebhooks(webhooksData.webhooks || []);
+                setWebhooks((webhooksData.webhooks || []).map(normalizeWebhook));
             } else {
                 // Mock data
                 setWebhooks([
@@ -132,8 +183,13 @@ export default function MerchantAPIPage() {
 
             if (response.ok) {
                 const data = await response.json();
-                setNewlyCreatedKey(data.apiKey.key);
-                setApiKeys([data.apiKey, ...apiKeys]);
+                if (data?.apiKey?.key) {
+                    setNewlyCreatedKey(data.apiKey.key);
+                }
+                const createdKey = normalizeApiKey(data.apiKey || {});
+                if (createdKey.id) {
+                    setApiKeys([createdKey, ...apiKeys]);
+                }
             }
         } catch (error) {
             console.error('Failed to create API key:', error);
@@ -175,7 +231,10 @@ export default function MerchantAPIPage() {
 
             if (response.ok) {
                 const data = await response.json();
-                setWebhooks([data.webhook, ...webhooks]);
+                const createdWebhook = normalizeWebhook(data.webhook || {});
+                if (createdWebhook.id) {
+                    setWebhooks([createdWebhook, ...webhooks]);
+                }
             }
         } catch (error) {
             console.error('Failed to create webhook:', error);

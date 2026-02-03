@@ -82,6 +82,65 @@ const WORKSHOP_TITLES: Record<string, string> = {
     'emv': 'Cartes EMV'
 };
 
+type UnknownRecord = Record<string, unknown>;
+
+const toRecord = (value: unknown): UnknownRecord => (
+    value !== null && typeof value === 'object' ? (value as UnknownRecord) : {}
+);
+
+const normalizeStudent = (raw: unknown): StudentDetail => {
+    const r = toRecord(raw);
+    return {
+        id: String(r.id || ''),
+        username: String(r.username ?? ''),
+        email: String(r.email ?? ''),
+        firstName: String(r.firstName ?? r.first_name ?? ''),
+        lastName: String(r.lastName ?? r.last_name ?? ''),
+        role: String(r.role ?? ''),
+        status: String(r.status ?? ''),
+        createdAt: String(r.createdAt ?? r.created_at ?? '')
+    };
+};
+
+const normalizeProgress = (raw: unknown): WorkshopProgress => {
+    const r = toRecord(raw);
+    return {
+        workshopId: String(r.workshopId ?? r.workshop_id ?? ''),
+        status: String(r.status ?? 'NOT_STARTED'),
+        progressPercent: Number(r.progressPercent ?? r.progress_percent ?? 0),
+        currentSection: Number(r.currentSection ?? r.current_section ?? 0),
+        totalSections: Number(r.totalSections ?? r.total_sections ?? 0),
+        timeSpentMinutes: Number(r.timeSpentMinutes ?? r.time_spent_minutes ?? 0),
+        startedAt: (r.startedAt ?? r.started_at ?? null) as string | null,
+        completedAt: (r.completedAt ?? r.completed_at ?? null) as string | null
+    };
+};
+
+const normalizeQuiz = (raw: unknown): QuizResult => {
+    const r = toRecord(raw);
+    return {
+        quizId: String(r.quizId ?? r.quiz_id ?? ''),
+        workshopId: String(r.workshopId ?? r.workshop_id ?? ''),
+        score: Number(r.score ?? 0),
+        maxScore: Number(r.maxScore ?? r.max_score ?? 0),
+        percentage: Number(r.percentage ?? 0),
+        passed: Boolean(r.passed),
+        submittedAt: String(r.submittedAt ?? r.submitted_at ?? '')
+    };
+};
+
+const normalizeBadge = (raw: unknown): Badge => {
+    const r = toRecord(raw);
+    return {
+        badgeType: String(r.badgeType ?? r.badge_type ?? ''),
+        badgeName: String(r.badgeName ?? r.badge_name ?? ''),
+        badgeDescription: String(r.badgeDescription ?? r.badge_description ?? ''),
+        badgeIcon: String(r.badgeIcon ?? r.badge_icon ?? ''),
+        xpAwarded: Number(r.xpAwarded ?? r.xp_awarded ?? 0),
+        earnedAt: String(r.earnedAt ?? r.earned_at ?? '')
+    };
+};
+
 export default function StudentDetailPage() {
     const { user: authUser, isLoading: authLoading } = useAuth(true);
     const params = useParams();
@@ -109,11 +168,11 @@ export default function StudentDetailPage() {
 
             if (response.ok) {
                 const data = await response.json();
-                setStudent(data.student);
+                setStudent(normalizeStudent(data.student));
                 setStats(data.stats);
-                setProgress(data.progress);
-                setQuizzes(data.quizzes);
-                setBadges(data.badges);
+                setProgress((data.progress || []).map(normalizeProgress));
+                setQuizzes((data.quizzes || []).map(normalizeQuiz));
+                setBadges((data.badges || []).map(normalizeBadge));
             } else {
                 // Mock data
                 setStudent({

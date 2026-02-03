@@ -6,6 +6,37 @@ import { Request, Response } from 'express';
 import { query } from '../config/database';
 import { logger } from '../utils/logger';
 
+const LEGACY_WORKSHOP_IDS = new Set([
+    'intro',
+    'iso8583',
+    'hsm-keys',
+    '3ds-flow',
+    'fraud-detection',
+    'emv'
+]);
+
+async function isValidWorkshopId(workshopId: string): Promise<boolean> {
+    try {
+        const result = await query(
+            `SELECT 1
+             FROM learning.workshops
+             WHERE id = $1 AND is_active = true
+             LIMIT 1`,
+            [workshopId]
+        );
+        if ((result.rowCount ?? 0) > 0) {
+            return true;
+        }
+    } catch (error: any) {
+        logger.warn('Learning workshop catalog unavailable in exercises controller, using fallback validation', {
+            workshopId,
+            error: error.message
+        });
+    }
+
+    return LEGACY_WORKSHOP_IDS.has(workshopId);
+}
+
 /**
  * Get exercises (role-based)
  */
@@ -50,12 +81,14 @@ export const getExercises = async (req: Request, res: Response) => {
             );
 
             const result = await query(
-                `SELECT id, title, description, type, difficulty, workshop_id, points,
-                        time_limit_minutes, is_active, created_at, updated_at,
-                        (SELECT COUNT(*) FROM learning.exercise_assignments WHERE exercise_id = e.id) as assignment_count
+                `SELECT e.id, e.title, e.description, e.type, e.difficulty, e.workshop_id, e.points,
+                        e.time_limit_minutes, e.is_active, e.created_at, e.updated_at,
+                        COALESCE(COUNT(ea.id), 0)::integer as assignment_count
                  FROM learning.exercises e
+                 LEFT JOIN learning.exercise_assignments ea ON ea.exercise_id = e.id
                  WHERE ${whereConditions.join(' AND ')}
-                 ORDER BY created_at DESC
+                 GROUP BY e.id
+                 ORDER BY e.created_at DESC
                  LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
                 [...params, limit, offset]
             );
@@ -171,6 +204,16 @@ export const createExercise = async (req: Request, res: Response) => {
             return res.status(400).json({ success: false, error: 'Invalid difficulty level' });
         }
 
+        if (workshopId !== undefined && workshopId !== null) {
+            if (typeof workshopId !== 'string' || workshopId.trim() === '') {
+                return res.status(400).json({ success: false, error: 'Invalid workshop ID' });
+            }
+            const workshopIsValid = await isValidWorkshopId(workshopId);
+            if (!workshopIsValid) {
+                return res.status(400).json({ success: false, error: 'Unknown workshop ID' });
+            }
+        }
+
         const result = await query(
             `INSERT INTO learning.exercises
              (created_by, title, description, type, difficulty, workshop_id, points, time_limit_minutes, content, solution)
@@ -221,6 +264,16 @@ export const updateExercise = async (req: Request, res: Response) => {
 
         if (check.rows[0].created_by !== userId) {
             return res.status(403).json({ success: false, error: 'Not authorized to modify this exercise' });
+        }
+
+        if (workshopId !== undefined && workshopId !== null) {
+            if (typeof workshopId !== 'string' || workshopId.trim() === '') {
+                return res.status(400).json({ success: false, error: 'Invalid workshop ID' });
+            }
+            const workshopIsValid = await isValidWorkshopId(workshopId);
+            if (!workshopIsValid) {
+                return res.status(400).json({ success: false, error: 'Unknown workshop ID' });
+            }
         }
 
         // Build update query
@@ -333,6 +386,20 @@ export const assignExercise = async (req: Request, res: Response) => {
             return res.status(400).json({ success: false, error: 'Student IDs are required' });
         }
 
+        const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        const uniqueStudentIds = Array.from(new Set(
+            studentIds.filter(
+                (studentId: unknown): studentId is string =>
+                    typeof studentId === 'string' &&
+                    studentId.trim() !== '' &&
+                    uuidPattern.test(studentId)
+            )
+        ));
+
+        if (uniqueStudentIds.length === 0) {
+            return res.status(400).json({ success: false, error: 'No valid student IDs provided' });
+        }
+
         // Check exercise exists and ownership
         const check = await query(
             'SELECT id, created_by FROM learning.exercises WHERE id = $1 AND is_active = true',
@@ -343,24 +410,25 @@ export const assignExercise = async (req: Request, res: Response) => {
             return res.status(404).json({ success: false, error: 'Exercise not found' });
         }
 
-        // Create assignments
-        const assignments: { studentId: string; assignmentId: string }[] = [];
-        for (const studentId of studentIds) {
-            try {
-                const result = await query(
-                    `INSERT INTO learning.exercise_assignments (exercise_id, student_id, assigned_by, due_date)
-                     VALUES ($1, $2, $3, $4)
-                     ON CONFLICT DO NOTHING
-                     RETURNING id`,
-                    [id, studentId, userId, dueDate]
-                );
-                if (result.rowCount && result.rowCount > 0) {
-                    assignments.push({ studentId, assignmentId: result.rows[0].id });
-                }
-            } catch (e) {
-                // Skip invalid students
-            }
+        if (check.rows[0].created_by !== userId) {
+            return res.status(403).json({ success: false, error: 'Not authorized to assign this exercise' });
         }
+
+        // Bulk insert (faster + deterministic dedupe with unique constraint)
+        const result = await query(
+            `INSERT INTO learning.exercise_assignments (exercise_id, student_id, assigned_by, due_date)
+             SELECT $1, s.student_id, $2, $3
+             FROM UNNEST($4::uuid[]) AS s(student_id)
+             JOIN users.users u ON u.id = s.student_id AND u.role = 'ROLE_ETUDIANT'
+             ON CONFLICT (exercise_id, student_id) DO NOTHING
+             RETURNING id, student_id`,
+            [id, userId, dueDate || null, uniqueStudentIds]
+        );
+
+        const assignments = result.rows.map((row) => ({
+            studentId: row.student_id,
+            assignmentId: row.id
+        }));
 
         logger.info('Exercise assigned', { exerciseId: id, assignedCount: assignments.length });
 
@@ -431,6 +499,7 @@ export const submitExercise = async (req: Request, res: Response) => {
 export const gradeExercise = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
+        const userId = (req as any).user?.userId;
         const { assignmentId, grade, feedback } = req.body;
 
         if (!assignmentId) {
@@ -452,6 +521,10 @@ export const gradeExercise = async (req: Request, res: Response) => {
 
         if (check.rowCount === 0) {
             return res.status(404).json({ success: false, error: 'Assignment not found' });
+        }
+
+        if (check.rows[0].created_by !== userId) {
+            return res.status(403).json({ success: false, error: 'Not authorized to grade this exercise' });
         }
 
         if (check.rows[0].status !== 'SUBMITTED') {
@@ -494,6 +567,10 @@ export const getSubmissions = async (req: Request, res: Response) => {
 
         if (check.rowCount === 0) {
             return res.status(404).json({ success: false, error: 'Exercise not found' });
+        }
+
+        if (check.rows[0].created_by !== userId) {
+            return res.status(403).json({ success: false, error: 'Not authorized to view submissions for this exercise' });
         }
 
         // Get submissions

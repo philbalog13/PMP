@@ -19,6 +19,12 @@ router.use(authMiddleware);
 router.get('/', RequireRole(UserRole.ETUDIANT), progressController.getMyProgress);
 
 /**
+ * GET /api/progress/workshops
+ * Get workshops catalog (all authenticated users)
+ */
+router.get('/workshops', progressController.getWorkshopsCatalog);
+
+/**
  * GET /api/progress/leaderboard
  * Get leaderboard (all authenticated users)
  */

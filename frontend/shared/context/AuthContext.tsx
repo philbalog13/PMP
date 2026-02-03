@@ -80,13 +80,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, [authState.token]);
 
     /**
-     * Initialize auth state from localStorage on mount
+     * Helper to get cookie by name
+     */
+    const getCookie = (name: string): string | null => {
+        if (typeof document === 'undefined') return null;
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
+        return null;
+    };
+
+    /**
+     * Initialize auth state from localStorage or cookie on mount
      */
     useEffect(() => {
         const initializeAuth = () => {
             try {
-                const storedToken = localStorage.getItem('token');
-                const storedUser = localStorage.getItem('user');
+                let storedToken = localStorage.getItem('token');
+                let storedUser = localStorage.getItem('user');
+
+                // If not in localStorage, try cookie (SSO between ports)
+                if (!storedToken) {
+                    const cookieToken = getCookie('token');
+                    if (cookieToken) {
+                        console.log('[AuthContext] Found token in cookie, syncing to localStorage');
+                        storedToken = cookieToken;
+                        localStorage.setItem('token', cookieToken);
+
+                        // Try to decode user from token since we don't have user object in cookie
+                        // Note: This relies on the token containing necessary user info
+                        const payload = decodeToken(cookieToken);
+                        if (payload) {
+                            const userFromToken: User = {
+                                id: payload.userId || payload.sub || payload.id,
+                                email: payload.email || payload.upn || payload.unique_name,
+                                role: payload.role,
+                                permissions: payload.permissions || [],
+                                firstName: payload.firstName || 'User', // Fallback
+                                lastName: payload.lastName || ''
+                            };
+                            storedUser = JSON.stringify(userFromToken);
+                            localStorage.setItem('user', storedUser);
+                        }
+                    }
+                }
 
                 if (storedToken && storedUser) {
                     // Validate token

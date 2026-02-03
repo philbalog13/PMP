@@ -20,24 +20,40 @@ interface AnalyticsData {
     };
 }
 
-export default function AnalyticsDashboard() {
+type AnalyticsTab = 'overview' | 'fraud' | 'students' | 'errors';
+
+interface AnalyticsDashboardProps {
+    initialTab?: AnalyticsTab;
+}
+
+const tabs: Array<{ id: AnalyticsTab; label: string }> = [
+    { id: 'overview', label: 'Vue generale' },
+    { id: 'fraud', label: 'Fraudes' },
+    { id: 'students', label: 'Etudiants' },
+    { id: 'errors', label: 'Erreurs' }
+];
+
+export default function AnalyticsDashboard({ initialTab = 'overview' }: AnalyticsDashboardProps) {
     const [data, setData] = useState<AnalyticsData | null>(null);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'overview' | 'fraud' | 'students' | 'errors'>('overview');
+    const [activeTab, setActiveTab] = useState<AnalyticsTab>(initialTab);
 
     useEffect(() => {
         loadAnalyticsData();
     }, []);
 
+    useEffect(() => {
+        setActiveTab(initialTab);
+    }, [initialTab]);
+
     const loadAnalyticsData = async () => {
         try {
-            // Fetch all analytics data
             const [studentsRes, workshopsRes, errorsRes, suggestionsRes, fraudRes] = await Promise.all([
-                fetch('/api/analytics/students').then(r => r.json()),
-                fetch('/api/analytics/workshops').then(r => r.json()),
-                fetch('/api/analytics/errors').then(r => r.json()),
-                fetch('/api/analytics/suggestions').then(r => r.json()),
-                fetch('/api/analytics/fraud').then(r => r.json())
+                fetch('/api/analytics/students').then((r) => r.json()),
+                fetch('/api/analytics/workshops').then((r) => r.json()),
+                fetch('/api/analytics/errors').then((r) => r.json()),
+                fetch('/api/analytics/suggestions').then((r) => r.json()),
+                fetch('/api/analytics/fraud').then((r) => r.json())
             ]);
 
             setData({
@@ -47,8 +63,7 @@ export default function AnalyticsDashboard() {
                 suggestions: suggestionsRes.data || generateMockSuggestions(),
                 fraud: fraudRes.data || { metrics: [], heatmap: {} }
             });
-        } catch (error) {
-            // Use mock data if API fails
+        } catch {
             setData({
                 students: generateMockStudents(),
                 workshops: generateMockWorkshops(),
@@ -71,25 +86,21 @@ export default function AnalyticsDashboard() {
 
     return (
         <div>
-            {/* Tabs */}
-            <div style={{
-                display: 'flex',
-                gap: '8px',
-                marginBottom: '24px',
-                padding: '4px',
-                background: 'var(--bg-secondary)',
-                borderRadius: 'var(--radius-md)',
-                width: 'fit-content'
-            }}>
-                {[
-                    { id: 'overview', label: '📊 Vue Générale' },
-                    { id: 'fraud', label: '🔒 Fraudes' },
-                    { id: 'students', label: '👥 Étudiants' },
-                    { id: 'errors', label: '⚠️ Erreurs' }
-                ].map(tab => (
+            <div
+                style={{
+                    display: 'flex',
+                    gap: '8px',
+                    marginBottom: '24px',
+                    padding: '4px',
+                    background: 'var(--bg-secondary)',
+                    borderRadius: 'var(--radius-md)',
+                    width: 'fit-content'
+                }}
+            >
+                {tabs.map((tab) => (
                     <button
                         key={tab.id}
-                        onClick={() => setActiveTab(tab.id as any)}
+                        onClick={() => setActiveTab(tab.id)}
                         className={`btn ${activeTab === tab.id ? 'btn-primary' : 'btn-secondary'}`}
                     >
                         {tab.label}
@@ -99,19 +110,18 @@ export default function AnalyticsDashboard() {
 
             {activeTab === 'overview' && (
                 <div className="dashboard-grid">
-                    {/* Summary Stats */}
                     <div className="card">
                         <div className="card-header">
                             <h3 className="card-title">
-                                <span className="card-title-icon">📈</span>
-                                Résumé
+                                <span className="card-title-icon">OV</span>
+                                Resume
                             </h3>
                         </div>
                         <div className="card-body">
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
                                 <div className="stat-card">
                                     <div className="stat-value">{data?.students.length || 0}</div>
-                                    <div className="stat-label">Étudiants Actifs</div>
+                                    <div className="stat-label">Etudiants actifs</div>
                                 </div>
                                 <div className="stat-card">
                                     <div className="stat-value">{data?.workshops.length || 0}</div>
@@ -119,26 +129,25 @@ export default function AnalyticsDashboard() {
                                 </div>
                                 <div className="stat-card">
                                     <div className="stat-value">
-                                        {data?.workshops.reduce((sum, w) => sum + w.completion, 0) / (data?.workshops.length || 1) || 0}%
+                                        {data?.workshops.reduce((sum, workshop) => sum + workshop.completion, 0) / (data?.workshops.length || 1) || 0}%
                                     </div>
-                                    <div className="stat-label">Complétion Moyenne</div>
+                                    <div className="stat-label">Completion moyenne</div>
                                 </div>
                                 <div className="stat-card">
                                     <div className="stat-value">
-                                        {data?.errors.reduce((sum, e) => sum + e.count, 0) || 0}
+                                        {data?.errors.reduce((sum, errorItem) => sum + errorItem.count, 0) || 0}
                                     </div>
-                                    <div className="stat-label">Erreurs Totales</div>
+                                    <div className="stat-label">Erreurs totales</div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Suggestions */}
                     <div className="card">
                         <div className="card-header">
                             <h3 className="card-title">
-                                <span className="card-title-icon">💡</span>
-                                Suggestions d'Amélioration
+                                <span className="card-title-icon">SG</span>
+                                Suggestions d'amelioration
                             </h3>
                         </div>
                         <div className="card-body">
@@ -152,8 +161,8 @@ export default function AnalyticsDashboard() {
                 <div className="card card-full">
                     <div className="card-header">
                         <h3 className="card-title">
-                            <span className="card-title-icon">🔒</span>
-                            Heatmap des Fraudes Détectées
+                            <span className="card-title-icon">FR</span>
+                            Heatmap des fraudes detectees
                         </h3>
                     </div>
                     <div className="card-body">
@@ -166,8 +175,8 @@ export default function AnalyticsDashboard() {
                 <div className="card card-full">
                     <div className="card-header">
                         <h3 className="card-title">
-                            <span className="card-title-icon">👥</span>
-                            Progression des Étudiants
+                            <span className="card-title-icon">ST</span>
+                            Progression des etudiants
                         </h3>
                     </div>
                     <div className="card-body">
@@ -183,8 +192,8 @@ export default function AnalyticsDashboard() {
                 <div className="card card-full">
                     <div className="card-header">
                         <h3 className="card-title">
-                            <span className="card-title-icon">⚠️</span>
-                            Analyse des Erreurs Courantes
+                            <span className="card-title-icon">ER</span>
+                            Analyse des erreurs courantes
                         </h3>
                     </div>
                     <div className="card-body">
@@ -196,7 +205,6 @@ export default function AnalyticsDashboard() {
     );
 }
 
-// Mock data generators
 function generateMockStudents() {
     return [
         { studentId: 'STU001', name: 'Alice Martin', completedWorkshops: 12, score: 85, lastActive: '2026-01-28' },
@@ -232,8 +240,8 @@ function generateMockErrors() {
 
 function generateMockSuggestions() {
     return [
-        { id: 1, priority: 'high', title: 'Renforcer la validation MAC', description: '45 erreurs détectées' },
-        { id: 2, priority: 'medium', title: 'Simplifier Atelier 05', description: 'Taux complétion 65%' },
+        { id: 1, priority: 'high', title: 'Renforcer la validation MAC', description: '45 erreurs detectees' },
+        { id: 2, priority: 'medium', title: 'Simplifier Atelier 05', description: 'Taux completion 65%' },
         { id: 3, priority: 'high', title: 'Insister sur PAN masking', description: '15 violations PCI-DSS' }
     ];
 }

@@ -227,7 +227,7 @@ services:
       - NODE_ENV=${NODE_ENV}
       - NEXT_PUBLIC_API_URL=http://api-gateway:8000
     ports:
-      - "3003:3000"
+      - "3001:3000"
     networks:
       - monetic-network
     depends_on:
@@ -306,6 +306,7 @@ services:
       - NODE_ENV=${NODE_ENV}
       - PORT=3000
       - NEXT_PUBLIC_API_URL=http://api-gateway:8000
+      - NEXT_PUBLIC_PORTAL_URL=http://localhost:3000
     ports:
       - "3004:3000"
     networks:
@@ -347,6 +348,7 @@ services:
       - NODE_ENV=${NODE_ENV}
       - PORT=3000
       - NEXT_PUBLIC_API_URL=http://api-gateway:8000
+      - NEXT_PUBLIC_PORTAL_URL=http://localhost:3000
     ports:
       - "3006:3000"
     networks:
@@ -386,7 +388,7 @@ services:
     depends_on:
       - api-gateway
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3088"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:3088"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -411,7 +413,7 @@ services:
     container_name: pmp-monitoring-dashboard
     restart: unless-stopped
     ports:
-      - "3001:3000"
+      - "3082:3000"
     networks:
       - monetic-network
     depends_on:

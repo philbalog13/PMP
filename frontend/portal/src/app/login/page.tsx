@@ -83,10 +83,24 @@ export default function UnifiedLoginPage() {
         let defaultRedirectUrl = '';
 
         switch (role) {
-            case UserRole.CLIENT: endpoint = '/api/auth/client/login'; defaultRedirectUrl = '/client'; break;
-            case UserRole.MARCHAND: endpoint = '/api/auth/marchand/login'; defaultRedirectUrl = '/merchant'; payload.certificate = certificate; break;
-            case UserRole.ETUDIANT: endpoint = '/api/auth/etudiant/login'; defaultRedirectUrl = '/student'; break;
-            case UserRole.FORMATEUR: endpoint = '/api/auth/formateur/login'; defaultRedirectUrl = '/instructor'; payload.code2fa = 'ADMIN_SECRET'; break;
+            case UserRole.CLIENT:
+                endpoint = '/api/auth/client/login';
+                defaultRedirectUrl = 'http://localhost:3004';
+                break;
+            case UserRole.MARCHAND:
+                endpoint = '/api/auth/marchand/login';
+                defaultRedirectUrl = 'http://localhost:3001';
+                payload.certificate = certificate;
+                break;
+            case UserRole.ETUDIANT:
+                endpoint = '/api/auth/etudiant/login';
+                defaultRedirectUrl = '/etudiant/dashboard';
+                break;
+            case UserRole.FORMATEUR:
+                endpoint = '/api/auth/formateur/login';
+                defaultRedirectUrl = '/formateur/dashboard';
+                payload.code2fa = 'ADMIN_SECRET';
+                break;
         }
 
         console.log('[Login] Attempting login to:', endpoint, 'with email:', email);
@@ -107,6 +121,7 @@ export default function UnifiedLoginPage() {
             localStorage.setItem('role', role);
 
             // Also store token in cookie for middleware access (server-side)
+            // Use strict path=/ to ensure it's available everywhere
             document.cookie = `token=${data.accessToken}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
 
             console.log('[Login] Credentials stored, token length:', data.accessToken.length);

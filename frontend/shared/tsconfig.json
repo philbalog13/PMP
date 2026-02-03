@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2020",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "jsx": "preserve",
@@ -16,9 +20,18 @@
     "noEmit": true,
     "allowJs": false,
     "incremental": true,
+    "baseUrl": ".",
     "paths": {
-      "@pmp/shared/*": ["./*"]
-    }
+      "@pmp/shared/*": [
+        "./*"
+      ]
+    },
+    "types": [
+      "node",
+      "next",
+      "react",
+      "react-dom"
+    ]
   },
   "include": [
     "**/*.ts",

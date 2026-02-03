@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useTerminalStore } from '@/lib/store';
 import { processTransaction } from '@/lib/api-client';
-import { generateSTAN } from '@/lib/utils';
 import { Bug, FileText, Settings, Wifi, Activity, GraduationCap } from 'lucide-react';
 
 import TerminalScreen from '@/components/terminal/TerminalScreen';
@@ -13,7 +12,6 @@ import CardReaderSim from '@/components/terminal/CardReaderSim';
 import TransactionLog from '@/components/terminal/TransactionLog';
 import ConfigPanel from '@/components/config/ConfigPanel';
 import DebugView from '@/components/pedagogy/DebugView';
-import StepFlow from '@/components/pedagogy/StepFlow';
 import TechnicalDetail from '@/components/pedagogy/TechnicalDetail';
 import GlassCard from '@shared/components/GlassCard';
 import PremiumButton from '@shared/components/PremiumButton';
@@ -28,14 +26,13 @@ export default function Home() {
         setCurrentTransaction,
         addToHistory,
         debugMode,
-        toggleDebugMode,
-        setDebugData,
         toggleTechnicalDetails,
         reset,
     } = useTerminalStore();
 
     const [isBooting, setIsBooting] = useState(true);
     const [bootError, setBootError] = useState<string | null>(null);
+    const [lastBootCheckAt, setLastBootCheckAt] = useState<Date | null>(null);
 
     useEffect(() => {
         const bootSequence = async () => {
@@ -47,6 +44,7 @@ export default function Home() {
                 // Real health check
                 const { checkSystemHealth } = await import('@/lib/api-client');
                 const isHealthy = await checkSystemHealth();
+                setLastBootCheckAt(new Date());
 
                 if (isHealthy) {
                     setIsBooting(false);
@@ -66,7 +64,7 @@ export default function Home() {
         };
 
         bootSequence();
-    }, [state, setState]);
+    }, [setState]);
 
     const handleAmountComplete = (amt: number) => {
         setState('card-wait');
@@ -105,7 +103,7 @@ export default function Home() {
                 currency: 'EUR',
                 type: selectedType,
                 merchantId: 'MERCH_PED_001',
-                terminalId: 'TERM_WEB_01',
+                terminalId: 'TPEWEB01',
                 mcc: '5411',
                 posEntryMode: '012',
                 pinEntered: !!preparedTx.isoMessage.pinBlock, // Check if PIN was required/captured
@@ -123,6 +121,7 @@ export default function Home() {
 
             setCurrentTransaction({
                 ...response,
+                authorizationCode: response.authorizationCode || response.authCode,
                 matchedRules: response.matchedRules || [],
                 timestamp: new Date()
             });
@@ -134,7 +133,7 @@ export default function Home() {
                 type: selectedType,
                 status: response.approved ? 'APPROVED' : 'DECLINED',
                 responseCode: response.responseCode || '00',
-                authorizationCode: response.authorizationCode || '______',
+                authorizationCode: response.authorizationCode || response.authCode || '______',
                 maskedPan: `****${cardData.pan.slice(-4)}`,
                 timestamp: new Date(),
                 matchedRules: (response.matchedRules || []).map((r: { ruleId: string }) => r.ruleId),
@@ -149,7 +148,8 @@ export default function Home() {
 
             // Handle Offline Declines specifically
             // The service throws standard Errors, we can improve this check
-            const errorMessage = error.message || 'System error';
+            const gatewayMessage = error?.response?.data?.error || error?.response?.data?.responseMessage;
+            const errorMessage = gatewayMessage || error.message || 'System error';
             const isOfflineDecline = errorMessage.includes('(OFFLINE)');
 
             setState('declined');
@@ -169,8 +169,41 @@ export default function Home() {
         }
     };
 
+    if (isBooting) {
+        return (
+            <main className="min-h-screen p-4 md:p-8 font-sans flex items-center justify-center">
+                <GlassCard className="w-full max-w-xl p-8 border border-white/10 bg-slate-900/60 text-center">
+                    <div className="mx-auto mb-5 h-12 w-12 rounded-full border-2 border-blue-400/30 border-t-blue-400 animate-spin" />
+                    <h1 className="text-white text-2xl font-bold mb-2">Initialisation du terminal</h1>
+                    <p className="text-slate-300 text-sm">
+                        Verification des services monétiques en cours...
+                    </p>
+                </GlassCard>
+            </main>
+        );
+    }
+
     return (
         <main className="min-h-screen p-4 md:p-8 font-sans">
+            {(bootError || lastBootCheckAt) && (
+                <div className="max-w-7xl mx-auto mb-6">
+                    <div className={`rounded-2xl border px-4 py-3 text-sm flex items-center justify-between gap-4 ${bootError
+                            ? 'bg-amber-500/10 border-amber-500/30 text-amber-200'
+                            : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-200'
+                        }`}>
+                        <span>
+                            {bootError
+                                ? `Mode degrade: ${bootError}`
+                                : 'Connexion API validee. Terminal pret a encaisser.'}
+                        </span>
+                        {lastBootCheckAt && (
+                            <span className="text-xs opacity-80">
+                                Dernier check: {lastBootCheckAt.toLocaleTimeString('fr-FR')}
+                            </span>
+                        )}
+                    </div>
+                </div>
+            )}
             <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 items-start">
 
                 {/* LEFT COLUMN: THE PHYSICAL TERMINAL */}
@@ -249,7 +282,7 @@ export default function Home() {
                                 <span className="text-sm font-bold">Centre de Formation</span>
                             </Link>
 
-                            <Link href={process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:3000'} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition group">
+                            <Link href={process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:3000'} className="col-span-4 flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition group">
                                 <span className="text-sm font-medium">← Retour Portail</span>
                             </Link>
                         </div>

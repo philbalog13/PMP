@@ -15,7 +15,8 @@ export class TimeRule extends AbstractRule {
 
     condition = (ctx: AuthorizationContext) => {
         const hour = dayjs(ctx.timestamp).hour();
-        // Block between 3 AM and 5 AM
-        return hour >= 3 && hour < 5;
+        // Block between 3 AM and 5 AM only for high-value operations.
+        // This keeps regular pedagogical flows usable at any hour.
+        return hour >= 3 && hour < 5 && ctx.transaction.amount >= 300;
     };
 }

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import {
@@ -21,7 +21,7 @@ export default function Home() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-heading font-bold text-white">System Overview</h1>
-          <p className="text-slate-400 mt-2">Hardware Security Module • Model PMP-9000-v2</p>
+          <p className="text-slate-400 mt-2">Hardware Security Module  -  Model PMP-9000-v2</p>
         </div>
         <div className="flex items-center gap-4">
           <span className="px-3 py-1 rounded-full bg-green-500/10 text-green-500 text-xs font-semibold border border-green-500/20 animate-pulse">
@@ -41,7 +41,7 @@ export default function Home() {
               <span className="text-sm font-semibold uppercase tracking-wider">Keys Loaded</span>
             </div>
             <div className="text-3xl font-bold font-heading text-white">2,548</div>
-            <div className="text-xs text-slate-500 mt-2">LMK Active • 98% Integrity</div>
+            <div className="text-xs text-slate-500 mt-2">LMK Active  -  98% Integrity</div>
           </div>
         </div>
 
@@ -77,7 +77,7 @@ export default function Home() {
               <span className="text-sm font-semibold uppercase tracking-wider">Crypto Load</span>
             </div>
             <div className="text-3xl font-bold font-heading text-white">24%</div>
-            <div className="text-xs text-slate-500 mt-2">Temp: 42°C • Fan: 30%</div>
+            <div className="text-xs text-slate-500 mt-2">Temp: 42C  -  Fan: 30%</div>
           </div>
         </div>
       </div>
@@ -213,3 +213,4 @@ export default function Home() {
     </div>
   );
 }
+

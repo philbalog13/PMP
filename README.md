@@ -1,4 +1,4 @@
-![PMP Hero Header](file:///C:/Users/ASUS-GEORGES-GXT/Downloads/PMP/docs/assets/hero-header.png)
+![PMP Hero Header](docs/assets/hero-header.png)
 
 # 🏦 Plateforme Monétique Pédagogique (PMP)
 
@@ -67,11 +67,17 @@ Toutes les interfaces utilisent le **Dark Neon Glassmorphism** design system.
 | Application | Port | Description |
 |-------------|------|-------------|
 | **portal** | 3001 | Hub central multi-rôles (Client, Merchant, Student, Trainer) |
-| **user-cards-web** | 3006 | Interface client (cartes, transactions, stats) |
+| **user-cards-web** | 3004 | Interface client (cartes, transactions, stats) |
 | **tpe-web** | 3000 | Terminal de paiement marchand |
-| **hsm-web** | 3081 | Simulateur HSM (clés, vulnérabilités) |
+| **hsm-web** | 3006 | Simulateur HSM (clés, vulnérabilités) |
 | **3ds-challenge-ui** | 3088 | Page OTP 3D Secure |
 | **monitoring-dashboard** | 3082 | Dashboard de supervision temps réel |
+
+### 3DS Challenge UI (OTP)
+
+- URL : `http://localhost:3088/?txId=TX_123&acsTransId=ACS_123&returnUrl=http%3A%2F%2Flocalhost%3A3006%2Fresult`
+- OTP pédagogique : `123456`
+- Redirection : après succès, redirige vers `returnUrl` avec `transStatus=Y`, `txId`, `acsTransId`
 
 ### Design System
 
@@ -1388,23 +1394,22 @@ cd PMP
 cp .env.example .env
 ```
 
-### 2. Lancement de la Plateforme (Docker Optimized)
-La plateforme utilise un profil de déploiement stable pour garantir la visibilité des images locales.
+### 2. Lancement de la Plateforme (Docker)
+Deux options :
 
 ```bash
-# Lancer les services backend et l'infrastructure
+# Option A (recommandée) : build + run complet
+docker compose up -d --build
+
+# Option B (runtime stable) : utilise les images locales sans rebuild
 docker compose -f docker-compose-runtime.yml up -d
 ```
 
-### 3. Lancement du Simulateur HSM (Local Agent)
-*Note: Pour le moment, lancez le simulateur HSM hors Docker pour une compatibilité maximale.*
-```bash
-cd backend/hsm-simulator
-npm install
-npm start
-```
+Sur Windows, vous pouvez aussi utiliser `start-docker.ps1` (BuildKit désactivé pour stabilité).
 
-### 4. Vérification du Système
+### 3. Vérification du Système
+Le runtime inclut désormais le simulateur HSM (port 8011) et les services de sécurité.
+
 Accédez au dashboard de santé ou lancez les tests automatisés :
 - **Health Check**: [http://localhost:8000/health](http://localhost:8000/health)
 - **Tests E2E**: 

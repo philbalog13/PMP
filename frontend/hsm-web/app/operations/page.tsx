@@ -1,75 +1,282 @@
 'use client';
 
-import { Calculator } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { AlertCircle, Calculator, Loader2, LockKeyhole, ShieldCheck } from 'lucide-react';
+import { useAuth } from '@shared/context/AuthContext';
+import { encryptPin, generateMac, HsmApiError } from '@/lib/hsm-api';
+
+function normalizeHex(value: string): string {
+    return value.replace(/\s+/g, '').toUpperCase();
+}
+
+function isHex(value: string): boolean {
+    return /^[0-9A-F]+$/.test(value) && value.length % 2 === 0;
+}
 
 export default function OperationsPage() {
+    const { token } = useAuth();
+
+    const [pan, setPan] = useState('4111111111111111');
+    const [pin, setPin] = useState('1234');
+    const [pinFormat, setPinFormat] = useState<'ISO-0' | 'ISO-1'>('ISO-0');
+    const [pinKeyLabel, setPinKeyLabel] = useState('ZPK_TEST');
+    const [pinResult, setPinResult] = useState<{ block: string; trace: string[] } | null>(null);
+    const [pinError, setPinError] = useState<string | null>(null);
+    const [pinLoading, setPinLoading] = useState(false);
+
+    const [macData, setMacData] = useState('30313030463030303030303030303030');
+    const [macMethod, setMacMethod] = useState<'ALG1' | 'ALG3'>('ALG3');
+    const [macKeyLabel, setMacKeyLabel] = useState('ZPK_TEST');
+    const [macResult, setMacResult] = useState<{ mac: string; trace: string[] } | null>(null);
+    const [macError, setMacError] = useState<string | null>(null);
+    const [macLoading, setMacLoading] = useState(false);
+
+    const sanitizedPan = useMemo(() => pan.replace(/\D/g, ''), [pan]);
+    const normalizedMacData = useMemo(() => normalizeHex(macData), [macData]);
+
+    const canSubmitPin = sanitizedPan.length >= 12 && sanitizedPan.length <= 19 && /^\d{4,12}$/.test(pin);
+    const canSubmitMac = normalizedMacData.length >= 16 && isHex(normalizedMacData);
+
+    const handlePinSubmit = async () => {
+        setPinLoading(true);
+        setPinError(null);
+        setPinResult(null);
+
+        try {
+            const response = await encryptPin(
+                {
+                    pin,
+                    pan: sanitizedPan,
+                    format: pinFormat,
+                    keyLabel: pinKeyLabel.trim() || 'ZPK_TEST',
+                },
+                token
+            );
+
+            if (!response.encrypted_pin_block) {
+                throw new Error('Aucun PIN block chiffré retourné.');
+            }
+
+            setPinResult({
+                block: response.encrypted_pin_block,
+                trace: response.trace || [],
+            });
+        } catch (error) {
+            const message = error instanceof HsmApiError ? error.message : 'Echec de generation du PIN block.';
+            setPinError(message);
+        } finally {
+            setPinLoading(false);
+        }
+    };
+
+    const handleMacSubmit = async () => {
+        setMacLoading(true);
+        setMacError(null);
+        setMacResult(null);
+
+        try {
+            const response = await generateMac(
+                {
+                    data: normalizedMacData,
+                    method: macMethod,
+                    keyLabel: macKeyLabel.trim() || 'ZPK_TEST',
+                },
+                token
+            );
+
+            if (!response.mac) {
+                throw new Error('Aucun MAC retourne.');
+            }
+
+            setMacResult({
+                mac: response.mac,
+                trace: response.trace || [],
+            });
+        } catch (error) {
+            const message = error instanceof HsmApiError ? error.message : 'Echec de generation MAC.';
+            setMacError(message);
+        } finally {
+            setMacLoading(false);
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex items-center gap-3 mb-6">
-                <div className="p-3 bg-blue-500/10 rounded-xl border border-blue-500/20 text-blue-500">
+                <div className="p-3 bg-blue-500/10 rounded-xl border border-blue-500/20 text-blue-400">
                     <Calculator size={24} />
                 </div>
                 <div>
                     <h1 className="text-2xl font-bold font-heading text-white">Cryptographic Operations</h1>
-                    <p className="text-slate-400 text-sm">Perform on-demand crypto calculations.</p>
+                    <p className="text-slate-400 text-sm">Execution en direct des commandes HSM via API Gateway.</p>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* PIN Block Form */}
-                <div className="glass-card p-6 rounded-xl">
-                    <h3 className="text-lg font-bold text-white mb-4 border-b border-white/5 pb-2">PIN Block Calculator</h3>
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-400 mb-1">PAN (Primary Account Number)</label>
-                            <input type="text" placeholder="Card Number" className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-sm font-mono text-white" />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-400 mb-1">PIN (Clear Text)</label>
-                            <input type="password" placeholder="****" className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-sm font-mono text-white" />
-                        </div>
+            {!token && (
+                <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-200 text-sm">
+                    Session non detectee localement. Les appels API risquent d'echouer tant que vous n'etes pas connecte.
+                </div>
+            )}
+
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <div className="glass-card p-6 rounded-xl space-y-4">
+                    <h3 className="text-lg font-bold text-white border-b border-white/5 pb-2 flex items-center gap-2">
+                        <LockKeyhole size={18} className="text-blue-400" />
+                        PIN Block (B4)
+                    </h3>
+
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-400 mb-1">PAN</label>
+                        <input
+                            type="text"
+                            value={pan}
+                            onChange={(e) => setPan(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-sm font-mono text-white"
+                            placeholder="4111111111111111"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-400 mb-1">PIN</label>
+                        <input
+                            type="password"
+                            value={pin}
+                            onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+                            className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-sm font-mono text-white"
+                            placeholder="1234"
+                            maxLength={12}
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
                             <label className="block text-xs font-semibold text-slate-400 mb-1">Format</label>
-                            <select className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-sm text-white">
-                                <option>ISO-0 (Format 0)</option>
-                                <option>ISO-1 (Format 1)</option>
-                                <option>ISO-3 (Format 3)</option>
+                            <select
+                                value={pinFormat}
+                                onChange={(e) => setPinFormat(e.target.value as 'ISO-0' | 'ISO-1')}
+                                className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-sm text-white"
+                            >
+                                <option value="ISO-0">ISO-0</option>
+                                <option value="ISO-1">ISO-1</option>
                             </select>
                         </div>
-                        <button className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded transition">
-                            Generate PIN Block
-                        </button>
-                        <div className="mt-4 p-3 bg-slate-950 rounded border border-white/10">
-                            <div className="text-xs text-slate-500 mb-1">Result (Hex):</div>
-                            <div className="font-mono text-green-400 text-sm tracking-wider">READY</div>
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-400 mb-1">Key Label</label>
+                            <input
+                                type="text"
+                                value={pinKeyLabel}
+                                onChange={(e) => setPinKeyLabel(e.target.value)}
+                                className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-sm font-mono text-white"
+                                placeholder="ZPK_TEST"
+                            />
                         </div>
                     </div>
+
+                    <button
+                        className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-blue-900/60 disabled:text-slate-400 text-white font-bold py-2 rounded transition inline-flex items-center justify-center gap-2"
+                        onClick={handlePinSubmit}
+                        disabled={pinLoading || !canSubmitPin}
+                    >
+                        {pinLoading ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={16} />}
+                        {pinLoading ? 'Generation...' : 'Generate PIN Block'}
+                    </button>
+
+                    <div className="mt-2 p-3 bg-slate-950 rounded border border-white/10 min-h-20">
+                        <div className="text-xs text-slate-500 mb-1">Result (Hex)</div>
+                        {pinError && (
+                            <div className="text-red-400 text-sm inline-flex items-center gap-2">
+                                <AlertCircle size={14} />
+                                {pinError}
+                            </div>
+                        )}
+                        {pinResult && <div className="font-mono text-green-400 text-sm tracking-wider break-all">{pinResult.block}</div>}
+                        {!pinError && !pinResult && <div className="font-mono text-slate-500 text-sm">READY</div>}
+                    </div>
+
+                    {pinResult?.trace?.length ? (
+                        <div className="p-3 bg-slate-950/70 rounded border border-white/5">
+                            <div className="text-xs text-slate-500 mb-2">Trace</div>
+                            <div className="space-y-1 text-xs font-mono text-slate-300">
+                                {pinResult.trace.map((step, index) => (
+                                    <div key={`${step}-${index}`}>{step}</div>
+                                ))}
+                            </div>
+                        </div>
+                    ) : null}
                 </div>
 
-                {/* MAC Generator Form */}
-                <div className="glass-card p-6 rounded-xl">
-                    <h3 className="text-lg font-bold text-white mb-4 border-b border-white/5 pb-2">MAC Generator</h3>
-                    <div className="space-y-4">
+                <div className="glass-card p-6 rounded-xl space-y-4">
+                    <h3 className="text-lg font-bold text-white border-b border-white/5 pb-2 flex items-center gap-2">
+                        <ShieldCheck size={18} className="text-purple-400" />
+                        MAC Generator (C0)
+                    </h3>
+
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-400 mb-1">Input Data (Hex)</label>
+                        <textarea
+                            rows={4}
+                            value={macData}
+                            onChange={(e) => setMacData(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-sm font-mono text-white"
+                            placeholder="30313030463030303030303030303030"
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
-                            <label className="block text-xs font-semibold text-slate-400 mb-1">Input Data (Hex)</label>
-                            <textarea rows={4} placeholder="Raw Message Data" className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-sm font-mono text-white" />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-400 mb-1">Algorithm</label>
-                            <select className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-sm text-white">
-                                <option>ISO 9797-1 MAC Alg 3 (Retail MAC)</option>
-                                <option>CMAC (AES)</option>
-                                <option>HMAC-SHA256</option>
+                            <label className="block text-xs font-semibold text-slate-400 mb-1">Method</label>
+                            <select
+                                value={macMethod}
+                                onChange={(e) => setMacMethod(e.target.value as 'ALG1' | 'ALG3')}
+                                className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-sm text-white"
+                            >
+                                <option value="ALG3">ISO 9797 ALG3</option>
+                                <option value="ALG1">ISO 9797 ALG1</option>
                             </select>
                         </div>
-                        <button className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 rounded transition">
-                            Generate MAC
-                        </button>
-                        <div className="mt-4 p-3 bg-slate-950 rounded border border-white/10">
-                            <div className="text-xs text-slate-500 mb-1">Result (Hex):</div>
-                            <div className="font-mono text-purple-400 text-sm tracking-wider">READY</div>
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-400 mb-1">Key Label</label>
+                            <input
+                                type="text"
+                                value={macKeyLabel}
+                                onChange={(e) => setMacKeyLabel(e.target.value)}
+                                className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-sm font-mono text-white"
+                                placeholder="ZPK_TEST"
+                            />
                         </div>
                     </div>
+
+                    <button
+                        className="w-full bg-purple-600 hover:bg-purple-500 disabled:bg-purple-900/60 disabled:text-slate-400 text-white font-bold py-2 rounded transition inline-flex items-center justify-center gap-2"
+                        onClick={handleMacSubmit}
+                        disabled={macLoading || !canSubmitMac}
+                    >
+                        {macLoading ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={16} />}
+                        {macLoading ? 'Generation...' : 'Generate MAC'}
+                    </button>
+
+                    <div className="mt-2 p-3 bg-slate-950 rounded border border-white/10 min-h-20">
+                        <div className="text-xs text-slate-500 mb-1">Result (Hex)</div>
+                        {macError && (
+                            <div className="text-red-400 text-sm inline-flex items-center gap-2">
+                                <AlertCircle size={14} />
+                                {macError}
+                            </div>
+                        )}
+                        {macResult && <div className="font-mono text-purple-400 text-sm tracking-wider break-all">{macResult.mac}</div>}
+                        {!macError && !macResult && <div className="font-mono text-slate-500 text-sm">READY</div>}
+                    </div>
+
+                    {macResult?.trace?.length ? (
+                        <div className="p-3 bg-slate-950/70 rounded border border-white/5">
+                            <div className="text-xs text-slate-500 mb-2">Trace</div>
+                            <div className="space-y-1 text-xs font-mono text-slate-300">
+                                {macResult.trace.map((step, index) => (
+                                    <div key={`${step}-${index}`}>{step}</div>
+                                ))}
+                            </div>
+                        </div>
+                    ) : null}
                 </div>
             </div>
         </div>

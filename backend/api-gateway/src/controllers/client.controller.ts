@@ -618,7 +618,7 @@ export const getSecuritySettings = async (req: Request, res: Response) => {
 
         // Get cards with their security features
         const cardsResult = await query(
-            `SELECT id, masked_pan, threeds_enrolled, contactless_enabled,
+            `SELECT id, masked_pan, card_type, threeds_enrolled, contactless_enabled,
                     international_enabled, ecommerce_enabled, status
              FROM client.virtual_cards WHERE client_id = $1`,
             [userId]

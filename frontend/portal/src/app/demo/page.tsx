@@ -152,7 +152,7 @@ export default function DemoPage() {
                 {selectedDemo && (
                     <div className="text-center">
                         <Link
-                            href={`${process.env.NEXT_PUBLIC_TPE_URL || "http://localhost:3003"}?demo=${selectedDemo}`}
+                            href={`${process.env.NEXT_PUBLIC_TPE_URL || "http://localhost:3001"}?demo=${selectedDemo}`}
                             className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-semibold rounded-2xl transition-all shadow-xl shadow-blue-500/30"
                         >
                             <Play className="w-5 h-5" />
@@ -167,23 +167,23 @@ export default function DemoPage() {
                     <h3 className="text-xl font-bold text-white mb-6 text-center">Accès Direct aux Modules</h3>
                     <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <Link
-                            href={process.env.NEXT_PUBLIC_TPE_URL || "http://localhost:3003"}
+                            href={process.env.NEXT_PUBLIC_TPE_URL || "http://localhost:3001"}
                             className="p-4 rounded-xl bg-white/5 border border-white/5 hover:border-blue-500/30 transition flex items-center gap-3"
                         >
                             <Terminal className="w-8 h-8 text-blue-500" />
                             <div>
                                 <div className="font-semibold text-white">TPE Web</div>
-                                <div className="text-sm text-slate-500">Port 3003</div>
+                                <div className="text-sm text-slate-500">Port 3001</div>
                             </div>
                         </Link>
                         <Link
-                            href={process.env.NEXT_PUBLIC_MONITORING_URL || "http://localhost:3005"}
+                            href={process.env.NEXT_PUBLIC_MONITORING_URL || "http://localhost:3082"}
                             className="p-4 rounded-xl bg-white/5 border border-white/5 hover:border-green-500/30 transition flex items-center gap-3"
                         >
                             <CheckCircle className="w-8 h-8 text-green-500" />
                             <div>
                                 <div className="font-semibold text-white">Dashboard</div>
-                                <div className="text-sm text-slate-500">Port 3005</div>
+                                <div className="text-sm text-slate-500">Port 3082</div>
                             </div>
                         </Link>
                         <Link

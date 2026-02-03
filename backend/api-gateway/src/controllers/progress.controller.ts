@@ -5,10 +5,9 @@
 import { Request, Response } from 'express';
 import { query } from '../config/database';
 import { logger } from '../utils/logger';
-import { v4 as uuidv4 } from 'uuid';
 
-// Workshop definitions for validation
-const WORKSHOPS = {
+// Default workshop definitions (fallback if DB catalog is unavailable)
+const DEFAULT_WORKSHOPS = {
     'intro': { title: 'Introduction aux Paiements', sections: 5, quizId: 'quiz-intro' },
     'iso8583': { title: 'ISO 8583 - Messages', sections: 8, quizId: 'quiz-iso8583' },
     'hsm-keys': { title: 'HSM et Gestion des Clés', sections: 6, quizId: 'quiz-hsm' },
@@ -29,6 +28,77 @@ const BADGES = {
     'STREAK_7': { name: 'Semaine Complète', description: '7 jours consécutifs', icon: 'flame', xp: 50 }
 };
 
+type WorkshopCatalogEntry = {
+    id: string;
+    title: string;
+    sections: number;
+    quizId: string | null;
+};
+
+const defaultWorkshopCatalog: WorkshopCatalogEntry[] = Object.entries(DEFAULT_WORKSHOPS).map(
+    ([id, workshop]) => ({
+        id,
+        title: workshop.title,
+        sections: workshop.sections,
+        quizId: workshop.quizId || null
+    })
+);
+
+const defaultWorkshopMap = new Map(defaultWorkshopCatalog.map((w) => [w.id, w]));
+
+async function getActiveWorkshops(): Promise<WorkshopCatalogEntry[]> {
+    try {
+        const result = await query(
+            `SELECT id, title, sections, quiz_id
+             FROM learning.workshops
+             WHERE is_active = true
+             ORDER BY module_order ASC, id ASC`
+        );
+
+        if ((result.rowCount ?? 0) > 0) {
+            return result.rows.map((row) => ({
+                id: row.id,
+                title: row.title,
+                sections: Math.max(parseInt(row.sections, 10) || 1, 1),
+                quizId: row.quiz_id || null
+            }));
+        }
+    } catch (error: any) {
+        logger.warn('Learning workshop catalog unavailable, falling back to defaults', { error: error.message });
+    }
+
+    return defaultWorkshopCatalog;
+}
+
+async function getWorkshopById(workshopId: string): Promise<WorkshopCatalogEntry | null> {
+    try {
+        const result = await query(
+            `SELECT id, title, sections, quiz_id
+             FROM learning.workshops
+             WHERE id = $1 AND is_active = true
+             LIMIT 1`,
+            [workshopId]
+        );
+
+        if ((result.rowCount ?? 0) > 0) {
+            const row = result.rows[0];
+            return {
+                id: row.id,
+                title: row.title,
+                sections: Math.max(parseInt(row.sections, 10) || 1, 1),
+                quizId: row.quiz_id || null
+            };
+        }
+    } catch (error: any) {
+        logger.warn('Learning workshop lookup unavailable, falling back to defaults', {
+            workshopId,
+            error: error.message
+        });
+    }
+
+    return defaultWorkshopMap.get(workshopId) || null;
+}
+
 /**
  * Get my progress (all workshops)
  */
@@ -36,33 +106,42 @@ export const getMyProgress = async (req: Request, res: Response) => {
     try {
         const userId = (req as any).user?.userId;
 
-        const result = await query(
-            `SELECT workshop_id, status, progress_percent, current_section, total_sections,
-                    started_at, completed_at, time_spent_minutes, last_accessed_at
-             FROM learning.student_progress WHERE student_id = $1`,
-            [userId]
-        );
+        const [workshops, result] = await Promise.all([
+            getActiveWorkshops(),
+            query(
+                `SELECT workshop_id, status, progress_percent, current_section, total_sections,
+                        started_at, completed_at, time_spent_minutes, last_accessed_at
+                 FROM learning.student_progress WHERE student_id = $1`,
+                [userId]
+            )
+        ]);
 
         // Build progress map with all workshops
+        const progressRowsByWorkshopId = new Map(
+            result.rows.map((row) => [row.workshop_id, row])
+        );
+        const activeWorkshopIds = new Set(workshops.map((workshop) => workshop.id));
         const progressMap: Record<string, any> = {};
-        for (const [workshopId, workshop] of Object.entries(WORKSHOPS)) {
-            const dbProgress = result.rows.find(r => r.workshop_id === workshopId);
-            progressMap[workshopId] = dbProgress || {
-                workshop_id: workshopId,
+        for (const workshop of workshops) {
+            const dbProgress = progressRowsByWorkshopId.get(workshop.id);
+            progressMap[workshop.id] = dbProgress || {
+                workshop_id: workshop.id,
                 status: 'NOT_STARTED',
                 progress_percent: 0,
                 current_section: 0,
                 total_sections: workshop.sections,
                 time_spent_minutes: 0
             };
-            progressMap[workshopId].title = workshop.title;
+            progressMap[workshop.id].title = workshop.title;
         }
 
         res.json({
             success: true,
             progress: progressMap,
-            workshopsCompleted: result.rows.filter(r => r.status === 'COMPLETED').length,
-            totalWorkshops: Object.keys(WORKSHOPS).length
+            workshopsCompleted: result.rows.filter(
+                (row) => row.status === 'COMPLETED' && activeWorkshopIds.has(row.workshop_id)
+            ).length,
+            totalWorkshops: workshops.length
         });
     } catch (error: any) {
         logger.error('Get my progress error', { error: error.message });
@@ -71,23 +150,59 @@ export const getMyProgress = async (req: Request, res: Response) => {
 };
 
 /**
+ * Get active workshops catalog
+ */
+export const getWorkshopsCatalog = async (req: Request, res: Response) => {
+    try {
+        const workshops = await getActiveWorkshops();
+
+        res.json({
+            success: true,
+            workshops,
+            total: workshops.length
+        });
+    } catch (error: any) {
+        logger.error('Get workshops catalog error', { error: error.message });
+        res.status(500).json({ success: false, error: 'Failed to fetch workshops catalog' });
+    }
+};
+
+/**
  * Get leaderboard
  */
 export const getLeaderboard = async (req: Request, res: Response) => {
     try {
-        const limit = parseInt(req.query.limit as string) || 10;
+        const requestedLimit = parseInt(req.query.limit as string, 10);
+        const limit = Number.isFinite(requestedLimit)
+            ? Math.min(Math.max(requestedLimit, 1), 100)
+            : 10;
 
         const result = await query(
-            `SELECT
+            `WITH badge_stats AS (
+                SELECT
+                    student_id,
+                    SUM(xp_awarded)::integer as total_xp,
+                    COUNT(*)::integer as badge_count
+                FROM learning.badges
+                GROUP BY student_id
+             ),
+             workshop_stats AS (
+                SELECT
+                    student_id,
+                    COUNT(DISTINCT workshop_id)::integer as workshops_completed
+                FROM learning.student_progress
+                WHERE status = 'COMPLETED'
+                GROUP BY student_id
+             )
+             SELECT
                 u.id, u.username, u.first_name, u.last_name,
-                COALESCE(SUM(b.xp_awarded), 0)::integer as total_xp,
-                COUNT(DISTINCT b.id)::integer as badge_count,
-                COUNT(DISTINCT CASE WHEN sp.status = 'COMPLETED' THEN sp.workshop_id END)::integer as workshops_completed
+                COALESCE(bs.total_xp, 0)::integer as total_xp,
+                COALESCE(bs.badge_count, 0)::integer as badge_count,
+                COALESCE(ws.workshops_completed, 0)::integer as workshops_completed
              FROM users.users u
-             LEFT JOIN learning.badges b ON u.id = b.student_id
-             LEFT JOIN learning.student_progress sp ON u.id = sp.student_id
+             LEFT JOIN badge_stats bs ON u.id = bs.student_id
+             LEFT JOIN workshop_stats ws ON u.id = ws.student_id
              WHERE u.role = 'ROLE_ETUDIANT'
-             GROUP BY u.id, u.username, u.first_name, u.last_name
              ORDER BY total_xp DESC, workshops_completed DESC
              LIMIT $1`,
             [limit]
@@ -119,14 +234,26 @@ export const saveWorkshopProgress = async (req: Request, res: Response) => {
         const { currentSection, timeSpentMinutes } = req.body;
 
         // Validate workshop
-        const workshop = WORKSHOPS[workshopId as keyof typeof WORKSHOPS];
+        const workshop = await getWorkshopById(workshopId);
         if (!workshop) {
             return res.status(400).json({ success: false, error: 'Invalid workshop ID' });
         }
 
+        const parsedCurrentSection = Number(currentSection);
+        if (!Number.isFinite(parsedCurrentSection) || parsedCurrentSection < 0) {
+            return res.status(400).json({ success: false, error: 'currentSection must be a non-negative number' });
+        }
+        const normalizedCurrentSection = Math.min(Math.floor(parsedCurrentSection), workshop.sections);
+
+        const parsedTimeSpent = Number(timeSpentMinutes ?? 0);
+        if (!Number.isFinite(parsedTimeSpent) || parsedTimeSpent < 0) {
+            return res.status(400).json({ success: false, error: 'timeSpentMinutes must be a non-negative number' });
+        }
+        const normalizedTimeSpent = Math.floor(parsedTimeSpent);
+
         // Calculate progress percentage
         const progressPercent = Math.min(
-            Math.round((currentSection / workshop.sections) * 100),
+            Math.round((normalizedCurrentSection / workshop.sections) * 100),
             100
         );
         const status = progressPercent >= 100 ? 'COMPLETED' : 'IN_PROGRESS';
@@ -146,7 +273,7 @@ export const saveWorkshopProgress = async (req: Request, res: Response) => {
                 completed_at = CASE WHEN $3 = 'COMPLETED' THEN NOW() ELSE learning.student_progress.completed_at END,
                 updated_at = NOW()
              RETURNING *`,
-            [userId, workshopId, status, progressPercent, currentSection, workshop.sections, timeSpentMinutes || 0]
+            [userId, workshopId, status, progressPercent, normalizedCurrentSection, workshop.sections, normalizedTimeSpent]
         );
 
         res.json({
@@ -169,7 +296,7 @@ export const completeWorkshop = async (req: Request, res: Response) => {
         const { workshopId } = req.params;
 
         // Validate workshop
-        const workshop = WORKSHOPS[workshopId as keyof typeof WORKSHOPS];
+        const workshop = await getWorkshopById(workshopId);
         if (!workshop) {
             return res.status(400).json({ success: false, error: 'Invalid workshop ID' });
         }
@@ -198,7 +325,8 @@ export const completeWorkshop = async (req: Request, res: Response) => {
             [userId]
         );
 
-        if (parseInt(completedCount.rows[0].count) >= Object.keys(WORKSHOPS).length) {
+        const workshops = await getActiveWorkshops();
+        if (parseInt(completedCount.rows[0].count, 10) >= workshops.length) {
             await awardBadge(userId, 'ALL_WORKSHOPS');
         }
 
@@ -226,6 +354,21 @@ export const submitQuiz = async (req: Request, res: Response) => {
             return res.status(400).json({ success: false, error: 'Answers are required' });
         }
 
+        if (workshopId) {
+            const workshop = await getWorkshopById(workshopId);
+            if (!workshop) {
+                return res.status(400).json({ success: false, error: 'Invalid workshop ID' });
+            }
+        }
+
+        const normalizedTimeTakenSeconds = timeTakenSeconds === undefined || timeTakenSeconds === null
+            ? null
+            : Number(timeTakenSeconds);
+        if (normalizedTimeTakenSeconds !== null && (!Number.isFinite(normalizedTimeTakenSeconds) || normalizedTimeTakenSeconds < 0)) {
+            return res.status(400).json({ success: false, error: 'timeTakenSeconds must be a non-negative number' });
+        }
+        const timeTakenSecondsValue = normalizedTimeTakenSeconds === null ? null : Math.floor(normalizedTimeTakenSeconds);
+
         // Calculate score (in a real app, verify answers against correct answers from DB)
         // For demo, we'll use a mock scoring system
         const correctAnswers = answers.filter((a: any) => a.correct).length;
@@ -247,7 +390,7 @@ export const submitQuiz = async (req: Request, res: Response) => {
              (student_id, quiz_id, workshop_id, score, max_score, percentage, passed, answers, time_taken_seconds, attempt_number)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
              RETURNING id, quiz_id, score, max_score, percentage, passed, submitted_at`,
-            [userId, quizId, workshopId, correctAnswers, maxScore, percentage, passed, JSON.stringify(answers), timeTakenSeconds, attemptNumber]
+            [userId, quizId, workshopId, correctAnswers, maxScore, percentage, passed, JSON.stringify(answers), timeTakenSecondsValue, attemptNumber]
         );
 
         // Award badges
@@ -260,7 +403,7 @@ export const submitQuiz = async (req: Request, res: Response) => {
             await awardBadge(userId, 'PERFECT_SCORE');
         }
 
-        if (timeTakenSeconds && timeTakenSeconds < 300) {
+        if (timeTakenSecondsValue && timeTakenSecondsValue < 300) {
             await awardBadge(userId, 'FAST_LEARNER');
         }
 
@@ -366,7 +509,8 @@ export const getMyStats = async (req: Request, res: Response) => {
         const userId = (req as any).user?.userId;
 
         // Get all data
-        const [progressResult, quizResult, badgesResult] = await Promise.all([
+        const [workshops, progressResult, quizResult, badgesResult] = await Promise.all([
+            getActiveWorkshops(),
             query(
                 `SELECT status, COUNT(*) as count, SUM(time_spent_minutes) as time
                  FROM learning.student_progress WHERE student_id = $1
@@ -410,7 +554,7 @@ export const getMyStats = async (req: Request, res: Response) => {
             stats: {
                 workshops: {
                     ...workshopStats,
-                    total: Object.keys(WORKSHOPS).length
+                    total: workshops.length
                 },
                 quizzes: {
                     total: parseInt(quizResult.rows[0]?.total_quizzes) || 0,
@@ -454,7 +598,8 @@ export const getStudentProgress = async (req: Request, res: Response) => {
 export const getCohortAnalytics = async (req: Request, res: Response) => {
     try {
         // Get overall stats
-        const [studentsCount, progressStats, quizStats, badgeStats] = await Promise.all([
+        const [workshops, studentsCount, progressStats, quizStats, badgeStats] = await Promise.all([
+            getActiveWorkshops(),
             query(`SELECT COUNT(*) FROM users.users WHERE role = 'ROLE_ETUDIANT'`),
             query(
                 `SELECT
@@ -484,6 +629,7 @@ export const getCohortAnalytics = async (req: Request, res: Response) => {
                  GROUP BY badge_type`
             )
         ]);
+        const workshopTitleById = new Map(workshops.map((workshop) => [workshop.id, workshop.title]));
 
         // Recent activity
         const recentActivity = await query(
@@ -505,7 +651,9 @@ export const getCohortAnalytics = async (req: Request, res: Response) => {
                 totalStudents: parseInt(studentsCount.rows[0].count),
                 workshopProgress: progressStats.rows.map(row => ({
                     workshopId: row.workshop_id,
-                    title: WORKSHOPS[row.workshop_id as keyof typeof WORKSHOPS]?.title || row.workshop_id,
+                    title: workshopTitleById.get(row.workshop_id)
+                        || DEFAULT_WORKSHOPS[row.workshop_id as keyof typeof DEFAULT_WORKSHOPS]?.title
+                        || row.workshop_id,
                     studentsStarted: parseInt(row.students_started),
                     studentsCompleted: parseInt(row.students_completed),
                     avgProgress: Math.round(row.avg_progress) || 0,

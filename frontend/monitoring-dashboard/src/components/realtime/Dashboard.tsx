@@ -1,92 +1,105 @@
 /**
  * Main Dashboard - Real-time monitoring view
- * Updated to include 3D Map
  */
 
-import { useMemo } from 'react';
-import { Transaction, Metrics } from '../../hooks/useWebSocket';
+import { Suspense, lazy, useMemo } from 'react';
+import { BarChart3, Clock3, CreditCard, Gauge, Globe2 } from 'lucide-react';
+import type { Transaction, Metrics } from '../../hooks/useWebSocket';
 import ResponseCodeStats from './ResponseCodeStats';
 import ServiceLatency from './ServiceLatency';
 import SuccessRateGauge from './SuccessRateGauge';
-import TransactionMap from './TransactionMap';
+
+const TransactionMap = lazy(() => import('./TransactionMap'));
 
 interface DashboardProps {
     transactions: Transaction[];
     metrics: Metrics | null;
 }
 
-export default function Dashboard({ transactions, metrics }: DashboardProps) {
-    // Calculate stats from transactions
-    const stats = useMemo(() => {
-        const total = transactions.length;
-        const successful = transactions.filter(t => t.responseCode === '00').length;
-        const avgLatency = total > 0
-            ? transactions.reduce((sum, t) => sum + t.latency, 0) / total
-            : 0;
-        const totalAmount = transactions.reduce((sum, t) => sum + t.amount, 0);
+interface DashboardStats {
+    total: number;
+    successful: number;
+    successRate: number;
+    avgLatency: number;
+    totalAmount: number;
+    responseCodeStats: Record<string, { count: number; color: string; label: string }>;
+}
 
-        return {
-            total,
-            successful,
-            successRate: total > 0 ? (successful / total) * 100 : 0,
-            avgLatency,
-            totalAmount
-        };
-    }, [transactions]);
+function buildDashboardStats(transactions: Transaction[]): DashboardStats {
+    const responseCodeStats: Record<string, { count: number; color: string; label: string }> = {
+        '00': { count: 0, color: '#22c55e', label: 'Approved' },
+        '05': { count: 0, color: '#ef4444', label: 'Do Not Honor' },
+        '51': { count: 0, color: '#f59e0b', label: 'Insufficient Funds' },
+        '14': { count: 0, color: '#ef4444', label: 'Invalid Card' },
+        '54': { count: 0, color: '#f59e0b', label: 'Expired Card' },
+        other: { count: 0, color: '#6b7280', label: 'Other' }
+    };
 
-    // Response code distribution
-    const responseCodeStats = useMemo(() => {
-        const distribution: Record<string, { count: number; color: string; label: string }> = {
-            '00': { count: 0, color: '#22c55e', label: 'Approved' },
-            '05': { count: 0, color: '#ef4444', label: 'Do Not Honor' },
-            '51': { count: 0, color: '#f59e0b', label: 'Insufficient Funds' },
-            '14': { count: 0, color: '#ef4444', label: 'Invalid Card' },
-            '54': { count: 0, color: '#f59e0b', label: 'Expired Card' },
-            'other': { count: 0, color: '#6b7280', label: 'Other' }
-        };
+    let successful = 0;
+    let totalLatency = 0;
+    let totalAmount = 0;
 
-        for (const txn of transactions) {
-            if (distribution[txn.responseCode]) {
-                distribution[txn.responseCode].count++;
-            } else {
-                distribution['other'].count++;
-            }
+    for (const txn of transactions) {
+        if (txn.responseCode === '00') {
+            successful += 1;
         }
 
-        return distribution;
-    }, [transactions]);
+        totalLatency += txn.latency;
+        totalAmount += txn.amount;
 
-    // Format currency
-    const formatAmount = (amount: number) => {
-        return new Intl.NumberFormat('fr-FR', {
-            style: 'currency',
-            currency: 'EUR'
-        }).format(amount / 100);
+        if (responseCodeStats[txn.responseCode]) {
+            responseCodeStats[txn.responseCode].count += 1;
+        } else {
+            responseCodeStats.other.count += 1;
+        }
+    }
+
+    const total = transactions.length;
+
+    return {
+        total,
+        successful,
+        successRate: total > 0 ? (successful / total) * 100 : 0,
+        avgLatency: total > 0 ? totalLatency / total : 0,
+        totalAmount,
+        responseCodeStats
     };
+}
+
+export default function Dashboard({ transactions, metrics }: DashboardProps) {
+    const stats = useMemo(() => buildDashboardStats(transactions), [transactions]);
+    const recentTransactions = useMemo(() => transactions.slice(0, 10), [transactions]);
+    const currencyFormatter = useMemo(
+        () =>
+            new Intl.NumberFormat('fr-FR', {
+                style: 'currency',
+                currency: 'EUR'
+            }),
+        []
+    );
+
+    const formatAmount = (amount: number) => currencyFormatter.format(amount / 100);
 
     return (
         <div>
-            {/* Stats Row */}
             <div className="stats-row">
                 <div className="stat-card">
                     <div className="stat-value">{stats.total}</div>
                     <div className="stat-label">Transactions (1 min)</div>
-                    <div className="stat-change positive">
-                        ↑ {metrics?.requestsPerSecond?.toFixed(0) || 0}/s
-                    </div>
+                    <div className="stat-change positive">+{metrics?.requestsPerSecond?.toFixed(0) || 0}/s</div>
                 </div>
 
                 <div className="stat-card">
                     <div className="stat-value">{stats.successRate.toFixed(1)}%</div>
-                    <div className="stat-label">Taux de Succès</div>
+                    <div className="stat-label">Taux de succes</div>
                     <div className={`stat-change ${stats.successRate > 95 ? 'positive' : 'negative'}`}>
-                        {stats.successRate > 95 ? '✓ Normal' : '⚠ Attention'}
+                        {stats.successRate > 95 ? 'Stable' : 'Attention'}
                     </div>
                 </div>
 
                 <div className="stat-card">
                     <div className="stat-value">{stats.avgLatency.toFixed(0)}ms</div>
-                    <div className="stat-label">Latence Moyenne</div>
+                    <div className="stat-label">Latence moyenne</div>
                     <div className={`stat-change ${stats.avgLatency < 200 ? 'positive' : 'negative'}`}>
                         P95: {metrics?.p95Latency?.toFixed(0) || 0}ms
                     </div>
@@ -94,34 +107,41 @@ export default function Dashboard({ transactions, metrics }: DashboardProps) {
 
                 <div className="stat-card">
                     <div className="stat-value">{formatAmount(stats.totalAmount)}</div>
-                    <div className="stat-label">Volume Total</div>
-                    <div className="stat-change positive">
-                        {transactions.length} transactions
-                    </div>
+                    <div className="stat-label">Volume total</div>
+                    <div className="stat-change positive">{stats.successful} approuvees</div>
                 </div>
             </div>
 
-            {/* 3D Map (Full Width) */}
             <div className="card card-full" style={{ marginBottom: '24px' }}>
                 <div className="card-header">
                     <h3 className="card-title">
-                        <span className="card-title-icon">🌍</span>
-                        Carte des Transactions Temps Réel
+                        <span className="card-title-icon">
+                            <Globe2 size={14} />
+                        </span>
+                        Carte temps reel des transactions
                     </h3>
                 </div>
                 <div className="card-body" style={{ padding: 0 }}>
-                    <TransactionMap />
+                    <Suspense
+                        fallback={
+                            <div className="loading">
+                                <div className="loading-spinner" />
+                            </div>
+                        }
+                    >
+                        <TransactionMap transactions={transactions} maxPoints={28} />
+                    </Suspense>
                 </div>
             </div>
 
-            {/* Charts Grid */}
             <div className="dashboard-grid">
-                {/* Success Rate Gauge */}
                 <div className="card">
                     <div className="card-header">
                         <h3 className="card-title">
-                            <span className="card-title-icon">📊</span>
-                            Taux de Succès
+                            <span className="card-title-icon">
+                                <Gauge size={14} />
+                            </span>
+                            Taux de succes
                         </h3>
                     </div>
                     <div className="card-body">
@@ -129,25 +149,27 @@ export default function Dashboard({ transactions, metrics }: DashboardProps) {
                     </div>
                 </div>
 
-                {/* Response Code Distribution */}
                 <div className="card">
                     <div className="card-header">
                         <h3 className="card-title">
-                            <span className="card-title-icon">📈</span>
-                            Codes Réponse
+                            <span className="card-title-icon">
+                                <BarChart3 size={14} />
+                            </span>
+                            Codes reponse
                         </h3>
                     </div>
                     <div className="card-body">
-                        <ResponseCodeStats distribution={responseCodeStats} />
+                        <ResponseCodeStats distribution={stats.responseCodeStats} />
                     </div>
                 </div>
 
-                {/* Service Latency */}
                 <div className="card">
                     <div className="card-header">
                         <h3 className="card-title">
-                            <span className="card-title-icon">⏱️</span>
-                            Latence par Service
+                            <span className="card-title-icon">
+                                <Clock3 size={14} />
+                            </span>
+                            Latence par service
                         </h3>
                     </div>
                     <div className="card-body">
@@ -155,15 +177,16 @@ export default function Dashboard({ transactions, metrics }: DashboardProps) {
                     </div>
                 </div>
 
-                {/* Recent Transactions */}
                 <div className="card">
                     <div className="card-header">
                         <h3 className="card-title">
-                            <span className="card-title-icon">💳</span>
-                            Transactions Récentes
+                            <span className="card-title-icon">
+                                <CreditCard size={14} />
+                            </span>
+                            Transactions recentes
                         </h3>
                     </div>
-                    <div className="card-body" style={{ maxHeight: '300px', overflow: 'auto' }}>
+                    <div className="card-body table-scroll">
                         <table className="data-table">
                             <thead>
                                 <tr>
@@ -175,21 +198,13 @@ export default function Dashboard({ transactions, metrics }: DashboardProps) {
                                 </tr>
                             </thead>
                             <tbody>
-                                {transactions.slice(0, 10).map(txn => (
+                                {recentTransactions.map((txn) => (
                                     <tr key={txn.id}>
                                         <td>{new Date(txn.timestamp).toLocaleTimeString('fr-FR')}</td>
                                         <td style={{ fontFamily: 'var(--font-mono)' }}>{txn.pan}</td>
                                         <td>{formatAmount(txn.amount)}</td>
                                         <td>
-                                            <span style={{
-                                                display: 'inline-block',
-                                                padding: '2px 8px',
-                                                borderRadius: '4px',
-                                                fontSize: '12px',
-                                                fontWeight: 600,
-                                                background: txn.responseCode === '00' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-                                                color: txn.responseCode === '00' ? '#22c55e' : '#ef4444'
-                                            }}>
+                                            <span className={`code-pill ${txn.responseCode === '00' ? 'success' : 'error'}`}>
                                                 {txn.responseCode}
                                             </span>
                                         </td>

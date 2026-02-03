@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { UserRole } from '@shared/types/user';
+import { normalizeRole } from '@shared/utils/roleUtils';
 import {
   CreditCard,
   Shield,
@@ -19,11 +21,14 @@ import {
 export default function LandingPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [dashboardHref, setDashboardHref] = useState('/login');
 
   useEffect(() => {
     const token = localStorage.getItem('token');
+    const storedRole = localStorage.getItem('role');
     if (token) {
       setIsAuthenticated(true);
+      setDashboardHref(getDashboardHref(storedRole));
     }
     setIsLoading(false);
   }, []);
@@ -66,7 +71,7 @@ export default function LandingPage() {
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-6 pt-4">
               <Link
-                href={isAuthenticated ? "/student" : "/login"}
+                href={isAuthenticated ? dashboardHref : "/login"}
                 className="group px-10 py-5 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-widest rounded-2xl transition-all shadow-2xl shadow-blue-500/40 flex items-center gap-3 active:scale-95"
               >
                 {isAuthenticated ? "Accéder à mon espace" : "Démarrer l'aventure"}
@@ -114,14 +119,14 @@ export default function LandingPage() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             <ModuleCard
-              href={process.env.NEXT_PUBLIC_TPE_URL || "http://localhost:3003"}
+              href={process.env.NEXT_PUBLIC_TPE_URL || "http://localhost:3001"}
               icon={<Terminal className="w-8 h-8" />}
               title="TPE Web"
               desc="Terminal de paiement virtuel complet. Débogage ISO8583 temps réel."
               color="blue"
             />
             <ModuleCard
-              href={process.env.NEXT_PUBLIC_MONITORING_URL || "http://localhost:3005"}
+              href={process.env.NEXT_PUBLIC_MONITORING_URL || "http://localhost:3082"}
               icon={<BarChart3 className="w-8 h-8" />}
               title="Monitoring"
               desc="Flux de messages, latences de switch et alertes fraude."
@@ -237,6 +242,23 @@ export default function LandingPage() {
       </section>
     </div>
   );
+}
+
+function getDashboardHref(role: string | null): string {
+  const normalizedRole = normalizeRole(role);
+
+  switch (normalizedRole) {
+    case UserRole.CLIENT:
+      return 'http://localhost:3004';
+    case UserRole.MARCHAND:
+      return 'http://localhost:3001';
+    case UserRole.ETUDIANT:
+      return '/etudiant/dashboard';
+    case UserRole.FORMATEUR:
+      return '/formateur/dashboard';
+    default:
+      return '/login';
+  }
 }
 
 // --- Internal Components ---

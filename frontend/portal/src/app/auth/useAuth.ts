@@ -41,6 +41,12 @@ export function useAuth(requireAuth: boolean = false) {
                     localStorage.setItem('role', storedRole);
                 }
 
+                // Sync cookie if missing (Critical for middleware)
+                if (token && !document.cookie.includes('token=')) {
+                    console.log('[useAuth] Restoring missing session cookie from localStorage');
+                    document.cookie = `token=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+                }
+
                 console.log('[useAuth] Checking auth:', {
                     hasToken: !!token,
                     hasUser: !!storedUser,
@@ -98,10 +104,10 @@ export function useAuth(requireAuth: boolean = false) {
 function getRedirectUrl(role: UserRole): string {
     const normalized = normalizeRole(role);
     switch (normalized) {
-        case UserRole.CLIENT: return '/demo';
-        case UserRole.MARCHAND: return '/analyze';
-        case UserRole.ETUDIANT: return '/student';
-        case UserRole.FORMATEUR: return '/instructor';
+        case UserRole.CLIENT: return 'http://localhost:3004';
+        case UserRole.MARCHAND: return 'http://localhost:3001';
+        case UserRole.ETUDIANT: return '/etudiant/dashboard';
+        case UserRole.FORMATEUR: return '/formateur/dashboard';
         default: return '/';
     }
 }

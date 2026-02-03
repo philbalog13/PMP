@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS users.users (
     last_name VARCHAR(100),
     role VARCHAR(20) DEFAULT 'USER',
     status VARCHAR(20) DEFAULT 'ACTIVE',
+    group_name VARCHAR(100),
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );

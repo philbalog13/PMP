@@ -34,6 +34,29 @@ interface Exercise {
     assignmentCount: number;
 }
 
+type UnknownRecord = Record<string, unknown>;
+
+const toRecord = (value: unknown): UnknownRecord => (
+    value !== null && typeof value === 'object' ? (value as UnknownRecord) : {}
+);
+
+const normalizeExercise = (raw: unknown): Exercise => {
+    const r = toRecord(raw);
+    return {
+        id: String(r.id || ''),
+        title: String(r.title ?? ''),
+        description: String(r.description ?? ''),
+        type: String(r.type ?? ''),
+        difficulty: String(r.difficulty ?? ''),
+        workshopId: (r.workshopId ?? r.workshop_id ?? null) as string | null,
+        points: Number(r.points ?? 0),
+        timeLimitMinutes: (r.timeLimitMinutes ?? r.time_limit_minutes ?? null) as number | null,
+        isActive: Boolean(r.isActive ?? r.is_active),
+        createdAt: String(r.createdAt ?? r.created_at ?? ''),
+        assignmentCount: Number(r.assignmentCount ?? r.assignment_count ?? 0)
+    };
+};
+
 const DIFFICULTY_COLORS: Record<string, string> = {
     'BEGINNER': 'bg-emerald-500/20 text-emerald-400',
     'INTERMEDIATE': 'bg-blue-500/20 text-blue-400',
@@ -70,7 +93,7 @@ export default function ExercisesPage() {
 
             if (response.ok) {
                 const data = await response.json();
-                setExercises(data.exercises || []);
+                setExercises((data.exercises || []).map(normalizeExercise));
             } else {
                 // Mock data
                 setExercises([

@@ -42,6 +42,11 @@ export default function AddStudentPage() {
     });
 
     const [bulkStudents, setBulkStudents] = useState<string>('');
+    const [bulkGroup, setBulkGroup] = useState<string>('Promotion 2026');
+
+    const getErrorMessage = (err: unknown, fallback: string): string => (
+        err instanceof Error && err.message ? err.message : fallback
+    );
 
     const generatePassword = () => {
         const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%';
@@ -50,6 +55,56 @@ export default function AddStudentPage() {
             password += chars.charAt(Math.floor(Math.random() * chars.length));
         }
         setStudent({ ...student, password });
+    };
+
+    const generateRandomPassword = (): string => {
+        const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%';
+        let password = '';
+        for (let i = 0; i < 12; i++) {
+            password += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return password;
+    };
+
+    const buildUsername = (firstName: string, lastName: string, email: string): string => {
+        const fromNames = `${firstName}.${lastName}`.toLowerCase().replace(/[^a-z0-9.]/g, '');
+        if (fromNames.replace('.', '').length > 0) return fromNames;
+        return email.split('@')[0].toLowerCase().replace(/[^a-z0-9._-]/g, '');
+    };
+
+    const createStudent = async (payload: {
+        firstName: string;
+        lastName: string;
+        email: string;
+        password: string;
+        group: string;
+    }) => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            throw new Error('Session expirée. Merci de vous reconnecter.');
+        }
+
+        const response = await fetch('/api/users', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                username: buildUsername(payload.firstName, payload.lastName, payload.email),
+                email: payload.email,
+                password: payload.password,
+                firstName: payload.firstName,
+                lastName: payload.lastName,
+                role: 'ROLE_ETUDIANT',
+                groupName: payload.group
+            })
+        });
+
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || 'Impossible de créer le compte étudiant');
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -76,14 +131,17 @@ export default function AddStudentPage() {
             return;
         }
 
-        // Simulate API call
-        setTimeout(() => {
-            setIsSubmitting(false);
+        try {
+            await createStudent(student);
             setSuccess(true);
             setTimeout(() => {
                 router.push('/instructor/students');
             }, 2000);
-        }, 1500);
+        } catch (err: unknown) {
+            setError(getErrorMessage(err, 'Erreur lors de la création de l’étudiant'));
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const handleBulkSubmit = async () => {
@@ -97,14 +155,53 @@ export default function AddStudentPage() {
             return;
         }
 
-        // Simulate API call
-        setTimeout(() => {
-            setIsSubmitting(false);
+        let createdCount = 0;
+        const failures: string[] = [];
+
+        try {
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                const [firstNameRaw, lastNameRaw, emailRaw] = line.split(',').map(v => v?.trim() || '');
+                const firstName = firstNameRaw;
+                const lastName = lastNameRaw;
+                const email = emailRaw.toLowerCase();
+
+                if (!firstName || !lastName || !email || !email.includes('@')) {
+                    failures.push(`Ligne ${i + 1} invalide`);
+                    continue;
+                }
+
+                try {
+                    await createStudent({
+                        firstName,
+                        lastName,
+                        email,
+                        password: generateRandomPassword(),
+                        group: bulkGroup
+                    });
+                    createdCount++;
+                } catch (err: unknown) {
+                    failures.push(`Ligne ${i + 1}: ${getErrorMessage(err, 'Erreur API')}`);
+                }
+            }
+
+            if (createdCount === 0) {
+                setError(`Aucun étudiant importé. ${failures.slice(0, 2).join(' | ')}`);
+                return;
+            }
+
+            if (failures.length > 0) {
+                setError(`Import partiel (${createdCount}/${lines.length}). ${failures.slice(0, 2).join(' | ')}`);
+                return;
+            }
+
             setSuccess(true);
             setTimeout(() => {
                 router.push('/instructor/students');
             }, 2000);
-        }, 1500);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     if (success) {
@@ -336,6 +433,8 @@ Marie,Martin,marie.martin@pmp.edu"
                         <div>
                             <label className="text-sm text-slate-400 mb-2 block">Groupe / Promotion</label>
                             <select
+                                value={bulkGroup}
+                                onChange={(e) => setBulkGroup(e.target.value)}
                                 className="w-full px-4 py-3 bg-slate-900 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                             >
                                 <option value="Promotion 2026">Promotion 2026</option>
@@ -345,7 +444,7 @@ Marie,Martin,marie.martin@pmp.edu"
                         </div>
 
                         <p className="text-xs text-slate-500">
-                            Les mots de passe seront générés automatiquement et envoyés par email aux étudiants.
+                            Les mots de passe sont générés automatiquement pendant l'import.
                         </p>
 
                         <button

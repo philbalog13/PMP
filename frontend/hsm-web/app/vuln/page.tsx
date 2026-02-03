@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -40,7 +40,7 @@ export default function VulnPage() {
                         <ShieldOff size={24} className="text-red-400" />
                     </div>
                     <div>
-                        <h3 className="font-bold text-white mb-1">⚠️ Educational Environment Only</h3>
+                        <h3 className="font-bold text-white mb-1">Warning Educational Environment Only</h3>
                         <p className="text-sm text-slate-400">
                             These attack simulations are for learning purposes. Never attempt on real systems.
                         </p>
@@ -118,3 +118,4 @@ function VulnToggle({ id, label, description, defaultEnabled }: { id: string; la
         </div>
     );
 }
+

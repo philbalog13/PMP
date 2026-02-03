@@ -40,6 +40,7 @@ export interface OrchestratedResult {
     responseCode: string;
     responseMessage: string;
     authCode?: string;
+    authorizationCode?: string;
 
     // Flow details
     fraudCheck?: {
@@ -144,6 +145,7 @@ export class IntegrationOrchestrator {
                 responseCode: authResult.responseCode,
                 responseMessage: authResult.responseMessage,
                 authCode: authResult.authCode,
+                authorizationCode: authResult.authCode,
                 fraudCheck: fraudResult,
                 threeDSResult,
                 processingTime: Date.now() - startTime,
@@ -259,7 +261,15 @@ export class IntegrationOrchestrator {
                     country: request.country || 'FR'
                 }
             });
-            return response.data;
+            const raw = response.data || {};
+            const unwrapped = (raw.data && typeof raw.data === 'object') ? raw.data : raw;
+
+            return {
+                approved: Boolean(unwrapped.approved),
+                responseCode: unwrapped.responseCode || (unwrapped.approved ? '00' : '96'),
+                responseMessage: unwrapped.responseMessage || (unwrapped.approved ? 'Approved' : 'Authorization service unavailable'),
+                authCode: unwrapped.authorizationCode || unwrapped.authCode
+            };
         } catch (error: any) {
             console.error('[ORCHESTRATOR] Auth engine authorization failed');
             if (error.response) {

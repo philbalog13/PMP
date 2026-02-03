@@ -28,44 +28,163 @@ interface Metrics {
     services: Record<string, { status: string; latency: number }>;
 }
 
+type DataSource = 'live' | 'simulated';
+
 interface WebSocketState {
     connected: boolean;
     reconnecting: boolean;
+    dataSource: DataSource;
     transactions: Transaction[];
     metrics: Metrics | null;
     subscribe: (channel: string) => void;
     unsubscribe: (channel: string) => void;
-    send: (type: string, payload: any) => void;
+    send: (type: string, payload: unknown) => void;
+}
+
+const MAX_TRANSACTIONS = 100;
+const MAX_RECONNECT_ATTEMPTS = 5;
+const RECONNECT_BASE_DELAY_MS = 1000;
+const RECONNECT_MAX_DELAY_MS = 15000;
+
+function resolveWebSocketUrl(): string {
+    const envUrl = import.meta.env.VITE_MONITORING_WS_URL as string | undefined;
+    if (envUrl && envUrl.trim()) {
+        return envUrl;
+    }
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${protocol}//${window.location.host}/ws`;
 }
 
 export function useWebSocket(): WebSocketState {
     const [connected, setConnected] = useState(false);
     const [reconnecting, setReconnecting] = useState(false);
+    const [dataSource, setDataSource] = useState<DataSource>('live');
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [metrics, setMetrics] = useState<Metrics | null>(null);
 
     const wsRef = useRef<WebSocket | null>(null);
     const reconnectTimeoutRef = useRef<number | null>(null);
-    const maxTransactions = 100;
+    const reconnectAttemptsRef = useRef(0);
+    const simulationCleanupRef = useRef<(() => void) | null>(null);
+    const simulationEnabledRef = useRef(false);
+    const isUnmountedRef = useRef(false);
+    const connectRef = useRef<() => void>(() => undefined);
+
+    const clearReconnectTimeout = useCallback(() => {
+        if (reconnectTimeoutRef.current !== null) {
+            window.clearTimeout(reconnectTimeoutRef.current);
+            reconnectTimeoutRef.current = null;
+        }
+    }, []);
+
+    const stopSimulation = useCallback(() => {
+        if (simulationCleanupRef.current) {
+            simulationCleanupRef.current();
+            simulationCleanupRef.current = null;
+        }
+    }, []);
+
+    const handleMessage = useCallback((message: any) => {
+        switch (message.type) {
+            case 'transaction':
+                if (message.payload) {
+                    setTransactions((prev) => [message.payload, ...prev].slice(0, MAX_TRANSACTIONS));
+                }
+                break;
+
+            case 'metrics':
+                setMetrics(message.payload);
+                break;
+
+            case 'history':
+                if (message.channel === 'transactions') {
+                    const payload = Array.isArray(message.payload) ? message.payload : [];
+                    setTransactions(payload.slice(0, MAX_TRANSACTIONS));
+                }
+                break;
+
+            case 'connected':
+            case 'subscribed':
+            case 'unsubscribed':
+                break;
+
+            default:
+                console.log('Unknown message type:', message.type);
+        }
+    }, []);
+
+    const startSimulation = useCallback(() => {
+        if (simulationCleanupRef.current) {
+            return;
+        }
+
+        simulationEnabledRef.current = true;
+        setConnected(false);
+        setReconnecting(false);
+        setDataSource('simulated');
+        setTransactions(Array.from({ length: 20 }, () => generateTransaction()));
+        setMetrics(generateMetrics());
+
+        const txnInterval = window.setInterval(() => {
+            setTransactions((prev) => [generateTransaction(), ...prev].slice(0, MAX_TRANSACTIONS));
+        }, 1000);
+
+        const metricsInterval = window.setInterval(() => {
+            setMetrics(generateMetrics());
+        }, 2000);
+
+        simulationCleanupRef.current = () => {
+            window.clearInterval(txnInterval);
+            window.clearInterval(metricsInterval);
+        };
+    }, []);
+
+    const scheduleReconnect = useCallback(() => {
+        if (isUnmountedRef.current || simulationEnabledRef.current || reconnectTimeoutRef.current !== null) {
+            return;
+        }
+
+        const attempt = reconnectAttemptsRef.current + 1;
+        reconnectAttemptsRef.current = attempt;
+
+        if (attempt > MAX_RECONNECT_ATTEMPTS) {
+            startSimulation();
+            return;
+        }
+
+        setReconnecting(true);
+        const delay = Math.min(RECONNECT_BASE_DELAY_MS * 2 ** (attempt - 1), RECONNECT_MAX_DELAY_MS);
+
+        reconnectTimeoutRef.current = window.setTimeout(() => {
+            reconnectTimeoutRef.current = null;
+            if (!isUnmountedRef.current && !simulationEnabledRef.current) {
+                connectRef.current();
+            }
+        }, delay);
+    }, [startSimulation]);
 
     const connect = useCallback(() => {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws`;
+        if (isUnmountedRef.current || simulationEnabledRef.current) {
+            return;
+        }
+
+        clearReconnectTimeout();
 
         try {
-            const ws = new WebSocket(wsUrl);
+            const ws = new WebSocket(resolveWebSocketUrl());
             wsRef.current = ws;
 
             ws.onopen = () => {
-                console.log('WebSocket connected');
+                reconnectAttemptsRef.current = 0;
                 setConnected(true);
                 setReconnecting(false);
+                setDataSource('live');
+                simulationEnabledRef.current = false;
+                stopSimulation();
 
-                // Subscribe to default channels
                 ws.send(JSON.stringify({ type: 'subscribe', payload: { channel: 'transactions' } }));
                 ws.send(JSON.stringify({ type: 'subscribe', payload: { channel: 'metrics' } }));
-
-                // Request historical data
                 ws.send(JSON.stringify({ type: 'getHistory', payload: { channel: 'transactions', limit: 50 } }));
             };
 
@@ -79,91 +198,27 @@ export function useWebSocket(): WebSocketState {
             };
 
             ws.onclose = () => {
-                console.log('WebSocket disconnected');
+                if (wsRef.current === ws) {
+                    wsRef.current = null;
+                }
                 setConnected(false);
-                wsRef.current = null;
-
-                // Attempt to reconnect
-                if (!reconnecting) {
-                    setReconnecting(true);
-                    reconnectTimeoutRef.current = window.setTimeout(() => {
-                        connect();
-                    }, 3000);
+                if (!isUnmountedRef.current) {
+                    scheduleReconnect();
                 }
             };
 
-            ws.onerror = (error) => {
-                console.error('WebSocket error:', error);
+            ws.onerror = () => {
+                // onclose handles retry policy
             };
         } catch (error) {
-            console.error('Failed to connect WebSocket:', error);
-
-            // Generate simulated data for demo purposes
-            startSimulation();
+            console.error('Failed to initialize WebSocket:', error);
+            scheduleReconnect();
         }
-    }, [reconnecting]);
+    }, [clearReconnectTimeout, handleMessage, scheduleReconnect, stopSimulation]);
 
-    const handleMessage = useCallback((message: any) => {
-        switch (message.type) {
-            case 'transaction':
-                setTransactions(prev => {
-                    const updated = [message.payload, ...prev];
-                    return updated.slice(0, maxTransactions);
-                });
-                break;
-
-            case 'metrics':
-                setMetrics(message.payload);
-                break;
-
-            case 'history':
-                if (message.channel === 'transactions') {
-                    setTransactions(message.payload || []);
-                }
-                break;
-
-            case 'connected':
-                console.log('Connected with ID:', message.payload.clientId);
-                break;
-
-            case 'subscribed':
-                console.log('Subscribed to:', message.payload.channel);
-                break;
-
-            default:
-                console.log('Unknown message type:', message.type);
-        }
-    }, []);
-
-    // Simulation for when WebSocket is not available
-    const startSimulation = useCallback(() => {
-        console.log('Starting simulated data...');
-        setConnected(true);
-
-        // Generate initial transactions
-        const initialTxns: Transaction[] = [];
-        for (let i = 0; i < 20; i++) {
-            initialTxns.push(generateTransaction());
-        }
-        setTransactions(initialTxns);
-
-        // Simulate real-time updates
-        const txnInterval = setInterval(() => {
-            setTransactions(prev => {
-                const updated = [generateTransaction(), ...prev];
-                return updated.slice(0, maxTransactions);
-            });
-        }, 1000);
-
-        const metricsInterval = setInterval(() => {
-            setMetrics(generateMetrics());
-        }, 2000);
-
-        return () => {
-            clearInterval(txnInterval);
-            clearInterval(metricsInterval);
-        };
-    }, []);
+    useEffect(() => {
+        connectRef.current = connect;
+    }, [connect]);
 
     const subscribe = useCallback((channel: string) => {
         if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -177,28 +232,31 @@ export function useWebSocket(): WebSocketState {
         }
     }, []);
 
-    const send = useCallback((type: string, payload: any) => {
+    const send = useCallback((type: string, payload: unknown) => {
         if (wsRef.current?.readyState === WebSocket.OPEN) {
             wsRef.current.send(JSON.stringify({ type, payload }));
         }
     }, []);
 
     useEffect(() => {
+        isUnmountedRef.current = false;
         connect();
 
         return () => {
+            isUnmountedRef.current = true;
+            clearReconnectTimeout();
+            stopSimulation();
             if (wsRef.current) {
                 wsRef.current.close();
-            }
-            if (reconnectTimeoutRef.current) {
-                clearTimeout(reconnectTimeoutRef.current);
+                wsRef.current = null;
             }
         };
-    }, [connect]);
+    }, [clearReconnectTimeout, connect, stopSimulation]);
 
     return {
         connected,
         reconnecting,
+        dataSource,
         transactions,
         metrics,
         subscribe,
@@ -214,7 +272,7 @@ function generateTransaction(): Transaction {
     const terminals = ['TERM001', 'TERM002', 'TERM003', 'TERM004', 'TERM005'];
 
     return {
-        id: `txn-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id: `txn-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
         timestamp: new Date().toISOString(),
         type: types[Math.floor(Math.random() * types.length)],
         amount: Math.floor(Math.random() * 50000) + 100,
@@ -247,4 +305,4 @@ function generateMetrics(): Metrics {
     };
 }
 
-export type { Transaction, Metrics };
+export type { Transaction, Metrics, DataSource };
