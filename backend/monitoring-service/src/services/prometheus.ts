@@ -56,6 +56,20 @@ export const metrics = {
         help: 'Ratio of blocked attacks vs total attacks',
         labelNames: ['defense_mechanism'],
         registers: [register]
+    }),
+
+    serviceUp: new client.Gauge({
+        name: 'pmp_service_up',
+        help: 'Service health status (1=up, 0=down/degraded)',
+        labelNames: ['service'],
+        registers: [register]
+    }),
+
+    serviceLatencyMs: new client.Gauge({
+        name: 'pmp_service_latency_ms',
+        help: 'Last measured health endpoint latency in milliseconds',
+        labelNames: ['service'],
+        registers: [register]
     })
 };
 

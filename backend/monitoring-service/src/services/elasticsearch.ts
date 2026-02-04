@@ -25,7 +25,8 @@ export class ElasticsearchService {
         transactions: 'pmp-transactions',
         metrics: 'pmp-metrics',
         alerts: 'pmp-alerts',
-        analytics: 'pmp-analytics'
+        analytics: 'pmp-analytics',
+        service_logs: 'pmp-service-logs'
     };
 
     constructor() {
@@ -33,7 +34,10 @@ export class ElasticsearchService {
     }
 
     private async connect(): Promise<void> {
-        const esHost = process.env.ELASTICSEARCH_HOST || 'http://localhost:9200';
+        const esHost =
+            process.env.ELASTICSEARCH_HOST ||
+            process.env.ELASTICSEARCH_URL ||
+            'http://localhost:9200';
 
         try {
             this.client = new Client({ node: esHost });
@@ -122,6 +126,19 @@ export class ElasticsearchService {
                         score: { type: 'integer' },
                         completed: { type: 'boolean' },
                         duration: { type: 'integer' }
+                    }
+                }
+            },
+            service_logs: {
+                mappings: {
+                    properties: {
+                        '@timestamp': { type: 'date' },
+                        service: { type: 'keyword' },
+                        status: { type: 'keyword' },
+                        endpoint: { type: 'keyword' },
+                        httpStatus: { type: 'integer' },
+                        latencyMs: { type: 'integer' },
+                        error: { type: 'text' }
                     }
                 }
             }

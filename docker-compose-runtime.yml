@@ -657,15 +657,12 @@ services:
       - api-gateway
 
   monitoring-dashboard:
-    image: pmp-sim-monitoring-service
+    image: pmp-monitoring-dashboard
     pull_policy: never
     container_name: pmp-monitoring-dashboard
     restart: unless-stopped
-    environment:
-      - NODE_ENV=${NODE_ENV}
-      - PORT=3005
     ports:
-      - "3007:3005"
+      - "3082:3000"
     networks:
       - monetic-network
 

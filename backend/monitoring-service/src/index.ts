@@ -9,10 +9,12 @@ import { createServer } from 'http';
 import { WebSocketServer } from './websocket/server.js';
 import { ElasticsearchService } from './services/elasticsearch.js';
 import { MetricsService } from './services/metrics.js';
+import { ServiceCollector } from './services/serviceCollector.js';
 import { register } from './services/prometheus.js';
 import transactionsRouter from './routes/transactions.js';
 import analyticsRouter from './routes/analytics.js';
 import debugRouter from './routes/debug.js';
+import logsRouter from './routes/logs.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -24,11 +26,13 @@ app.use(express.json());
 // Services
 export const elasticsearchService = new ElasticsearchService();
 export const metricsService = new MetricsService();
+export const serviceCollector = new ServiceCollector(elasticsearchService);
 
 // Routes API REST
 app.use('/api/transactions', transactionsRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/debug', debugRouter);
+app.use('/api/logs', logsRouter);
 
 // Endpoint Prometheus Metrics
 app.get('/metrics', async (req, res) => {
@@ -48,7 +52,8 @@ app.get('/health', (req, res) => {
         uptime: process.uptime(),
         services: {
             elasticsearch: elasticsearchService.isConnected(),
-            websocket: wsServer?.isRunning() ?? false
+            websocket: wsServer?.isRunning() ?? false,
+            collector: serviceCollector.isRunning()
         }
     });
 });
@@ -75,6 +80,7 @@ const wsServer = new WebSocketServer(server);
 
 // Démarrer le serveur
 server.listen(PORT, () => {
+    serviceCollector.start();
     console.log('═'.repeat(60));
     console.log('  📊 PMP MONITORING SERVICE v1.1');
     console.log('═'.repeat(60));
@@ -94,6 +100,7 @@ server.listen(PORT, () => {
 // Graceful shutdown
 process.on('SIGTERM', () => {
     console.log('\n🛑 Arrêt gracieux...');
+    serviceCollector.stop();
     wsServer.close();
     server.close(() => {
         console.log('✅ Serveur arrêté');

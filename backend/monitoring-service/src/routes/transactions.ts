@@ -3,7 +3,7 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { elasticsearchService, metricsService } from '../index.js';
+import { elasticsearchService, metricsService, serviceCollector } from '../index.js';
 
 const router = Router();
 
@@ -116,7 +116,8 @@ router.get('/latency', async (req: Request, res: Response) => {
 // GET /api/transactions/services - État des services
 router.get('/services', async (req: Request, res: Response) => {
     try {
-        const services = metricsService.getServiceStatuses();
+        const collected = serviceCollector.getLatestSnapshots();
+        const services = collected.length > 0 ? collected : metricsService.getServiceStatuses();
         res.json({
             success: true,
             data: services
