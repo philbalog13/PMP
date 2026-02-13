@@ -13,8 +13,7 @@ import {
     CheckCircle2,
     Clock,
     XCircle,
-    ChevronDown,
-    Eye
+    ChevronDown
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -121,7 +120,7 @@ export default function TransactionsPage() {
                     <div>
                         <h1 className="text-3xl font-bold text-white mb-2">Historique des transactions</h1>
                         <p className="text-slate-400">
-                            Consultez et exportez l'historique de vos paiements
+                            Consultez et exportez l&apos;historique de vos paiements
                         </p>
                     </div>
                     <button className="flex items-center gap-2 px-4 py-2 bg-slate-800 border border-white/10 text-white rounded-xl hover:bg-slate-700 transition-colors">

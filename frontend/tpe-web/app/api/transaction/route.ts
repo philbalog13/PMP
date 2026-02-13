@@ -3,14 +3,23 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
+        const authHeader = request.headers.get('authorization');
+        const tokenFromCookie = request.cookies.get('token')?.value;
+        const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+        };
 
-        // Forward to backend sim-network-switch
-        const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
-        const response = await fetch(`${backendUrl}/api/v1/process`, {
+        if (authHeader) {
+            headers.Authorization = authHeader;
+        } else if (tokenFromCookie) {
+            headers.Authorization = `Bearer ${tokenFromCookie}`;
+        }
+
+        // Forward to the API gateway orchestration endpoint
+        const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://api-gateway:8000';
+        const response = await fetch(`${backendUrl}/api/transaction/process`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers,
             body: JSON.stringify(body),
         });
 

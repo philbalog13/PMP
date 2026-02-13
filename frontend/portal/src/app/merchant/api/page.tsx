@@ -8,8 +8,6 @@ import {
     Plus,
     Copy,
     Trash2,
-    Eye,
-    EyeOff,
     CheckCircle2,
     XCircle,
     AlertTriangle,
@@ -17,7 +15,6 @@ import {
     ExternalLink,
     Code,
     Shield,
-    RefreshCw,
     Clock
 } from 'lucide-react';
 import Link from 'next/link';
@@ -95,7 +92,7 @@ const normalizeWebhook = (raw: unknown): WebhookConfig => {
 };
 
 export default function MerchantAPIPage() {
-    const { user, isLoading } = useAuth(true);
+    const { isLoading } = useAuth(true);
     const [apiKeys, setApiKeys] = useState<APIKey[]>([]);
     const [webhooks, setWebhooks] = useState<WebhookConfig[]>([]);
     const [loading, setLoading] = useState(true);
@@ -286,7 +283,7 @@ export default function MerchantAPIPage() {
                     </div>
                     <h1 className="text-3xl font-bold text-white mb-2">Intégration API</h1>
                     <p className="text-slate-400">
-                        Gérez vos clés API et configurez les webhooks pour l'intégration avec votre système.
+                        Gérez vos clés API et configurez les webhooks pour l&apos;intégration avec votre système.
                     </p>
                 </div>
 

@@ -1,0 +1,245 @@
+\documentclass[10pt, letterpaper]{article}
+
+% Packages:
+\usepackage[
+    ignoreheadfoot,
+    top=1.8 cm,
+    bottom=1.8 cm,
+    left=2 cm,
+    right=2 cm,
+    footskip=1.0 cm,
+]{geometry}
+\usepackage{titlesec}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage[dvipsnames]{xcolor}
+\definecolor{primaryColor}{RGB}{0, 0, 0}
+\usepackage{enumitem}
+\usepackage{fontawesome5}
+\usepackage{amsmath}
+\usepackage[
+    pdftitle={Phil Georges Balog - CV},
+    pdfauthor={Phil Georges Balog},
+    pdfcreator={LaTeX},
+    colorlinks=true,
+    urlcolor=primaryColor
+]{hyperref}
+\usepackage[pscoord]{eso-pic}
+\usepackage{calc}
+\usepackage{bookmark}
+\usepackage{lastpage}
+\usepackage{changepage}
+\usepackage{paracol}
+\usepackage{ifthen}
+\usepackage{needspace}
+\usepackage{iftex}
+
+% Ensure that generated PDF is machine readable/ATS parsable:
+\ifPDFTeX
+    \input{glyphtounicode}
+    \pdfgentounicode=1
+    \usepackage[T1]{fontenc}
+    \usepackage[utf8]{inputenc}
+    \usepackage{lmodern}
+\fi
+
+\usepackage{charter}
+
+% Some settings:
+\raggedright
+\AtBeginEnvironment{adjustwidth}{\partopsep0pt}
+\pagestyle{empty}
+\setcounter{secnumdepth}{0}
+\setlength{\parindent}{0pt}
+\setlength{\topskip}{0pt}
+\setlength{\columnsep}{0.15cm}
+\pagenumbering{gobble}
+
+\titleformat{\section}{\needspace{4\baselineskip}\bfseries\large}{}{0pt}{}[\vspace{1pt}\titlerule]
+\titlespacing{\section}{-1pt}{0.25 cm}{0.15 cm}
+
+\renewcommand\labelitemi{$\vcenter{\hbox{\small$\bullet$}}$}
+
+\newenvironment{highlights}{
+    \begin{itemize}[
+        topsep=0.08cm,
+        parsep=0.08 cm,
+        partopsep=0pt,
+        itemsep=0pt,
+        leftmargin=0 cm + 10pt
+    ]
+}{
+    \end{itemize}
+}
+
+\newenvironment{onecolentry}{
+    \begin{adjustwidth}{0.00001 cm}{0.00001 cm}
+}{
+    \end{adjustwidth}
+}
+
+\newenvironment{twocolentry}[2][]{
+    \onecolentry
+    \def\secondColumn{#2}
+    \setcolumnwidth{\fill, 4.5 cm}
+    \begin{paracol}{2}
+}{
+    \switchcolumn \raggedleft \secondColumn
+    \end{paracol}
+    \endonecolentry
+}
+
+\newenvironment{header}{
+    \setlength{\topsep}{0pt}\par\kern\topsep\centering \linespread{1.3}
+}{
+    \par\kern\topsep
+}
+
+% save the original href command in a new command:
+\let\hrefWithoutArrow\href
+
+\begin{document}
+
+% Header
+\begin{header}
+    {\fontsize{16 pt}{18 pt}\selectfont \textbf{BALOG Phil Georges}}\\
+    \vspace{2pt}
+    {\fontsize{11 pt}{13 pt}\selectfont \textbf{Chargé de Traitement Sécurité Financière}}\\
+    \vspace{5pt}
+
+    \normalsize
+    \faIcon{map-marker-alt} Bordeaux
+    \hspace{0.5em}\textcolor{black}{|}\hspace{0.5em}
+    \faIcon{envelope} \hrefWithoutArrow{mailto:phil.balog13@gmail.com}{phil.balog13@gmail.com}
+    \hspace{0.5em}\textcolor{black}{|}\hspace{0.5em}
+    \faIcon{phone} \hrefWithoutArrow{tel:+33746496749}{07 46 49 67 49}
+    \hspace{0.5em}\textcolor{black}{|}\hspace{0.5em}
+    \faIcon{linkedin} \hrefWithoutArrow{https://www.linkedin.com/}{Georges BALOG}
+\end{header}
+
+\vspace{5 pt}
+
+% Profil
+\section{Profil}
+Ingénieur informatique spécialisé en \textbf{conformité bancaire et sécurité financière}. Expériences en audit, analyse des risques et contrôle de cohérence (LCB-FT, KYC, PCI DSS, ISO 27001). Rigoureux, analytique et à l'aise sur les outils informatiques, je recherche un poste en \textbf{traitement des alertes et lutte anti-blanchiment}.
+
+\section{Éducation}
+
+\begin{twocolentry}{Sept 2020 -- Jul 2025}
+\textbf{Icam}, Paris, France --- \textit{Diplôme d'ingénieur Informatique}
+\end{twocolentry}
+
+% Experiences
+\section{Expériences professionnelles}
+
+\begin{twocolentry}{Jan 2025 -- Jul 2025}
+\textbf{Stage Ingénieur -- Audit des processus industriel 5.0}, Peugeot --- Lieusaint
+\end{twocolentry}
+\vspace{0.08 cm}
+\begin{onecolentry}
+\begin{highlights}
+\item Structuration et exploitation de données pour l'analyse et l'optimisation de processus.
+\item Développement d'un outil d'aide à la décision (\textbf{Python}, \textbf{ReactJS}) : transformation de données, contrôle de cohérence et génération de recommandations.
+\item Fiabilisation des informations et rédaction de comptes rendus d'analyse.
+\end{highlights}
+\end{onecolentry}
+
+\vspace{0.15 cm}
+
+\begin{twocolentry}{Août 2023 -- Fev 2024}
+\textbf{Stage Sécurité Cloud Native}, Ministère des Finances --- Yaoundé, Cameroun
+\end{twocolentry}
+\vspace{0.08 cm}
+\begin{onecolentry}
+\begin{highlights}
+\item Audits de configuration et évaluation de la conformité aux référentiels ISO 27001.
+\item Mise en place de contrôles de sécurité automatisés et de règles de détection d'anomalies.
+\item Déploiement d'outils de monitoring et d'alerting (Grafana, Prometheus, Falco).
+\end{highlights}
+\end{onecolentry}
+
+\vspace{0.15 cm}
+
+\begin{twocolentry}{Jan 2023 -- Avr 2023}
+\textbf{Stage Audit IT -- Gouvernance \& Qualité}, ENEO Cameroon --- Yaoundé, Cameroun
+\end{twocolentry}
+\vspace{0.08 cm}
+\begin{onecolentry}
+\begin{highlights}
+\item Audits de risques IT : analyse des comptes, des privilèges et des accès (Active Directory, GPO).
+\item Vérification de la cohérence des profils et identification des écarts par rapport aux référentiels.
+\item Formulation de recommandations opérationnelles et suivi des plans d'actions avec les équipes.
+\item Rédaction des livrables d'audit et restitution aux parties prenantes.
+\end{highlights}
+\end{onecolentry}
+
+% Projets
+\section{Projets}
+
+\begin{twocolentry}{2025}
+\textbf{Conformité \& Sécurité Financière Monétique} --- Projet PMP (personnel)
+\end{twocolentry}
+\vspace{0.08 cm}
+\begin{onecolentry}
+Conception d'une plateforme monétique simulant le cycle transactionnel bancaire de bout en bout, avec analyse de conformité des transactions et architecture sécurisée conforme PCI DSS et DSP2.
+\vspace{0.06 cm}
+\begin{highlights}
+\item \textbf{LCB-FT / Conformité :} Contrôle de cohérence des transactions (origine, destination, justification économique), processus KYC/KYB à l'onboarding, piste d'audit horodatée par opération.
+\item \textbf{Analyse transactionnelle :} Pipeline d'autorisation en 10 étapes auditables incluant scoring fraude AML, vérification des plafonds, détection de schémas suspects et alertes automatiques.
+\item \textbf{Sécurité :} Authentification forte SCA/3DS 2.2, masquage PAN, tokenisation PCI DSS, RBAC, chiffrement TLS et séparation des données (RGPD by design).
+\end{highlights}
+\end{onecolentry}
+
+\vspace{0.15 cm}
+
+\begin{twocolentry}{2024}
+\textbf{Analyse de logs et scénarios de détection} --- ELK / Wazuh / Python
+\end{twocolentry}
+\vspace{0.08 cm}
+\begin{onecolentry}
+\begin{highlights}
+\item Collecte, normalisation et enrichissement de logs pour détection d'anomalies.
+\item Création de tableaux de bord et indicateurs de suivi pour l'analyse des alertes.
+\end{highlights}
+\end{onecolentry}
+
+% Compétences
+\section{Compétences}
+
+\textbf{Conformité \& Sécurité Financière} :
+LCB-FT, KYC/KYB, DSP2, PCI DSS, analyse transactionnelle, vigilance renforcée, piste d'audit
+
+\textbf{Audit, Risques \& Gouvernance (GRC)} :
+ISO 27001, ISO 19011, EBIOS RM, ITGC / ITAC, audit SSI, PSSI, contrôle interne
+
+\textbf{Outils \& Systèmes} :
+SQL, Python, ELK/Wazuh (SIEM), Excel avancé, outils de reporting, cartographie des SI
+
+% Soft Skills
+\section{Compétences transversales}
+\begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}lll@{}}
+\textbf{Savoir-être} & \textbf{Langues} & \textbf{Loisirs} \\
+\begin{minipage}[t]{0.4\linewidth}
+\begin{itemize}[leftmargin=*, nosep, itemsep=2pt]
+\item Rigueur et fiabilité
+\item Capacité d'analyse
+\item Esprit d'équipe
+\end{itemize}
+\end{minipage}
+&
+\begin{minipage}[t]{0.3\linewidth}
+\begin{itemize}[leftmargin=*, nosep, itemsep=2pt]
+\item \textbf{Français :} courant
+\item \textbf{Anglais :} niveau professionnel
+\end{itemize}
+\end{minipage}
+&
+\begin{minipage}[t]{0.3\linewidth}
+\begin{itemize}[leftmargin=*, nosep, itemsep=2pt]
+\item Football
+\item Informatique
+\end{itemize}
+\end{minipage}
+\end{tabular*}
+
+\end{document}

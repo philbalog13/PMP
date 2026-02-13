@@ -13,7 +13,7 @@ th { background-color: #f2f2f2; }
 </head>
 <body>
 <h1>âœ… Audit PMP - Vue Client</h1>
-<p>Date: 01/31/2026 02:36:17</p>
+<p>Date: 02/03/2026 20:56:23</p>
 <table>
 <tr><th>Checklist Item</th><th>Status</th><th>Note</th></tr>
-<tr><td>Login with Email/Password</td><td class='PASS'>PASS</td><td>Token received</td></tr><tr><td>JWT Role is CLIENT</td><td class='PASS'>PASS</td><td>Role: ROLE_CLIENT</td></tr><tr><td>Access Own Cards</td><td class='PASS'>PASS</td><td>Access granted</td></tr><tr><td>No Access to Merchant Data</td><td class='PASS'>PASS</td><td>Correctly blocked (403)</td></tr><tr><td>Session Expires after 2h</td><td class='PASS'>PASS</td><td>Confirmed by Server Response</td></tr><tr><td>Optional 2FA Works</td><td class='PASS'>PASS</td><td>2FA Login OK</td></tr><tr><td>Invalid 2FA Blocked</td><td class='PASS'>PASS</td><td>Blocked correctly</td></tr><tr><td>Logout Functionality</td><td class='PASS'>PASS</td><td>Endpoint returned success</td></tr></table></body></html>
+<tr><td>Login with Email/Password</td><td class='FAIL'>FAIL</td><td>Login failed response</td></tr><tr><td>JWT Role is CLIENT</td><td class='PASS'>PASS</td><td>Role: ROLE_CLIENT</td></tr><tr><td>Access Own Cards</td><td class='FAIL'>FAIL</td><td>Le serveur distant a retourné une erreur : (401) Non autorisé.</td></tr><tr><td>No Access to Merchant Data</td><td class='FAIL'>FAIL</td><td>Unexpected status</td></tr><tr><td>Session Expires after 2h</td><td class='FAIL'>FAIL</td><td>Got 15m, expected 2h</td></tr><tr><td>Invalid 2FA Blocked</td><td class='FAIL'>FAIL</td><td>Security Leak</td></tr><tr><td>Logout Functionality</td><td class='FAIL'>FAIL</td><td>Le serveur distant a retourné une erreur : (401) Non autorisé.</td></tr></table></body></html>

@@ -27,7 +27,6 @@ const keys: Map<string, CryptoKey> = new Map();
 const calculateKcv = (keyData: string): string => {
     try {
         const keyBuffer = Buffer.from(keyData, 'hex');
-        const zeros = Buffer.alloc(8, 0);
 
         let algorithm: string;
         if (keyBuffer.length === 8) algorithm = 'des-ecb';
@@ -35,9 +34,12 @@ const calculateKcv = (keyData: string): string => {
         else if (keyBuffer.length === 24) algorithm = 'des-ede3';
         else algorithm = 'aes-256-ecb';
 
+        // AES uses 16-byte blocks, DES/3DES use 8-byte blocks.
+        const blockSize = algorithm.startsWith('aes-') ? 16 : 8;
+        const zeros = Buffer.alloc(blockSize, 0);
         const cipher = crypto.createCipheriv(algorithm, keyBuffer, null);
         cipher.setAutoPadding(false);
-        const encrypted = cipher.update(zeros);
+        const encrypted = Buffer.concat([cipher.update(zeros), cipher.final()]);
 
         return encrypted.toString('hex').substring(0, 6).toUpperCase();
     } catch {

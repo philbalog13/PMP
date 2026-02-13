@@ -13,6 +13,6 @@ th { background-color: #f2f2f2; }
 </head>
 <body>
 <h1>âœ… Audit PMP - Vue Marchand</h1>
-<p>Date: 01/31/2026 02:38:53</p>
+<p>Date: 02/03/2026 20:56:36</p>
 <table>
-<tr><th>Checklist Item</th><th>Status</th><th>Note</th></tr><tr><td>Login with Certificate</td><td class='PASS'>PASS</td><td>Token received</td></tr><tr><td>Block No-Cert Login</td><td class='PASS'>PASS</td><td>Correctly blocked</td></tr><tr><td>Short Session (15m)</td><td class='PASS'>PASS</td><td>Confirmed by Server Response</td></tr><tr><td>Access Own Transactions</td><td class='PASS'>PASS</td><td>Access granted</td></tr><tr><td>Generate Daily Report</td><td class='PASS'>PASS</td><td>Report generated successfully</td></tr><tr><td>No Access to Client Data</td><td class='PASS'>PASS</td><td>Correctly blocked (403)</td></tr><tr><td>Force Re-Login on Expiry</td><td class='PASS'>PASS</td><td>Re-login enforced</td></tr></table></body></html>
+<tr><th>Checklist Item</th><th>Status</th><th>Note</th></tr><tr><td>Login with Certificate</td><td class='FAIL'>FAIL</td><td>Login failed response</td></tr><tr><td>Block No-Cert Login</td><td class='FAIL'>FAIL</td><td>Security Leak</td></tr><tr><td>Short Session (15m)</td><td class='PASS'>PASS</td><td>Confirmed by Server Response</td></tr><tr><td>Access Own Transactions</td><td class='FAIL'>FAIL</td><td>Le serveur distant a retourné une erreur : (401) Non autorisé.</td></tr><tr><td>Generate Daily Report</td><td class='FAIL'>FAIL</td><td>Le serveur distant a retourné une erreur : (401) Non autorisé.</td></tr><tr><td>No Access to Client Data</td><td class='FAIL'>FAIL</td><td>Unexpected status</td></tr><tr><td>Force Re-Login on Expiry</td><td class='PASS'>PASS</td><td>Re-login enforced</td></tr></table></body></html>

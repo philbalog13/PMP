@@ -14,9 +14,11 @@ app.use(cors());
 app.use(express.json());
 
 // BIN to ACS mapping (simplified)
+// Uses env var so Docker compose can control target ACS endpoint.
+const acsSimulatorUrl = process.env.ACS_SIMULATOR_URL || 'http://acs-simulator:8013';
 const binToAcs: Record<string, string> = {
-    '411111': 'http://acs-simulator:8088',  // Visa test BIN
-    '550000': 'http://acs-simulator:8088',  // Mastercard test BIN
+    '411111': acsSimulatorUrl,  // Visa test BIN
+    '550000': acsSimulatorUrl,  // Mastercard test BIN
 };
 
 interface AuthRequest {

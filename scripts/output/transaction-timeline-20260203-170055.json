@@ -1,0 +1,268 @@
+﻿{
+    "scenario":  "Client card 10k + multi-merchant transactions + merchant balances + 3DS challenge",
+    "generatedAt":  "2026-02-03T17:01:00.8781713+01:00",
+    "baseUrl":  "http://localhost:8000",
+    "credentials":  {
+                        "password":  "StrongPass123!@#",
+                        "clientEmail":  "client.timeline.1770134456179@pmp.local",
+                        "merchantEmails":  [
+                                               "merchant.alpha.1770134456179@pmp.local",
+                                               "merchant.beta.1770134456179@pmp.local",
+                                               "merchant.gamma.1770134456179@pmp.local"
+                                           ]
+                    },
+    "client":  {
+                   "email":  "client.timeline.1770134456179@pmp.local",
+                   "cardId":  "6c55bca7-1cad-4c3f-a8f3-431f67717400",
+                   "maskedPan":  "4916****4646",
+                   "initialBalance":  10000,
+                   "finalBalance":  7310,
+                   "totalSpent":  2690
+               },
+    "transactions":  [
+                         {
+                             "merchant":  "Alpha Market",
+                             "amount":  1200,
+                             "clientTransactionId":  "TXN17701344590299V8O",
+                             "merchantTransactionId":  "POS1770134459115S6QG",
+                             "threeDSClientStatus":  null,
+                             "merchantPendingBalance":  1200,
+                             "merchantAvailableBalance":  0,
+                             "posAttempts":  1
+                         },
+                         {
+                             "merchant":  "Beta Electronics",
+                             "amount":  850,
+                             "clientTransactionId":  "TXN1770134459246OQT6",
+                             "merchantTransactionId":  "POS1770134459315UJ1T",
+                             "threeDSClientStatus":  null,
+                             "merchantPendingBalance":  850,
+                             "merchantAvailableBalance":  0,
+                             "posAttempts":  1
+                         },
+                         {
+                             "merchant":  "Gamma Travel",
+                             "amount":  640,
+                             "clientTransactionId":  "TXN1770134459397D6OK",
+                             "merchantTransactionId":  "POS1770134459453Z8YQ",
+                             "threeDSClientStatus":  null,
+                             "merchantPendingBalance":  640,
+                             "merchantAvailableBalance":  0,
+                             "posAttempts":  1
+                         }
+                     ],
+    "merchantBalancesAfterLogin":  [
+                                       {
+                                           "merchant":  "Alpha Market",
+                                           "email":  "merchant.alpha.1770134456179@pmp.local",
+                                           "availableBalance":  0,
+                                           "pendingBalance":  1200,
+                                           "reserveBalance":  0,
+                                           "grossBalance":  1200
+                                       },
+                                       {
+                                           "merchant":  "Beta Electronics",
+                                           "email":  "merchant.beta.1770134456179@pmp.local",
+                                           "availableBalance":  0,
+                                           "pendingBalance":  850,
+                                           "reserveBalance":  0,
+                                           "grossBalance":  850
+                                       },
+                                       {
+                                           "merchant":  "Gamma Travel",
+                                           "email":  "merchant.gamma.1770134456179@pmp.local",
+                                           "availableBalance":  0,
+                                           "pendingBalance":  640,
+                                           "reserveBalance":  0,
+                                           "grossBalance":  640
+                                       }
+                                   ],
+    "threeDSChallenge":  {
+                             "challengeUrl":  "http://localhost:3088/?txId=TXN_1770134459689\u0026acsTransId=ACS_1770134459693",
+                             "acsTransId":  "ACS_1770134459693",
+                             "verifyTransStatus":  "Y",
+                             "verifyResponseCode":  "00"
+                         },
+    "dbAccountSnapshot":  [
+                              "b8bbf1fe-76ff-4bbc-a7e7-44a8cb72117b|0.00|1200.00|0.00",
+                              "bda6052d-4dd1-428d-82ea-a219bc50d191|0.00|640.00|0.00",
+                              "f82d5c83-36ef-4af6-9083-32db61e40059|0.00|850.00|0.00"
+                          ],
+    "timeline":  [
+                     {
+                         "at":  "2026-02-03T17:00:56.1638459+01:00",
+                         "step":  "Health check plateforme",
+                         "data":  {
+                                      "status":  "healthy"
+                                  }
+                     },
+                     {
+                         "at":  "2026-02-03T17:00:57.5216878+01:00",
+                         "step":  "Creation personas",
+                         "data":  {
+                                      "client":  {
+                                                     "id":  "bf8c3be7-847b-42e0-ae00-a5e34816e9e2",
+                                                     "email":  "client.timeline.1770134456179@pmp.local"
+                                                 },
+                                      "merchants":  [
+                                                        {
+                                                            "email":  "merchant.alpha.1770134456179@pmp.local",
+                                                            "name":  "Alpha Market",
+                                                            "id":  "b8bbf1fe-76ff-4bbc-a7e7-44a8cb72117b"
+                                                        },
+                                                        {
+                                                            "email":  "merchant.beta.1770134456179@pmp.local",
+                                                            "name":  "Beta Electronics",
+                                                            "id":  "f82d5c83-36ef-4af6-9083-32db61e40059"
+                                                        },
+                                                        {
+                                                            "email":  "merchant.gamma.1770134456179@pmp.local",
+                                                            "name":  "Gamma Travel",
+                                                            "id":  "bda6052d-4dd1-428d-82ea-a219bc50d191"
+                                                        }
+                                                    ]
+                                  }
+                     },
+                     {
+                         "at":  "2026-02-03T17:00:58.5761857+01:00",
+                         "step":  "Connexion des personas",
+                         "data":  {
+                                      "client":  "client.timeline.1770134456179@pmp.local",
+                                      "merchants":  [
+                                                        "merchant.alpha.1770134456179@pmp.local",
+                                                        "merchant.beta.1770134456179@pmp.local",
+                                                        "merchant.gamma.1770134456179@pmp.local"
+                                                    ]
+                                  }
+                     },
+                     {
+                         "at":  "2026-02-03T17:00:58.9067927+01:00",
+                         "step":  "Carte client generee et alimentee",
+                         "data":  {
+                                      "initialBalance":  1000,
+                                      "maskedPan":  "4916****4646",
+                                      "fundedBalance":  10000,
+                                      "cardId":  "6c55bca7-1cad-4c3f-a8f3-431f67717400",
+                                      "fundingSqlResult":  [
+                                                               "6c55bca7-1cad-4c3f-a8f3-431f67717400|10000",
+                                                               "UPDATE 1"
+                                                           ]
+                                  }
+                     },
+                     {
+                         "at":  "2026-02-03T17:00:58.9651674+01:00",
+                         "step":  "Terminaux marchands prets",
+                         "data":  [
+                                      {
+                                          "merchant":  "Alpha Market",
+                                          "terminal":  "TERM32088"
+                                      },
+                                      {
+                                          "merchant":  "Beta Electronics",
+                                          "terminal":  "TERM33802"
+                                      },
+                                      {
+                                          "merchant":  "Gamma Travel",
+                                          "terminal":  "TERM57591"
+                                      }
+                                  ]
+                     },
+                     {
+                         "at":  "2026-02-03T17:00:59.1830839+01:00",
+                         "step":  "Transaction executee vers Alpha Market",
+                         "data":  {
+                                      "amount":  1200,
+                                      "clientTxn":  "TXN17701344590299V8O",
+                                      "merchantPendingBalance":  1200,
+                                      "merchantTxn":  "POS1770134459115S6QG",
+                                      "client3DS":  null
+                                  }
+                     },
+                     {
+                         "at":  "2026-02-03T17:00:59.3421304+01:00",
+                         "step":  "Transaction executee vers Beta Electronics",
+                         "data":  {
+                                      "amount":  850,
+                                      "clientTxn":  "TXN1770134459246OQT6",
+                                      "merchantPendingBalance":  850,
+                                      "merchantTxn":  "POS1770134459315UJ1T",
+                                      "client3DS":  null
+                                  }
+                     },
+                     {
+                         "at":  "2026-02-03T17:00:59.4690194+01:00",
+                         "step":  "Transaction executee vers Gamma Travel",
+                         "data":  {
+                                      "amount":  640,
+                                      "clientTxn":  "TXN1770134459397D6OK",
+                                      "merchantPendingBalance":  640,
+                                      "merchantTxn":  "POS1770134459453Z8YQ",
+                                      "client3DS":  null
+                                  }
+                     },
+                     {
+                         "at":  "2026-02-03T17:00:59.4876710+01:00",
+                         "step":  "Solde client apres transactions multi-marchands",
+                         "data":  {
+                                      "cardId":  "6c55bca7-1cad-4c3f-a8f3-431f67717400",
+                                      "balance":  7310
+                                  }
+                     },
+                     {
+                         "at":  "2026-02-03T17:00:59.7037180+01:00",
+                         "step":  "Transaction 3DS challenge requis",
+                         "data":  {
+                                      "attempt":  3,
+                                      "responseCode":  "65",
+                                      "acsTransId":  "ACS_1770134459693",
+                                      "processingTime":  6,
+                                      "flowSteps":  [
+                                                        "FRAUD_CHECK_START",
+                                                        "FRAUD_CHECK_COMPLETE: LOW",
+                                                        "3DS_CHECK_START",
+                                                        "3DS_CHECK_COMPLETE: C"
+                                                    ],
+                                      "challengeUrl":  "http://localhost:3088/?txId=TXN_1770134459689\u0026acsTransId=ACS_1770134459693"
+                                  }
+                     },
+                     {
+                         "at":  "2026-02-03T17:00:59.7639051+01:00",
+                         "step":  "Validation OTP 3DS",
+                         "data":  {
+                                      "acsTransId":  "ACS_1770134459693",
+                                      "responseCode":  "00",
+                                      "transStatus":  "Y"
+                                  }
+                     },
+                     {
+                         "at":  "2026-02-03T17:01:00.6897456+01:00",
+                         "step":  "Connexion marchands et verification soldes reels",
+                         "data":  [
+                                      {
+                                          "merchant":  "Alpha Market",
+                                          "email":  "merchant.alpha.1770134456179@pmp.local",
+                                          "availableBalance":  0,
+                                          "pendingBalance":  1200,
+                                          "reserveBalance":  0,
+                                          "grossBalance":  1200
+                                      },
+                                      {
+                                          "merchant":  "Beta Electronics",
+                                          "email":  "merchant.beta.1770134456179@pmp.local",
+                                          "availableBalance":  0,
+                                          "pendingBalance":  850,
+                                          "reserveBalance":  0,
+                                          "grossBalance":  850
+                                      },
+                                      {
+                                          "merchant":  "Gamma Travel",
+                                          "email":  "merchant.gamma.1770134456179@pmp.local",
+                                          "availableBalance":  0,
+                                          "pendingBalance":  640,
+                                          "reserveBalance":  0,
+                                          "grossBalance":  640
+                                      }
+                                  ]
+                     }
+                 ]
+}

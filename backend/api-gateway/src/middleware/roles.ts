@@ -94,6 +94,23 @@ export const RequireRole = (role: UserRole) => {
 /**
  * Require a specific permission
  */
+/**
+ * Require any of the specified roles
+ */
+export const RequireAnyRole = (...roles: UserRole[]) => {
+    return (req: any, res: Response, next: NextFunction) => {
+        if (!req.user || !roles.includes(req.user.role)) {
+            logger.warn(`[RBAC_DENIED] Roles required: ${roles.join(',')}, user role: ${req.user?.role}`);
+            return res.status(403).json({
+                success: false,
+                error: `Access denied. One of roles [${roles.join(', ')}] required.`,
+                code: 'FORBIDDEN_ROLE'
+            });
+        }
+        next();
+    };
+};
+
 export const RequirePermission = (permission: Permission) => {
     return (req: any, res: Response, next: NextFunction) => {
         if (!req.user || !req.user.role) {

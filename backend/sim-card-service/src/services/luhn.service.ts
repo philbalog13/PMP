@@ -61,8 +61,18 @@ export const generateCheckDigit = (partialPan: string): number => {
  * Generate a valid PAN with Luhn checksum
  */
 export const generatePan = (bin: string, length: number = 16): string => {
-    const randomLength = length - bin.length - 1; // -1 for check digit
-    let pan = bin;
+    const normalized = bin.trim().toUpperCase();
+    const binOrPrefix = /^\d+$/.test(normalized)
+        ? normalized
+        : ({
+            VISA: '4',
+            MASTERCARD: '5',
+            AMEX: '34',
+            DISCOVER: '6011'
+        }[normalized] || normalized);
+
+    const randomLength = length - binOrPrefix.length - 1; // -1 for check digit
+    let pan = binOrPrefix;
 
     for (let i = 0; i < randomLength; i++) {
         pan += Math.floor(Math.random() * 10).toString();

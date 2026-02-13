@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
   experimental: {
     externalDir: true,
   },
-  webpack: (config, { isServer }) => {
+  webpack: (config) => {
     config.resolve.alias = {
       ...config.resolve.alias,
       '@shared': path.resolve(__dirname, '../shared'),

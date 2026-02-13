@@ -22,6 +22,42 @@ router.use(RequireRole(UserRole.MARCHAND));
 router.get('/dashboard', merchantController.getDashboard);
 
 /**
+ * GET /api/merchant/account
+ * Get merchant settlement account
+ */
+router.get('/account', merchantController.getAccount);
+
+/**
+ * GET /api/merchant/account/entries
+ * Get merchant account ledger entries
+ */
+router.get('/account/entries', merchantController.getAccountEntries);
+
+/**
+ * POST /api/merchant/account/settle
+ * Settle pending funds into available balance
+ */
+router.post('/account/settle', merchantController.settleAccount);
+
+/**
+ * POST /api/merchant/account/payout
+ * Create payout from available balance
+ */
+router.post('/account/payout', merchantController.createPayout);
+
+/**
+ * POST /api/merchant/account/adjust
+ * Manual account adjustment (incidents/corrections)
+ */
+router.post('/account/adjust', merchantController.adjustAccount);
+
+/**
+ * POST /api/merchant/account/generate-history
+ * Generate realistic transaction/account history
+ */
+router.post('/account/generate-history', merchantController.generateHistory);
+
+/**
  * GET /api/merchant/transactions
  * List all transactions
  */
@@ -32,6 +68,12 @@ router.get('/transactions', merchantController.getTransactions);
  * Get transaction details
  */
 router.get('/transactions/:id', merchantController.getTransactionById);
+
+/**
+ * GET /api/merchant/transactions/:id/timeline
+ * Get transaction processing timeline
+ */
+router.get('/transactions/:id/timeline', merchantController.getTransactionTimeline);
 
 /**
  * POST /api/merchant/transactions/:id/refund

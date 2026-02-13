@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useAuth } from '../../../auth/useAuth';
 import { useRouter } from 'next/navigation';
 import {
-    FileText,
     ArrowLeft,
     Save,
     AlertCircle,
@@ -27,7 +26,7 @@ const WORKSHOP_OPTIONS = [
 ];
 
 export default function CreateExercisePage() {
-    const { user, isLoading: authLoading } = useAuth(true);
+    const { isLoading: authLoading } = useAuth(true);
     const router = useRouter();
 
     const [formData, setFormData] = useState({
@@ -74,7 +73,7 @@ export default function CreateExercisePage() {
                 const data = await response.json();
                 setError(data.error || 'Erreur lors de la création');
             }
-        } catch (err) {
+        } catch {
             setError('Erreur de connexion au serveur');
         } finally {
             setSaving(false);
@@ -103,7 +102,7 @@ export default function CreateExercisePage() {
                     </Link>
                     <h1 className="text-3xl font-bold text-white">Créer un exercice</h1>
                     <p className="text-slate-400 mt-1">
-                        Définissez le contenu et les paramètres de l'exercice.
+                        Définissez le contenu et les paramètres de l&apos;exercice.
                     </p>
                 </div>
 

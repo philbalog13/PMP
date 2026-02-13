@@ -15,7 +15,7 @@ describe('Card Service', () => {
         cardholder_name: 'TEST USER',
         expiry_month: 12,
         expiry_year: 2028,
-        cvv_hash: 'hash',
+        cvv_hash: 'sha256_123',
         pin_hash: 'hash',
         balance: '0',
         daily_limit: '1000',
@@ -84,24 +84,12 @@ describe('Card Service', () => {
         });
 
         it('should fail for wrong CVV', async () => {
-            // Logic handled before DB check if possible, or mocked DB returns card and logic compares
-            // But strict implementation might differ. Based on code read:
-            // validateCard checks DB first.
-            // Oh wait, cardService.validateCard() doesn't seem to check CVV against hash in the current implementation read previously? 
-            // It calls validateLuhn first.
-            // Let's assume the mock returns the card, and we test logic.
-            // Re-reading service: "validateCard" implementation:
-            // checks Luhn, then queries DB. Then checks expiry/status.
-            // It does NOT check CVV equality strictly in the code I saw (it had a comment "TODO: In production, verify hash").
-            // So this test 'should fail for wrong CVV' in original file might have been aspirational or checking a different implementation.
-            // I will skip this specific test if logic doesn't support it, or adapt expectations.
-            // Actually, I'll just mock it to return success for now to pass compilation, or remove the test if invalid.
-            // Ideally, I should match the service logic.
+            (query as jest.Mock).mockResolvedValueOnce({ rowCount: 1, rows: [mockCard] });
 
-            // For now, let's just make it compile.
-            const result = await cardService.validateCard('4111111111111111', '123', 12, 2028);
-            // Expectation depends on service logic.
-            // I will leave logic testing to a minimum and focus on types.
+            const result = await cardService.validateCard('4111111111111111', '999', 12, 2028);
+
+            expect(result.valid).toBe(false);
+            expect(result.error).toBe('Invalid CVV');
         });
     });
 

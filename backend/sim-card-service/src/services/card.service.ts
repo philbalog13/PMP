@@ -240,16 +240,17 @@ export const validateCard = async (pan: string, cvv: string, expiryMonth: number
 
     const res = await query('SELECT * FROM cards.virtual_cards WHERE pan = $1', [pan]);
 
-    if (res.rowCount === 0) {
+    if (!res || (res.rowCount ?? 0) === 0) {
         return { valid: false, error: 'Card not found' };
     }
 
     const row = res.rows[0];
 
-    // TODO: In production, verify hash. Here we check loose equality if we stored raw, 
-    // or we assume it's simulated. Since we store fake hash 'sha256_123', we can't really valid 
-    // without the crypto service.
-    // For this pedagogical platform, we'll verify expiry and status mostly.
+    // In simulation mode we persist a placeholder hash format: sha256_<cvv>.
+    const expectedCvvHash = `sha256_${cvv}`;
+    if (row.cvv_hash && row.cvv_hash !== expectedCvvHash && row.cvv_hash !== cvv) {
+        return { valid: false, error: 'Invalid CVV' };
+    }
 
     // Check expiry matches record
     if (row.expiry_month !== expiryMonth || row.expiry_year !== expiryYear) {

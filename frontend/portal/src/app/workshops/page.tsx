@@ -74,7 +74,7 @@ export default function WorkshopsPage() {
                 <div className="flex flex-col md:flex-row justify-between items-end gap-6 border-b border-white/5 pb-12">
                     <div className="space-y-4">
                         <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full text-blue-400 text-xs font-bold uppercase tracking-wider">
-                            Parcours d'Apprentissage
+                            Parcours d&apos;Apprentissage
                         </div>
                         <h1 className="text-5xl font-black italic tracking-tight">
                             Ateliers <span className="text-blue-500 text-6xl">.</span>
@@ -140,7 +140,7 @@ export default function WorkshopsPage() {
                                         </div>
                                     ) : (
                                         <Link href={`/workshops/${w.id}`} className="group/btn flex items-center gap-2 text-white font-bold text-sm bg-white/5 px-4 py-2 rounded-xl border border-white/10 hover:bg-white hover:text-slate-950 transition-all">
-                                            Lancer l'Atelier
+                                            Lancer l&apos;Atelier
                                             <ChevronRight size={16} className="group-hover/btn:translate-x-1 transition-transform" />
                                         </Link>
                                     )}

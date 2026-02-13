@@ -1,14 +1,14 @@
 import { createRoleGuard } from '@shared/middleware/roleGuard';
 
 /**
- * Portal Middleware
+ * Portal Proxy (Next.js 16+)
  * Protects routes based on user roles:
- * - /demo → CLIENT
- * - /analyze → MARCHAND
- * - /etudiant → ETUDIANT
- * - /formateur → FORMATEUR
+ * - /demo -> CLIENT
+ * - /analyze -> MARCHAND
+ * - /etudiant -> ETUDIANT
+ * - /formateur -> FORMATEUR
  */
-export const middleware = createRoleGuard('portal');
+export const proxy = createRoleGuard('portal');
 
 export const config = {
     matcher: [

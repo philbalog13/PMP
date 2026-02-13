@@ -1,6 +1,7 @@
 'use client';
 
-import { HelpCircle, BookOpen, GraduationCap, MessageCircle, ChevronRight, Zap, ArrowRight, Shield } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { HelpCircle, BookOpen, GraduationCap, MessageCircle, ChevronRight, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
 export default function SupportPage() {
@@ -28,7 +29,7 @@ export default function SupportPage() {
                             Help <span className="text-emerald-500">Center.</span>
                         </h1>
                         <p className="text-xl md:text-2xl text-slate-400 font-medium max-w-2xl mx-auto leading-relaxed">
-                            Documentation technique, guides d'apprentissage et support communautaire pour PMP.
+                            Documentation technique, guides d&apos;apprentissage et support communautaire pour PMP.
                         </p>
                     </div>
                 </div>
@@ -81,7 +82,7 @@ export default function SupportPage() {
                         </div>
                         <div>
                             <h4 className="text-lg font-black italic uppercase tracking-tighter text-emerald-500">Rejoignez le Discord</h4>
-                            <p className="text-slate-500 text-sm font-medium">Une communauté d'experts pour répondre à vos questions complexes.</p>
+                            <p className="text-slate-500 text-sm font-medium">Une communauté d&apos;experts pour répondre à vos questions complexes.</p>
                         </div>
                     </div>
                     <button className="px-8 py-4 bg-emerald-500 hover:bg-emerald-400 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl transition-all shadow-xl shadow-emerald-500/30 active:scale-95 whitespace-nowrap">
@@ -93,8 +94,10 @@ export default function SupportPage() {
     );
 }
 
-function SupportPortalCard({ href, title, desc, icon, color }: any) {
-    const colors: any = {
+type SupportColor = 'emerald' | 'blue';
+
+function SupportPortalCard({ href, title, desc, icon, color }: { href: string; title: string; desc: string; icon: ReactNode; color: SupportColor }) {
+    const colors: Record<SupportColor, string> = {
         emerald: "hover:border-emerald-500/30 text-emerald-500",
         blue: "hover:border-blue-500/30 text-blue-500",
     };

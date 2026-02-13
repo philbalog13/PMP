@@ -1,25 +1,23 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../../auth/useAuth';
 import {
     CreditCard,
     Wifi,
     CheckCircle2,
     XCircle,
-    AlertTriangle,
-    Smartphone,
     Keyboard,
     Eye,
     EyeOff,
     RotateCcw,
-    Receipt,
     Printer,
     Info,
     ArrowRight,
-    Clock,
-    Shield
+    Shield,
+    ChevronRight
 } from 'lucide-react';
+import Link from 'next/link';
 
 type PaymentMode = 'chip' | 'contactless' | 'manual';
 type TransactionStep = 'idle' | 'amount' | 'card' | 'pin' | 'processing' | 'result';
@@ -33,6 +31,12 @@ interface TransactionResult {
     timestamp: string;
 }
 
+interface MerchantTerminal {
+    terminalId: string;
+    terminalName: string;
+    status: string;
+}
+
 export default function POSTerminalPage() {
     const { isLoading } = useAuth(true);
     const [step, setStep] = useState<TransactionStep>('idle');
@@ -43,6 +47,40 @@ export default function POSTerminalPage() {
     const [showPin, setShowPin] = useState(false);
     const [result, setResult] = useState<TransactionResult | null>(null);
     const [showIso8583, setShowIso8583] = useState(false);
+    const [terminals, setTerminals] = useState<MerchantTerminal[]>([]);
+    const [selectedTerminalId, setSelectedTerminalId] = useState('');
+    const [apiError, setApiError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchTerminals = async () => {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/merchant/pos', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (!response.ok) return;
+
+                const payload = await response.json();
+                if (!Array.isArray(payload.terminals)) return;
+
+                const mapped: MerchantTerminal[] = payload.terminals.map((terminal: Record<string, unknown>) => ({
+                    terminalId: String(terminal.terminal_id || terminal.terminalId || ''),
+                    terminalName: String(terminal.terminal_name || terminal.terminalName || 'Terminal'),
+                    status: String(terminal.status || 'ACTIVE')
+                }));
+                setTerminals(mapped);
+
+                const firstActive = mapped.find((terminal) => terminal.status === 'ACTIVE');
+                if (firstActive) {
+                    setSelectedTerminalId(firstActive.terminalId);
+                }
+            } catch {
+                // Keep UI usable even if terminal fetch fails.
+            }
+        };
+
+        fetchTerminals();
+    }, []);
 
     const formatAmount = (value: string) => {
         const num = value.replace(/[^\d]/g, '');
@@ -82,6 +120,7 @@ export default function POSTerminalPage() {
 
     const startTransaction = () => {
         if (!amount || parseFloat(amount.replace(/\s/g, '').replace(',', '.')) === 0) return;
+        setApiError(null);
         setStep('card');
     };
 
@@ -103,24 +142,57 @@ export default function POSTerminalPage() {
         processTransaction();
     };
 
-    const processTransaction = () => {
+    const processTransaction = async () => {
         setStep('processing');
+        setApiError(null);
 
-        // Simulate network delay
-        setTimeout(() => {
-            const amountNum = parseFloat(amount.replace(/\s/g, '').replace(',', '.'));
-            const success = amountNum < 1000 && Math.random() > 0.1; // 90% success rate for < 1000 EUR
+        const amountNum = parseFloat(amount.replace(/\s/g, '').replace(',', '.'));
+        const token = localStorage.getItem('token');
+
+        try {
+            const response = await fetch('/api/merchant/pos/transaction', {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    terminalId: selectedTerminalId || undefined,
+                    maskedPan: cardNumber ? `${cardNumber.slice(0, 6)}****${cardNumber.slice(-4)}` : undefined,
+                    amount: amountNum,
+                    paymentMethod: paymentMode
+                })
+            });
+
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(payload.error || 'Erreur lors du traitement');
+            }
+
+            const transaction = payload.transaction || {};
+            // Backend returns `approved` as a boolean and `transaction.status` as APPROVED/DECLINED
+            const approved = payload.approved === true || transaction.status === 'APPROVED';
+            const txnResponseCode = transaction.response_code || transaction.responseCode || '';
 
             setResult({
-                success,
-                authCode: success ? Math.random().toString(36).substring(2, 8).toUpperCase() : undefined,
-                responseCode: success ? '00' : '51',
-                responseMessage: success ? 'APPROUVEE' : 'FONDS INSUFFISANTS',
-                rrn: Math.random().toString().slice(2, 14),
+                success: approved,
+                authCode: approved ? (transaction.authorization_code || transaction.authorizationCode || undefined) : undefined,
+                responseCode: txnResponseCode || (approved ? '00' : '05'),
+                responseMessage: approved ? 'APPROUVEE' : (txnResponseCode === '51' ? 'SOLDE INSUFFISANT' : 'REFUSEE'),
+                rrn: transaction.stan || transaction.transaction_id || '',
+                timestamp: transaction.timestamp || new Date().toISOString()
+            });
+        } catch (error: any) {
+            setApiError(error.message || 'Erreur réseau');
+            setResult({
+                success: false,
+                responseCode: '96',
+                responseMessage: 'ERREUR TECHNIQUE',
                 timestamp: new Date().toISOString()
             });
+        } finally {
             setStep('result');
-        }, 2000);
+        }
     };
 
     const resetTerminal = () => {
@@ -129,6 +201,7 @@ export default function POSTerminalPage() {
         setCardNumber('');
         setPin('');
         setResult(null);
+        setApiError(null);
     };
 
     const generateIso8583Request = () => {
@@ -150,7 +223,7 @@ DE026: 12 (PIN Capture Code)
 DE032: 123456 (Acquiring Institution ID)
 DE035: ${cardNumber}D2712... (Track 2 Data)
 DE037: ${Math.random().toString(36).substring(2, 14).toUpperCase()} (RRN)
-DE041: POS-001         (Terminal ID)
+DE041: ${(selectedTerminalId || 'POS-001').padEnd(15, ' ')} (Terminal ID)
 DE042: MERCHANT001     (Merchant ID)
 DE043: PMP BAKERY            PARIS         FR
 DE049: 978 (Currency Code - EUR)
@@ -168,7 +241,7 @@ DE011: ${result.rrn?.slice(0, 6)} (STAN)
 DE037: ${result.rrn} (RRN)
 DE038: ${result.authCode || ''} (Authorization Code)
 DE039: ${result.responseCode} (Response Code - ${result.responseMessage})
-DE041: POS-001         (Terminal ID)
+DE041: ${(selectedTerminalId || 'POS-001').padEnd(15, ' ')} (Terminal ID)
 DE042: MERCHANT001     (Merchant ID)
 DE055: 91...9F27... (EMV Response Data)`;
     };
@@ -184,6 +257,13 @@ DE055: 91...9F27... (EMV Response Data)`;
     return (
         <div className="min-h-screen bg-slate-950 pt-24 pb-12">
             <div className="max-w-5xl mx-auto px-6">
+                {/* Breadcrumb */}
+                <div className="text-xs text-slate-500 mb-6">
+                    <Link href="/merchant" className="hover:text-purple-400">Dashboard Marchand</Link>
+                    <ChevronRight size={12} className="inline mx-1" />
+                    <span className="text-purple-400">Terminal POS</span>
+                </div>
+
                 {/* Header */}
                 <div className="text-center mb-8">
                     <h1 className="text-3xl font-bold text-white mb-2">Terminal de Paiement Électronique</h1>
@@ -205,6 +285,24 @@ DE055: 91...9F27... (EMV Response Data)`;
                                         <p className="text-4xl font-bold text-white font-mono">
                                             {amount || '0,00'} <span className="text-2xl">EUR</span>
                                         </p>
+                                    </div>
+
+                                    <div className="mb-4">
+                                        <p className="text-slate-400 text-xs mb-2">Terminal marchand</p>
+                                        <select
+                                            value={selectedTerminalId}
+                                            onChange={(event) => setSelectedTerminalId(event.target.value)}
+                                            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-sm"
+                                        >
+                                            {terminals.length === 0 && (
+                                                <option value="">Terminal auto</option>
+                                            )}
+                                            {terminals.map((terminal) => (
+                                                <option key={terminal.terminalId} value={terminal.terminalId}>
+                                                    {terminal.terminalId} - {terminal.terminalName}
+                                                </option>
+                                            ))}
+                                        </select>
                                     </div>
 
                                     {/* Payment Mode Selection */}
@@ -454,6 +552,12 @@ DE055: 91...9F27... (EMV Response Data)`;
                                 </>
                             )}
                         </div>
+
+                        {apiError && (
+                            <div className="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-xs">
+                                {apiError}
+                            </div>
+                        )}
                     </div>
 
                     {/* ISO 8583 Messages Panel */}
@@ -569,3 +673,4 @@ DE055: 91...9F27... (EMV Response Data)`;
         </div>
     );
 }
+

@@ -2,9 +2,10 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { User, AuthState, UserRole, Permission } from '../types/user';
+import { normalizeRole } from '../utils/roleUtils';
 
 interface AuthContextType extends AuthState {
-    login: (token: string, user: User) => void;
+    login: (token: string, user: User, refreshToken?: string | null) => void;
     logout: () => void;
     updateUser: (user: User) => void;
     hasPermission: (permission: Permission) => boolean;
@@ -13,6 +14,10 @@ interface AuthContextType extends AuthState {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const ACCESS_TOKEN_COOKIE = 'token';
+const REFRESH_TOKEN_COOKIE = 'refreshToken';
+const ACCESS_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 7;
+const REFRESH_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30;
 
 /**
  * AuthProvider Component
@@ -58,6 +63,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    const normalizeUserRole = (userRole: UserRole | string | null | undefined): UserRole | null => {
+        const normalized = normalizeRole(userRole);
+        return normalized || null;
+    };
+
+    const parseStoredUser = (rawUser: string | null): User | null => {
+        if (!rawUser) return null;
+        try {
+            const parsed = JSON.parse(rawUser) as User;
+            const normalized = normalizeUserRole(parsed?.role);
+            if (!normalized) {
+                return null;
+            }
+
+            return {
+                ...parsed,
+                role: normalized,
+                permissions: Array.isArray(parsed.permissions) ? parsed.permissions : []
+            };
+        } catch {
+            return null;
+        }
+    };
+
+    const buildUserFromPayload = (payload: any, existingUser: User | null): User | null => {
+        const normalizedRole = normalizeUserRole(payload?.role || existingUser?.role);
+        if (!normalizedRole) {
+            return existingUser;
+        }
+
+        return {
+            id: payload?.userId || payload?.sub || payload?.id || existingUser?.id || '',
+            email: payload?.email || existingUser?.email || '',
+            role: normalizedRole,
+            permissions: Array.isArray(payload?.permissions)
+                ? payload.permissions
+                : (existingUser?.permissions || []),
+            firstName: existingUser?.firstName || payload?.firstName || 'User',
+            lastName: existingUser?.lastName || payload?.lastName || ''
+        };
+    };
+
     /**
      * Check if token is expired
      */
@@ -90,74 +137,195 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return null;
     };
 
+    const setCookie = (name: string, value: string, maxAgeSeconds: number): void => {
+        if (typeof document === 'undefined') return;
+        const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
+        document.cookie = `${name}=${value}; path=/; max-age=${maxAgeSeconds}; SameSite=Lax${secureFlag}`;
+    };
+
+    const clearCookie = (name: string): void => {
+        if (typeof document === 'undefined') return;
+        const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
+        document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax${secureFlag}`;
+    };
+
+    const persistSession = (token: string, user: User, refreshToken?: string | null): void => {
+        const normalizedRole = normalizeUserRole(user.role);
+        const normalizedUser: User = {
+            ...user,
+            role: normalizedRole || user.role,
+            permissions: Array.isArray(user.permissions) ? user.permissions : []
+        };
+
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(normalizedUser));
+        if (normalizedUser.role) {
+            localStorage.setItem('role', normalizedUser.role);
+        }
+        setCookie(ACCESS_TOKEN_COOKIE, token, ACCESS_TOKEN_TTL_SECONDS);
+
+        if (refreshToken) {
+            localStorage.setItem('refreshToken', refreshToken);
+            setCookie(REFRESH_TOKEN_COOKIE, refreshToken, REFRESH_TOKEN_TTL_SECONDS);
+        }
+    };
+
+    const clearSessionStorage = (): void => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('role');
+        localStorage.removeItem('refreshToken');
+        clearCookie(ACCESS_TOKEN_COOKIE);
+        clearCookie(REFRESH_TOKEN_COOKIE);
+    };
+
+    const refreshAccessToken = useCallback(async (refreshToken: string): Promise<{
+        token: string;
+        refreshToken: string;
+        user: User;
+    } | null> => {
+        try {
+            const response = await fetch('/api/auth/refresh', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ refreshToken })
+            });
+
+            if (!response.ok) {
+                return null;
+            }
+
+            const payload = await response.json();
+            if (!payload?.success || !payload?.accessToken || !payload?.refreshToken || !payload?.user) {
+                return null;
+            }
+
+            return {
+                token: payload.accessToken,
+                refreshToken: payload.refreshToken,
+                user: payload.user as User
+            };
+        } catch {
+            return null;
+        }
+    }, []);
+
+    const getRefreshTokenCandidates = (preferredToken?: string | null): string[] => {
+        const candidates = [
+            preferredToken || null,
+            getCookie(REFRESH_TOKEN_COOKIE),
+            localStorage.getItem('refreshToken')
+        ];
+
+        const uniqueTokens = new Set<string>();
+        for (const candidate of candidates) {
+            if (candidate) {
+                uniqueTokens.add(candidate);
+            }
+        }
+
+        return Array.from(uniqueTokens);
+    };
+
+    const refreshWithFallback = useCallback(async (
+        preferredToken?: string | null
+    ): Promise<{
+        token: string;
+        refreshToken: string;
+        user: User;
+    } | null> => {
+        const refreshTokens = getRefreshTokenCandidates(preferredToken);
+        for (const tokenCandidate of refreshTokens) {
+            const refreshed = await refreshAccessToken(tokenCandidate);
+            if (refreshed) {
+                return refreshed;
+            }
+        }
+
+        return null;
+    }, [refreshAccessToken]);
+
+    const resolveSession = useCallback(async (): Promise<{
+        token: string;
+        user: User;
+        refreshToken: string | null;
+    } | null> => {
+        const localToken = localStorage.getItem('token');
+        const localUser = parseStoredUser(localStorage.getItem('user'));
+        const localRefreshToken = localStorage.getItem('refreshToken');
+
+        const cookieToken = getCookie(ACCESS_TOKEN_COOKIE);
+        const cookieRefreshToken = getCookie(REFRESH_TOKEN_COOKIE);
+
+        const validCookieToken = cookieToken && !isTokenExpired(cookieToken) ? cookieToken : null;
+        const validLocalToken = localToken && !isTokenExpired(localToken) ? localToken : null;
+
+        let activeToken = validCookieToken || validLocalToken || null;
+        let activeUser = localUser;
+        let activeRefreshToken = cookieRefreshToken || localRefreshToken || null;
+
+        if (!activeToken && activeRefreshToken) {
+            const refreshedSession = await refreshWithFallback(activeRefreshToken);
+            if (refreshedSession) {
+                activeToken = refreshedSession.token;
+                activeUser = refreshedSession.user;
+                activeRefreshToken = refreshedSession.refreshToken;
+            }
+        }
+
+        if (!activeToken) {
+            return null;
+        }
+
+        const payload = decodeToken(activeToken);
+        activeUser = buildUserFromPayload(payload, activeUser);
+        if (!activeUser) {
+            return null;
+        }
+
+        return {
+            token: activeToken,
+            user: activeUser,
+            refreshToken: activeRefreshToken
+        };
+    }, [refreshWithFallback]);
+
     /**
      * Initialize auth state from localStorage or cookie on mount
      */
     useEffect(() => {
-        const initializeAuth = () => {
+        let cancelled = false;
+
+        const initializeAuth = async () => {
             try {
-                let storedToken = localStorage.getItem('token');
-                let storedUser = localStorage.getItem('user');
-
-                // If not in localStorage, try cookie (SSO between ports)
-                if (!storedToken) {
-                    const cookieToken = getCookie('token');
-                    if (cookieToken) {
-                        console.log('[AuthContext] Found token in cookie, syncing to localStorage');
-                        storedToken = cookieToken;
-                        localStorage.setItem('token', cookieToken);
-
-                        // Try to decode user from token since we don't have user object in cookie
-                        // Note: This relies on the token containing necessary user info
-                        const payload = decodeToken(cookieToken);
-                        if (payload) {
-                            const userFromToken: User = {
-                                id: payload.userId || payload.sub || payload.id,
-                                email: payload.email || payload.upn || payload.unique_name,
-                                role: payload.role,
-                                permissions: payload.permissions || [],
-                                firstName: payload.firstName || 'User', // Fallback
-                                lastName: payload.lastName || ''
-                            };
-                            storedUser = JSON.stringify(userFromToken);
-                            localStorage.setItem('user', storedUser);
-                        }
-                    }
+                const resolvedSession = await resolveSession();
+                if (cancelled) {
+                    return;
                 }
 
-                if (storedToken && storedUser) {
-                    // Validate token
-                    if (isTokenExpired(storedToken)) {
-                        // Token expired, clear storage
-                        localStorage.removeItem('token');
-                        localStorage.removeItem('user');
-                        setAuthState({
-                            user: null,
-                            token: null,
-                            isAuthenticated: false,
-                            isLoading: false,
-                        });
-                        return;
-                    }
-
-                    // Token valid, restore session
-                    const user: User = JSON.parse(storedUser);
+                if (resolvedSession) {
+                    persistSession(resolvedSession.token, resolvedSession.user, resolvedSession.refreshToken);
                     setAuthState({
-                        user,
-                        token: storedToken,
+                        user: resolvedSession.user,
+                        token: resolvedSession.token,
                         isAuthenticated: true,
                         isLoading: false,
                     });
-                } else {
-                    setAuthState({
-                        user: null,
-                        token: null,
-                        isAuthenticated: false,
-                        isLoading: false,
-                    });
+                    return;
                 }
+
+                clearSessionStorage();
+                setAuthState({
+                    user: null,
+                    token: null,
+                    isAuthenticated: false,
+                    isLoading: false,
+                });
             } catch (error) {
                 console.error('Failed to initialize auth:', error);
+                clearSessionStorage();
                 setAuthState({
                     user: null,
                     token: null,
@@ -167,8 +335,96 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
         };
 
-        initializeAuth();
-    }, []);
+        initializeAuth().catch(() => {
+            if (cancelled) {
+                return;
+            }
+            clearSessionStorage();
+            setAuthState({
+                user: null,
+                token: null,
+                isAuthenticated: false,
+                isLoading: false,
+            });
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [resolveSession]);
+
+    /**
+     * Revalidate session when tab/page is restored from cache or regains focus.
+     * Prevents stale "connected" UI when the browser shows a cached page snapshot.
+     */
+    useEffect(() => {
+        const revalidateSession = async () => {
+            try {
+                const resolvedSession = await resolveSession();
+                if (resolvedSession) {
+                    persistSession(resolvedSession.token, resolvedSession.user, resolvedSession.refreshToken);
+                    setAuthState({
+                        user: resolvedSession.user,
+                        token: resolvedSession.token,
+                        isAuthenticated: true,
+                        isLoading: false,
+                    });
+                    return;
+                }
+
+                clearSessionStorage();
+                setAuthState({
+                    user: null,
+                    token: null,
+                    isAuthenticated: false,
+                    isLoading: false,
+                });
+            } catch {
+                clearSessionStorage();
+                setAuthState({
+                    user: null,
+                    token: null,
+                    isAuthenticated: false,
+                    isLoading: false,
+                });
+            }
+        };
+
+        const handleFocus = () => {
+            void revalidateSession();
+        };
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                void revalidateSession();
+            }
+        };
+
+        const handlePageShow = (event: PageTransitionEvent) => {
+            if (event.persisted) {
+                void revalidateSession();
+            }
+        };
+
+        const handleStorageChange = (event: StorageEvent) => {
+            if (!event.key) return;
+            if (event.key === 'token' || event.key === 'refreshToken' || event.key === 'user' || event.key === 'role') {
+                void revalidateSession();
+            }
+        };
+
+        window.addEventListener('focus', handleFocus);
+        window.addEventListener('pageshow', handlePageShow);
+        window.addEventListener('storage', handleStorageChange);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            window.removeEventListener('focus', handleFocus);
+            window.removeEventListener('pageshow', handlePageShow);
+            window.removeEventListener('storage', handleStorageChange);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, [resolveSession]);
 
     /**
      * Auto-refresh token before expiration (5 minutes before)
@@ -176,7 +432,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         if (!authState.token || !authState.isAuthenticated) return;
 
-        const checkTokenExpiration = () => {
+        let isRefreshing = false;
+
+        const checkTokenExpiration = async () => {
             const payload = decodeToken(authState.token!);
             if (!payload || !payload.exp) return;
 
@@ -186,24 +444,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const FIVE_MINUTES = 5 * 60 * 1000;
 
             // If token expires in less than 5 minutes, trigger refresh
-            if (timeUntilExpiry <= FIVE_MINUTES && timeUntilExpiry > 0) {
-                // TODO: Call refresh token endpoint
-                console.log('Token expiring soon, should refresh');
-                // For now, just log. Backend refresh endpoint needs to be implemented
+            if (timeUntilExpiry <= FIVE_MINUTES) {
+                if (isRefreshing) return;
+
+                isRefreshing = true;
+                const refreshedSession = await refreshWithFallback();
+                isRefreshing = false;
+
+                if (!refreshedSession) {
+                    // Do not force logout if the access token is still valid.
+                    // Another app may have already rotated the refresh token.
+                    if (timeUntilExpiry <= 0) {
+                        clearSessionStorage();
+                        setAuthState({
+                            user: null,
+                            token: null,
+                            isAuthenticated: false,
+                            isLoading: false,
+                        });
+                    }
+                    return;
+                }
+
+                persistSession(refreshedSession.token, refreshedSession.user, refreshedSession.refreshToken);
+                setAuthState((previous) => ({
+                    ...previous,
+                    user: refreshedSession.user,
+                    token: refreshedSession.token,
+                    isAuthenticated: true,
+                    isLoading: false
+                }));
             }
         };
 
         // Check every minute
-        const interval = setInterval(checkTokenExpiration, 60 * 1000);
+        void checkTokenExpiration();
+        const interval = setInterval(() => {
+            void checkTokenExpiration();
+        }, 60 * 1000);
         return () => clearInterval(interval);
-    }, [authState.token, authState.isAuthenticated]);
+    }, [authState.token, authState.isAuthenticated, refreshWithFallback]);
 
     /**
      * Login function - stores token and user
      */
-    const login = useCallback((token: string, user: User) => {
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(user));
+    const login = useCallback((token: string, user: User, refreshToken?: string | null) => {
+        persistSession(token, user, refreshToken || null);
 
         setAuthState({
             user,
@@ -218,8 +504,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
      * This will cascade across all apps using this context
      */
     const logout = useCallback(() => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        const tokenToRevoke = authState.token || localStorage.getItem('token') || getCookie(ACCESS_TOKEN_COOKIE);
+        if (tokenToRevoke) {
+            void fetch('/api/auth/logout', {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${tokenToRevoke}`,
+                    'Content-Type': 'application/json'
+                }
+            }).catch(() => {
+                // Local cleanup still guarantees logout UX even if backend revocation fails.
+            });
+        }
+
+        clearSessionStorage();
 
         setAuthState({
             user: null,
@@ -230,16 +528,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // Optionally redirect to login page
         // window.location.href = '/login';
-    }, []);
+    }, [authState.token]);
 
     /**
      * Update user information
      */
     const updateUser = useCallback((user: User) => {
-        localStorage.setItem('user', JSON.stringify(user));
+        const normalizedRole = normalizeUserRole(user.role);
+        const normalizedUser: User = {
+            ...user,
+            role: normalizedRole || user.role,
+            permissions: Array.isArray(user.permissions) ? user.permissions : []
+        };
+
+        localStorage.setItem('user', JSON.stringify(normalizedUser));
+        if (normalizedUser.role) {
+            localStorage.setItem('role', normalizedUser.role);
+        }
         setAuthState((prev) => ({
             ...prev,
-            user,
+            user: normalizedUser,
         }));
     }, []);
 

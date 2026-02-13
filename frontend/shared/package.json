@@ -16,6 +16,9 @@
     "./workshops/*": "./workshops/*"
   },
   "dependencies": {
+    "@dagrejs/dagre": "^2.0.3",
+    "@dagrejs/graphlib": "^2.2.4",
+    "@xyflow/react": "^12.10.0",
     "clsx": "^2.1.1",
     "lucide-react": "^0.563.0",
     "react": "^19.2.3",

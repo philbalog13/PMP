@@ -1,6 +1,7 @@
 'use client';
 
-import { Book, FileText, Code, Database, Shield, Cpu, Terminal, ArrowRight, ChevronRight, Search, Zap, Globe, Lock } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { Code, Database, Shield, Cpu, ArrowRight, ChevronRight, Search, Zap, Globe, Lock } from 'lucide-react';
 import Link from 'next/link';
 
 export default function DocumentationPage() {
@@ -47,7 +48,7 @@ export default function DocumentationPage() {
                             Knowledge <span className="text-blue-500 text-7xl md:text-9xl">Base.</span>
                         </h1>
                         <p className="text-xl md:text-2xl text-slate-400 font-medium leading-relaxed max-w-2xl">
-                            La référence technique complète pour l'intégration, le test et la compréhension des systèmes monétiques industriels.
+                            La référence technique complète pour l&apos;intégration, le test et la compréhension des systèmes monétiques industriels.
                         </p>
                     </div>
 
@@ -102,7 +103,7 @@ export default function DocumentationPage() {
     );
 }
 
-function DocNavSection({ title, items }: any) {
+function DocNavSection({ title, items }: { title: string; items: string[] }) {
     return (
         <div className="space-y-4">
             <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 px-3">{title}</h4>
@@ -119,8 +120,10 @@ function DocNavSection({ title, items }: any) {
     );
 }
 
-function DocGridCard({ title, desc, icon, color }: any) {
-    const colors: any = {
+type DocCardColor = 'blue' | 'purple' | 'emerald' | 'amber';
+
+function DocGridCard({ title, desc, icon, color }: { title: string; desc: string; icon: ReactNode; color: DocCardColor }) {
+    const colors: Record<DocCardColor, string> = {
         blue: "text-blue-500 bg-blue-500/10 border-blue-500/20",
         purple: "text-purple-500 bg-purple-500/10 border-purple-500/20",
         emerald: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
@@ -140,7 +143,7 @@ function DocGridCard({ title, desc, icon, color }: any) {
     );
 }
 
-function ConceptBox({ icon, title, text }: any) {
+function ConceptBox({ icon, title, text }: { icon: ReactNode; title: string; text: string }) {
     return (
         <div className="space-y-4 p-6 rounded-3xl bg-slate-950/50 border border-white/5 hover:bg-white/5 transition duration-500 group">
             <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center group-hover:scale-110 transition-transform">

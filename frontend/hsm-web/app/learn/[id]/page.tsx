@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, use } from 'react';
+import React, { useState, use } from 'react';
 import Link from 'next/link';
 import { ChevronRight, CheckCircle, BookOpen, Play, Award } from 'lucide-react';
 
@@ -25,10 +25,8 @@ export default function WorkshopPage({ params }: { params: Promise<{ id: string 
     const { id } = use(params);
     const { getProgress, saveProgress } = useWorkshopProgress(id);
     const [currentStep, setCurrentStep] = useState<'theory' | 'exercise' | 'quiz'>('theory');
-    const [progress, setProgressState] = useState(0);
+    const [progress, setProgressState] = useState(() => getProgress());
     const [showConfetti, setShowConfetti] = useState(false);
-
-    useEffect(() => { setProgressState(getProgress()); }, [id, getProgress]);
 
     const workshop = workshops[id];
     if (!workshop) return <div className="p-8 text-white bg-slate-950 min-h-screen">Workshop not found</div>;

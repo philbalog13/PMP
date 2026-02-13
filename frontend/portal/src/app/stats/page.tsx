@@ -1,6 +1,6 @@
 'use client';
 
-import { BarChart, Users, Server, Activity } from 'lucide-react';
+import { BarChart, Users, Server, Activity, type LucideIcon } from 'lucide-react';
 
 export default function StatsPage() {
     return (
@@ -36,7 +36,7 @@ export default function StatsPage() {
     );
 }
 
-function StatCard({ icon: Icon, label, value, sub, color }: any) {
+function StatCard({ icon: Icon, label, value, sub, color }: { icon: LucideIcon; label: string; value: string; sub: string; color: string }) {
     return (
         <div className="bg-slate-900/50 border border-white/5 p-6 rounded-2xl hover:bg-slate-900 transition">
             <div className={`p-3 bg-slate-950 rounded-xl w-fit mb-4 ${color}`}>

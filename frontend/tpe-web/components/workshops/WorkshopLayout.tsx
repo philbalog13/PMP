@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { ChevronRight, CheckCircle, BookOpen, Play, Award } from 'lucide-react';
 
@@ -86,16 +86,16 @@ const workshops: Record<string, Workshop> = {
 
 // Progress hook
 function useWorkshopProgress(workshopId: string) {
-    const getKey = () => `workshop_progress_${workshopId}`;
-    const getProgress = (): number => {
+    const getKey = useCallback(() => `workshop_progress_${workshopId}`, [workshopId]);
+    const getProgress = useCallback((): number => {
         if (typeof window === 'undefined') return 0;
         const stored = window.localStorage.getItem(getKey());
         return stored ? parseInt(stored, 10) : 0;
-    };
-    const saveProgress = (progress: number) => {
+    }, [getKey]);
+    const saveProgress = useCallback((progress: number) => {
         if (typeof window === 'undefined') return;
         window.localStorage.setItem(getKey(), progress.toString());
-    };
+    }, [getKey]);
     return { getProgress, saveProgress };
 }
 
@@ -105,17 +105,17 @@ interface WorkshopLayoutProps {
 }
 
 export default function WorkshopLayout({ workshopId, className }: WorkshopLayoutProps) {
-    const workshop = workshops[workshopId];
-    if (!workshop) return <div className="p-8 text-white">Workshop not found</div>;
-
     const { getProgress, saveProgress } = useWorkshopProgress(workshopId);
     const [currentStep, setCurrentStep] = useState<'theory' | 'exercise' | 'quiz'>('theory');
     const [progress, setProgressState] = useState(0);
     const [showConfetti, setShowConfetti] = useState(false);
+    const workshop = workshops[workshopId];
 
     useEffect(() => {
         setProgressState(getProgress());
-    }, [workshopId]);
+    }, [getProgress]);
+
+    if (!workshop) return <div className="p-8 text-white">Workshop not found</div>;
 
     const handleComplete = () => {
         saveProgress(100);

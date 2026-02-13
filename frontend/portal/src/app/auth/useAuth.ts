@@ -1,113 +1,72 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 
+import { useAuth as useSharedAuth } from '@shared/context/AuthContext';
+import { getRoleRedirectUrl, resolveSafeRedirectTarget } from '@shared/lib/app-urls';
 import { UserRole } from '@shared/types/user';
+import { normalizeRole as normalizeSharedRole } from '@shared/utils/roleUtils';
 
 export type RoleTypeLegacy = 'client' | 'merchant' | 'student' | 'trainer';
 
 /**
- * Robustly normalize role strings to UserRole enum values
+ * Backward-compatible export used by older portal modules.
  */
-export function normalizeRole(role: any): UserRole {
-    if (!role) return role as UserRole;
-    const r = String(role).toUpperCase();
-    if (r === 'STUDENT' || r === 'ETUDIANT' || r === 'ROLE_ETUDIANT') return UserRole.ETUDIANT;
-    if (r === 'TRAINER' || r === 'FORMATEUR' || r === 'ROLE_FORMATEUR') return UserRole.FORMATEUR;
-    if (r === 'CLIENT' || r === 'ROLE_CLIENT') return UserRole.CLIENT;
-    if (r === 'MERCHANT' || r === 'MARCHAND' || r === 'ROLE_MARCHAND') return UserRole.MARCHAND;
-    return role as UserRole;
+export function normalizeRole(role: unknown): UserRole {
+    return normalizeSharedRole(role) as UserRole;
+}
+
+function isExternalUrl(url: string): boolean {
+    return /^https?:\/\//i.test(url);
 }
 
 export function useAuth(requireAuth: boolean = false) {
     const router = useRouter();
-    const [user, setUser] = useState<any>(null);
-    const [role, setRole] = useState<UserRole | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const pathname = usePathname();
+    const auth = useSharedAuth();
+
+    const role = useMemo<UserRole | null>(() => {
+        const normalized = normalizeSharedRole(auth.user?.role);
+        return normalized || null;
+    }, [auth.user?.role]);
 
     useEffect(() => {
-        // Small delay to ensure localStorage is available after navigation
-        const checkAuth = () => {
-            try {
-                const token = localStorage.getItem('token');
-                const storedUser = localStorage.getItem('user');
-                const storedRoleStr = localStorage.getItem('role');
-                const storedRole = storedRoleStr ? normalizeRole(storedRoleStr) : null;
+        if (auth.isLoading) {
+            return;
+        }
 
-                // Sync normalized role back to localStorage
-                if (storedRoleStr && storedRole && storedRole !== storedRoleStr) {
-                    localStorage.setItem('role', storedRole);
-                }
+        if (requireAuth && !auth.isAuthenticated) {
+            const currentPath = typeof window !== 'undefined'
+                ? `${window.location.pathname}${window.location.search}`
+                : (pathname || '/');
+            router.replace(`/login?redirect=${encodeURIComponent(currentPath)}`);
+            return;
+        }
 
-                // Sync cookie if missing (Critical for middleware)
-                if (token && !document.cookie.includes('token=')) {
-                    console.log('[useAuth] Restoring missing session cookie from localStorage');
-                    document.cookie = `token=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
-                }
+        if (!requireAuth && auth.isAuthenticated && pathname === '/login' && role) {
+            const requestedRedirect = typeof window !== 'undefined'
+                ? new URLSearchParams(window.location.search).get('redirect')
+                : null;
+            const redirectUrl = resolveSafeRedirectTarget(
+                requestedRedirect,
+                role,
+                typeof window !== 'undefined' ? window.location.origin : undefined
+            ) || getRoleRedirectUrl(role);
 
-                console.log('[useAuth] Checking auth:', {
-                    hasToken: !!token,
-                    hasUser: !!storedUser,
-                    storedRole,
-                    requireAuth,
-                    pathname: window.location.pathname
-                });
-
-                if (token && storedUser && storedRole) {
-                    // Validate token format (should have 3 parts)
-                    const tokenParts = token.split('.');
-                    if (tokenParts.length !== 3) {
-                        console.error('[useAuth] Invalid token format, clearing storage');
-                        localStorage.removeItem('token');
-                        localStorage.removeItem('user');
-                        localStorage.removeItem('role');
-                        if (requireAuth) {
-                            router.replace('/login');
-                        }
-                        setIsLoading(false);
-                        return;
-                    }
-
-                    setUser(JSON.parse(storedUser));
-                    setRole(storedRole);
-                    setIsAuthenticated(true);
-
-                    // If we are on login page and already have a valid session, redirect
-                    if (!requireAuth && window.location.pathname === '/login') {
-                        const redirectUrl = getRedirectUrl(storedRole);
-                        console.log('[useAuth] Already logged in, redirecting to:', redirectUrl);
-                        router.replace(redirectUrl);
-                    }
-                } else if (requireAuth) {
-                    // If we require auth but have no session, redirect to login
-                    console.log('[useAuth] No valid session, redirecting to login');
-                    const currentPath = window.location.pathname;
-                    router.replace(`/login?redirect=${encodeURIComponent(currentPath)}`);
-                }
-
-                setIsLoading(false);
-            } catch (error) {
-                console.error('[useAuth] Error checking auth:', error);
-                setIsLoading(false);
+            if (typeof window !== 'undefined' && isExternalUrl(redirectUrl)) {
+                window.location.replace(redirectUrl);
+                return;
             }
-        };
+            router.replace(redirectUrl);
+        }
+    }, [auth.isAuthenticated, auth.isLoading, pathname, requireAuth, role, router]);
 
-        // Run immediately
-        checkAuth();
-    }, [requireAuth, router]);
-
-    return { user, role, isLoading, isAuthenticated };
-}
-
-function getRedirectUrl(role: UserRole): string {
-    const normalized = normalizeRole(role);
-    switch (normalized) {
-        case UserRole.CLIENT: return 'http://localhost:3004';
-        case UserRole.MARCHAND: return 'http://localhost:3001';
-        case UserRole.ETUDIANT: return '/etudiant/dashboard';
-        case UserRole.FORMATEUR: return '/formateur/dashboard';
-        default: return '/';
-    }
+    return {
+        user: auth.user,
+        role,
+        isLoading: auth.isLoading,
+        isAuthenticated: auth.isAuthenticated,
+        logout: auth.logout,
+    };
 }

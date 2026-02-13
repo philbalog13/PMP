@@ -1,6 +1,7 @@
-import { Router, Request, Response, NextFunction } from 'express';
+﻿import { Router, Request, Response, NextFunction } from 'express';
 import { proxyRequest, getAllServicesHealth } from '../services/proxy.service';
 import { orchestrator } from '../services/integration-orchestrator';
+import { query } from '../config/database';
 import { logger } from '../utils/logger';
 import { strictRateLimitMiddleware } from '../middleware/rateLimit.middleware';
 import {
@@ -12,30 +13,49 @@ import {
 import { generateToken, authMiddleware } from '../middleware/auth.middleware';
 import * as authController from '../controllers/auth.controller';
 import * as twofaController from '../controllers/twofa.controller';
-import { RequireRole, UserRole } from '../middleware/roles';
 
 const router = Router();
 
-/**
- * Persona View Mock Endpoints (Pedagogical)
- * These are placed at the TOP to ensure they take precedence over the catch-all proxy.
- * PROTECTED by RBAC: Only the specific role can access its view.
- */
-// Mock Endpoints
-router.get('/api/client/cards', RequireRole(UserRole.CLIENT), (req, res) => res.json({ success: true, cards: [{ id: 'C1', pan: '4916****1344', balance: 1000 }] }));
-router.get('/api/marchand/transactions', RequireRole(UserRole.MARCHAND), (req, res) => res.json({ success: true, transactions: [{ id: 'T1', amount: 45.8, status: 'APPROVED' }] }));
-router.get('/api/marchand/reports/daily', RequireRole(UserRole.MARCHAND), (req, res) => res.json({ success: true, report: { date: new Date().toISOString().split('T')[0], totalSales: 1540.50, transactionCount: 32 } }));
-router.get('/api/etudiant/progression', RequireRole(UserRole.ETUDIANT), (req, res) => res.json({ success: true, workshop: 1, status: 'COMPLETED' }));
-router.post('/api/etudiant/progression/save', RequireRole(UserRole.ETUDIANT), (req, res) => res.json({ success: true, message: 'Progression saved' }));
-router.get('/api/etudiant/quiz', RequireRole(UserRole.ETUDIANT), (req, res) => res.json({ success: true, quiz: 'Introduction to Payments', score: '85%' }));
-router.get('/api/etudiant/exercises', RequireRole(UserRole.ETUDIANT), (req, res) => res.json({ success: true, active: 'Lab 2: Crypto' }));
-router.get('/api/etudiant/docs', RequireRole(UserRole.ETUDIANT), (req, res) => res.json({ success: true, docs: ['EMV Specs', 'ISO8583 Guide'] }));
-// Trainer / Admin Endpoints
-router.get('/api/formateur/sessions-actives', RequireRole(UserRole.FORMATEUR), (req, res) => res.json({ success: true, sessions: [{ id: 'S1', user: 'etudiant_01', active: true }] }));
-router.get('/api/formateur/exercises', RequireRole(UserRole.FORMATEUR), (req, res) => res.json({ success: true, exercises: [{ id: 'E1', title: 'Crypto Basics' }, { id: 'E2', title: '3DS Flow' }] }));
-router.post('/api/formateur/exercises', RequireRole(UserRole.FORMATEUR), (req, res) => res.json({ success: true, message: 'Exercise created' }));
-router.get('/api/admin/logs', RequireRole(UserRole.FORMATEUR), (req, res) => res.json({ success: true, logs: ['[INFO] Login success', '[WARN] Failed attempt'] }));
-router.get('/api/admin/users', RequireRole(UserRole.FORMATEUR), (req, res) => res.json({ success: true, users: ['client_test', 'marchand_boulangerie', 'etudiant_01'] }));
+const buildProxyHeaders = (req: Request): Record<string, string> => ({
+    Authorization: req.headers.authorization || '',
+    'Content-Type': 'application/json'
+});
+
+const CRITICAL_DB_TABLES = [
+    'users.users',
+    'learning.migration_history',
+    'learning.cursus',
+    'learning.cursus_modules',
+    'learning.cursus_chapters',
+    'learning.cursus_quizzes',
+    'learning.cursus_quiz_questions',
+    'learning.cursus_exercises',
+    'learning.ctf_challenges'
+];
+
+const getDatabaseHealth = async () => {
+    const startedAt = Date.now();
+    await query('SELECT 1');
+
+    const tables = await Promise.all(
+        CRITICAL_DB_TABLES.map(async (table) => {
+            const result = await query('SELECT to_regclass($1) AS relation_name', [table]);
+            return {
+                table,
+                exists: result.rows[0]?.relation_name !== null
+            };
+        })
+    );
+
+    const missingTables = tables.filter((table) => !table.exists).map((table) => table.table);
+
+    return {
+        healthy: missingTables.length === 0,
+        latencyMs: Date.now() - startedAt,
+        tables,
+        missingTables
+    };
+};
 
 /**
  * Health check endpoints
@@ -49,7 +69,55 @@ router.get('/health', async (req: Request, res: Response) => {
 router.get('/api/health', async (req: Request, res: Response) => {
     const servicesHealth = await getAllServicesHealth();
     const allHealthy = Object.values(servicesHealth).every(s => s.healthy);
-    res.status(200).json({ status: allHealthy ? 'healthy' : 'degraded', timestamp: new Date().toISOString(), gateway: { healthy: true }, services: servicesHealth, _educational: { diagramStep: 'GW->>AUTH: Vérification services', note: 'This endpoint aggregates health status from all microservices' } });
+    res.status(200).json({ status: allHealthy ? 'healthy' : 'degraded', timestamp: new Date().toISOString(), gateway: { healthy: true }, services: servicesHealth, _educational: { diagramStep: 'GW->>AUTH: VÃ©rification services', note: 'This endpoint aggregates health status from all microservices' } });
+});
+
+router.get('/health/db', async (_req: Request, res: Response) => {
+    try {
+        const database = await getDatabaseHealth();
+        const statusCode = database.healthy ? 200 : 503;
+        res.status(statusCode).json({
+            status: database.healthy ? 'healthy' : 'degraded',
+            timestamp: new Date().toISOString(),
+            database
+        });
+    } catch (error: any) {
+        logger.error('Database health check failed', { error: error.message });
+        res.status(503).json({
+            status: 'down',
+            timestamp: new Date().toISOString(),
+            database: {
+                healthy: false,
+                error: error.message || 'Database check failed'
+            }
+        });
+    }
+});
+
+router.get('/api/health/db', async (_req: Request, res: Response) => {
+    try {
+        const database = await getDatabaseHealth();
+        const statusCode = database.healthy ? 200 : 503;
+        res.status(statusCode).json({
+            status: database.healthy ? 'healthy' : 'degraded',
+            timestamp: new Date().toISOString(),
+            database,
+            _educational: {
+                diagramStep: 'GW->>DB: Verification des tables critiques',
+                note: 'Checks DB reachability and required schema tables'
+            }
+        });
+    } catch (error: any) {
+        logger.error('Database health check failed', { error: error.message });
+        res.status(503).json({
+            status: 'down',
+            timestamp: new Date().toISOString(),
+            database: {
+                healthy: false,
+                error: error.message || 'Database check failed'
+            }
+        });
+    }
 });
 
 /**
@@ -114,6 +182,114 @@ router.post('/api/transaction/verify-challenge', async (req: Request, res: Respo
     res.json({ success: result.approved, ...result });
 });
 
+router.get('/api/integration/health', async (_req: Request, res: Response) => {
+    try {
+        const services = await orchestrator.getHealth();
+        res.json({ success: true, services, timestamp: new Date().toISOString() });
+    } catch (error: any) {
+        logger.error('Integration health failed', { error: error.message });
+        res.status(500).json({ success: false, error: 'Failed to fetch integration health' });
+    }
+});
+
+/**
+ * Legacy endpoint aliases kept for backward compatibility with existing frontends.
+ */
+router.get('/api/authorize/history/:pan', async (req: Request, res: Response) => {
+    const correlationId = (req as any).correlationId;
+    try {
+        const response = await proxyRequest({
+            serviceName: 'sim-auth-engine',
+            method: 'GET',
+            path: `/transactions/${encodeURIComponent(req.params.pan)}`,
+            headers: buildProxyHeaders(req),
+            correlationId
+        });
+        res.status(response.status).json(response.data);
+    } catch (error: any) {
+        res.status(error.statusCode || 500).json({
+            success: false,
+            error: error.message || 'Proxy error',
+            code: error.code || 'PROXY_ERROR',
+            correlationId
+        });
+    }
+});
+
+router.post('/api/authorize/simulate', async (req: Request, res: Response) => {
+    const correlationId = (req as any).correlationId;
+    const scenario = String(req.body?.scenario || '').trim().toUpperCase();
+    if (!scenario) {
+        return res.status(400).json({ success: false, error: 'scenario is required' });
+    }
+
+    try {
+        const response = await proxyRequest({
+            serviceName: 'sim-auth-engine',
+            method: 'POST',
+            path: `/simulate/${encodeURIComponent(scenario)}`,
+            headers: buildProxyHeaders(req),
+            correlationId
+        });
+        res.status(response.status).json(response.data);
+    } catch (error: any) {
+        res.status(error.statusCode || 500).json({
+            success: false,
+            error: error.message || 'Proxy error',
+            code: error.code || 'PROXY_ERROR',
+            correlationId
+        });
+    }
+});
+
+router.post('/api/authorize/simulate/:scenario', async (req: Request, res: Response) => {
+    const correlationId = (req as any).correlationId;
+    const scenario = String(req.params.scenario || '').trim().toUpperCase();
+    if (!scenario) {
+        return res.status(400).json({ success: false, error: 'scenario is required' });
+    }
+
+    try {
+        const response = await proxyRequest({
+            serviceName: 'sim-auth-engine',
+            method: 'POST',
+            path: `/simulate/${encodeURIComponent(scenario)}`,
+            headers: buildProxyHeaders(req),
+            correlationId
+        });
+        res.status(response.status).json(response.data);
+    } catch (error: any) {
+        res.status(error.statusCode || 500).json({
+            success: false,
+            error: error.message || 'Proxy error',
+            code: error.code || 'PROXY_ERROR',
+            correlationId
+        });
+    }
+});
+
+router.post('/api/route/process', async (req: Request, res: Response) => {
+    const correlationId = (req as any).correlationId;
+    try {
+        const response = await proxyRequest({
+            serviceName: 'sim-network-switch',
+            method: 'POST',
+            path: '/transaction',
+            data: req.body,
+            headers: buildProxyHeaders(req),
+            correlationId
+        });
+        res.status(response.status).json(response.data);
+    } catch (error: any) {
+        res.status(error.statusCode || 500).json({
+            success: false,
+            error: error.message || 'Proxy error',
+            code: error.code || 'PROXY_ERROR',
+            correlationId
+        });
+    }
+});
+
 /**
  * Dynamic proxy handler
  */
@@ -122,11 +298,11 @@ const routeConfig: Record<string, { service: string; pathRewrite?: (path: string
     '/api/transactions': { service: 'sim-pos-service', pathRewrite: (p) => p.replace('/api/transactions', '/transactions') },
     '/api/process': { service: 'sim-acquirer-service', pathRewrite: (p) => p.replace('/api/process', '/process') },
     '/api/merchants': { service: 'sim-acquirer-service', pathRewrite: (p) => p.replace('/api/merchants', '/merchants') },
-    '/api/route': { service: 'sim-network-switch', pathRewrite: (p) => p.replace('/api/route', '/route') },
+    '/api/route': { service: 'sim-network-switch', pathRewrite: (p) => p.replace('/api/route', '/transaction') },
     '/api/issuer': { service: 'sim-issuer-service', pathRewrite: (p) => p.replace('/api/issuer', '') },
     '/api/accounts': { service: 'sim-issuer-service', pathRewrite: (p) => p.replace('/api/accounts', '/accounts') },
-    '/api/authorize': { service: 'sim-auth-engine', pathRewrite: (p) => p.replace('/api/authorize', '/api/authorize') },
-    '/api/rules': { service: 'sim-auth-engine', pathRewrite: (p) => p.replace('/api/rules', '/api/rules') },
+    '/api/authorize': { service: 'sim-auth-engine', pathRewrite: (p) => p.replace('/api/authorize', '/authorize') },
+    '/api/rules': { service: 'sim-auth-engine', pathRewrite: (p) => p.replace('/api/rules', '/rules') },
     '/api/fraud': { service: 'sim-fraud-detection', pathRewrite: (p) => p.replace('/api/fraud', '') },
     '/api/crypto': { service: 'crypto-service', pathRewrite: (p) => p.replace('/api/crypto', '') },
     '/api/hsm': { service: 'hsm-simulator', pathRewrite: (p) => p.replace('/api/hsm', '/hsm') },
@@ -142,11 +318,11 @@ const proxyHandler = async (req: Request, res: Response, next: NextFunction) => 
 
     if (!matchedRoute) return res.status(404).json({ success: false, error: 'Route not found', code: 'ROUTE_NOT_FOUND', path });
 
-    const [prefix, config] = matchedRoute;
+    const [_prefix, config] = matchedRoute;
     const targetPath = config.pathRewrite ? config.pathRewrite(path) : path;
 
     try {
-        const response = await proxyRequest({ serviceName: config.service, method: req.method, path: targetPath, data: req.body, headers: { 'Authorization': req.headers.authorization || '', 'Content-Type': 'application/json' }, correlationId });
+        const response = await proxyRequest({ serviceName: config.service, method: req.method, path: targetPath, data: req.body, headers: buildProxyHeaders(req), correlationId });
         Object.entries(response.headers).forEach(([key, value]) => { if (typeof value === 'string') res.setHeader(key, value); });
         res.status(response.status).json(response.data);
     } catch (error: any) {

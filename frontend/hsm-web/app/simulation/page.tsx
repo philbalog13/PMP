@@ -1,97 +1,173 @@
 'use client';
 
-import { Server } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { AlertCircle, Loader2, RefreshCw, Server } from 'lucide-react';
+import { useAuth } from '@shared/context/AuthContext';
+import { getHsmStatus, HsmApiError, HsmStatus, updateHsmConfig } from '@/lib/hsm-api';
+
+function statusColor(state: 'OPERATIONAL' | 'TAMPERED'): string {
+    return state === 'OPERATIONAL' ? 'bg-emerald-500' : 'bg-red-500';
+}
+
+function formatDuration(seconds: number): string {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    if (h > 0) return `${h}h ${m}m ${s}s`;
+    if (m > 0) return `${m}m ${s}s`;
+    return `${s}s`;
+}
 
 export default function SimulationPage() {
+    const { token } = useAuth();
+    const [loading, setLoading] = useState(true);
+    const [busyAction, setBusyAction] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [status, setStatus] = useState<HsmStatus | null>(null);
+
+    const refresh = useCallback(async () => {
+        setError(null);
+        try {
+            const response = await getHsmStatus(token);
+            setStatus(response.status);
+        } catch (caughtError) {
+            const message = caughtError instanceof HsmApiError ? caughtError.message : 'Failed to load HSM status.';
+            setError(message);
+        } finally {
+            setLoading(false);
+        }
+    }, [token]);
+
+    useEffect(() => {
+        void refresh();
+    }, [refresh]);
+
+    const runAction = async (action: 'simulateTamper' | 'resetTamper') => {
+        setBusyAction(true);
+        setError(null);
+        try {
+            await updateHsmConfig({ [action]: true }, token);
+            await refresh();
+        } catch (caughtError) {
+            const message = caughtError instanceof HsmApiError ? caughtError.message : 'Action failed.';
+            setError(message);
+        } finally {
+            setBusyAction(false);
+        }
+    };
+
     return (
         <div className="space-y-6">
-            <div className="flex items-center gap-3 mb-6">
-                <div className="p-3 bg-slate-500/10 rounded-xl border border-slate-500/20 text-slate-400">
-                    <Server size={24} />
+            <div className="flex items-center justify-between gap-3 mb-6">
+                <div className="flex items-center gap-3">
+                    <div className="p-3 bg-slate-500/10 rounded-xl border border-slate-500/20 text-slate-400">
+                        <Server size={24} />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold font-heading text-white">Hardware Simulation</h1>
+                        <p className="text-slate-400 text-sm">Live front panel status from hsm-simulator runtime.</p>
+                    </div>
                 </div>
-                <div>
-                    <h1 className="text-2xl font-bold font-heading text-white">Hardware Simulation</h1>
-                    <p className="text-slate-400 text-sm">Interactive Front Panel View.</p>
-                </div>
+                <button
+                    onClick={() => void refresh()}
+                    disabled={loading || busyAction}
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-60 text-white text-sm font-medium rounded-lg transition flex items-center gap-2 border border-white/5"
+                >
+                    {(loading || busyAction) ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+                    Refresh
+                </button>
             </div>
 
-            <div className="flex justify-center">
-                {/* HSM RACK UNIT VISUALIZATION */}
-                <div className="w-full max-w-4xl bg-[#1a1a1a] rounded-lg border-y-4 border-slate-700 shadow-2xl p-2 relative">
-                    {/* Rack Ears */}
-                    <div className="absolute left-0 top-0 bottom-0 w-8 bg-slate-800 border-r border-black flex flex-col justify-between py-4 items-center">
-                        <div className="w-4 h-4 rounded-full bg-slate-900 border border-slate-600 shadow-inner" />
-                        <div className="w-4 h-4 rounded-full bg-slate-900 border border-slate-600 shadow-inner" />
-                    </div>
-                    <div className="absolute right-0 top-0 bottom-0 w-8 bg-slate-800 border-l border-black flex flex-col justify-between py-4 items-center">
-                        <div className="w-4 h-4 rounded-full bg-slate-900 border border-slate-600 shadow-inner" />
-                        <div className="w-4 h-4 rounded-full bg-slate-900 border border-slate-600 shadow-inner" />
-                    </div>
+            {error && (
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200 text-sm inline-flex items-center gap-2">
+                    <AlertCircle size={16} />
+                    {error}
+                </div>
+            )}
 
-                    {/* Front Panel Content */}
-                    <div className="mx-10 bg-[#0f0f0f] h-48 rounded border border-white/5 flex items-center px-8 justify-between relative overflow-hidden">
-                        {/* Branding/Model */}
-                        <div className="flex flex-col">
-                            <span className="text-slate-500 font-bold tracking-[0.2em] text-xs">FINED-SIM SECURE STORAGE</span>
-                            <span className="text-white font-heading font-bold text-2xl tracking-tight">HSM-9000</span>
-                        </div>
-
-                        {/* LCD Screen */}
-                        <div className="bg-[#1e293b] p-1 rounded border border-white/10 shadow-[inset_0_0_20px_rgba(0,0,0,0.8)]">
-                            <div className="bg-[#0f172a] w-64 h-24 rounded p-3 font-mono text-green-500 text-xs shadow-inner overflow-hidden relative">
-                                <div className="absolute inset-0 bg-green-500/5 pointer-events-none scanline" />
-                                <div>&gt; SYSTEM READY</div>
-                                <div>&gt; LMK: LOADED (KV 29)</div>
-                                <div>&gt; TCP: 3006 LISTENING</div>
-                                <div className="animate-pulse">&gt; _</div>
-                            </div>
-                        </div>
-
-                        {/* Status LEDs */}
-                        <div className="flex gap-4">
-                            <div className="flex flex-col items-center gap-2">
-                                <div className="w-3 h-3 rounded-full bg-green-500 shadow-[0_0_10px_#22c55e]" />
-                                <span className="text-[10px] text-slate-500 font-bold uppercase">Power</span>
-                            </div>
-                            <div className="flex flex-col items-center gap-2">
-                                <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse shadow-[0_0_10px_#22c55e]" />
-                                <span className="text-[10px] text-slate-500 font-bold uppercase">Ready</span>
-                            </div>
-                            <div className="flex flex-col items-center gap-2">
-                                <div className="w-3 h-3 rounded-full bg-red-900 shadow-inner" />
-                                <span className="text-[10px] text-slate-500 font-bold uppercase">Alarm</span>
-                            </div>
-                        </div>
-
-                        {/* Physical Switches */}
-                        <div className="flex flex-col gap-3 border-l border-white/10 pl-8">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-6 bg-slate-800 rounded-full border border-slate-600 relative cursor-pointer">
-                                    <div className="absolute right-1 top-1 w-4 h-4 bg-slate-400 rounded-full shadow-lg" />
+            {loading ? (
+                <div className="glass-card p-8 rounded-xl text-slate-400 inline-flex items-center gap-2">
+                    <Loader2 size={16} className="animate-spin" />
+                    Loading runtime status...
+                </div>
+            ) : (
+                <>
+                    <div className="glass-card p-6 rounded-xl border border-white/10">
+                        <div className="flex items-start justify-between gap-4">
+                            <div>
+                                <div className="text-xs uppercase tracking-wide text-slate-500">HSM State</div>
+                                <div className="mt-2 flex items-center gap-3">
+                                    <span className={`w-3 h-3 rounded-full ${statusColor(status?.state ?? 'TAMPERED')} shadow-[0_0_12px_rgba(16,185,129,0.4)]`} />
+                                    <span className={`text-2xl font-bold ${status?.state === 'OPERATIONAL' ? 'text-emerald-400' : 'text-red-400'}`}>
+                                        {status?.state ?? 'UNKNOWN'}
+                                    </span>
                                 </div>
-                                <span className="text-[10px] text-slate-400 uppercase">Tamper Clear</span>
                             </div>
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-6 bg-slate-800 rounded-full border border-slate-600 relative cursor-pointer">
-                                    <div className="absolute left-1 top-1 w-4 h-4 bg-red-600 rounded-full shadow-lg" />
-                                </div>
-                                <span className="text-[10px] text-slate-400 uppercase">Emergency OFF</span>
+                            <div className="text-right text-sm text-slate-400">
+                                <div>Uptime: {formatDuration(status?.uptimeSec ?? 0)}</div>
+                                <div>Keys: {status?.keysLoaded ?? 0}</div>
+                                <div>Commands: {status?.commandCount ?? 0}</div>
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            <div className="glass-card p-6 rounded-xl mt-8">
-                <h3 className="font-bold text-white mb-4">Console Log</h3>
-                <div className="h-48 bg-black rounded font-mono text-xs text-slate-300 p-4 overflow-y-auto border border-white/10">
-                    <div className="text-slate-500">[10:00:01] Boot sequence initiated...</div>
-                    <div className="text-slate-500">[10:00:02] Self-test passed.</div>
-                    <div className="text-green-500">[10:00:03] LMK loaded successfully from smart card 1.</div>
-                    <div>[10:42:00] Verify MAC request received (Source: 192.168.1.10)</div>
-                    <div>[10:42:01] Response sent (OK)</div>
-                </div>
-            </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="glass-card p-6 rounded-xl border border-white/10">
+                            <h3 className="font-bold text-white mb-4">LED Panel</h3>
+                            <div className="space-y-3">
+                                {Object.entries(status?.leds ?? {}).map(([name, value]) => (
+                                    <div key={name} className="flex items-center justify-between p-3 rounded-lg bg-slate-950/40 border border-white/5">
+                                        <div className="text-sm font-semibold text-slate-200">{name}</div>
+                                        <div className="text-xs font-mono text-slate-300">{value}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="glass-card p-6 rounded-xl border border-white/10">
+                            <h3 className="font-bold text-white mb-4">Tamper Control</h3>
+                            <div className="space-y-3 text-sm text-slate-300">
+                                <div className="p-3 rounded-lg bg-slate-950/40 border border-white/5">
+                                    <div>Active: {status?.tamper.tampered ? 'yes' : 'no'}</div>
+                                    <div>Reason: {status?.tamper.reason ?? 'none'}</div>
+                                    <div>Monitoring: {status?.tamper.monitoring ? 'on' : 'off'}</div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <button
+                                        onClick={() => void runAction('simulateTamper')}
+                                        disabled={busyAction}
+                                        className="px-4 py-2 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/20 transition disabled:opacity-60"
+                                    >
+                                        Trigger Tamper
+                                    </button>
+                                    <button
+                                        onClick={() => void runAction('resetTamper')}
+                                        disabled={busyAction}
+                                        className="px-4 py-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 transition disabled:opacity-60"
+                                    >
+                                        Reset Tamper
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="glass-card p-6 rounded-xl border border-white/10">
+                        <h3 className="font-bold text-white mb-4">Last Command</h3>
+                        {status?.lastCommand ? (
+                            <div className="p-4 rounded-lg bg-slate-950/40 border border-white/5 text-sm text-slate-300 space-y-1 font-mono">
+                                <div>Code: {status.lastCommand.code}</div>
+                                <div>At: {status.lastCommand.at}</div>
+                                <div>Duration: {status.lastCommand.durationMs} ms</div>
+                                <div>Success: {status.lastCommand.success ? 'true' : 'false'}</div>
+                                {status.lastCommand.error ? <div>Error: {status.lastCommand.error}</div> : null}
+                            </div>
+                        ) : (
+                            <div className="text-slate-500 text-sm">No command has been executed yet.</div>
+                        )}
+                    </div>
+                </>
+            )}
         </div>
     );
 }

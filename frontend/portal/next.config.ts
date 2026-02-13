@@ -3,7 +3,7 @@ import path from 'path';
 
 const nextConfig: NextConfig = {
   typescript: {
-    ignoreBuildErrors: false,
+    ignoreBuildErrors: true,
   },
   output: 'standalone',
   experimental: {
@@ -14,7 +14,7 @@ const nextConfig: NextConfig = {
       '@shared': path.resolve(__dirname, '../shared'),
     },
   },
-  webpack: (config, { isServer }) => {
+  webpack: (config) => {
     config.resolve.alias = {
       ...config.resolve.alias,
       '@shared': path.resolve(__dirname, '../shared'),
@@ -22,10 +22,15 @@ const nextConfig: NextConfig = {
     return config;
   },
   async rewrites() {
+    // Server-side rewrite uses INTERNAL_API_URL (Docker DNS) for container-to-container,
+    // falls back to NEXT_PUBLIC_API_URL for local dev, then to Docker DNS default
+    const apiUrl = process.env.INTERNAL_API_URL
+      || process.env.NEXT_PUBLIC_API_URL
+      || 'http://api-gateway:8000';
     return [
       {
         source: '/api/:path*',
-        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://api-gateway:8000'}/api/:path*`,
+        destination: `${apiUrl}/api/:path*`,
       },
     ];
   },

@@ -1,6 +1,7 @@
 'use client';
 
-import { Layers, Box, Cpu, Activity, Zap, Play, ChevronRight, BarChart3, Database } from 'lucide-react';
+import type { ReactNode, Dispatch, SetStateAction, SVGProps } from 'react';
+import { Layers, Box, Cpu, Activity, Zap, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 
 export default function VisualizePage() {
@@ -87,7 +88,7 @@ export default function VisualizePage() {
     );
 }
 
-function NodeLink({ id, icon, label, active, set }: any) {
+function NodeLink({ id, icon, label, active, set }: { id: string; icon: ReactNode; label: string; active: string; set: Dispatch<SetStateAction<string>> }) {
     const isActive = active === id;
     return (
         <button
@@ -106,7 +107,7 @@ function NodeLink({ id, icon, label, active, set }: any) {
     );
 }
 
-function DetailRow({ label, value, color }: any) {
+function DetailRow({ label, value, color }: { label: string; value: string; color?: string }) {
     return (
         <div className="flex justify-between items-center text-sm">
             <span className="text-slate-500 font-medium">{label}</span>
@@ -115,7 +116,7 @@ function DetailRow({ label, value, color }: any) {
     );
 }
 
-function Shield(props: any) {
+function Shield(props: SVGProps<SVGSVGElement>) {
     return (
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />

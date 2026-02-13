@@ -1,6 +1,6 @@
 'use client';
 
-import { BookOpen, CreditCard, Building2, ArrowRight, CheckCircle, Play, ChevronLeft } from 'lucide-react';
+import { BookOpen, ArrowRight, CheckCircle, Play, ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 
@@ -243,7 +243,7 @@ export default function IntroWorkshopPage() {
                                     className="px-6 py-3 bg-green-600 hover:bg-green-500 rounded-xl font-bold flex items-center gap-2 transition-colors"
                                 >
                                     <CheckCircle size={18} />
-                                    Terminer l'atelier
+                                    Terminer l&apos;atelier
                                 </Link>
                             ) : (
                                 <button

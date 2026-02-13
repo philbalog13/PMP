@@ -1,73 +1,93 @@
 'use client';
 
-import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@shared/context/AuthContext';
-import {
-    Shield,
-    ShieldCheck,
-    ShieldAlert,
-    CreditCard,
-    Globe,
-    Wifi,
-    ShoppingBag,
-    AlertTriangle,
-    CheckCircle2,
-    ChevronRight,
-} from 'lucide-react';
+import { UserRole } from '@shared/types/user';
+import { CheckCircle2, RefreshCcw, Shield, ShieldAlert, CreditCard, Globe, Wifi, ShoppingBag } from 'lucide-react';
+import { CardFeaturesUpdateBody, clientApi } from '@/lib/api-client';
 
-interface CardSecurity {
+type CardSecurity = {
     id: string;
     maskedPan: string;
     cardType: string;
+    status: string;
     threedsEnrolled: boolean;
     contactlessEnabled: boolean;
     internationalEnabled: boolean;
     ecommerceEnabled: boolean;
-    status: string;
-}
+};
 
-type ToggleableCardFeature =
-    | 'threedsEnrolled'
-    | 'contactlessEnabled'
-    | 'internationalEnabled'
-    | 'ecommerceEnabled';
+const asObject = (value: unknown): Record<string, unknown> =>
+    value !== null && typeof value === 'object' ? (value as Record<string, unknown>) : {};
 
-const initialCards: CardSecurity[] = [
-    {
-        id: '1',
-        maskedPan: '4916****1234',
-        cardType: 'VISA',
-        threedsEnrolled: true,
-        contactlessEnabled: true,
-        internationalEnabled: false,
-        ecommerceEnabled: true,
-        status: 'ACTIVE',
-    },
-    {
-        id: '2',
-        maskedPan: '5412****5678',
-        cardType: 'MASTERCARD',
-        threedsEnrolled: false,
-        contactlessEnabled: true,
-        internationalEnabled: true,
-        ecommerceEnabled: true,
-        status: 'ACTIVE',
-    },
-];
+const getErrorMessage = (error: unknown, fallback: string): string => {
+    if (error instanceof Error && error.message) return error.message;
+    const candidate = asObject(error);
+    return typeof candidate.message === 'string' ? candidate.message : fallback;
+};
+
+const normalizeCard = (raw: unknown): CardSecurity => {
+    const card = asObject(raw);
+    return {
+        id: String(card.id || ''),
+        maskedPan: String(card.masked_pan || card.maskedPan || ''),
+        cardType: String(card.card_type || card.cardType || 'DEBIT'),
+        status: String(card.status || 'ACTIVE'),
+        threedsEnrolled: Boolean(card.threeds_enrolled ?? card.threedsEnrolled),
+        contactlessEnabled: Boolean(card.contactless_enabled ?? card.contactlessEnabled),
+        internationalEnabled: Boolean(card.international_enabled ?? card.internationalEnabled),
+        ecommerceEnabled: Boolean(card.ecommerce_enabled ?? card.ecommerceEnabled)
+    };
+};
 
 export default function SecurityPage() {
-    const { isLoading, isAuthenticated } = useAuth();
-    const [cards, setCards] = useState<CardSecurity[]>(initialCards);
+    const { isLoading, isAuthenticated, user } = useAuth();
+    const [cards, setCards] = useState<CardSecurity[]>([]);
     const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+    const [isRefreshing, setIsRefreshing] = useState(true);
+    const [savingId, setSavingId] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
-    const toggleCardFeature = (cardId: string, feature: ToggleableCardFeature) => {
-        setCards((prev) =>
-            prev.map((card) => {
-                if (card.id !== cardId) return card;
-                return { ...card, [feature]: !card[feature] };
-            }),
-        );
+    const isClient = user?.role === UserRole.CLIENT;
+
+    const loadSecurity = async () => {
+        setIsRefreshing(true);
+        setError(null);
+        try {
+            const response = await clientApi.getSecurity();
+            const rawCards = Array.isArray(response?.security?.cards) ? response.security.cards : [];
+            setTwoFactorEnabled(Boolean(response?.security?.twoFactorEnabled));
+            setCards(rawCards.map(normalizeCard));
+        } catch (loadError: unknown) {
+            setError(getErrorMessage(loadError, 'Impossible de charger les paramètres de sécurité'));
+        } finally {
+            setIsRefreshing(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!isAuthenticated || !isClient) return;
+        loadSecurity();
+    }, [isAuthenticated, isClient]);
+
+    const toggleFeature = async (card: CardSecurity, feature: keyof CardSecurity) => {
+        const body: CardFeaturesUpdateBody = {};
+
+        if (feature === 'threedsEnrolled') body.threedsEnrolled = !card.threedsEnrolled;
+        if (feature === 'contactlessEnabled') body.contactlessEnabled = !card.contactlessEnabled;
+        if (feature === 'internationalEnabled') body.internationalEnabled = !card.internationalEnabled;
+        if (feature === 'ecommerceEnabled') body.ecommerceEnabled = !card.ecommerceEnabled;
+
+        setSavingId(card.id + feature);
+        setError(null);
+        try {
+            await clientApi.updateCardFeatures(card.id, body);
+            await loadSecurity();
+        } catch (toggleError: unknown) {
+            setError(getErrorMessage(toggleError, 'Mise à jour impossible'));
+        } finally {
+            setSavingId(null);
+        }
     };
 
     if (isLoading) {
@@ -82,8 +102,8 @@ export default function SecurityPage() {
         return (
             <div className="min-h-screen bg-slate-950 flex items-center justify-center px-6">
                 <div className="max-w-md w-full rounded-3xl border border-white/10 bg-slate-900/70 p-8 text-center space-y-4">
-                    <h1 className="text-2xl font-bold text-white">Session expiree</h1>
-                    <p className="text-slate-400">Reconnectez-vous sur le portail pour acceder a votre espace client.</p>
+                    <h1 className="text-2xl font-bold text-white">Session expirée</h1>
+                    <p className="text-slate-400">Reconnectez-vous sur le portail pour accéder à votre espace client.</p>
                     <a
                         href={`${process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:3000'}/login`}
                         className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-amber-500 text-slate-950 font-semibold hover:bg-amber-400 transition-colors"
@@ -95,185 +115,111 @@ export default function SecurityPage() {
         );
     }
 
+    if (!isClient) {
+        return (
+            <div className="min-h-screen bg-slate-950 flex items-center justify-center px-6">
+                <div className="max-w-lg w-full rounded-3xl border border-white/10 bg-slate-900/70 p-8 text-center text-slate-300">
+                    Cette section est réservée aux clients.
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-slate-950 py-8 pb-12">
-            <div className="max-w-4xl mx-auto px-6">
-                <div className="mb-8">
-                    <div className="flex items-center gap-2 text-slate-400 text-sm mb-4">
-                        <Link href="/" className="hover:text-amber-400">Dashboard</Link>
-                        <ChevronRight size={14} />
-                        <span className="text-white">Securite</span>
+            <div className="max-w-5xl mx-auto px-6 space-y-6">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold text-white mb-1">Sécurité des cartes</h1>
+                        <p className="text-slate-400">Paramètres réels des protections client.</p>
                     </div>
-                    <h1 className="text-3xl font-bold text-white mb-2">Parametres de securite</h1>
-                    <p className="text-slate-400">
-                        Gerez la securite de vos cartes et activez les protections supplementaires.
-                    </p>
+                    <button
+                        onClick={loadSecurity}
+                        disabled={isRefreshing}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 border border-white/10 text-white hover:bg-slate-700 disabled:opacity-60"
+                    >
+                        <RefreshCcw size={16} className={isRefreshing ? 'animate-spin' : ''} />
+                        Actualiser
+                    </button>
                 </div>
 
-                <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-6 mb-6">
+                <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-5">
                     <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-start gap-4">
-                            <div className={`p-3 rounded-xl ${twoFactorEnabled ? 'bg-emerald-500/20' : 'bg-slate-700'}`}>
-                                {twoFactorEnabled ? (
-                                    <ShieldCheck className="w-6 h-6 text-emerald-400" />
-                                ) : (
-                                    <ShieldAlert className="w-6 h-6 text-slate-400" />
-                                )}
+                        <div>
+                            <p className="text-white font-semibold">Authentification 2FA</p>
+                            <p className="text-sm text-slate-400">État courant récupéré depuis le compte utilisateur.</p>
+                        </div>
+                        <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm ${twoFactorEnabled ? 'bg-emerald-500/20 text-emerald-300' : 'bg-yellow-500/20 text-yellow-300'}`}>
+                            {twoFactorEnabled ? <CheckCircle2 size={14} /> : <ShieldAlert size={14} />}
+                            {twoFactorEnabled ? 'Active' : 'Inactive'}
+                        </span>
+                    </div>
+                </div>
+
+                {error && (
+                    <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200">
+                        {error}
+                    </div>
+                )}
+
+                <div className="space-y-4">
+                    {cards.map((card) => (
+                        <div key={card.id} className="rounded-2xl border border-white/10 bg-slate-800/50 p-5 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-white font-semibold">{card.maskedPan}</p>
+                                    <p className="text-xs text-slate-400">{card.cardType}</p>
+                                </div>
+                                <span className={`px-3 py-1 rounded-full text-xs ${card.status === 'ACTIVE' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-red-500/20 text-red-300'}`}>
+                                    {card.status}
+                                </span>
                             </div>
-                            <div>
-                                <h2 className="text-lg font-semibold text-white mb-1">Authentification a deux facteurs (2FA)</h2>
-                                <p className="text-sm text-slate-400 mb-3">
-                                    Ajoutez une couche de securite supplementaire lors de la connexion.
-                                </p>
-                                {twoFactorEnabled ? (
-                                    <span className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/20 text-emerald-400 text-sm rounded-full">
-                                        <CheckCircle2 size={14} /> Active
-                                    </span>
-                                ) : (
-                                    <span className="inline-flex items-center gap-2 px-3 py-1 bg-yellow-500/20 text-yellow-400 text-sm rounded-full">
-                                        <AlertTriangle size={14} /> Non active
-                                    </span>
-                                )}
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <button
+                                    onClick={() => toggleFeature(card, 'threedsEnrolled')}
+                                    disabled={savingId === card.id + 'threedsEnrolled'}
+                                    className={`flex items-center justify-between rounded-xl p-3 border ${card.threedsEnrolled ? 'border-blue-500/30 bg-blue-500/10 text-blue-200' : 'border-white/10 bg-slate-900/50 text-slate-300'} disabled:opacity-60`}
+                                >
+                                    <span className="inline-flex items-center gap-2"><Shield size={14} /> 3D Secure</span>
+                                    <span>{card.threedsEnrolled ? 'ON' : 'OFF'}</span>
+                                </button>
+                                <button
+                                    onClick={() => toggleFeature(card, 'contactlessEnabled')}
+                                    disabled={savingId === card.id + 'contactlessEnabled'}
+                                    className={`flex items-center justify-between rounded-xl p-3 border ${card.contactlessEnabled ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-white/10 bg-slate-900/50 text-slate-300'} disabled:opacity-60`}
+                                >
+                                    <span className="inline-flex items-center gap-2"><Wifi size={14} /> Sans contact</span>
+                                    <span>{card.contactlessEnabled ? 'ON' : 'OFF'}</span>
+                                </button>
+                                <button
+                                    onClick={() => toggleFeature(card, 'internationalEnabled')}
+                                    disabled={savingId === card.id + 'internationalEnabled'}
+                                    className={`flex items-center justify-between rounded-xl p-3 border ${card.internationalEnabled ? 'border-amber-500/30 bg-amber-500/10 text-amber-200' : 'border-white/10 bg-slate-900/50 text-slate-300'} disabled:opacity-60`}
+                                >
+                                    <span className="inline-flex items-center gap-2"><Globe size={14} /> International</span>
+                                    <span>{card.internationalEnabled ? 'ON' : 'OFF'}</span>
+                                </button>
+                                <button
+                                    onClick={() => toggleFeature(card, 'ecommerceEnabled')}
+                                    disabled={savingId === card.id + 'ecommerceEnabled'}
+                                    className={`flex items-center justify-between rounded-xl p-3 border ${card.ecommerceEnabled ? 'border-purple-500/30 bg-purple-500/10 text-purple-200' : 'border-white/10 bg-slate-900/50 text-slate-300'} disabled:opacity-60`}
+                                >
+                                    <span className="inline-flex items-center gap-2"><ShoppingBag size={14} /> E-commerce</span>
+                                    <span>{card.ecommerceEnabled ? 'ON' : 'OFF'}</span>
+                                </button>
                             </div>
                         </div>
+                    ))}
 
-                        <button
-                            onClick={() => setTwoFactorEnabled((prev) => !prev)}
-                            className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-medium transition-colors"
-                        >
-                            {twoFactorEnabled ? 'Desactiver' : 'Activer'}
-                        </button>
-                    </div>
-                </div>
-
-                <div className="mb-8">
-                    <h2 className="text-xl font-semibold text-white mb-4">Securite des cartes</h2>
-
-                    <div className="space-y-4">
-                        {cards.map((card) => (
-                            <div key={card.id} className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
-                                <div className="flex items-center justify-between mb-6">
-                                    <div className="flex items-center gap-4">
-                                        <div className="p-3 bg-gradient-to-br from-amber-500/20 to-orange-500/10 rounded-xl">
-                                            <CreditCard className="w-6 h-6 text-amber-400" />
-                                        </div>
-                                        <div>
-                                            <p className="font-mono text-lg text-white">{card.maskedPan}</p>
-                                            <p className="text-sm text-slate-400">{card.cardType}</p>
-                                        </div>
-                                    </div>
-                                    <span
-                                        className={`px-3 py-1 rounded-full text-sm ${card.status === 'ACTIVE'
-                                            ? 'bg-emerald-500/20 text-emerald-400'
-                                            : 'bg-red-500/20 text-red-400'
-                                            }`}
-                                    >
-                                        {card.status === 'ACTIVE' ? 'Active' : 'Bloquee'}
-                                    </span>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="flex items-center justify-between p-4 bg-slate-900/50 rounded-xl">
-                                        <div className="flex items-center gap-3">
-                                            <Shield className="w-5 h-5 text-blue-400" />
-                                            <div>
-                                                <p className="text-sm font-medium text-white">3D Secure</p>
-                                                <p className="text-xs text-slate-400">Authentification renforcee</p>
-                                            </div>
-                                        </div>
-                                        <button
-                                            onClick={() => toggleCardFeature(card.id, 'threedsEnrolled')}
-                                            className={`relative w-12 h-6 rounded-full transition-colors ${card.threedsEnrolled ? 'bg-emerald-500' : 'bg-slate-600'}`}
-                                        >
-                                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${card.threedsEnrolled ? 'left-7' : 'left-1'}`} />
-                                        </button>
-                                    </div>
-
-                                    <div className="flex items-center justify-between p-4 bg-slate-900/50 rounded-xl">
-                                        <div className="flex items-center gap-3">
-                                            <Wifi className="w-5 h-5 text-purple-400" />
-                                            <div>
-                                                <p className="text-sm font-medium text-white">Sans contact</p>
-                                                <p className="text-xs text-slate-400">Paiements NFC</p>
-                                            </div>
-                                        </div>
-                                        <button
-                                            onClick={() => toggleCardFeature(card.id, 'contactlessEnabled')}
-                                            className={`relative w-12 h-6 rounded-full transition-colors ${card.contactlessEnabled ? 'bg-emerald-500' : 'bg-slate-600'}`}
-                                        >
-                                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${card.contactlessEnabled ? 'left-7' : 'left-1'}`} />
-                                        </button>
-                                    </div>
-
-                                    <div className="flex items-center justify-between p-4 bg-slate-900/50 rounded-xl">
-                                        <div className="flex items-center gap-3">
-                                            <Globe className="w-5 h-5 text-amber-400" />
-                                            <div>
-                                                <p className="text-sm font-medium text-white">International</p>
-                                                <p className="text-xs text-slate-400">Paiements a l&apos;etranger</p>
-                                            </div>
-                                        </div>
-                                        <button
-                                            onClick={() => toggleCardFeature(card.id, 'internationalEnabled')}
-                                            className={`relative w-12 h-6 rounded-full transition-colors ${card.internationalEnabled ? 'bg-emerald-500' : 'bg-slate-600'}`}
-                                        >
-                                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${card.internationalEnabled ? 'left-7' : 'left-1'}`} />
-                                        </button>
-                                    </div>
-
-                                    <div className="flex items-center justify-between p-4 bg-slate-900/50 rounded-xl">
-                                        <div className="flex items-center gap-3">
-                                            <ShoppingBag className="w-5 h-5 text-emerald-400" />
-                                            <div>
-                                                <p className="text-sm font-medium text-white">E-commerce</p>
-                                                <p className="text-xs text-slate-400">Achats en ligne</p>
-                                            </div>
-                                        </div>
-                                        <button
-                                            onClick={() => toggleCardFeature(card.id, 'ecommerceEnabled')}
-                                            className={`relative w-12 h-6 rounded-full transition-colors ${card.ecommerceEnabled ? 'bg-emerald-500' : 'bg-slate-600'}`}
-                                        >
-                                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${card.ecommerceEnabled ? 'left-7' : 'left-1'}`} />
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div className="mt-4 pt-4 border-t border-white/5">
-                                    <Link
-                                        href="/cards"
-                                        className="text-sm text-amber-400 hover:text-amber-300 flex items-center gap-1"
-                                    >
-                                        Gerer cette carte <ChevronRight size={14} />
-                                    </Link>
-                                </div>
+                    {cards.length === 0 && (
+                        <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-8 text-center text-slate-400">
+                            <div className="inline-flex items-center gap-2">
+                                <CreditCard size={16} />
+                                Aucune carte trouvée.
                             </div>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="bg-blue-500/10 border border-blue-500/30 rounded-2xl p-6">
-                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                        <Shield className="w-5 h-5 text-blue-400" />
-                        Conseils de securite
-                    </h3>
-                    <ul className="space-y-3 text-sm text-slate-300">
-                        <li className="flex items-start gap-2">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
-                            <span>Activez toujours 3D Secure pour vos achats en ligne</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
-                            <span>Desactivez les paiements internationaux si vous ne voyagez pas</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
-                            <span>Configurez l&apos;authentification a deux facteurs pour votre compte</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
-                            <span>Surveillez regulierement vos transactions</span>
-                        </li>
-                    </ul>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

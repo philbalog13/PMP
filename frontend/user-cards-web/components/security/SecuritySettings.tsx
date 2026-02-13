@@ -1,9 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useUserStore } from '@/lib/store';
 import { Shield, Lock, Globe, AlertTriangle, Smartphone } from 'lucide-react';
-import { motion } from 'framer-motion';
 
 export default function SecuritySettings() {
     const [limits, setLimits] = useState({

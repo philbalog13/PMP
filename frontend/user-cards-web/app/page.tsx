@@ -1,89 +1,173 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@shared/context/AuthContext';
-import {
-    CreditCard,
-    ArrowUpRight,
-    ArrowDownLeft,
-    TrendingUp,
-    Shield,
-    AlertCircle,
-    ChevronRight,
-    Plus,
-    Eye,
-    EyeOff,
-    Wallet,
-    Clock,
-    CheckCircle2,
-} from 'lucide-react';
+import { Wallet, CreditCard, Activity, Building2, RefreshCcw, ArrowRight } from 'lucide-react';
+import { clientApi } from '@/lib/api-client';
 
-interface VirtualCard {
-    id: string;
-    lastFour: string;
-    type: 'visa' | 'mastercard';
-    expiryDate: string;
+type DashboardState = {
+    cards: {
+        total: number;
+        active: number;
+        totalBalance: number;
+    };
+    today: {
+        transactionCount: number;
+        totalSpent: number;
+    };
+    activeCards: Array<{
+        id: string;
+        maskedPan: string;
+        cardType: string;
+        network: string;
+        status: string;
+        balance: number;
+        dailyLimit: number;
+        dailySpent: number;
+        isAutoIssued: boolean;
+    }>;
+    recentTransactions: Array<{
+        id: string;
+        transactionId: string;
+        amount: number;
+        currency: string;
+        type: string;
+        status: string;
+        merchantName: string;
+        timestamp: string;
+    }>;
+};
+
+type AccountState = {
+    iban: string;
+    bic: string;
+    accountLabel: string;
+    accountHolderName: string;
     balance: number;
-    limit: number;
-    status: 'active' | 'blocked' | 'expired';
-    is3dsEnabled: boolean;
-}
+    currency: string;
+};
 
-interface Transaction {
-    id: string;
-    type: 'debit' | 'credit';
-    amount: number;
-    merchant: string;
-    category: string;
-    date: string;
-    status: 'completed' | 'pending' | 'failed';
-    cardLastFour: string;
-}
+const asObject = (value: unknown): Record<string, unknown> =>
+    value !== null && typeof value === 'object' ? (value as Record<string, unknown>) : {};
 
-const mockCards: VirtualCard[] = [
-    {
-        id: '1',
-        lastFour: '4532',
-        type: 'visa',
-        expiryDate: '12/27',
-        balance: 2450.75,
-        limit: 5000,
-        status: 'active',
-        is3dsEnabled: true,
-    },
-    {
-        id: '2',
-        lastFour: '8921',
-        type: 'mastercard',
-        expiryDate: '06/26',
-        balance: 890.5,
-        limit: 2000,
-        status: 'active',
-        is3dsEnabled: false,
-    },
-];
+const getErrorMessage = (error: unknown, fallback: string): string => {
+    if (error instanceof Error && error.message) return error.message;
+    const candidate = asObject(error);
+    return typeof candidate.message === 'string' ? candidate.message : fallback;
+};
 
-const mockTransactions: Transaction[] = [
-    { id: '1', type: 'debit', amount: 45.99, merchant: 'Amazon', category: 'Shopping', date: '2024-01-15 14:32', status: 'completed', cardLastFour: '4532' },
-    { id: '2', type: 'debit', amount: 12.5, merchant: 'Spotify', category: 'Subscription', date: '2024-01-14 09:00', status: 'completed', cardLastFour: '4532' },
-    { id: '3', type: 'credit', amount: 500.0, merchant: 'Virement entrant', category: 'Transfer', date: '2024-01-13 16:45', status: 'completed', cardLastFour: '4532' },
-    { id: '4', type: 'debit', amount: 89.9, merchant: 'Carrefour', category: 'Groceries', date: '2024-01-12 18:20', status: 'completed', cardLastFour: '8921' },
-    { id: '5', type: 'debit', amount: 250.0, merchant: 'FNAC', category: 'Electronics', date: '2024-01-11 11:15', status: 'pending', cardLastFour: '4532' },
-];
+const toNumber = (value: unknown): number => {
+    const parsed = Number.parseFloat(String(value ?? ''));
+    return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const formatMoney = (value: number, currency = 'EUR') =>
+    new Intl.NumberFormat('fr-FR', {
+        style: 'currency',
+        currency,
+        minimumFractionDigits: 2
+    }).format(value);
+
+const normalizeDashboard = (payload: unknown): DashboardState => {
+    const payloadObject = asObject(payload);
+    const dashboard = asObject(payloadObject.dashboard);
+    const cards = asObject(dashboard.cards);
+    const today = asObject(dashboard.today);
+    const activeCards = Array.isArray(dashboard.activeCards) ? dashboard.activeCards : [];
+    const recentTransactions = Array.isArray(dashboard.recentTransactions) ? dashboard.recentTransactions : [];
+
+    return {
+        cards: {
+            total: Number.parseInt(String(cards.total ?? ''), 10) || 0,
+            active: Number.parseInt(String(cards.active ?? ''), 10) || 0,
+            totalBalance: toNumber(cards.totalBalance)
+        },
+        today: {
+            transactionCount: Number.parseInt(String(today.transactionCount ?? ''), 10) || 0,
+            totalSpent: toNumber(today.totalSpent)
+        },
+        activeCards: activeCards.map((rawCard) => {
+            const card = asObject(rawCard);
+            return {
+                id: String(card.id || ''),
+                maskedPan: String(card.masked_pan || card.maskedPan || ''),
+                cardType: String(card.card_type || card.cardType || 'DEBIT'),
+                network: String(card.network || 'VISA'),
+                status: String(card.status || 'ACTIVE'),
+                balance: toNumber(card.balance),
+                dailyLimit: toNumber(card.daily_limit || card.dailyLimit),
+                dailySpent: toNumber(card.daily_spent || card.dailySpent),
+                isAutoIssued: Boolean(card.is_auto_issued ?? card.isAutoIssued)
+            };
+        }),
+        recentTransactions: recentTransactions.map((rawTransaction) => {
+            const transaction = asObject(rawTransaction);
+            return {
+                id: String(transaction.id || ''),
+                transactionId: String(transaction.transaction_id || transaction.transactionId || ''),
+                amount: toNumber(transaction.amount),
+                currency: String(transaction.currency || 'EUR'),
+                type: String(transaction.type || 'PURCHASE'),
+                status: String(transaction.status || 'PENDING'),
+                merchantName: String(transaction.merchant_name || transaction.merchantName || '-'),
+                timestamp: String(transaction.timestamp || '')
+            };
+        })
+    };
+};
+
+const normalizeAccount = (payload: unknown): AccountState => {
+    const payloadObject = asObject(payload);
+    const account = asObject(payloadObject.account);
+    return {
+        iban: String(account.iban || ''),
+        bic: String(account.bic || ''),
+        accountLabel: String(account.accountLabel || account.account_label || 'Compte principal'),
+        accountHolderName: String(account.accountHolderName || account.account_holder_name || ''),
+        balance: toNumber(account.balance),
+        currency: String(account.currency || 'EUR')
+    };
+};
 
 export default function ClientDashboardHome() {
     const { user, isLoading, isAuthenticated } = useAuth();
-    const [cards] = useState<VirtualCard[]>(mockCards);
-    const [transactions] = useState<Transaction[]>(mockTransactions);
-    const [showBalance, setShowBalance] = useState(true);
-    const [selectedCard, setSelectedCard] = useState<VirtualCard | null>(mockCards[0]);
+    const [isRefreshing, setIsRefreshing] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [dashboard, setDashboard] = useState<DashboardState | null>(null);
+    const [account, setAccount] = useState<AccountState | null>(null);
 
-    const totalBalance = cards.reduce((acc, card) => acc + card.balance, 0);
-    const totalLimit = cards.reduce((acc, card) => acc + card.limit, 0);
-    const monthlySpending = transactions
-        .filter((t) => t.type === 'debit' && t.status === 'completed')
-        .reduce((acc, t) => acc + t.amount, 0);
+    const loadData = async () => {
+        setIsRefreshing(true);
+        setError(null);
+
+        try {
+            const [dashboardResponse, accountResponse] = await Promise.all([
+                clientApi.getDashboard(),
+                clientApi.getAccount()
+            ]);
+
+            setDashboard(normalizeDashboard(dashboardResponse));
+            setAccount(normalizeAccount(accountResponse));
+        } catch (loadError: unknown) {
+            setError(getErrorMessage(loadError, 'Impossible de charger les données client'));
+        } finally {
+            setIsRefreshing(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!isAuthenticated) return;
+        loadData();
+    }, [isAuthenticated]);
+
+    const welcomeName = useMemo(() => {
+        if (!user) return 'Client';
+        if (user.firstName) return user.firstName;
+        if (user.name) return user.name;
+        if (user.email) return user.email.split('@')[0];
+        return 'Client';
+    }, [user]);
 
     if (isLoading) {
         return (
@@ -112,270 +196,144 @@ export default function ClientDashboardHome() {
 
     return (
         <div className="min-h-screen bg-slate-950 py-8 pb-12">
-            <div className="max-w-7xl mx-auto px-6">
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-white mb-2">
-                        Bonjour, {user?.name || user?.email?.split('@')[0] || 'Client'} !
-                    </h1>
-                    <p className="text-slate-400">
-                        Gérez vos cartes virtuelles et suivez vos transactions en temps réel.
-                    </p>
+            <div className="max-w-6xl mx-auto px-6 space-y-6">
+                <div className="flex items-center justify-between gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold text-white mb-1">Bonjour, {welcomeName}</h1>
+                        <p className="text-slate-400">Données bancaires et cartes synchronisées en temps réel.</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Link
+                            href="/pay"
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 text-slate-950 font-semibold hover:bg-amber-400 transition-colors"
+                        >
+                            Payer
+                            <ArrowRight size={16} />
+                        </Link>
+                        <button
+                            onClick={loadData}
+                            disabled={isRefreshing}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 border border-white/10 text-white hover:bg-slate-700 disabled:opacity-60"
+                        >
+                            <RefreshCcw size={16} className={isRefreshing ? 'animate-spin' : ''} />
+                            Actualiser
+                        </button>
+                    </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                    <div className="bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/30 rounded-2xl p-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="p-3 bg-amber-500/20 rounded-xl">
-                                <Wallet className="w-6 h-6 text-amber-400" />
-                            </div>
-                            <button
-                                onClick={() => setShowBalance(!showBalance)}
-                                className="p-2 hover:bg-white/5 rounded-lg transition-colors"
-                            >
-                                {showBalance ? (
-                                    <Eye className="w-5 h-5 text-slate-400" />
-                                ) : (
-                                    <EyeOff className="w-5 h-5 text-slate-400" />
-                                )}
-                            </button>
-                        </div>
-                        <p className="text-sm text-slate-400 mb-1">Solde total</p>
+                {error && (
+                    <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200">
+                        {error}
+                    </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5">
+                        <p className="text-sm text-amber-300 mb-1">Solde compte bancaire</p>
                         <p className="text-2xl font-bold text-white">
-                            {showBalance ? `${totalBalance.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} EUR` : '••••••'}
+                            {formatMoney(account?.balance || 0, account?.currency || 'EUR')}
                         </p>
                     </div>
-
-                    <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
-                        <div className="p-3 bg-blue-500/20 rounded-xl w-fit mb-4">
-                            <TrendingUp className="w-6 h-6 text-blue-400" />
-                        </div>
-                        <p className="text-sm text-slate-400 mb-1">Limite totale</p>
-                        <p className="text-2xl font-bold text-white">
-                            {totalLimit.toLocaleString('fr-FR')} EUR
-                        </p>
-                        <div className="mt-3 h-2 bg-slate-700 rounded-full overflow-hidden">
-                            <div
-                                className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full"
-                                style={{ width: `${(totalBalance / totalLimit) * 100}%` }}
-                            ></div>
-                        </div>
-                    </div>
-
-                    <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
-                        <div className="p-3 bg-purple-500/20 rounded-xl w-fit mb-4">
-                            <ArrowUpRight className="w-6 h-6 text-purple-400" />
-                        </div>
-                        <p className="text-sm text-slate-400 mb-1">Dépenses ce mois</p>
-                        <p className="text-2xl font-bold text-white">
-                            {monthlySpending.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} EUR
-                        </p>
-                    </div>
-
-                    <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
-                        <div className="p-3 bg-emerald-500/20 rounded-xl w-fit mb-4">
-                            <CreditCard className="w-6 h-6 text-emerald-400" />
-                        </div>
+                    <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-5">
                         <p className="text-sm text-slate-400 mb-1">Cartes actives</p>
-                        <p className="text-2xl font-bold text-white">{cards.filter((c) => c.status === 'active').length}</p>
+                        <p className="text-2xl font-bold text-white">{dashboard?.cards.active || 0}</p>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-5">
+                        <p className="text-sm text-slate-400 mb-1">Transactions du jour</p>
+                        <p className="text-2xl font-bold text-white">{dashboard?.today.transactionCount || 0}</p>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-5">
+                        <p className="text-sm text-slate-400 mb-1">Dépenses du jour</p>
+                        <p className="text-2xl font-bold text-white">
+                            {formatMoney(dashboard?.today.totalSpent || 0, account?.currency || 'EUR')}
+                        </p>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-1">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-2 rounded-2xl border border-white/10 bg-slate-800/50 p-6">
                         <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-xl font-semibold text-white">Mes cartes</h2>
-                            <Link
-                                href="/cards"
-                                className="text-sm text-amber-400 hover:text-amber-300 flex items-center gap-1"
-                            >
-                                Voir tout <ChevronRight size={16} />
+                            <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+                                <CreditCard size={18} className="text-amber-400" />
+                                Cartes actives
+                            </h2>
+                            <Link href="/cards" className="text-sm text-amber-400 hover:text-amber-300">
+                                Gérer mes cartes
                             </Link>
                         </div>
-
-                        <div className="space-y-4">
-                            {cards.map((card) => (
-                                <div
-                                    key={card.id}
-                                    onClick={() => setSelectedCard(card)}
-                                    className={`relative overflow-hidden rounded-2xl p-6 cursor-pointer transition-all ${
-                                        selectedCard?.id === card.id
-                                            ? 'ring-2 ring-amber-500 scale-[1.02]'
-                                            : 'hover:scale-[1.01]'
-                                    } ${
-                                        card.type === 'visa'
-                                            ? 'bg-gradient-to-br from-slate-800 via-slate-800 to-blue-900'
-                                            : 'bg-gradient-to-br from-slate-800 via-slate-800 to-orange-900'
-                                    }`}
-                                >
-                                    <div className="absolute inset-0 opacity-10">
-                                        <div className="absolute top-4 right-4 w-32 h-32 rounded-full bg-white/20 blur-2xl"></div>
-                                        <div className="absolute bottom-4 left-4 w-24 h-24 rounded-full bg-white/10 blur-xl"></div>
+                        <div className="space-y-3">
+                            {(dashboard?.activeCards || []).slice(0, 3).map((card) => (
+                                <div key={card.id} className="rounded-xl border border-white/10 bg-slate-900/50 p-4 flex items-center justify-between">
+                                    <div>
+                                        <p className="text-white font-medium">{card.maskedPan}</p>
+                                        <p className="text-xs text-slate-400">{card.network} - {card.cardType}</p>
+                                        {card.isAutoIssued && <p className="text-xs text-emerald-300">Carte auto (solde compte)</p>}
                                     </div>
-
-                                    <div className="relative">
-                                        <div className="flex items-center justify-between mb-6">
-                                            <div className="w-10 h-7 rounded bg-gradient-to-br from-yellow-400 to-yellow-600"></div>
-                                            <span className="text-xs font-medium text-white/60 uppercase">
-                                                {card.type}
-                                            </span>
-                                        </div>
-
-                                        <p className="text-lg font-mono text-white/90 tracking-widest mb-4">
-                                            •••• •••• •••• {card.lastFour}
+                                    <div className="text-right">
+                                        <p className="text-white font-semibold">{formatMoney(card.balance, account?.currency || 'EUR')}</p>
+                                        <p className="text-xs text-slate-400">
+                                            {formatMoney(card.dailySpent, account?.currency || 'EUR')} / {formatMoney(card.dailyLimit, account?.currency || 'EUR')}
                                         </p>
-
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <p className="text-xs text-white/40 mb-1">Solde</p>
-                                                <p className="text-white font-semibold">
-                                                    {showBalance ? `${card.balance.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} EUR` : '••••'}
-                                                </p>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="text-xs text-white/40 mb-1">Expire</p>
-                                                <p className="text-white font-mono">{card.expiryDate}</p>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex items-center gap-2 mt-4">
-                                            {card.status === 'active' && (
-                                                <span className="px-2 py-1 bg-emerald-500/20 text-emerald-400 text-xs rounded-full flex items-center gap-1">
-                                                    <CheckCircle2 size={12} /> Active
-                                                </span>
-                                            )}
-                                            {card.is3dsEnabled && (
-                                                <span className="px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded-full flex items-center gap-1">
-                                                    <Shield size={12} /> 3D Secure
-                                                </span>
-                                            )}
-                                        </div>
                                     </div>
                                 </div>
                             ))}
-
-                            <Link
-                                href="/cards/add"
-                                className="flex items-center justify-center gap-2 p-4 border-2 border-dashed border-slate-700 rounded-2xl text-slate-400 hover:text-amber-400 hover:border-amber-500/50 transition-colors"
-                            >
-                                <Plus size={20} />
-                                <span>Nouvelle carte</span>
-                            </Link>
+                            {(dashboard?.activeCards || []).length === 0 && (
+                                <p className="text-slate-400 text-sm">Aucune carte active trouvée.</p>
+                            )}
                         </div>
                     </div>
 
-                    <div className="lg:col-span-2">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-xl font-semibold text-white">Transactions récentes</h2>
-                            <Link
-                                href="/transactions"
-                                className="text-sm text-amber-400 hover:text-amber-300 flex items-center gap-1"
-                            >
-                                Historique complet <ChevronRight size={16} />
-                            </Link>
+                    <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-6 space-y-4">
+                        <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+                            <Building2 size={18} className="text-emerald-400" />
+                            Compte bancaire
+                        </h2>
+                        <div className="text-sm text-slate-300 space-y-1">
+                            <p className="text-slate-500">Intitulé</p>
+                            <p className="text-white">{account?.accountLabel || '-'}</p>
+                            <p className="text-slate-500 mt-2">Titulaire</p>
+                            <p className="text-white">{account?.accountHolderName || '-'}</p>
+                            <p className="text-slate-500 mt-2">IBAN</p>
+                            <p className="text-white font-mono text-xs break-all">{account?.iban || '-'}</p>
+                            <p className="text-slate-500 mt-2">BIC</p>
+                            <p className="text-white font-mono text-xs">{account?.bic || '-'}</p>
                         </div>
-
-                        <div className="bg-slate-800/50 border border-white/10 rounded-2xl overflow-hidden">
-                            {transactions.slice(0, 5).map((tx, index) => (
-                                <Link
-                                    key={tx.id}
-                                    href="/transactions"
-                                    className={`flex items-center justify-between p-4 hover:bg-white/5 transition-colors ${
-                                        index !== 0 ? 'border-t border-white/5' : ''
-                                    }`}
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <div className={`p-3 rounded-xl ${
-                                            tx.type === 'credit'
-                                                ? 'bg-emerald-500/20'
-                                                : 'bg-slate-700'
-                                        }`}>
-                                            {tx.type === 'credit' ? (
-                                                <ArrowDownLeft className="w-5 h-5 text-emerald-400" />
-                                            ) : (
-                                                <ArrowUpRight className="w-5 h-5 text-slate-400" />
-                                            )}
-                                        </div>
-                                        <div>
-                                            <p className="font-medium text-white">{tx.merchant}</p>
-                                            <div className="flex items-center gap-2 text-sm text-slate-400">
-                                                <span>{tx.category}</span>
-                                                <span>•</span>
-                                                <span>••••{tx.cardLastFour}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="text-right">
-                                        <p className={`font-semibold ${
-                                            tx.type === 'credit' ? 'text-emerald-400' : 'text-white'
-                                        }`}>
-                                            {tx.type === 'credit' ? '+' : '-'}
-                                            {tx.amount.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} EUR
-                                        </p>
-                                        <div className="flex items-center gap-2 justify-end">
-                                            <Clock size={12} className="text-slate-500" />
-                                            <span className="text-xs text-slate-500">{tx.date}</span>
-                                            {tx.status === 'pending' && (
-                                                <span className="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded">
-                                                    En cours
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                </Link>
-                            ))}
-                        </div>
+                        <Link
+                            href="/account"
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30"
+                        >
+                            <Wallet size={16} />
+                            Gérer le compte
+                        </Link>
                     </div>
                 </div>
 
-                <div className="mt-8">
-                    <h2 className="text-xl font-semibold text-white mb-4">Actions rapides</h2>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <Link
-                            href="/3ds"
-                            className="p-6 bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/30 rounded-2xl hover:scale-[1.02] transition-transform"
-                        >
-                            <div className="p-3 bg-amber-500/20 rounded-xl w-fit mb-4">
-                                <ArrowUpRight className="w-6 h-6 text-amber-400" />
-                            </div>
-                            <h3 className="font-semibold text-white mb-1">Simuler un paiement</h3>
-                            <p className="text-sm text-slate-400">Testez le flux de paiement</p>
-                        </Link>
-
-                        <Link
-                            href="/cards/add"
-                            className="p-6 bg-slate-800/50 border border-white/10 rounded-2xl hover:scale-[1.02] transition-transform"
-                        >
-                            <div className="p-3 bg-blue-500/20 rounded-xl w-fit mb-4">
-                                <Plus className="w-6 h-6 text-blue-400" />
-                            </div>
-                            <h3 className="font-semibold text-white mb-1">Nouvelle carte</h3>
-                            <p className="text-sm text-slate-400">Créez une carte virtuelle</p>
-                        </Link>
-
-                        <Link
-                            href="/security"
-                            className="p-6 bg-slate-800/50 border border-white/10 rounded-2xl hover:scale-[1.02] transition-transform"
-                        >
-                            <div className="p-3 bg-purple-500/20 rounded-xl w-fit mb-4">
-                                <Shield className="w-6 h-6 text-purple-400" />
-                            </div>
-                            <h3 className="font-semibold text-white mb-1">Sécurité</h3>
-                            <p className="text-sm text-slate-400">Gérez 3D Secure</p>
-                        </Link>
-
-                        <Link
-                            href="/learn"
-                            className="p-6 bg-slate-800/50 border border-white/10 rounded-2xl hover:scale-[1.02] transition-transform"
-                        >
-                            <div className="p-3 bg-emerald-500/20 rounded-xl w-fit mb-4">
-                                <AlertCircle className="w-6 h-6 text-emerald-400" />
-                            </div>
-                            <h3 className="font-semibold text-white mb-1">Apprendre 3DS</h3>
-                            <p className="text-sm text-slate-400">Comprendre le flux</p>
+                <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+                            <Activity size={18} className="text-purple-400" />
+                            Dernières transactions
+                        </h2>
+                        <Link href="/transactions" className="text-sm text-purple-300 hover:text-purple-200">
+                            Voir tout
                         </Link>
                     </div>
+                    <div className="space-y-3">
+                        {(dashboard?.recentTransactions || []).slice(0, 6).map((tx) => (
+                            <div key={tx.id} className="rounded-xl border border-white/10 bg-slate-900/50 p-4 flex items-center justify-between">
+                                <div>
+                                    <p className="text-white font-medium">{tx.merchantName}</p>
+                                    <p className="text-xs text-slate-400">{tx.type} - {tx.status} - {new Date(tx.timestamp).toLocaleString('fr-FR')}</p>
+                                </div>
+                                <p className="text-white font-semibold">{formatMoney(tx.amount, tx.currency)}</p>
+                            </div>
+                        ))}
+                        {(dashboard?.recentTransactions || []).length === 0 && (
+                            <p className="text-slate-400 text-sm">Aucune transaction récente.</p>
+                        )}
+                    </div>
                 </div>
+
             </div>
         </div>
     );

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Shield, CheckCircle, XCircle, AlertTriangle, Smartphone, CreditCard, Lock, Eye, EyeOff, RefreshCw } from 'lucide-react';
+import { Shield, CheckCircle, XCircle, Smartphone, CreditCard, RefreshCw } from 'lucide-react';
 
 interface ThreeDSResult {
     status: 'frictionless' | 'challenge' | 'failed';

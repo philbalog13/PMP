@@ -1,6 +1,6 @@
 'use client';
 
-import { Code, Terminal, ArrowRight, CheckCircle, Play, ChevronLeft, Copy, Check } from 'lucide-react';
+import { Code, Terminal, ArrowRight, CheckCircle, ChevronLeft, Copy, Check } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 
@@ -328,7 +328,7 @@ export default function ISO8583WorkshopPage() {
                                     className="px-6 py-3 bg-green-600 hover:bg-green-500 rounded-xl font-bold flex items-center gap-2 transition-colors"
                                 >
                                     <CheckCircle size={18} />
-                                    Terminer l'atelier
+                                    Terminer l&apos;atelier
                                 </Link>
                             ) : (
                                 <button

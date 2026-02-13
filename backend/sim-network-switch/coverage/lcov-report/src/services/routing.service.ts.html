@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">91.66% </span>
+                <span class="strong">90.32% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>55/60</span>
+                <span class='fraction'>56/62</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">76.19% </span>
+                <span class="strong">83.33% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>16/21</span>
+                <span class='fraction'>25/30</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">88.88% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>8/8</span>
+                <span class='fraction'>8/9</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">93.22% </span>
+                <span class="strong">91.8% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>55/59</span>
+                <span class='fraction'>56/61</span>
             </div>
         
             
@@ -331,7 +331,28 @@
 <a name='L266'></a><a href='#L266'>266</a>
 <a name='L267'></a><a href='#L267'>267</a>
 <a name='L268'></a><a href='#L268'>268</a>
-<a name='L269'></a><a href='#L269'>269</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L269'></a><a href='#L269'>269</a>
+<a name='L270'></a><a href='#L270'>270</a>
+<a name='L271'></a><a href='#L271'>271</a>
+<a name='L272'></a><a href='#L272'>272</a>
+<a name='L273'></a><a href='#L273'>273</a>
+<a name='L274'></a><a href='#L274'>274</a>
+<a name='L275'></a><a href='#L275'>275</a>
+<a name='L276'></a><a href='#L276'>276</a>
+<a name='L277'></a><a href='#L277'>277</a>
+<a name='L278'></a><a href='#L278'>278</a>
+<a name='L279'></a><a href='#L279'>279</a>
+<a name='L280'></a><a href='#L280'>280</a>
+<a name='L281'></a><a href='#L281'>281</a>
+<a name='L282'></a><a href='#L282'>282</a>
+<a name='L283'></a><a href='#L283'>283</a>
+<a name='L284'></a><a href='#L284'>284</a>
+<a name='L285'></a><a href='#L285'>285</a>
+<a name='L286'></a><a href='#L286'>286</a>
+<a name='L287'></a><a href='#L287'>287</a>
+<a name='L288'></a><a href='#L288'>288</a>
+<a name='L289'></a><a href='#L289'>289</a>
+<a name='L290'></a><a href='#L290'>290</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -490,6 +511,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -498,6 +520,15 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -593,6 +624,17 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -758,19 +800,29 @@ export class RoutingService {
 &nbsp;
         try {
             // Send to issuer via circuit breaker
+            // Map fields from network switch format to issuer format
+            const issuerRequest = {
+                transactionId: transaction.transactionId || transaction.stan,
+                pan: transaction.pan,
+                amount: transaction.amount,
+                currency: transaction.currency,
+                merchantId: transaction.merchantId,
+                mcc: transaction.merchantCategoryCode, // Map to issuer expected field
+                transactionType: transaction.transactionType || 'PURCHASE', // Default to PURCHASE
+                pinBlock: transaction.pinBlock,
+                networkRoutingInfo: {
+                    network: routingDecision.network,
+                    issuer: routingDecision.issuerUrl,
+                    routingReason: routingDecision.routingReason,
+                },
+            };
+&nbsp;
             const response = await executeWithCircuitBreaker&lt;TransactionResponse&gt;(
                 'issuer-service',
                 {
                     method: 'POST',
-                    url: `${routingDecision.issuerUrl}/transaction/authorize`,
-                    data: {
-                        ...transaction,
-                        networkRoutingInfo: {
-                            network: routingDecision.network,
-                            issuer: routingDecision.issuerUrl,
-                            routingReason: routingDecision.routingReason,
-                        },
-                    },
+                    url: `${routingDecision.issuerUrl}/authorize`,
+                    data: issuerRequest,
                     timeout: config.timeout,
                 }
             );
@@ -862,6 +914,17 @@ export class RoutingService {
     getBinTable(): BinConfig[] {
         return BIN_ROUTING_TABLE;
     }
+    /**
+     * Route response back to acquirer (Phase 7.1)
+     */
+<span class="fstat-no" title="function not covered" >    async </span>routeBack(response: TransactionResponse): Promise&lt;TransactionResponse&gt; {
+        // Logic to determine return route could go here.
+        // For now, it simply passes through, possibly adding network metadata.
+<span class="cstat-no" title="statement not covered" >        return {</span>
+            ...response,
+            // networkTimestamp: new Date().toISOString()
+        };
+    }
 }
 &nbsp;
 // Export singleton instance
@@ -874,7 +937,7 @@ export default routingService;
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-01-28T10:11:09.202Z
+                at 2026-02-12T08:46:42.262Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

@@ -6,11 +6,18 @@ import { useState, useRef, useEffect } from 'react';
 import { UserRole } from '@shared/types/user';
 import { normalizeRole } from '@shared/utils/roleUtils';
 
+type UserMenuUser = {
+    firstName: string;
+    lastName: string;
+    email: string;
+};
+
 interface UserMenuProps {
-    user: any;
+    user: UserMenuUser;
     role: UserRole;
     colors: { bg: string; text: string; border: string; badge: string };
     roleLabels: Record<string, string>;
+    onLogout: () => void;
 }
 
 const roleIcons: Record<string, React.ComponentType<{ className?: string; size?: number }>> = {
@@ -20,7 +27,7 @@ const roleIcons: Record<string, React.ComponentType<{ className?: string; size?:
     [UserRole.MARCHAND]: Store,
 };
 
-export function UserMenu({ user, role, colors, roleLabels }: UserMenuProps) {
+export function UserMenu({ user, role, colors, roleLabels, onLogout }: UserMenuProps) {
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
     const normalizedRole = normalizeRole(role);
@@ -37,9 +44,8 @@ export function UserMenu({ user, role, colors, roleLabels }: UserMenuProps) {
     }, []);
 
     const handleLogout = () => {
-        localStorage.clear();
-        document.cookie = 'token=; path=/; max-age=0';
-        window.location.href = '/login';
+        setIsOpen(false);
+        onLogout();
     };
 
     return (

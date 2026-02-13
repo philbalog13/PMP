@@ -27,9 +27,9 @@ interface AnalyticsDashboardProps {
 }
 
 const tabs: Array<{ id: AnalyticsTab; label: string }> = [
-    { id: 'overview', label: 'Vue generale' },
+    { id: 'overview', label: 'Vue générale' },
     { id: 'fraud', label: 'Fraudes' },
-    { id: 'students', label: 'Etudiants' },
+    { id: 'students', label: 'Étudiants' },
     { id: 'errors', label: 'Erreurs' }
 ];
 
@@ -114,14 +114,14 @@ export default function AnalyticsDashboard({ initialTab = 'overview' }: Analytic
                         <div className="card-header">
                             <h3 className="card-title">
                                 <span className="card-title-icon">OV</span>
-                                Resume
+                                Résumé
                             </h3>
                         </div>
                         <div className="card-body">
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
                                 <div className="stat-card">
                                     <div className="stat-value">{data?.students.length || 0}</div>
-                                    <div className="stat-label">Etudiants actifs</div>
+                                    <div className="stat-label">Étudiants actifs</div>
                                 </div>
                                 <div className="stat-card">
                                     <div className="stat-value">{data?.workshops.length || 0}</div>
@@ -131,7 +131,7 @@ export default function AnalyticsDashboard({ initialTab = 'overview' }: Analytic
                                     <div className="stat-value">
                                         {data?.workshops.reduce((sum, workshop) => sum + workshop.completion, 0) / (data?.workshops.length || 1) || 0}%
                                     </div>
-                                    <div className="stat-label">Completion moyenne</div>
+                                    <div className="stat-label">Complétion moyenne</div>
                                 </div>
                                 <div className="stat-card">
                                     <div className="stat-value">
@@ -147,7 +147,7 @@ export default function AnalyticsDashboard({ initialTab = 'overview' }: Analytic
                         <div className="card-header">
                             <h3 className="card-title">
                                 <span className="card-title-icon">SG</span>
-                                Suggestions d'amelioration
+                                Suggestions d'amélioration
                             </h3>
                         </div>
                         <div className="card-body">
@@ -162,7 +162,7 @@ export default function AnalyticsDashboard({ initialTab = 'overview' }: Analytic
                     <div className="card-header">
                         <h3 className="card-title">
                             <span className="card-title-icon">FR</span>
-                            Heatmap des fraudes detectees
+                            Heatmap des fraudes détectées
                         </h3>
                     </div>
                     <div className="card-body">
@@ -176,7 +176,7 @@ export default function AnalyticsDashboard({ initialTab = 'overview' }: Analytic
                     <div className="card-header">
                         <h3 className="card-title">
                             <span className="card-title-icon">ST</span>
-                            Progression des etudiants
+                            Progression des étudiants
                         </h3>
                     </div>
                     <div className="card-body">
@@ -240,8 +240,8 @@ function generateMockErrors() {
 
 function generateMockSuggestions() {
     return [
-        { id: 1, priority: 'high', title: 'Renforcer la validation MAC', description: '45 erreurs detectees' },
-        { id: 2, priority: 'medium', title: 'Simplifier Atelier 05', description: 'Taux completion 65%' },
+        { id: 1, priority: 'high', title: 'Renforcer la validation MAC', description: '45 erreurs détectées' },
+        { id: 2, priority: 'medium', title: 'Simplifier Atelier 05', description: 'Taux complétion 65%' },
         { id: 3, priority: 'high', title: 'Insister sur PAN masking', description: '15 violations PCI-DSS' }
     ];
 }

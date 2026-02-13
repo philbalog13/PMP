@@ -1,272 +1,264 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Users, TrendingUp, Clock, CheckCircle, XCircle, Activity } from 'lucide-react';
+import { useAuth } from '../../auth/useAuth';
+import {
+    Users, TrendingUp, CheckCircle, Activity,
+    ChevronRight, RefreshCw, Search, UserPlus, Beaker,
+    BookOpen, BarChart3, GraduationCap
+} from 'lucide-react';
 
-interface StudentSession {
+interface Student {
     id: string;
-    name: string;
-    currentApp: string;
-    module: string;
-    elapsedTime: number;
-    status: 'active' | 'idle' | 'completed';
-    progress: number;
+    username: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    status: string;
+    workshops_completed: number;
+    total_xp: number;
+    badge_count: number;
 }
 
 export default function InstructorStudentsPage() {
-    const [students, setStudents] = useState<StudentSession[]>([
-        {
-            id: '1',
-            name: 'Student01',
-            currentApp: 'TPE-Web',
-            module: 'Module 5 - 3D Secure',
-            elapsedTime: 15,
-            status: 'active',
-            progress: 65,
-        },
-        {
-            id: '2',
-            name: 'Student02',
-            currentApp: 'HSM-Web',
-            module: 'Module 6 - Cryptographie',
-            elapsedTime: 8,
-            status: 'active',
-            progress: 40,
-        },
-        {
-            id: '3',
-            name: 'Student03',
-            currentApp: 'Portal',
-            module: 'Quiz Module 3',
-            elapsedTime: 3,
-            status: 'active',
-            progress: 80,
-        },
-        {
-            id: '4',
-            name: 'Student04',
-            currentApp: 'Offline',
-            module: 'Dernière activité: Module 4',
-            elapsedTime: 0,
-            status: 'idle',
-            progress: 50,
-        },
-    ]);
+    const { isLoading } = useAuth(true);
+    const [students, setStudents] = useState<Student[]>([]);
+    const [dataLoading, setDataLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
 
-    // Simulate WebSocket updates
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setStudents((prev) =>
-                prev.map((student) => {
-                    if (student.status === 'active') {
-                        return {
-                            ...student,
-                            elapsedTime: student.elapsedTime + 1,
-                        };
-                    }
-                    return student;
-                })
-            );
-        }, 60000); // Update every minute
+    const fetchStudents = useCallback(async () => {
+        const token = localStorage.getItem('token');
+        if (!token) return;
 
-        return () => clearInterval(interval);
+        try {
+            setError(null);
+            const res = await fetch('/api/users/students?limit=50', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                setStudents(data.students || []);
+            } else {
+                throw new Error('Impossible de charger les étudiants');
+            }
+        } catch (e: any) {
+            setError(e.message);
+        } finally {
+            setDataLoading(false);
+        }
     }, []);
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'active':
-                return 'bg-green-500/20 text-green-400 border-green-500/30';
-            case 'idle':
-                return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
-            case 'completed':
-                return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-            default:
-                return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
-        }
-    };
+    useEffect(() => {
+        if (isLoading) return;
+        fetchStudents();
+    }, [isLoading, fetchStudents]);
 
-    const getAppIcon = (app: string) => {
-        switch (app) {
-            case 'TPE-Web':
-                return '💳';
-            case 'HSM-Web':
-                return '🔐';
-            case 'Portal':
-                return '📚';
-            case 'User-Cards-Web':
-                return '💰';
-            default:
-                return '⏸️';
-        }
-    };
+    // Computed stats
+    const activeStudents = students.filter(s => s.status === 'ACTIVE').length;
+    const avgCompletion = students.length > 0
+        ? Math.round(students.reduce((acc, s) => acc + Math.min(100, Math.round((s.workshops_completed / 6) * 100)), 0) / students.length)
+        : 0;
+    const totalModulesValidated = students.reduce((acc, s) => acc + s.workshops_completed, 0);
+
+    // Filter
+    const filteredStudents = students.filter(s => {
+        if (!searchQuery) return true;
+        const name = `${s.first_name} ${s.last_name} ${s.username} ${s.email}`.toLowerCase();
+        return name.includes(searchQuery.toLowerCase());
+    });
+
+    if (isLoading || dataLoading) {
+        return (
+            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                    <Users className="animate-bounce w-12 h-12 text-blue-500" />
+                    <span className="text-sm text-slate-500">Chargement des étudiants...</span>
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div className="min-h-screen bg-slate-950 text-white p-6 md:p-12">
+        <div className="min-h-screen bg-slate-950 text-white pt-24 pb-12 px-6">
             <div className="max-w-7xl mx-auto space-y-8">
+                {/* Breadcrumb */}
+                <div className="text-xs text-slate-500">
+                    <Link href="/instructor" className="hover:text-blue-400">Dashboard</Link>
+                    <ChevronRight size={12} className="inline mx-1" />
+                    <span className="text-blue-400">Étudiants</span>
+                </div>
+
                 {/* Header */}
-                <div className="space-y-4">
-                    <Link
-                        href="/instructor"
-                        className="text-sm text-slate-400 hover:text-white transition"
-                    >
-                        ← Retour au hub
-                    </Link>
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <div className="p-4 bg-orange-500/20 rounded-2xl border border-orange-500/30">
-                                <Users className="w-8 h-8 text-orange-400" />
-                            </div>
-                            <div>
-                                <h1 className="text-4xl font-black">Suivi Étudiants</h1>
-                                <p className="text-slate-400 mt-1">
-                                    Monitoring temps réel des sessions actives
-                                </p>
-                            </div>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-blue-500/20 rounded-xl border border-blue-500/30">
+                            <Users className="w-7 h-7 text-blue-400" />
                         </div>
-                        <div className="flex items-center gap-4">
-                            <Link
-                                href="/instructor/students/add"
-                                className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-colors flex items-center gap-2"
-                            >
-                                <span className="text-xl">+</span>
-                                Ajouter un étudiant
-                            </Link>
-                            <div className="flex items-center gap-2 px-4 py-2 bg-green-500/10 border border-green-500/20 rounded-full">
-                                <Activity className="w-4 h-4 text-green-400 animate-pulse" />
-                                <span className="text-sm font-bold text-green-400">Live</span>
-                            </div>
+                        <div>
+                            <h1 className="text-3xl font-bold">Suivi Étudiants</h1>
+                            <p className="text-slate-400 mt-1">
+                                {students.length} étudiant{students.length !== 1 ? 's' : ''} inscrit{students.length !== 1 ? 's' : ''}
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => { setDataLoading(true); fetchStudents(); }}
+                            className="flex items-center gap-2 px-4 py-2 bg-slate-800 border border-white/10 text-white rounded-xl hover:bg-slate-700"
+                        >
+                            <RefreshCw size={18} />
+                            Actualiser
+                        </button>
+                        <Link
+                            href="/instructor/students/add"
+                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-colors"
+                        >
+                            <UserPlus size={18} />
+                            Ajouter
+                        </Link>
+                        <div className="flex items-center gap-2 px-3 py-2 bg-green-500/10 border border-green-500/20 rounded-full">
+                            <Activity className="w-4 h-4 text-green-400 animate-pulse" />
+                            <span className="text-xs font-bold text-green-400">Live</span>
                         </div>
                     </div>
                 </div>
 
-                {/* Stats Overview */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                {error && (
+                    <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-sm">
+                        {error}
+                    </div>
+                )}
+
+                {/* Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <StatCard
                         label="Étudiants Actifs"
-                        value="3"
+                        value={String(activeStudents)}
                         icon={<Users className="w-6 h-6" />}
                         color="green"
                     />
                     <StatCard
-                        label="Taux de Complétion Moyen"
-                        value="59%"
+                        label="Complétion Moyenne"
+                        value={`${avgCompletion}%`}
                         icon={<TrendingUp className="w-6 h-6" />}
                         color="blue"
                     />
                     <StatCard
-                        label="Temps Moyen Session"
-                        value="8.7 min"
-                        icon={<Clock className="w-6 h-6" />}
+                        label="XP Total Cohorte"
+                        value={students.reduce((acc, s) => acc + s.total_xp, 0).toLocaleString()}
+                        icon={<GraduationCap className="w-6 h-6" />}
                         color="purple"
                     />
                     <StatCard
-                        label="Modules Validés Aujourd'hui"
-                        value="5"
+                        label="Modules Validés"
+                        value={String(totalModulesValidated)}
                         icon={<CheckCircle className="w-6 h-6" />}
                         color="emerald"
                     />
                 </div>
 
-                {/* Students Table */}
-                <div className="bg-slate-900/60 border border-white/10 rounded-3xl overflow-hidden">
-                    <div className="p-6 border-b border-white/10">
-                        <h2 className="text-2xl font-black">Sessions en Cours</h2>
-                    </div>
+                {/* Search */}
+                <div className="relative max-w-md">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Rechercher un étudiant..."
+                        className="w-full pl-12 pr-4 py-3 bg-slate-800/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                    />
+                </div>
 
+                {/* Students Table */}
+                <div className="bg-slate-900/60 border border-white/10 rounded-2xl overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead className="bg-slate-900/80">
                                 <tr>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">
-                                        Étudiant
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">
-                                        Application
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">
-                                        Module/Activité
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">
-                                        Temps Écoulé
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">
-                                        Progression
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">
-                                        Statut
-                                    </th>
-                                    <th className="px-6 py-4 text-right text-xs font-bold text-slate-400 uppercase tracking-wider">
-                                        Actions
-                                    </th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Étudiant</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Ateliers</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">XP</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Badges</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Progression</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Statut</th>
+                                    <th className="px-6 py-4 text-right text-xs font-bold text-slate-400 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5">
-                                {students.map((student) => (
-                                    <tr
-                                        key={student.id}
-                                        className="hover:bg-white/5 transition"
-                                    >
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
-                                                    {student.name[0]}
-                                                </div>
-                                                <div className="font-medium">{student.name}</div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-2xl">
-                                                    {getAppIcon(student.currentApp)}
-                                                </span>
-                                                <span className="text-slate-300">
-                                                    {student.currentApp}
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className="text-slate-300">{student.module}</span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className="font-mono text-sm text-slate-400">
-                                                {student.elapsedTime > 0
-                                                    ? `${student.elapsedTime} min`
-                                                    : '-'}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
-                                                    <div
-                                                        className="h-full bg-gradient-to-r from-blue-500 to-emerald-500 transition-all duration-500"
-                                                        style={{ width: `${student.progress}%` }}
-                                                    />
-                                                </div>
-                                                <span className="text-xs font-bold text-slate-400 min-w-[3rem]">
-                                                    {student.progress}%
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span
-                                                className={`inline-flex px-3 py-1 rounded-full text-xs font-bold uppercase border ${getStatusColor(
-                                                    student.status
-                                                )}`}
-                                            >
-                                                {student.status}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right">
-                                            <Link
-                                                href={`/instructor/students/${student.id}`}
-                                                className="text-sm font-bold text-blue-400 hover:text-blue-300 transition"
-                                            >
-                                                Détails →
-                                            </Link>
+                                {filteredStudents.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
+                                            {searchQuery ? 'Aucun étudiant ne correspond à votre recherche' : 'Aucun étudiant inscrit'}
                                         </td>
                                     </tr>
-                                ))}
+                                ) : (
+                                    filteredStudents.map((student) => {
+                                        const name = [student.first_name, student.last_name].filter(Boolean).join(' ') || student.username;
+                                        const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+                                        const progressPercent = Math.min(100, Math.round((student.workshops_completed / 6) * 100));
+                                        const isStruggling = progressPercent < 20 && student.total_xp < 50;
+
+                                        return (
+                                            <tr key={student.id} className="hover:bg-white/5 transition">
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs">
+                                                            {initials}
+                                                        </div>
+                                                        <div>
+                                                            <div className="font-medium text-white">{name}</div>
+                                                            <div className="text-xs text-slate-500">{student.email}</div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <span className="text-white font-medium">{student.workshops_completed}/6</span>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <span className="text-emerald-400 font-bold">{student.total_xp}</span>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <span className="px-2 py-1 bg-amber-500/20 text-amber-400 rounded-full text-xs font-medium">
+                                                        {student.badge_count}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden max-w-[120px]">
+                                                            <div
+                                                                className={`h-full rounded-full transition-all ${isStruggling ? 'bg-amber-500' : 'bg-gradient-to-r from-blue-500 to-emerald-500'}`}
+                                                                style={{ width: `${progressPercent}%` }}
+                                                            />
+                                                        </div>
+                                                        <span className="text-xs font-bold text-slate-400 min-w-[3rem]">
+                                                            {progressPercent}%
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <span className={`inline-flex px-3 py-1 rounded-full text-xs font-bold uppercase border ${
+                                                        student.status === 'ACTIVE'
+                                                            ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                                                            : 'bg-slate-500/20 text-slate-400 border-slate-500/30'
+                                                    }`}>
+                                                        {student.status === 'ACTIVE' ? 'Actif' : 'Inactif'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-right">
+                                                    <Link
+                                                        href={`/instructor/students/${student.id}`}
+                                                        className="text-sm font-bold text-blue-400 hover:text-blue-300 transition"
+                                                    >
+                                                        Détails
+                                                    </Link>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
                             </tbody>
                         </table>
                     </div>
@@ -278,9 +270,12 @@ export default function InstructorStudentsPage() {
                         href="/instructor/exercises"
                         className="p-6 bg-slate-900/60 border border-white/10 rounded-2xl hover:border-blue-500/30 transition group"
                     >
-                        <h3 className="text-lg font-bold mb-2 group-hover:text-blue-400 transition">
-                            📝 Gestion Exercices
-                        </h3>
+                        <div className="flex items-center gap-3 mb-2">
+                            <BookOpen size={20} className="text-blue-400" />
+                            <h3 className="text-lg font-bold group-hover:text-blue-400 transition">
+                                Gestion Exercices
+                            </h3>
+                        </div>
                         <p className="text-sm text-slate-400">
                             Créer et modifier les exercices pédagogiques
                         </p>
@@ -288,46 +283,40 @@ export default function InstructorStudentsPage() {
 
                     <Link
                         href="/instructor/lab-control"
-                        className="p-6 bg-slate-900/60 border border-white/10 rounded-2xl hover:border-orange-500/30 transition group"
+                        className="p-6 bg-slate-900/60 border border-white/10 rounded-2xl hover:border-amber-500/30 transition group"
                     >
-                        <h3 className="text-lg font-bold mb-2 group-hover:text-orange-400 transition">
-                            🧪 Contrôle Lab
-                        </h3>
+                        <div className="flex items-center gap-3 mb-2">
+                            <Beaker size={20} className="text-amber-400" />
+                            <h3 className="text-lg font-bold group-hover:text-amber-400 transition">
+                                Contrôle Lab
+                            </h3>
+                        </div>
                         <p className="text-sm text-slate-400">
-                            Injecter des conditions d'erreur pour les exercices
+                            Injecter des conditions d&apos;erreur pour les exercices
                         </p>
                     </Link>
 
-                    <a
-                        href="http://localhost:3082"
-                        target="_blank"
-                        rel="noopener noreferrer"
+                    <Link
+                        href="/instructor/analytics"
                         className="p-6 bg-slate-900/60 border border-white/10 rounded-2xl hover:border-emerald-500/30 transition group"
                     >
-                        <h3 className="text-lg font-bold mb-2 group-hover:text-emerald-400 transition">
-                            📊 Monitoring Complet
-                        </h3>
+                        <div className="flex items-center gap-3 mb-2">
+                            <BarChart3 size={20} className="text-emerald-400" />
+                            <h3 className="text-lg font-bold group-hover:text-emerald-400 transition">
+                                Analytics
+                            </h3>
+                        </div>
                         <p className="text-sm text-slate-400">
-                            Dashboard de supervision technique
+                            Statistiques détaillées et classements
                         </p>
-                    </a>
+                    </Link>
                 </div>
             </div>
         </div>
     );
 }
 
-function StatCard({
-    label,
-    value,
-    icon,
-    color,
-}: {
-    label: string;
-    value: string;
-    icon: React.ReactNode;
-    color: string;
-}) {
+function StatCard({ label, value, icon, color }: { label: string; value: string; icon: React.ReactNode; color: string }) {
     const colors: Record<string, string> = {
         green: 'bg-green-500/20 border-green-500/30 text-green-400',
         blue: 'bg-blue-500/20 border-blue-500/30 text-blue-400',
@@ -339,9 +328,10 @@ function StatCard({
         <div className="bg-slate-900/60 border border-white/10 rounded-2xl p-6 space-y-3">
             <div className={`inline-flex p-3 rounded-xl border ${colors[color]}`}>{icon}</div>
             <div>
-                <div className="text-3xl font-black">{value}</div>
+                <div className="text-3xl font-bold">{value}</div>
                 <div className="text-sm text-slate-400 mt-1">{label}</div>
             </div>
         </div>
     );
 }
+

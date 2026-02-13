@@ -126,7 +126,7 @@ export default function KeysPage() {
 
             {!token && (
                 <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-200 text-sm">
-                    Aucun token detecte. Le chargement des cles peut etre refuse par l'API Gateway.
+                    Aucun token detecte. Le chargement des cles peut etre refuse par l&apos;API Gateway.
                 </div>
             )}
 

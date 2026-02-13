@@ -137,7 +137,7 @@ export default function AddStudentPage() {
             setTimeout(() => {
                 router.push('/instructor/students');
             }, 2000);
-        } catch (err: unknown) {
+        } catch (err: any) {
             setError(getErrorMessage(err, 'Erreur lors de la création de l’étudiant'));
         } finally {
             setIsSubmitting(false);
@@ -180,7 +180,7 @@ export default function AddStudentPage() {
                         group: bulkGroup
                     });
                     createdCount++;
-                } catch (err: unknown) {
+                } catch (err: any) {
                     failures.push(`Ligne ${i + 1}: ${getErrorMessage(err, 'Erreur API')}`);
                 }
             }
@@ -371,7 +371,7 @@ export default function AddStudentPage() {
                             ) : (
                                 <>
                                     <UserPlus size={20} />
-                                    Créer l'étudiant
+                                    Créer l&apos;étudiant
                                 </>
                             )}
                         </button>
@@ -444,7 +444,7 @@ Marie,Martin,marie.martin@pmp.edu"
                         </div>
 
                         <p className="text-xs text-slate-500">
-                            Les mots de passe sont générés automatiquement pendant l'import.
+                            Les mots de passe sont générés automatiquement pendant l&apos;import.
                         </p>
 
                         <button

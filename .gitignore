@@ -40,3 +40,7 @@ logs/
 login.json
 token.json
 nul
+
+# Test coverage
+coverage/
+test-results/

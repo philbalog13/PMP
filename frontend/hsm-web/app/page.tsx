@@ -8,7 +8,6 @@ import {
   Activity,
   Server,
   Cpu,
-  Lock,
   RefreshCw,
   Zap,
   Calculator

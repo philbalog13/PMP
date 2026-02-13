@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { UserRole, Permission } from '../types/user';
 import { normalizeRole, hasRole } from '../utils/roleUtils';
+import { APP_URLS, getRoleRedirectUrl } from '../lib/app-urls';
 
 /**
  * Role Guard Middleware
@@ -22,8 +23,8 @@ interface RouteConfig {
 export const ROUTE_CONFIGS: Record<string, RouteConfig[]> = {
     // Portal routes
     portal: [
-        // Legacy routes are deprecated in portal and redirected by role
-        { path: '/demo', allowedRoles: [] },
+        // Demo is available to any authenticated role.
+        { path: '/demo', allowedRoles: [UserRole.CLIENT, UserRole.MARCHAND, UserRole.ETUDIANT, UserRole.FORMATEUR] },
         { path: '/analyze', allowedRoles: [] },
 
         // Student routes
@@ -34,11 +35,11 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig[]> = {
         { path: '/formateur', allowedRoles: [UserRole.FORMATEUR] },
         { path: '/instructor', allowedRoles: [UserRole.FORMATEUR] },
 
-        // Client and merchant legacy portal pages are deprecated and redirected
+        // Client legacy portal pages are deprecated and redirected
         { path: '/client', allowedRoles: [] },
 
         // Merchant routes
-        { path: '/merchant', allowedRoles: [] },
+        { path: '/merchant', allowedRoles: [UserRole.MARCHAND] },
 
         // Workshops are accessible for pedagogical roles
         { path: '/workshops', allowedRoles: [UserRole.ETUDIANT, UserRole.FORMATEUR] },
@@ -109,9 +110,11 @@ function isTokenExpired(token: string): boolean {
 function getUserFromRequest(request: NextRequest): {
     user: any;
     token: string | null;
+    needsRefresh?: boolean;
 } | null {
     // Try to get token from cookie first
     const tokenFromCookie = request.cookies.get('token')?.value;
+    const refreshTokenFromCookie = request.cookies.get('refreshToken')?.value;
 
     // Try to get token from Authorization header
     const authHeader = request.headers.get('Authorization');
@@ -123,14 +126,14 @@ function getUserFromRequest(request: NextRequest): {
         return null;
     }
 
-    // Validate token expiration
-    if (isTokenExpired(token)) {
-        return null;
-    }
-
     // Decode token to get user info
     const payload = decodeToken(token);
     if (!payload) {
+        return null;
+    }
+
+    const tokenExpired = isTokenExpired(token);
+    if (tokenExpired && !refreshTokenFromCookie) {
         return null;
     }
 
@@ -142,6 +145,7 @@ function getUserFromRequest(request: NextRequest): {
             permissions: payload.permissions || [],
         },
         token,
+        needsRefresh: tokenExpired
     };
 }
 
@@ -170,7 +174,14 @@ function hasAnyPermission(userPermissions: Permission[], requiredPermissions: Pe
  */
 export function createRoleGuard(appName: string, customRoutes?: RouteConfig[]) {
     const routes = customRoutes || ROUTE_CONFIGS[appName] || [];
-    const portalLoginBase = process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:3000';
+    const portalLoginBase = APP_URLS.portal;
+    const noStoreNext = () => {
+        const response = NextResponse.next();
+        response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        response.headers.set('Pragma', 'no-cache');
+        response.headers.set('Expires', '0');
+        return response;
+    };
 
     return function middleware(request: NextRequest) {
         const { pathname } = request.nextUrl;
@@ -201,7 +212,10 @@ export function createRoleGuard(appName: string, customRoutes?: RouteConfig[]) {
             return NextResponse.redirect(loginUrl);
         }
 
-        const { user } = authData;
+        const { user, needsRefresh } = authData;
+        if (needsRefresh) {
+            console.warn(`[RoleGuard] Access token expired for ${pathname}, allowing request because refresh token is present.`);
+        }
         console.log(`[RoleGuard] User authenticated: ${user.email} (Role: ${user.role})`);
 
         // Find matching route config
@@ -210,7 +224,7 @@ export function createRoleGuard(appName: string, customRoutes?: RouteConfig[]) {
         if (!routeConfig) {
             console.log(`[RoleGuard] No specific route config for ${pathname}. Allowing access.`);
             // No specific config, allow by default for authenticated users
-            return NextResponse.next();
+            return noStoreNext();
         }
 
         console.log(`[RoleGuard] Path matching config: ${routeConfig.path}. Allowed roles: ${JSON.stringify(routeConfig.allowedRoles)}`);
@@ -241,7 +255,7 @@ export function createRoleGuard(appName: string, customRoutes?: RouteConfig[]) {
 
         console.log(`[RoleGuard] Access granted for ${pathname}`);
         // User is authorized
-        return NextResponse.next();
+        return noStoreNext();
     };
 }
 
@@ -250,17 +264,10 @@ export function createRoleGuard(appName: string, customRoutes?: RouteConfig[]) {
  */
 function redirectBasedOnRole(request: NextRequest, role: UserRole): NextResponse {
     const normalizedRole = normalizeRole(role);
-    const portalBase = process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:3000';
+    const portalBase = APP_URLS.portal;
     console.log(`[RoleGuard] Redirecting based on role: ${role} -> normalized: ${normalizedRole}`);
 
-    const roleRedirects: Record<UserRole, string> = {
-        [UserRole.CLIENT]: 'http://localhost:3004',
-        [UserRole.MARCHAND]: 'http://localhost:3001',
-        [UserRole.ETUDIANT]: '/etudiant/dashboard',
-        [UserRole.FORMATEUR]: '/formateur/dashboard',
-    };
-
-    const redirectPath = roleRedirects[normalizedRole] || '/';
+    const redirectPath = getRoleRedirectUrl(normalizedRole);
     console.log(`[RoleGuard] Calculated redirect path: ${redirectPath}`);
 
     const isAbsolute = /^https?:\/\//i.test(redirectPath);

@@ -7,6 +7,8 @@ import bcrypt from 'bcrypt';
 import { query } from '../config/database';
 import { logger } from '../utils/logger';
 import { config } from '../config';
+import { UserRole } from '../middleware/roles';
+import { provisionFinancialAccountForUser } from '../services/bankingProvisioning.service';
 
 /**
  * Get all users (with pagination)
@@ -207,8 +209,8 @@ export const createUser = async (req: Request, res: Response) => {
         const passwordHash = await bcrypt.hash(password, salt);
 
         // Validate role
-        const validRoles = ['ROLE_ETUDIANT', 'ROLE_CLIENT', 'ROLE_MARCHAND', 'ROLE_FORMATEUR'];
-        const userRole = validRoles.includes(role) ? role : 'ROLE_ETUDIANT';
+        const validRoles = [UserRole.ETUDIANT, UserRole.CLIENT, UserRole.MARCHAND, UserRole.FORMATEUR];
+        const userRole = validRoles.includes(role) ? role : UserRole.ETUDIANT;
         const normalizedGroupName = typeof groupName === 'string' && groupName.trim() !== ''
             ? groupName.trim()
             : null;
@@ -238,6 +240,13 @@ export const createUser = async (req: Request, res: Response) => {
                  RETURNING id, username, email, first_name, last_name, role, status, created_at`,
                 [username, email, passwordHash, firstName, lastName, userRole]
             );
+        }
+
+        try {
+            await provisionFinancialAccountForUser(result.rows[0].id, result.rows[0].role);
+        } catch (provisionError: any) {
+            await query(`DELETE FROM users.users WHERE id = $1`, [result.rows[0].id]);
+            throw provisionError;
         }
 
         logger.info('User created by trainer', {

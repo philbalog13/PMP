@@ -9,6 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@dagrejs/dagre": "^2.0.3",
+    "@dagrejs/graphlib": "^2.2.4",
+    "@xyflow/react": "^12.10.0",
     "lucide-react": "^0.563.0",
     "next": "16.1.6",
     "react": "19.2.3",

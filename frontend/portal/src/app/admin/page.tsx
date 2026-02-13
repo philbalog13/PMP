@@ -1,6 +1,7 @@
 'use client';
 
-import { ShieldAlert, Users, Server, Database, Activity, Lock, Key, ChevronRight, Zap, ArrowRight, ShieldCheck, Settings } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { ShieldAlert, Users, Server, Database, Activity, Lock, Key, ChevronRight, Zap, ShieldCheck, Settings } from 'lucide-react';
 import Link from 'next/link';
 
 import { useAuth } from '../auth/useAuth';
@@ -38,7 +39,7 @@ export default function AdminPage() {
                             Admin <span className="text-red-500 text-7xl md:text-9xl">Terminal.</span>
                         </h1>
                         <p className="text-xl md:text-2xl text-slate-400 font-medium leading-relaxed max-w-2xl">
-                            Gestion globale de l'écosystème PMP : monitorage des services,
+                            Gestion globale de l&apos;écosystème PMP : monitorage des services,
                             audit des logs et maintenance des socles cryptographiques.
                         </p>
                     </div>
@@ -118,8 +119,11 @@ export default function AdminPage() {
     );
 }
 
-function HealthCard({ label, status, uptime, color, icon }: any) {
-    const colors: any = {
+type HealthColor = 'emerald' | 'amber' | 'red';
+type AdminActionColor = 'blue' | 'purple' | 'emerald';
+
+function HealthCard({ label, status, uptime, color, icon }: { label: string; status: string; uptime: string; color: HealthColor; icon: ReactNode }) {
+    const colors: Record<HealthColor, string> = {
         emerald: "text-emerald-500",
         amber: "text-amber-500",
         red: "text-red-500",
@@ -138,12 +142,12 @@ function HealthCard({ label, status, uptime, color, icon }: any) {
     );
 }
 
-function AdminUserRow({ name, role, lastLogin }: any) {
+function AdminUserRow({ name, role, lastLogin }: { name: string; role: string; lastLogin: string }) {
     return (
         <div className="flex items-center justify-between p-6 bg-slate-950/50 rounded-3xl border border-white/5 group hover:border-red-500/30 transition-all duration-500">
             <div className="flex items-center gap-6">
                 <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-white/5 flex items-center justify-center font-black text-xs text-slate-500 group-hover:bg-red-500 group-hover:text-white transition-all">
-                    {name.split(' ').map((n: any) => n[0]).join('')}
+                    {name.split(' ').map((token) => token[0]).join('')}
                 </div>
                 <div>
                     <h4 className="font-bold text-white text-lg tracking-tight italic">{name}</h4>
@@ -158,8 +162,8 @@ function AdminUserRow({ name, role, lastLogin }: any) {
     );
 }
 
-function AdminAction({ label, icon, color }: any) {
-    const colors: any = {
+function AdminAction({ label, icon, color }: { label: string; icon: ReactNode; color: AdminActionColor }) {
+    const colors: Record<AdminActionColor, string> = {
         blue: "text-blue-500",
         purple: "text-purple-500",
         emerald: "text-emerald-500",

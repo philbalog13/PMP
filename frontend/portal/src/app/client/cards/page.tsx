@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useAuth } from '../../auth/useAuth';
 import {
-    CreditCard,
     Plus,
     Shield,
     Eye,
@@ -11,8 +10,6 @@ import {
     Settings,
     Lock,
     Unlock,
-    Trash2,
-    ChevronRight,
     CheckCircle2,
     AlertTriangle,
     Wifi

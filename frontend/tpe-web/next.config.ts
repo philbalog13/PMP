@@ -6,6 +6,11 @@ const nextConfig: NextConfig = {
   experimental: {
     externalDir: true,
   },
+  turbopack: {
+    resolveAlias: {
+      '@shared': path.resolve(__dirname, '../shared'),
+    },
+  },
   webpack: (config, { isServer }) => {
     config.resolve.alias = {
       ...config.resolve.alias,

@@ -213,6 +213,7 @@ CREATE INDEX IF NOT EXISTS idx_exercise_assignments_exercise_status_submitted
 -- LEADERBOARD VIEW FIX
 -- Avoid cartesian multiplication between badges/progress/quiz joins.
 -- =============================================================================
+DROP VIEW IF EXISTS learning.leaderboard;
 CREATE OR REPLACE VIEW learning.leaderboard AS
 SELECT
     u.id as student_id,

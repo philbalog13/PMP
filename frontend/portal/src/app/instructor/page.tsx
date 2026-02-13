@@ -1,126 +1,536 @@
 'use client';
 
-import { Users, FileText, Settings, Shield, Clock, CheckCircle2, AlertCircle, BarChart3, ArrowRight, Star, BookOpen, MessageSquare, ChevronRight, Zap } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-
 import { useAuth } from '../auth/useAuth';
+import {
+    Users, Shield, BarChart3, BookOpen, Activity, ChevronRight,
+    RefreshCw, Award, Zap, GraduationCap, TrendingUp,
+    Target, MessageSquare
+} from 'lucide-react';
+
+/* ── Types ──────────────────────────────────────────────────────────── */
+
+interface Student {
+    id: string;
+    username: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    status: string;
+    workshops_completed: number;
+    total_xp: number;
+    badge_count: number;
+}
+
+interface WorkshopProgress {
+    workshopId: string;
+    title: string;
+    studentsStarted: number;
+    studentsCompleted: number;
+    avgProgress: number;
+    avgTimeMinutes: number;
+}
+
+interface QuizPerformance {
+    quizId: string;
+    attempts: number;
+    uniqueStudents: number;
+    avgScore: number;
+    passRate: number;
+}
+
+interface BadgeDistribution {
+    badgeType: string;
+    name: string;
+    studentsEarned: number;
+}
+
+interface RecentActivity {
+    username: string;
+    first_name: string;
+    last_name: string;
+    activity_type: string;
+    activity_target: string;
+    activity_value: number;
+    activity_time: string;
+}
+
+interface CohortAnalytics {
+    totalStudents: number;
+    workshopProgress: WorkshopProgress[];
+    quizPerformance: QuizPerformance[];
+    badgeDistribution: BadgeDistribution[];
+    recentActivity: RecentActivity[];
+}
+
+interface LeaderboardEntry {
+    rank: number;
+    id: string;
+    username: string;
+    first_name: string;
+    last_name: string;
+    total_xp: number;
+    badge_count: number;
+    workshops_completed: number;
+}
+
+/* ── Lab state ──────────────────────────────────────────────────────── */
+
+interface LabConditions {
+    latencyMs: number;
+    authFailureRate: number;
+    fraudInjection: boolean;
+    hsmLatencyMs: number;
+    networkErrors: boolean;
+}
+
+/* ── Main Component ─────────────────────────────────────────────────── */
 
 export default function InstructorPage() {
-    const { isLoading } = useAuth(true);
+    const { user, isLoading } = useAuth(true);
+    const [students, setStudents] = useState<Student[]>([]);
+    const [analytics, setAnalytics] = useState<CohortAnalytics | null>(null);
+    const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+    const [dataLoading, setDataLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [isApplyingLabConditions, setIsApplyingLabConditions] = useState(false);
 
-    if (isLoading) {
-        return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">
-            <Shield className="animate-bounce w-12 h-12 text-blue-500" />
-        </div>;
+    const [labConditions, setLabConditions] = useState<LabConditions>({
+        latencyMs: 0,
+        authFailureRate: 0,
+        fraudInjection: false,
+        hsmLatencyMs: 0,
+        networkErrors: false,
+    });
+
+    const normalizeLabConditions = useCallback((raw: Record<string, unknown> | null | undefined): LabConditions => ({
+        latencyMs: Number(raw?.latencyMs ?? raw?.latency ?? 0) || 0,
+        authFailureRate: Number(raw?.authFailureRate ?? raw?.authFailRate ?? 0) || 0,
+        fraudInjection: Boolean(raw?.fraudInjection),
+        hsmLatencyMs: Number(raw?.hsmLatencyMs ?? raw?.hsmLatency ?? 0) || 0,
+        networkErrors: Boolean(raw?.networkErrors)
+    }), []);
+
+    const fetchData = useCallback(async () => {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        const headers = { Authorization: `Bearer ${token}` };
+
+        const [studentsRes, analyticsRes, leaderboardRes, labConditionsRes] = await Promise.all([
+            fetch('/api/users/students?limit=50', { headers }).catch(() => null),
+            fetch('/api/progress/cohort', { headers }).catch(() => null),
+            fetch('/api/progress/leaderboard?limit=10', { headers }).catch(() => null),
+            fetch('/api/progress/lab/conditions', { headers }).catch(() => null),
+        ]);
+
+        if (studentsRes?.ok) {
+            const data = await studentsRes.json();
+            setStudents(data.students || []);
+        }
+
+        if (analyticsRes?.ok) {
+            const data = await analyticsRes.json();
+            setAnalytics(data.analytics || null);
+        }
+
+        if (leaderboardRes?.ok) {
+            const data = await leaderboardRes.json();
+            setLeaderboard(data.leaderboard || []);
+        }
+
+        if (labConditionsRes?.ok) {
+            const data = await labConditionsRes.json();
+            setLabConditions(normalizeLabConditions(data.conditions || {}));
+        }
+    }, [normalizeLabConditions]);
+
+    const applyLabConditions = useCallback(async () => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            setError('Session introuvable');
+            return;
+        }
+
+        try {
+            setIsApplyingLabConditions(true);
+            setError(null);
+
+            const response = await fetch('/api/progress/lab/conditions', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify(labConditions)
+            });
+
+            if (!response.ok) {
+                throw new Error(`Erreur API (${response.status})`);
+            }
+
+            const data = await response.json();
+            setLabConditions(normalizeLabConditions(data.conditions || {}));
+        } catch (e: any) {
+            setError(e.message || 'Impossible de mettre a jour les conditions du lab');
+        } finally {
+            setIsApplyingLabConditions(false);
+        }
+    }, [labConditions, normalizeLabConditions]);
+
+    const refreshData = useCallback(async () => {
+        try {
+            setIsRefreshing(true);
+            setError(null);
+            await fetchData();
+        } catch (e: any) {
+            setError(e.message || 'Erreur de chargement');
+        } finally {
+            setDataLoading(false);
+            setIsRefreshing(false);
+        }
+    }, [fetchData]);
+
+    useEffect(() => {
+        if (isLoading) return;
+        refreshData();
+    }, [isLoading, refreshData]);
+
+    /* ── Computed ──────────────────────────────────────────────────── */
+
+    const stats = useMemo(() => {
+        const totalStudents = analytics?.totalStudents ?? students.length;
+        const totalWorkshops = analytics?.workshopProgress?.length ?? 0;
+        const avgProgress = totalWorkshops > 0
+            ? Math.round(analytics!.workshopProgress.reduce((s, w) => s + w.avgProgress, 0) / totalWorkshops)
+            : 0;
+        const avgQuizScore = analytics?.quizPerformance?.length
+            ? Math.round(analytics.quizPerformance.reduce((s, q) => s + q.avgScore, 0) / analytics.quizPerformance.length)
+            : 0;
+        const totalBadges = analytics?.badgeDistribution?.reduce((s, b) => s + b.studentsEarned, 0) ?? 0;
+
+        return { totalStudents, avgProgress, avgQuizScore, totalBadges };
+    }, [students, analytics]);
+
+    /* ── Loading ───────────────────────────────────────────────────── */
+
+    if (isLoading || dataLoading) {
+        return (
+            <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">
+                <div className="flex flex-col items-center gap-4">
+                    <Shield className="animate-bounce w-12 h-12 text-blue-500" />
+                    <span className="text-sm text-slate-500">Chargement du hub formateur...</span>
+                </div>
+            </div>
+        );
     }
 
     return (
-        <div className="min-h-screen bg-slate-950 text-white p-6 md:p-12 relative overflow-hidden">
-            {/* Background Patterns */}
-            <div className="absolute top-0 left-0 w-full h-full bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 pointer-events-none" />
-            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600/5 rounded-full blur-[120px] -z-10" />
-
-            <div className="max-w-7xl mx-auto space-y-12 relative z-10">
-                {/* Breadcrumbs */}
-                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
-                    <Link href="/" className="hover:text-white transition">Home</Link>
-                    <ChevronRight size={12} />
-                    <span className="text-blue-500">Instructor Hub</span>
+        <div className="min-h-screen bg-slate-950 text-white pt-24 pb-12">
+            <div className="max-w-7xl mx-auto px-6 space-y-8">
+                {/* Breadcrumb */}
+                <div className="text-xs text-slate-500">
+                    <Link href="/" className="hover:text-blue-400">Accueil</Link>
+                    <ChevronRight size={12} className="inline mx-1" />
+                    <span className="text-blue-400">Hub Formateur</span>
                 </div>
 
                 {/* Header */}
-                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-10 border-b border-white/5 pb-16">
-                    <div className="space-y-6">
-                        <div className="inline-flex items-center gap-3 px-4 py-2 bg-blue-500/10 border border-blue-500/20 rounded-full text-blue-500 text-[10px] font-black uppercase tracking-widest">
-                            <Shield size={14} /> Control Station
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-full text-blue-400 text-xs font-medium mb-3">
+                            <Shield size={14} /> Poste de Commande
                         </div>
-                        <h1 className="text-6xl md:text-8xl font-black italic tracking-tighter uppercase leading-[0.8]">
-                            Professor <span className="text-blue-500">Panel.</span>
-                        </h1>
-                        <p className="text-slate-400 text-xl max-w-2xl font-medium leading-relaxed">
-                            Pilotez vos sessions de formation, surveillez les métriques de succès
-                            et injectez des scénarios de fraude en temps réel.
+                        <h1 className="text-3xl font-bold text-white mb-2">Hub Formateur</h1>
+                        <p className="text-slate-400">
+                            Bienvenue, {user?.firstName || 'Formateur'}. Pilotez vos sessions et surveillez la progression de la cohorte.
                         </p>
                     </div>
-                    <div className="flex gap-4">
-                        <button className="px-10 py-5 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-widest rounded-2xl transition-all shadow-2xl shadow-blue-500/40 active:scale-95">
-                            Nouvelle Session
-                        </button>
+                    <button
+                        onClick={refreshData}
+                        className={`flex items-center gap-2 px-4 py-2 bg-slate-800 border border-white/10 text-white rounded-xl hover:bg-slate-700 ${isRefreshing ? 'animate-pulse' : ''}`}
+                    >
+                        <RefreshCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
+                        Actualiser
+                    </button>
+                </div>
+
+                {error && (
+                    <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-sm">
+                        {error}
                     </div>
+                )}
+
+                {/* Quick Stats */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <StatCard icon={<Users className="text-blue-400" />} label="Étudiants actifs" value={stats.totalStudents} color="blue" />
+                    <StatCard icon={<Target className="text-emerald-400" />} label="Progression moyenne" value={`${stats.avgProgress}%`} color="emerald" />
+                    <StatCard icon={<Award className="text-amber-400" />} label="Score moyen quiz" value={`${stats.avgQuizScore}%`} color="amber" />
+                    <StatCard icon={<Zap className="text-purple-400" />} label="Badges décernés" value={stats.totalBadges} color="purple" />
                 </div>
 
-                {/* Quick Stats Grid */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
-                    <StatBox label="Promotion 2026" value="24" sub="Étudiants actifs" color="blue" />
-                    <StatBox label="Taux de Réussite" value="78%" sub="+5% vs hier" color="emerald" />
-                    <StatBox label="Temps de Lab" value="12h" sub="Moyenne / jour" color="amber" />
-                    <StatBox label="Alertes" value="03" sub="Critiques" color="red" />
-                </div>
-
-                <div className="grid lg:grid-cols-3 gap-12">
-                    {/* Main Monitoring Area */}
-                    <div className="lg:col-span-2 space-y-10">
-                        <div className="bg-slate-900 border border-white/5 rounded-[50px] p-10 shadow-2xl">
-                            <div className="flex justify-between items-center mb-10">
-                                <h3 className="text-2xl font-black italic uppercase tracking-tighter flex items-center gap-3">
-                                    <Users className="text-blue-500" /> Progression Cohorte
-                                </h3>
-                                <button className="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-white transition">Full Report</button>
+                {/* Main Grid */}
+                <div className="grid lg:grid-cols-3 gap-8">
+                    {/* Left: 2/3 */}
+                    <div className="lg:col-span-2 space-y-6">
+                        {/* Student List */}
+                        <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
+                            <div className="flex items-center justify-between mb-6">
+                                <h2 className="text-xl font-semibold flex items-center gap-2">
+                                    <Users className="text-blue-400" size={20} /> Progression Cohorte
+                                </h2>
+                                <Link href="/instructor/students" className="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1">
+                                    Voir tout <ChevronRight size={14} />
+                                </Link>
                             </div>
-                            <div className="space-y-6">
-                                <StudentRow name="Alice Smith" progress={85} status="Online" lastActive="2m ago" />
-                                <StudentRow name="Bob Jones" progress={42} status="Lab: Crack PIN" lastActive="12m ago" />
-                                <StudentRow name="Charlie Day" progress={91} status="Finished ISO8583" lastActive="Just now" />
-                                <StudentRow name="Diana Prince" progress={65} status="Idle" lastActive="5m ago" />
+
+                            {students.length === 0 ? (
+                                <p className="text-slate-500 text-sm text-center py-8">Aucun étudiant inscrit pour le moment.</p>
+                            ) : (
+                                <div className="space-y-3">
+                                    {students.slice(0, 6).map((student) => {
+                                        const name = [student.first_name, student.last_name].filter(Boolean).join(' ') || student.username;
+                                        const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+                                        const progressPercent = Math.min(100, Math.round((student.workshops_completed / 6) * 100));
+                                        const isStruggling = progressPercent < 20 && student.total_xp < 50;
+
+                                        return (
+                                            <Link key={student.id} href={`/instructor/students/${student.id}`} className="block">
+                                                <div className={`flex items-center justify-between p-4 bg-slate-900/50 rounded-xl border transition-colors cursor-pointer ${isStruggling ? 'border-amber-500/30 hover:border-amber-500/50' : 'border-white/5 hover:border-blue-500/20'}`}>
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-500/20 flex items-center justify-center text-xs font-bold text-blue-400">
+                                                            {initials}
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="font-medium text-white flex items-center gap-2">
+                                                                {name}
+                                                                {isStruggling && (
+                                                                    <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-400 text-[10px] rounded-full font-bold">
+                                                                        Attention
+                                                                    </span>
+                                                                )}
+                                                            </h4>
+                                                            <p className="text-xs text-slate-500">
+                                                                {student.workshops_completed} atelier{student.workshops_completed !== 1 ? 's' : ''} terminé{student.workshops_completed !== 1 ? 's' : ''}
+                                                                {' '}&middot;{' '}{student.total_xp} XP
+                                                                {' '}&middot;{' '}{student.badge_count} badge{student.badge_count !== 1 ? 's' : ''}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-6">
+                                                        <div className="hidden md:flex flex-col items-end gap-1">
+                                                            <span className="text-xs text-slate-500">{progressPercent}%</span>
+                                                            <div className="w-32 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                                                <div className={`h-full transition-all ${isStruggling ? 'bg-amber-500' : 'bg-blue-500'}`} style={{ width: `${progressPercent}%` }} />
+                                                            </div>
+                                                        </div>
+                                                        <span className={`w-2 h-2 rounded-full ${student.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-slate-500'}`} />
+                                                    </div>
+                                                </div>
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Workshop & Quiz Analytics */}
+                        <div className="grid md:grid-cols-2 gap-6">
+                            {/* Workshop Progress */}
+                            <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
+                                <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+                                    <BookOpen className="text-emerald-400" size={18} /> Ateliers
+                                </h3>
+                                {analytics?.workshopProgress?.length ? (
+                                    <div className="space-y-4">
+                                        {analytics.workshopProgress.map((w) => (
+                                            <div key={w.workshopId}>
+                                                <div className="flex justify-between text-sm mb-1">
+                                                    <span className="text-slate-300 truncate">{w.title}</span>
+                                                    <span className="text-slate-500">{w.avgProgress}%</span>
+                                                </div>
+                                                <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                                                    <div className="h-full bg-emerald-500 transition-all" style={{ width: `${w.avgProgress}%` }} />
+                                                </div>
+                                                <p className="text-xs text-slate-600 mt-1">
+                                                    {w.studentsCompleted}/{w.studentsStarted} terminé{w.studentsCompleted !== 1 ? 's' : ''}
+                                                </p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-slate-500">Aucune donnée de progression disponible.</p>
+                                )}
+                            </div>
+
+                            {/* Quiz Performance */}
+                            <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
+                                <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+                                    <BarChart3 className="text-amber-400" size={18} /> Performance Quiz
+                                </h3>
+                                {analytics?.quizPerformance?.length ? (
+                                    <div className="space-y-3">
+                                        {analytics.quizPerformance.map((q) => (
+                                            <div key={q.quizId} className="p-3 bg-slate-900/50 rounded-xl">
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <span className="text-sm text-white font-medium">{q.quizId}</span>
+                                                    <span className={`text-sm font-bold ${q.avgScore >= 80 ? 'text-emerald-400' : q.avgScore >= 60 ? 'text-amber-400' : 'text-red-400'}`}>
+                                                        {q.avgScore}%
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-3 text-xs text-slate-500">
+                                                    <span>{q.uniqueStudents} étudiant{q.uniqueStudents !== 1 ? 's' : ''}</span>
+                                                    <span>&middot;</span>
+                                                    <span>{q.attempts} tentative{q.attempts !== 1 ? 's' : ''}</span>
+                                                    <span>&middot;</span>
+                                                    <span>Réussite : {q.passRate}%</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-slate-500">Aucun quiz soumis pour le moment.</p>
+                                )}
                             </div>
                         </div>
 
-                        <div className="grid md:grid-cols-2 gap-8">
-                            <div className="bg-slate-900 border border-white/5 rounded-[40px] p-8 space-y-6">
-                                <h3 className="text-xl font-black italic uppercase tracking-tighter flex items-center gap-2">
-                                    <Star className="text-amber-500" /> Évaluations
+                        {/* Recent Activity */}
+                        {analytics?.recentActivity?.length ? (
+                            <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
+                                <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+                                    <MessageSquare className="text-blue-400" size={18} /> Activité Récente
                                 </h3>
-                                <div className="space-y-4">
-                                    <EvaluationCard student="Eric Stoltz" workshop="HSM Advanced" score="A+" />
-                                    <EvaluationCard student="Fiona Gallagher" workshop="3DS Multi-Domain" score="B-" />
+                                <div className="space-y-3">
+                                    {analytics.recentActivity.slice(0, 5).map((a, i) => {
+                                        const name = [a.first_name, a.last_name].filter(Boolean).join(' ') || a.username;
+                                        const timeAgo = formatTimeAgo(a.activity_time);
+                                        return (
+                                            <div key={i} className="flex items-center justify-between p-3 bg-slate-900/50 rounded-xl border border-white/5">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                                                    <div>
+                                                        <p className="text-sm text-white">
+                                                            <span className="font-medium">{name}</span>
+                                                            {' '}a soumis un quiz
+                                                        </p>
+                                                        <p className="text-xs text-slate-500">
+                                                            {a.activity_target} — Score : {Math.round(a.activity_value)}%
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <span className="text-xs text-slate-600">{timeAgo}</span>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
-                            <div className="bg-slate-900 border border-white/5 rounded-[40px] p-8 space-y-6">
-                                <h3 className="text-xl font-black italic uppercase tracking-tighter flex items-center gap-2">
-                                    <MessageSquare className="text-blue-500" /> Support tickets
-                                </h3>
-                                <div className="space-y-4">
-                                    <SupportTicket name="Sébastien R." issue="Auth Timeout" time="5m" />
-                                    <SupportTicket name="Léa M." issue="BitMap Error" time="12m" />
-                                </div>
-                            </div>
-                        </div>
+                        ) : null}
                     </div>
 
-                    {/* Laboratory Controls Sidebar */}
-                    <div className="space-y-10">
-                        <div className="p-10 rounded-[50px] bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 text-white space-y-10 shadow-3xl shadow-blue-500/20">
-                            <div className="space-y-2">
-                                <h3 className="text-3xl font-black italic uppercase tracking-tighter">Lab Command.</h3>
-                                <p className="text-white/70 text-sm font-medium">Contrôlez les conditions du simulateur.</p>
+                    {/* Right sidebar: 1/3 */}
+                    <div className="space-y-6">
+                        {/* Lab Controls */}
+                        <div className="bg-gradient-to-br from-blue-600/20 to-indigo-600/10 border border-blue-500/20 rounded-2xl p-6">
+                            <h3 className="text-lg font-bold mb-1 flex items-center gap-2">
+                                <Zap className="text-blue-400" size={18} /> Commande Lab
+                            </h3>
+                            <p className="text-sm text-slate-400 mb-6">Contrôlez les conditions du simulateur.</p>
+
+                            <div className="space-y-5">
+                                <div>
+                                    <div className="flex justify-between items-center text-xs text-slate-400 mb-2">
+                                        <span>Latence réseau</span>
+                                        <span className="text-white font-medium">{labConditions.latencyMs} ms</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min={0} max={500} step={10}
+                                        value={labConditions.latencyMs}
+                                        onChange={(e) => setLabConditions(prev => ({ ...prev, latencyMs: Number(e.target.value) }))}
+                                        className="w-full accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
+                                    />
+                                </div>
+
+                                <div>
+                                    <div className="flex justify-between items-center text-xs text-slate-400 mb-2">
+                                        <span>Taux d&apos;échec auth</span>
+                                        <span className="text-white font-medium">{labConditions.authFailureRate}%</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min={0} max={100} step={5}
+                                        value={labConditions.authFailureRate}
+                                        onChange={(e) => setLabConditions(prev => ({ ...prev, authFailureRate: Number(e.target.value) }))}
+                                        className="w-full accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
+                                    />
+                                </div>
+
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs text-slate-400">Injection de fraude</span>
+                                    <button
+                                        onClick={() => setLabConditions(prev => ({ ...prev, fraudInjection: !prev.fraudInjection }))}
+                                        className={`w-11 h-6 rounded-full transition-all relative ${labConditions.fraudInjection ? 'bg-blue-500' : 'bg-slate-700'}`}
+                                    >
+                                        <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${labConditions.fraudInjection ? 'right-1' : 'left-1'}`} />
+                                    </button>
+                                </div>
                             </div>
 
-                            <div className="space-y-8">
-                                <ControlSlider label="Latence Network" value="150" unit="ms" />
-                                <ControlSlider label="Taux d'Échec Auth" value="5" unit="%" />
-                                <ControlToggle label="Injection de Fraude" checked={true} />
-                            </div>
-
-                            <button className="w-full py-5 bg-white text-blue-600 font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-2xl hover:bg-blue-50 transition active:scale-95">
-                                Appliquer les Conditions
+                            <button
+                                onClick={applyLabConditions}
+                                disabled={isApplyingLabConditions}
+                                className="w-full mt-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-xl transition-colors disabled:opacity-60"
+                            >
+                                {isApplyingLabConditions ? 'Application...' : 'Appliquer les conditions'}
                             </button>
+                            <Link
+                                href="/instructor/lab-control"
+                                className="mt-2 block text-center text-xs text-blue-300 hover:text-blue-200"
+                            >
+                                Ouvrir le controle avance
+                            </Link>
                         </div>
 
-                        <div className="bg-slate-900 border border-white/5 rounded-[50px] p-10 space-y-6">
-                            <h3 className="text-xl font-black italic uppercase tracking-tighter">Quick Links</h3>
-                            <div className="space-y-4">
-                                <QuickLink title="Docs Architecture" icon={<BookOpen />} />
-                                <QuickLink title="Lab Monitoring" icon={<BarChart3 />} />
+                        {/* Leaderboard */}
+                        <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
+                            <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+                                <TrendingUp className="text-amber-400" size={18} /> Classement
+                            </h3>
+                            {leaderboard.length > 0 ? (
+                                <div className="space-y-2">
+                                    {leaderboard.slice(0, 5).map((entry) => {
+                                        const name = [entry.first_name, entry.last_name].filter(Boolean).join(' ') || entry.username;
+                                        return (
+                                            <div key={entry.id} className="flex items-center gap-3 p-2 rounded-lg">
+                                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                                                    entry.rank === 1 ? 'bg-amber-500 text-slate-950' :
+                                                    entry.rank === 2 ? 'bg-slate-400 text-slate-950' :
+                                                    entry.rank === 3 ? 'bg-amber-700 text-white' :
+                                                    'bg-slate-800 text-slate-400'
+                                                }`}>
+                                                    {entry.rank}
+                                                </div>
+                                                <span className="flex-1 text-sm text-white truncate">{name}</span>
+                                                <span className="text-xs font-mono text-slate-500">{entry.total_xp} XP</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-slate-500">Pas encore de classement.</p>
+                            )}
+                        </div>
+
+                        {/* Quick Links */}
+                        <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
+                            <h3 className="text-lg font-semibold mb-4">Accès Rapide</h3>
+                            <div className="space-y-2">
+                                <QuickLink title="Analytics" icon={<Activity size={18} />} href="/instructor/analytics" />
+                                <QuickLink title="Transactions" icon={<Activity size={18} />} href="/instructor/transactions" />
+                                <QuickLink title="Gestion Étudiants" icon={<Users size={18} />} href="/instructor/students" />
+                                <QuickLink title="Exercices" icon={<GraduationCap size={18} />} href="/instructor/exercises" />
                             </div>
                         </div>
                     </div>
@@ -130,110 +540,52 @@ export default function InstructorPage() {
     );
 }
 
-function StatBox({ label, value, sub, color }: any) {
-    const colors: any = {
-        blue: "text-blue-500",
-        emerald: "text-emerald-500",
-        amber: "text-amber-500",
-        red: "text-red-500",
-    }
+/* ── Sub-components ─────────────────────────────────────────────────── */
+
+function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: string | number; color: string }) {
+    const colors: Record<string, string> = {
+        blue: 'from-blue-500/10 to-blue-600/5 border-blue-500/20',
+        emerald: 'from-emerald-500/10 to-emerald-600/5 border-emerald-500/20',
+        amber: 'from-amber-500/10 to-amber-600/5 border-amber-500/20',
+        purple: 'from-purple-500/10 to-purple-600/5 border-purple-500/20',
+    };
+
     return (
-        <div className="bg-slate-900 border border-white/5 p-10 rounded-[40px] space-y-2 hover:bg-white/5 transition-colors duration-500">
-            <div className={`text-5xl font-black font-mono italic tracking-tighter ${colors[color]}`}>{value}</div>
-            <div className="space-y-1">
-                <div className="text-[10px] text-white font-black uppercase tracking-widest">{label}</div>
-                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{sub}</div>
+        <div className={`p-5 rounded-2xl bg-gradient-to-br ${colors[color]} border`}>
+            <div className="flex items-center gap-3 mb-2">
+                {icon}
+                <span className="text-xs text-slate-500 uppercase tracking-wider">{label}</span>
             </div>
+            <div className="text-2xl font-bold font-mono">{value}</div>
         </div>
     );
 }
 
-function StudentRow({ name, progress, status, lastActive }: any) {
+function QuickLink({ title, icon, href }: { title: string; icon: React.ReactNode; href: string }) {
     return (
-        <div className="flex items-center justify-between p-6 bg-slate-950/50 rounded-3xl border border-white/5 group hover:border-blue-500/30 transition-all duration-500">
-            <div className="flex items-center gap-6">
-                <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-white/5 flex items-center justify-center font-black text-xs text-slate-500 group-hover:bg-blue-500 group-hover:text-white transition-all">
-                    {name.split(' ').map((n: any) => n[0]).join('')}
-                </div>
-                <div>
-                    <h4 className="font-bold text-white text-lg tracking-tight italic">{name}</h4>
-                    <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">{status}</p>
-                </div>
+        <Link
+            href={href}
+            className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-colors group"
+        >
+            <div className="flex items-center gap-3">
+                <div className="text-slate-500 group-hover:text-blue-400 transition-colors">{icon}</div>
+                <span className="text-sm text-slate-300 group-hover:text-white transition-colors">{title}</span>
             </div>
-            <div className="flex items-center gap-10">
-                <div className="flex flex-col items-end gap-1.5 hidden md:flex">
-                    <div className="text-[10px] text-slate-600 font-black uppercase">{progress}% COMPLETION</div>
-                    <div className="w-40 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                        <div className="h-full bg-blue-500" style={{ width: `${progress}%` }} />
-                    </div>
-                </div>
-                <div className="text-[10px] text-slate-600 font-black uppercase w-20 text-right">{lastActive}</div>
-                <button className="p-3 hover:bg-white/5 rounded-2xl transition"><Settings size={18} className="text-slate-700 hover:text-white" /></button>
-            </div>
-        </div>
+            <ChevronRight size={14} className="text-slate-600 group-hover:text-slate-400 transition-colors" />
+        </Link>
     );
 }
 
-function EvaluationCard({ student, workshop, score }: any) {
-    return (
-        <div className="p-6 bg-slate-950/50 rounded-3xl border border-white/5 flex items-center justify-between hover:bg-white/5 transition duration-300">
-            <div>
-                <h4 className="font-bold text-white">{student}</h4>
-                <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">{workshop}</p>
-            </div>
-            <div className="text-2xl font-black text-emerald-500 font-mono italic">{score}</div>
-        </div>
-    );
+function formatTimeAgo(dateStr: string): string {
+    const date = new Date(dateStr);
+    if (Number.isNaN(date.getTime())) return dateStr;
+    const diff = Date.now() - date.getTime();
+    const minutes = Math.floor(diff / 60000);
+    if (minutes < 1) return 'à l\'instant';
+    if (minutes < 60) return `il y a ${minutes} min`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `il y a ${hours}h`;
+    const days = Math.floor(hours / 24);
+    return `il y a ${days}j`;
 }
 
-function SupportTicket({ name, issue, time }: any) {
-    return (
-        <div className="p-6 bg-slate-950/50 rounded-3xl border border-white/5 flex items-center justify-between hover:bg-white/5 transition duration-300">
-            <div className="flex items-center gap-4">
-                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                <div>
-                    <h4 className="font-bold text-white text-sm">{name}</h4>
-                    <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">{issue}</p>
-                </div>
-            </div>
-            <div className="text-[10px] text-slate-600 font-black uppercase italic">{time}</div>
-        </div>
-    );
-}
-
-function ControlSlider({ label, value, unit }: any) {
-    return (
-        <div className="space-y-3">
-            <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-white/60">
-                <span>{label}</span>
-                <span className="text-white">{value}{unit}</span>
-            </div>
-            <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                <div className="h-full bg-white w-1/2" />
-            </div>
-        </div>
-    );
-}
-
-function ControlToggle({ label, checked }: any) {
-    return (
-        <div className="flex justify-between items-center">
-            <span className="text-[10px] font-black uppercase tracking-widest text-white/60">{label}</span>
-            <div className={`w-12 h-6 rounded-full transition-all relative cursor-pointer ${checked ? 'bg-white' : 'bg-white/10'}`}>
-                <div className={`absolute top-1 w-4 h-4 rounded-full transition-all ${checked ? 'right-1 bg-blue-600' : 'left-1 bg-white/40'}`} />
-            </div>
-        </div>
-    );
-}
-
-function QuickLink({ title, icon }: any) {
-    return (
-        <div className="flex items-center justify-between p-5 bg-slate-950/50 rounded-2xl border border-white/5 group hover:border-blue-500/30 transition cursor-pointer">
-            <div className="flex items-center gap-4">
-                <div className="text-slate-500 group-hover:text-blue-500 transition-colors">{icon}</div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 group-hover:text-white transition-colors">{title}</span>
-            </div>
-            <ArrowRight size={16} className="text-slate-700 group-hover:text-white group-hover:translate-x-1 transition-all" />
-        </div>
-    );
-}

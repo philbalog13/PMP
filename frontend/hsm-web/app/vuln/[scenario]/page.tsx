@@ -2,9 +2,30 @@
 
 import { useState, use } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Wifi, Key, Zap, Play, CheckCircle, XCircle, Shield, ShieldOff, AlertTriangle, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Wifi, Key, Zap, Play, CheckCircle, Shield, ShieldOff, RotateCcw, type LucideIcon } from 'lucide-react';
 
-const scenarioData: Record<string, any> = {
+type ScenarioLogLevel = 'info' | 'warning' | 'error' | 'success';
+
+interface ScenarioPhase {
+    name: string;
+    description: string;
+    action: string;
+}
+
+interface ScenarioLog {
+    type: ScenarioLogLevel;
+    message: string;
+}
+
+interface ScenarioDefinition {
+    title: string;
+    icon: LucideIcon;
+    description: string;
+    phases: ScenarioPhase[];
+    logs: ScenarioLog[];
+}
+
+const scenarioData: Record<string, ScenarioDefinition> = {
     'mitm': {
         title: 'Man-in-the-Middle Attack',
         icon: Wifi,
@@ -63,7 +84,7 @@ export default function ScenarioPage({ params }: { params: Promise<{ scenario: s
     const scenario = scenarioData[scenarioId];
     const [currentPhase, setCurrentPhase] = useState(0);
     const [phaseCompleted, setPhaseCompleted] = useState<boolean[]>([false, false, false, false]);
-    const [logs, setLogs] = useState<{ type: string; message: string }[]>([]);
+    const [logs, setLogs] = useState<ScenarioLog[]>([]);
     const [isRunning, setIsRunning] = useState(false);
 
     if (!scenario) {
@@ -123,7 +144,7 @@ export default function ScenarioPage({ params }: { params: Promise<{ scenario: s
 
             {/* Phase Progress */}
             <div className="grid grid-cols-4 gap-4">
-                {scenario.phases.map((phase: any, idx: number) => (
+                {scenario.phases.map((phase, idx) => (
                     <div
                         key={idx}
                         className={`p-4 rounded-xl border transition-all cursor-pointer ${currentPhase === idx ? 'border-red-500/50 bg-red-500/10' :

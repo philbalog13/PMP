@@ -1,0 +1,28 @@
+﻿# PMP Auth Accounts
+# Generated: 2026-02-08 21:00:42
+
+## CREATED
+- role: ROLE_CLIENT
+  db_id: 656c281d-83f8-4c6b-a840-53da948883a9
+  username: client_20260208210041
+  email: client_20260208210041@pmp.local
+  password: Cl!ent_PMP_9qX7v2
+
+- role: ROLE_MARCHAND
+  db_id: cbe88595-a75f-43be-bdda-5b7854f7a3c0
+  username: merchant_20260208210041
+  email: merchant_20260208210041@pmp.local
+  password: M@rchand_PMP_7tK4r9
+
+- role: ROLE_ETUDIANT
+  db_id: 923b802e-9247-4c95-a939-a0fc6f1aa836
+  username: student_20260208210041
+  email: student_20260208210041@pmp.local
+  password: Etud!ant_PMP_5mN8x3
+
+- role: ROLE_FORMATEUR
+  db_id: 7c7981c1-18c2-43a8-864d-5b6e3a8ffb3e
+  username: trainer_20260208210041
+  email: trainer_20260208210041@pmp.local
+  password: Format3ur_PMP_2pJ6s!
+

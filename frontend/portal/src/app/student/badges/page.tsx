@@ -1,242 +1,211 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../auth/useAuth';
 import Link from 'next/link';
 import {
     Award,
-    ArrowLeft,
+    ChevronRight,
+    Loader2,
     Lock,
-    CheckCircle2,
-    Star,
-    Zap,
-    Shield,
-    BookOpen,
-    Clock,
-    Target,
-    Flame,
-    Trophy
+    RefreshCw,
+    Trophy,
+    Zap
 } from 'lucide-react';
 
-interface Badge {
-    id: string;
+type BadgeRow = {
+    type: string;
     name: string;
     description: string;
     icon: string;
-    category: 'learning' | 'performance' | 'streak' | 'special';
+    xp: number;
     earned: boolean;
     earnedAt?: string;
-    progress?: number;
-    requirement: string;
-    xpReward: number;
+};
+
+type BadgeResponse = {
+    badges: BadgeRow[];
+    earned: number;
+    total: number;
+    totalXP: number;
+};
+
+function getAuthHeaders(): HeadersInit | null {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        return null;
+    }
+    return { Authorization: `Bearer ${token}` };
 }
 
-const allBadges: Badge[] = [
-    // Learning Badges
-    { id: '1', name: 'Premier Pas', description: 'Complétez votre premier atelier', icon: '🎯', category: 'learning', earned: true, earnedAt: '2024-01-10', requirement: 'Terminer 1 atelier', xpReward: 50 },
-    { id: '2', name: 'Explorateur', description: 'Complétez tous les ateliers d\'introduction', icon: '🧭', category: 'learning', earned: true, earnedAt: '2024-01-12', requirement: 'Terminer les 4 ateliers de base', xpReward: 150 },
-    { id: '3', name: 'ISO Master', description: 'Maîtrisez le protocole ISO 8583', icon: '📋', category: 'learning', earned: true, earnedAt: '2024-01-14', requirement: 'Score 90%+ au quiz ISO 8583', xpReward: 200 },
-    { id: '4', name: 'Crypto Expert', description: 'Maîtrisez la cryptographie HSM', icon: '🔐', category: 'learning', earned: false, progress: 65, requirement: 'Score 90%+ au quiz HSM', xpReward: 200 },
-    { id: '5', name: '3DS Specialist', description: 'Expert en authentification 3D Secure', icon: '🛡️', category: 'learning', earned: false, progress: 40, requirement: 'Score 90%+ au quiz 3DS', xpReward: 200 },
-
-    // Performance Badges
-    { id: '6', name: 'Perfectionniste', description: 'Obtenez un score parfait à un quiz', icon: '💯', category: 'performance', earned: true, earnedAt: '2024-01-11', requirement: 'Score 100% à un quiz', xpReward: 100 },
-    { id: '7', name: 'Speed Runner', description: 'Terminez un atelier en moins de 30 minutes', icon: '⚡', category: 'performance', earned: false, progress: 0, requirement: 'Temps < 30 min pour un atelier', xpReward: 75 },
-    { id: '8', name: 'Top 3', description: 'Atteignez le top 3 du classement', icon: '🏆', category: 'performance', earned: false, progress: 80, requirement: 'Être dans le top 3', xpReward: 300 },
-    { id: '9', name: 'Étoile Montante', description: 'Progressez de 500 XP en une semaine', icon: '🌟', category: 'performance', earned: true, earnedAt: '2024-01-13', requirement: '+500 XP en 7 jours', xpReward: 100 },
-
-    // Streak Badges
-    { id: '10', name: 'Régulier', description: 'Connectez-vous 7 jours consécutifs', icon: '🔥', category: 'streak', earned: true, earnedAt: '2024-01-14', requirement: '7 jours de connexion', xpReward: 70 },
-    { id: '11', name: 'Assidu', description: 'Connectez-vous 30 jours consécutifs', icon: '📅', category: 'streak', earned: false, progress: 47, requirement: '30 jours de connexion', xpReward: 200 },
-    { id: '12', name: 'Marathonien', description: 'Étudiez pendant 10 heures au total', icon: '⏱️', category: 'streak', earned: true, earnedAt: '2024-01-12', requirement: '10h de temps d\'étude', xpReward: 150 },
-
-    // Special Badges
-    { id: '13', name: 'Pionnier', description: 'Parmi les premiers à s\'inscrire', icon: '🚀', category: 'special', earned: true, earnedAt: '2024-01-01', requirement: 'Inscription avant le 15 janvier', xpReward: 100 },
-    { id: '14', name: 'Mentor', description: 'Aidez 5 autres étudiants', icon: '🤝', category: 'special', earned: false, progress: 20, requirement: 'Aider 5 étudiants', xpReward: 250 },
-    { id: '15', name: 'Finisher', description: 'Complétez 100% du programme', icon: '🎓', category: 'special', earned: false, progress: 60, requirement: 'Terminer tous les modules', xpReward: 500 },
-];
-
-const categoryLabels: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-    learning: { label: 'Apprentissage', icon: <BookOpen size={16} />, color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
-    performance: { label: 'Performance', icon: <Target size={16} />, color: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
-    streak: { label: 'Régularité', icon: <Flame size={16} />, color: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
-    special: { label: 'Spécial', icon: <Star size={16} />, color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
+const BADGE_EMOJI: Record<string, string> = {
+    star: '\u{1F3AF}',
+    'clipboard-check': '\u{1F4CB}',
+    award: '\u{1F3C5}',
+    trophy: '\u{1F3C6}',
+    'book-open': '\u{1F4D6}',
+    'graduation-cap': '\u{1F393}',
+    zap: '\u26A1',
+    flame: '\u{1F525}',
+    flag: '\u{1F6A9}',
+    droplet: '\u{1F4A7}',
+    terminal: '\u{1F5A5}\uFE0F',
+    crown: '\u{1F451}',
+    layers: '\u{1F5C2}\uFE0F'
 };
 
 export default function StudentBadgesPage() {
     const { isLoading } = useAuth(true);
-    const [selectedCategory, setSelectedCategory] = useState<string>('all');
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [data, setData] = useState<BadgeResponse | null>(null);
 
-    const earnedBadges = allBadges.filter(b => b.earned);
-    const totalXpEarned = earnedBadges.reduce((acc, b) => acc + b.xpReward, 0);
-    const filteredBadges = selectedCategory === 'all'
-        ? allBadges
-        : allBadges.filter(b => b.category === selectedCategory);
+    const loadBadges = useCallback(async () => {
+        const headers = getAuthHeaders();
+        if (!headers) {
+            setError('Session invalide');
+            setLoading(false);
+            return;
+        }
 
-    if (isLoading) {
+        try {
+            setLoading(true);
+            setError(null);
+
+            const response = await fetch('/api/progress/badges', { headers });
+            if (!response.ok) {
+                const payload = await response.json().catch(() => null);
+                throw new Error(payload?.error || 'Impossible de charger les badges');
+            }
+
+            const payload = await response.json();
+            setData({
+                badges: payload.badges || [],
+                earned: Number(payload.earned || 0),
+                total: Number(payload.total || 0),
+                totalXP: Number(payload.totalXP || 0)
+            });
+        } catch (loadError: unknown) {
+            setError(loadError instanceof Error ? loadError.message : 'Impossible de charger les badges');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (isLoading) {
+            return;
+        }
+        loadBadges();
+    }, [isLoading, loadBadges]);
+
+    const completionRate = useMemo(() => {
+        if (!data || data.total === 0) {
+            return 0;
+        }
+        return Math.round((data.earned / data.total) * 100);
+    }, [data]);
+
+    if (isLoading || loading) {
         return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
+            <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+                <div className="flex items-center gap-3 text-slate-300">
+                    <Loader2 className="animate-spin" />
+                    Chargement des badges...
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-slate-950 pt-24 pb-12">
-            <div className="max-w-6xl mx-auto px-6">
-                {/* Header */}
-                <div className="mb-8">
-                    <Link
-                        href="/student"
-                        className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-4"
-                    >
-                        <ArrowLeft size={18} />
-                        Retour au dashboard
-                    </Link>
-                    <h1 className="text-3xl font-bold text-white mb-2">Mes Badges</h1>
-                    <p className="text-slate-400">
-                        Débloquez des badges en progressant dans votre apprentissage
-                    </p>
+        <div className="min-h-screen bg-slate-950 text-white pt-24 pb-12">
+            <div className="max-w-6xl mx-auto px-6 space-y-8">
+                <div className="text-xs text-slate-500">
+                    <Link href="/student" className="hover:text-emerald-400">Mon Parcours</Link>
+                    <ChevronRight size={12} className="inline mx-1" />
+                    <span className="text-emerald-400">Mes Badges</span>
                 </div>
 
-                {/* Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                    <div className="bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/30 rounded-2xl p-6">
-                        <div className="flex items-center gap-4">
-                            <div className="p-4 bg-amber-500/20 rounded-xl">
-                                <Trophy size={28} className="text-amber-400" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-slate-400">Badges obtenus</p>
-                                <p className="text-3xl font-bold text-white">
-                                    {earnedBadges.length} <span className="text-lg text-slate-400">/ {allBadges.length}</span>
-                                </p>
-                            </div>
-                        </div>
+                <header className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold mb-2">Mes Badges</h1>
+                        <p className="text-slate-400">Progression réelle basée sur vos quiz et ateliers.</p>
                     </div>
-
-                    <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
-                        <div className="flex items-center gap-4">
-                            <div className="p-4 bg-emerald-500/20 rounded-xl">
-                                <Zap size={28} className="text-emerald-400" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-slate-400">XP gagnés via badges</p>
-                                <p className="text-3xl font-bold text-emerald-400">{totalXpEarned.toLocaleString()}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
-                        <div className="flex items-center gap-4">
-                            <div className="p-4 bg-purple-500/20 rounded-xl">
-                                <Target size={28} className="text-purple-400" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-slate-400">Progression globale</p>
-                                <p className="text-3xl font-bold text-white">
-                                    {Math.round((earnedBadges.length / allBadges.length) * 100)}%
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Category Filter */}
-                <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
                     <button
-                        onClick={() => setSelectedCategory('all')}
-                        className={`px-4 py-2 rounded-xl font-medium whitespace-nowrap transition-colors ${
-                            selectedCategory === 'all'
-                                ? 'bg-emerald-500 text-white'
-                                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                        }`}
+                        onClick={loadBadges}
+                        className="flex items-center gap-2 px-4 py-2 bg-slate-800 border border-white/10 text-white rounded-xl hover:bg-slate-700"
                     >
-                        Tous ({allBadges.length})
+                        <RefreshCw size={18} />
+                        Actualiser
                     </button>
-                    {Object.entries(categoryLabels).map(([key, { label, icon }]) => (
-                        <button
-                            key={key}
-                            onClick={() => setSelectedCategory(key)}
-                            className={`px-4 py-2 rounded-xl font-medium whitespace-nowrap transition-colors flex items-center gap-2 ${
-                                selectedCategory === key
-                                    ? 'bg-emerald-500 text-white'
-                                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                            }`}
-                        >
-                            {icon}
-                            {label} ({allBadges.filter(b => b.category === key).length})
+                </header>
+
+                {error && (
+                    <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 text-sm flex items-center justify-between">
+                        <span>{error}</span>
+                        <button onClick={loadBadges} className="text-red-400 hover:text-red-300 text-xs underline ml-4">
+                            Réessayer
                         </button>
-                    ))}
+                    </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-slate-900/70 border border-white/10 rounded-2xl p-5">
+                        <div className="flex items-center gap-3 mb-2 text-amber-400">
+                            <Trophy size={20} />
+                            <span className="text-sm text-slate-400">Badges obtenus</span>
+                        </div>
+                        <div className="text-3xl font-bold">
+                            {data?.earned || 0}
+                            <span className="text-lg text-slate-500"> / {data?.total || 0}</span>
+                        </div>
+                    </div>
+
+                    <div className="bg-slate-900/70 border border-white/10 rounded-2xl p-5">
+                        <div className="flex items-center gap-3 mb-2 text-emerald-400">
+                            <Zap size={20} />
+                            <span className="text-sm text-slate-400">XP via badges</span>
+                        </div>
+                        <div className="text-3xl font-bold">{(data?.totalXP || 0).toLocaleString()}</div>
+                    </div>
+
+                    <div className="bg-slate-900/70 border border-white/10 rounded-2xl p-5">
+                        <div className="flex items-center gap-3 mb-2 text-blue-400">
+                            <Award size={20} />
+                            <span className="text-sm text-slate-400">Complétion</span>
+                        </div>
+                        <div className="text-3xl font-bold">{completionRate}%</div>
+                    </div>
                 </div>
 
-                {/* Badges Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filteredBadges.map((badge) => (
+                    {(data?.badges || []).map((badge) => (
                         <div
-                            key={badge.id}
-                            className={`relative p-6 rounded-2xl border transition-all ${
+                            key={badge.type}
+                            className={`p-5 rounded-2xl border ${
                                 badge.earned
-                                    ? 'bg-slate-800/50 border-white/10 hover:border-emerald-500/30'
-                                    : 'bg-slate-900/50 border-white/5 opacity-60 hover:opacity-80'
+                                    ? 'bg-slate-900/70 border-emerald-500/30'
+                                    : 'bg-slate-900/40 border-white/10 opacity-70'
                             }`}
                         >
-                            {/* Category Badge */}
-                            <div className={`absolute top-4 right-4 px-2 py-1 rounded-full text-xs font-medium border ${categoryLabels[badge.category].color}`}>
-                                {categoryLabels[badge.category].label}
-                            </div>
-
-                            {/* Badge Icon */}
-                            <div className="flex items-center gap-4 mb-4">
-                                <div className={`text-5xl ${badge.earned ? '' : 'grayscale'}`}>
-                                    {badge.icon}
-                                </div>
-                                <div>
-                                    <h3 className="font-bold text-white flex items-center gap-2">
-                                        {badge.name}
-                                        {badge.earned && (
-                                            <CheckCircle2 size={16} className="text-emerald-400" />
-                                        )}
-                                    </h3>
-                                    <p className="text-sm text-slate-400">{badge.description}</p>
-                                </div>
-                            </div>
-
-                            {/* Requirement */}
-                            <div className="mb-4 text-xs text-slate-500">
-                                <span className="text-slate-400">Condition :</span> {badge.requirement}
-                            </div>
-
-                            {/* Progress or Date */}
-                            {badge.earned ? (
-                                <div className="flex items-center justify-between">
-                                    <span className="text-xs text-slate-500">
-                                        Obtenu le {badge.earnedAt}
+                            <div className="flex items-start justify-between mb-3">
+                                <div className="text-4xl">{BADGE_EMOJI[badge.icon] || '\u{1F396}\uFE0F'}</div>
+                                {badge.earned ? (
+                                    <span className="text-xs px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-300">Débloqué</span>
+                                ) : (
+                                    <span className="text-xs px-2 py-1 rounded-full bg-slate-700 text-slate-300 inline-flex items-center gap-1">
+                                        <Lock size={12} />
+                                        Verrouillé
                                     </span>
-                                    <span className="px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded-full text-xs font-medium">
-                                        +{badge.xpReward} XP
-                                    </span>
-                                </div>
-                            ) : (
-                                <div>
-                                    <div className="flex justify-between text-xs mb-2">
-                                        <span className="text-slate-400">Progression</span>
-                                        <span className="text-white">{badge.progress}%</span>
-                                    </div>
-                                    <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full"
-                                            style={{ width: `${badge.progress}%` }}
-                                        ></div>
-                                    </div>
-                                    <div className="mt-2 flex items-center justify-between">
-                                        <span className="text-xs text-slate-500 flex items-center gap-1">
-                                            <Lock size={12} /> Verrouillé
-                                        </span>
-                                        <span className="text-xs text-slate-500">
-                                            {badge.xpReward} XP à gagner
-                                        </span>
-                                    </div>
+                                )}
+                            </div>
+
+                            <h3 className="font-semibold text-white mb-1">{badge.name}</h3>
+                            <p className="text-sm text-slate-400 mb-3">{badge.description}</p>
+                            <div className="text-xs text-amber-300">+{badge.xp} XP</div>
+                            {badge.earnedAt && (
+                                <div className="text-xs text-slate-500 mt-2">
+                                    Obtenu le {new Date(badge.earnedAt).toLocaleDateString('fr-FR')}
                                 </div>
                             )}
                         </div>

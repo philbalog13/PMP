@@ -1,10 +1,8 @@
-# PMP Student Production Journey Simulation
-# This script simulates a real student interacting with the platform
+﻿# PMP Student Production Journey Simulation
+# This script simulates a real student journey against current APIs.
 
 $baseUrl = "http://localhost:8000"
 $ProgressPreference = 'SilentlyContinue'
-
-# --- Helper Functions ---
 
 function Log {
     param([string]$Message, [string]$Color = "White")
@@ -15,12 +13,13 @@ function Section {
     param([string]$Title)
     Write-Host ""
     Write-Host "==================================================" -ForegroundColor Cyan
-    Write-Host "   $Title" 
+    Write-Host "   $Title"
     Write-Host "==================================================" -ForegroundColor Cyan
 }
 
 function Invoke-Api {
     param ([string]$Method, [string]$Uri, [string]$Token, [object]$Body = $null)
+
     $params = @{
         Method = $Method
         Uri = "$baseUrl$Uri"
@@ -28,8 +27,11 @@ function Invoke-Api {
         ContentType = "application/json"
         ErrorAction = "Stop"
     }
-    if ($Body) { $params.Body = ($Body | ConvertTo-Json -Depth 10) }
-    
+
+    if ($Body) {
+        $params.Body = ($Body | ConvertTo-Json -Depth 10)
+    }
+
     try {
         return Invoke-RestMethod @params
     } catch {
@@ -45,11 +47,8 @@ function Invoke-Api {
     }
 }
 
-# --- Main Script ---
-
 $suffix = Get-Random
 
-# 1. Registration
 Section "1. INSCRIPTION ETUDIANT"
 $studentUser = @{
     username = "julie_student_$suffix"
@@ -60,93 +59,128 @@ $studentUser = @{
     role = "ROLE_ETUDIANT"
 }
 
-Log "Inscription de l'étudiant: $($studentUser.email)..." "Yellow"
+Log "Inscription de l'etudiant: $($studentUser.email)..." "Yellow"
 
 try {
     $regResponse = Invoke-RestMethod -Method Post -Uri "$baseUrl/api/auth/register" -Body ($studentUser | ConvertTo-Json) -ContentType "application/json" -ErrorAction Stop
-    $token = $regResponse.token
+    $token = if ($regResponse.accessToken) { $regResponse.accessToken } else { $regResponse.token }
+    if (-not $token) {
+        throw "Token manquant dans la reponse d'inscription"
+    }
     $userId = $regResponse.user.id
-    Log "Simulation: L'utilisateur remplit le formulaire d'inscription sur /register." "Gray"
-    Log "Succès! Compte créé. ID: $userId" "Green"
-    Log "Token JWT récupéré." "Green"
+    Log "Simulation: l'utilisateur remplit le formulaire d'inscription sur /register." "Gray"
+    Log "Succes! Compte cree. ID: $userId" "Green"
+    Log "Token JWT recupere." "Green"
 } catch {
     Log "Erreur inscription: $_" "Red"
-    exit
+    exit 1
 }
 
-# 2. Dashboard Access
 Section "2. ACCES DASHBOARD"
-Log "Simulation: L'étudiant arrive sur /student" "Gray"
+Log "Simulation: l'etudiant arrive sur /student" "Gray"
 Log "Chargement du profil et progression..." "Yellow"
 
 $progress = Invoke-Api "GET" "/api/progress" $token
-Log "Données de progression récupérées." "Green"
-if ($progress.progress) {
-    Log "Progression actuelle: $($progress.progress.count) ateliers commencés." "White"
-} else {
-    Log "Nouvel étudiant: Aucune progression (Normal)." "White"
-}
+Log "Donnees de progression recuperees." "Green"
 
 $badges = Invoke-Api "GET" "/api/progress/badges" $token
-Log "Badges récupérés: $($badges.badges.count)" "Green"
+Log "Badges recuperes: $($badges.badges.count)" "Green"
 
-# 3. Workshop Interaction
+$workshopsResponse = Invoke-Api "GET" "/api/progress/workshops" $token
+$workshop = $workshopsResponse.workshops | Select-Object -First 1
+if (-not $workshop) {
+    Log "Aucun atelier disponible pour ce compte." "Red"
+    exit 1
+}
+$workshopId = $workshop.id
+Log "Atelier cible: $workshopId" "White"
+
 Section "3. PARCOURS ATELIER"
-Log "Simulation: L'étudiant commence l'atelier 'Introduction aux Paiements'" "Gray"
-$workshopId = "iso8583"
+Log "Simulation: l'etudiant commence l'atelier $workshopId" "Gray"
 
-Log "Enregistrement du début de l'atelier..." "Yellow"
-# Simulate starting logic by saving progress 0%
-$startProgress = Invoke-Api "POST" "/api/progress/workshop/$workshopId" $token @{
+Log "Enregistrement du debut de l'atelier..." "Yellow"
+$null = Invoke-Api "POST" "/api/progress/workshop/$workshopId" $token @{
     status = "IN_PROGRESS"
     progressPercent = 10
     currentSection = 1
+    timeSpentMinutes = 5
 }
-Log "Statut atelier mis à jour: EN COURS (10%)" "Green"
+Log "Statut atelier mis a jour: EN COURS (10%)" "Green"
 
 Start-Sleep -Seconds 1
 
-Log "Simulation: L'étudiant lit le contenu..." "Gray"
-Log "Mise à jour progression..." "Yellow"
-$midProgress = Invoke-Api "POST" "/api/progress/workshop/$workshopId" $token @{
+Log "Simulation: l'etudiant lit le contenu..." "Gray"
+Log "Mise a jour progression..." "Yellow"
+$null = Invoke-Api "POST" "/api/progress/workshop/$workshopId" $token @{
     status = "IN_PROGRESS"
     progressPercent = 50
     currentSection = 2
+    timeSpentMinutes = 12
 }
-Log "Statut atelier mis à jour: EN COURS (50%)" "Green"
+Log "Statut atelier mis a jour: EN COURS (50%)" "Green"
 
-# 4. Exercises/Quiz
-Section "4. EXERCICES & QUIZ"
-Log "Simulation: L'étudiant consulte les exercices disponibles" "Gray"
-$exercises = Invoke-Api "GET" "/api/exercises" $token
-Log "Exercices trouvés: $($exercises.exercises.count)" "Green"
-
-# Submit a mock quiz (Assuming quiz endpoints are mocked or backed by DB)
-# Note: In a real scenario we'd need a valid quiz ID. Since we just seeded, we might not have one hardcoded easily unless we query.
-# But let's try the endpoint. If it's mocked in gateway.routes.ts, it might return success.
-Log "Simulation: L'étudiant passe un quiz..." "Yellow"
+Section "4. EXERCICES ET QUIZ"
+Log "Simulation: l'etudiant consulte les exercices disponibles" "Gray"
 try {
-    # Using a generic quiz ID
-    $quizResult = Invoke-Api "POST" "/api/progress/quiz/quiz-iso8583-basics" $token @{
-        answers = @{ q1 = "A"; q2 = "B" }
-    }
-    Log "Quiz soumis avec succès!" "Green"
-    Log "Score: $($quizResult.score)" "White"
+    $exercises = Invoke-Api "GET" "/api/exercises" $token
+    $exerciseCount = if ($exercises.exercises) { $exercises.exercises.count } else { 0 }
+    Log "Exercices trouves: $exerciseCount" "Green"
 } catch {
-    Log "Note: Quiz submission might require real quiz IDs. Proceeding..." "Gray"
+    Log "Endpoint /api/exercises indisponible, on continue." "Gray"
 }
 
-# 5. Completion
-Section "5. FINALISATION"
-Log "Simulation: L'étudiant termine l'atelier" "Gray"
-$completeProgress = Invoke-Api "POST" "/api/progress/workshop/$workshopId/complete" $token
-Log "Atelier marqué comme TERMINE" "Green"
+Log "Simulation: l'etudiant passe un quiz..." "Yellow"
+try {
+    $quizId = $workshop.quizId
+    if (-not $quizId) {
+        $quizWorkshop = $workshopsResponse.workshops | Where-Object { $_.quizId } | Select-Object -First 1
+        if ($quizWorkshop) {
+            $quizId = $quizWorkshop.quizId
+            $workshopId = $quizWorkshop.id
+        }
+    }
 
-# Check badges again
+    if (-not $quizId) {
+        Log "Aucun quiz disponible dans le catalogue." "Gray"
+    } else {
+        $quizPayload = Invoke-Api "GET" "/api/progress/quiz/$quizId" $token
+        $questions = @($quizPayload.quiz.questions)
+
+        if ($questions.Count -eq 0) {
+            Log "Quiz sans questions, etape ignoree." "Gray"
+        } else {
+            $answers = @()
+            foreach ($question in $questions) {
+                $answers += @{
+                    questionId = $question.id
+                    selectedOptionIndex = 0
+                }
+            }
+
+            $quizResult = Invoke-Api "POST" "/api/progress/quiz/$quizId" $token @{
+                answers = $answers
+                timeTakenSeconds = 120
+                workshopId = $workshopId
+            }
+
+            Log "Quiz soumis avec succes!" "Green"
+            if ($quizResult.result -and $quizResult.result.percentage -ne $null) {
+                Log "Score: $($quizResult.result.percentage)%" "White"
+            }
+        }
+    }
+} catch {
+    Log "Erreur quiz: $_" "Gray"
+}
+
+Section "5. FINALISATION"
+Log "Simulation: l'etudiant termine l'atelier" "Gray"
+$null = Invoke-Api "POST" "/api/progress/workshop/$workshopId/complete" $token
+Log "Atelier marque comme TERMINE" "Green"
+
 $newBadges = Invoke-Api "GET" "/api/progress/badges" $token
-Log "Vérification des badges..." "Yellow"
-# Log "Badges actuels: $($newBadges.badges.count)" "White"
+Log "Verification des badges: $($newBadges.badges.count)" "Yellow"
 
 Log ""
 Log "PARCOURS ETUDIANT TERMINE AVEC SUCCES" "Cyan"
-Log "Toutes les opérations de production simulées." "Cyan"
+Log "Toutes les operations de production ont ete simulees." "Cyan"

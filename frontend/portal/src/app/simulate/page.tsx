@@ -1,6 +1,6 @@
 'use client';
 
-import { Zap, Play, Settings, Terminal, Shield, ArrowRight, Activity, Clock } from 'lucide-react';
+import { Zap, Play, Settings, Activity } from 'lucide-react';
 import { useState } from 'react';
 
 export default function SimulatePage() {
@@ -94,7 +94,7 @@ export default function SimulatePage() {
     );
 }
 
-function SimOption({ label, value }: any) {
+function SimOption({ label, value }: { label: string; value: string }) {
     return (
         <div className="flex justify-between items-center border-b border-white/5 pb-4 last:border-0 last:pb-0">
             <span className="text-sm font-medium text-slate-500">{label}</span>
@@ -103,8 +103,10 @@ function SimOption({ label, value }: any) {
     );
 }
 
-function ConsoleLine({ time, type, text }: any) {
-    const colors: any = {
+type ConsoleType = 'system' | 'io' | 'success' | 'tx' | 'error';
+
+function ConsoleLine({ time, type, text }: { time: string; type: ConsoleType; text: string }) {
+    const colors: Record<ConsoleType, string> = {
         system: 'text-blue-500',
         io: 'text-slate-500',
         success: 'text-emerald-500',

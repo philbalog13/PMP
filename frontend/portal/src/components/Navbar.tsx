@@ -21,14 +21,15 @@ import {
     Store,
     Tablet,
     BarChart,
-    ChevronDown,
     User,
     Shield
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { UserMenu } from './UserMenu';
-import { useState, useEffect, useRef } from 'react';
+import { useAuth } from '@shared/context/AuthContext';
 import { UserRole } from '@shared/types/user';
 import { normalizeRole } from '@shared/utils/roleUtils';
+import { APP_URLS, getRoleRedirectUrl } from '@shared/lib/app-urls';
 
 interface NavLink {
     name: string;
@@ -36,36 +37,40 @@ interface NavLink {
     icon: React.ComponentType<{ className?: string; size?: number }>;
 }
 
-// Navigation par rôle
+// Navigation par role
 const roleNavLinks: Record<string, NavLink[]> = {
     [UserRole.ETUDIANT]: [
-        { name: 'Mon Parcours', href: '/etudiant/dashboard', icon: GraduationCap },
-        { name: 'Ateliers', href: '/workshops', icon: BookOpen },
-        { name: 'Lab', href: '/lab', icon: Beaker },
-        { name: 'Documentation', href: '/documentation', icon: FileText },
+        { name: 'Mon Parcours', href: '/student', icon: GraduationCap },
+        { name: 'Cursus', href: '/student/cursus', icon: BookOpen },
+        { name: 'Security Labs', href: '/student/ctf', icon: Beaker },
+        { name: 'Quiz', href: '/student/quizzes', icon: ClipboardList },
+        { name: 'Badges', href: '/student/badges', icon: Shield },
+        { name: 'Transactions', href: '/student/transactions', icon: Receipt },
     ],
     [UserRole.FORMATEUR]: [
-        { name: 'Dashboard', href: '/formateur/dashboard', icon: LayoutDashboard },
+        { name: 'Dashboard', href: '/instructor', icon: LayoutDashboard },
+        { name: 'CTF', href: '/instructor/ctf', icon: Shield },
         { name: 'Étudiants', href: '/instructor/students', icon: Users },
         { name: 'Exercices', href: '/instructor/exercises', icon: ClipboardList },
         { name: 'Analytics', href: '/instructor/analytics', icon: BarChart },
         { name: 'Lab Control', href: '/instructor/lab-control', icon: Settings },
     ],
     [UserRole.CLIENT]: [
-        { name: 'Dashboard', href: 'http://localhost:3004', icon: Home },
-        { name: 'Mes Cartes', href: 'http://localhost:3004/cards', icon: CreditCard },
-        { name: 'Transactions', href: 'http://localhost:3004/transactions', icon: Receipt },
-        { name: 'Sécurité', href: 'http://localhost:3004/security', icon: Shield },
+        { name: 'Dashboard', href: APP_URLS.userCards, icon: Home },
+        { name: 'Payer', href: `${APP_URLS.userCards}/pay`, icon: Store },
+        { name: 'Mes Cartes', href: `${APP_URLS.userCards}/cards`, icon: CreditCard },
+        { name: 'Transactions', href: `${APP_URLS.userCards}/transactions`, icon: Receipt },
+        { name: 'Sécurité', href: `${APP_URLS.userCards}/security`, icon: Shield },
     ],
     [UserRole.MARCHAND]: [
-        { name: 'Dashboard', href: 'http://localhost:3001', icon: Store },
-        { name: 'Transactions', href: 'http://localhost:3001/transactions', icon: Receipt },
-        { name: 'Simulation', href: 'http://localhost:3001/simulation', icon: Tablet },
-        { name: 'Security Lab', href: 'http://localhost:3001/security-lab', icon: BarChart },
+        { name: 'Dashboard', href: '/merchant', icon: Store },
+        { name: 'Transactions', href: '/merchant/transactions', icon: Receipt },
+        { name: 'Terminal POS', href: '/merchant/pos', icon: Tablet },
+        { name: 'Rapports', href: '/merchant/reports', icon: BarChart },
     ],
 };
 
-// Couleurs par rôle
+// Couleurs par role
 const roleColors: Record<string, { bg: string; text: string; border: string; badge: string }> = {
     [UserRole.ETUDIANT]: {
         bg: 'from-emerald-500 to-green-600',
@@ -93,7 +98,7 @@ const roleColors: Record<string, { bg: string; text: string; border: string; bad
     },
 };
 
-// Labels français des rôles
+// Labels francais des roles
 const roleLabels: Record<string, string> = {
     [UserRole.ETUDIANT]: 'Étudiant',
     [UserRole.FORMATEUR]: 'Formateur',
@@ -101,7 +106,7 @@ const roleLabels: Record<string, string> = {
     [UserRole.MARCHAND]: 'Marchand',
 };
 
-// Icônes des rôles
+// Icones des roles
 const roleIcons: Record<string, React.ComponentType<{ className?: string; size?: number }>> = {
     [UserRole.ETUDIANT]: GraduationCap,
     [UserRole.FORMATEUR]: Shield,
@@ -109,58 +114,36 @@ const roleIcons: Record<string, React.ComponentType<{ className?: string; size?:
     [UserRole.MARCHAND]: Store,
 };
 
+function getRoleHomePath(role: UserRole | null): string {
+    return getRoleRedirectUrl(role);
+}
+
 export function Navbar() {
     const pathname = usePathname();
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-    const [user, setUser] = useState<any>(null);
-    const [role, setRole] = useState<UserRole | null>(null);
-    const userMenuRef = useRef<HTMLDivElement>(null);
+    const { user, isAuthenticated, isLoading, logout } = useAuth();
+
+    const normalizedRole = user?.role ? normalizeRole(user.role) : null;
 
     useEffect(() => {
         const handleScroll = () => setIsScrolled(window.scrollY > 20);
         window.addEventListener('scroll', handleScroll);
-
-        const storedUser = localStorage.getItem('user');
-        const storedRoleStr = localStorage.getItem('role');
-        if (storedUser) setUser(JSON.parse(storedUser));
-        if (storedRoleStr) {
-            const normalized = normalizeRole(storedRoleStr);
-            setRole(normalized);
-            // Sync normalized role back to localStorage if it was legacy
-            if (normalized !== storedRoleStr) {
-                localStorage.setItem('role', normalized);
-            }
-        }
-
-        // Fermer le menu utilisateur quand on clique ailleurs
-        const handleClickOutside = (event: MouseEvent) => {
-            if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
-                setIsUserMenuOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-
-        return () => {
-            window.removeEventListener('scroll', handleScroll);
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
+        return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
     // Pages d'auth - pas de navbar
-    const isAuthPage = pathname === '/login' || pathname === '/register';
+    const isAuthPage = pathname === '/login' || pathname === '/register' || pathname.startsWith('/auth/');
     if (isAuthPage) return null;
 
     const handleLogout = () => {
-        localStorage.clear();
-        document.cookie = 'token=; path=/; max-age=0';
+        logout();
+        setIsMobileMenuOpen(false);
         window.location.href = '/login';
     };
 
-    // Liens de navigation selon le rôle
-    const normalizedRole = normalizeRole(role);
-    const navLinks = normalizedRole && roleNavLinks[normalizedRole] ? roleNavLinks[normalizedRole] : [
+    // Liens de navigation selon le role
+    const navLinks = isAuthenticated && normalizedRole && roleNavLinks[normalizedRole] ? roleNavLinks[normalizedRole] : [
         { name: 'Documentation', href: '/documentation', icon: FileText },
         { name: 'Lab', href: '/lab', icon: Beaker },
         { name: 'Workshops', href: '/workshops', icon: BookOpen },
@@ -173,7 +156,7 @@ export function Navbar() {
         <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'backdrop-blur-xl bg-slate-900/80 border-b border-white/10 py-3' : 'bg-transparent py-5'}`}>
             <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
                 {/* Logo */}
-                <Link href={role ? (role === UserRole.ETUDIANT ? '/etudiant/dashboard' : role === UserRole.FORMATEUR ? '/formateur/dashboard' : role === UserRole.CLIENT ? 'http://localhost:3004' : 'http://localhost:3001') : '/'} className="flex items-center gap-3 group">
+                <Link href={getRoleHomePath(normalizedRole)} className="flex items-center gap-3 group">
                     <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${currentColors.bg} flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform`}>
                         <CreditCard className="w-5 h-5 text-white" />
                     </div>
@@ -186,7 +169,11 @@ export function Navbar() {
                 <div className="hidden md:flex items-center gap-1">
                     {navLinks.map((link) => {
                         const Icon = link.icon;
-                        const isActive = pathname === link.href || pathname.startsWith(link.href + '/');
+                        // Exact match for dashboard-level links, prefix match for sub-pages
+                        const isExactDashboard = link.href === '/student' || link.href === '/instructor';
+                        const isActive = isExactDashboard
+                            ? pathname === link.href
+                            : (pathname === link.href || pathname.startsWith(link.href + '/'));
                         return (
                             <Link
                                 key={link.href}
@@ -205,12 +192,15 @@ export function Navbar() {
 
                 {/* Auth / Profile */}
                 <div className="hidden md:flex items-center gap-4">
-                    {user && role ? (
+                    {isLoading ? (
+                        <div className="h-10 w-28 rounded-xl bg-slate-800/40 border border-white/5" />
+                    ) : isAuthenticated && user && normalizedRole ? (
                         <UserMenu
                             user={user}
-                            role={role}
+                            role={normalizedRole}
                             colors={currentColors}
                             roleLabels={roleLabels}
+                            onLogout={handleLogout}
                         />
                     ) : (
                         <Link
@@ -233,7 +223,7 @@ export function Navbar() {
                 <div className="md:hidden absolute top-full left-0 right-0 bg-slate-900 border-b border-white/10 p-6 animate-in slide-in-from-top duration-300">
                     <div className="flex flex-col gap-2">
                         {/* User Info Mobile */}
-                        {user && role && (
+                        {!isLoading && isAuthenticated && user && normalizedRole && (
                             <div className={`p-4 rounded-xl bg-slate-800/50 border ${currentColors.border} mb-4`}>
                                 <div className="flex items-center gap-3">
                                     <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${currentColors.bg} flex items-center justify-center`}>
@@ -241,10 +231,10 @@ export function Navbar() {
                                     </div>
                                     <div>
                                         <div className="text-sm font-medium text-white">
-                                            {user.firstName} {user.lastName}
+                                            {user.firstName || user.name || 'Utilisateur'} {user.lastName || ''}
                                         </div>
                                         <div className={`text-xs ${currentColors.text}`}>
-                                            {roleLabels[role]}
+                                            {roleLabels[normalizedRole]}
                                         </div>
                                     </div>
                                 </div>
@@ -254,7 +244,10 @@ export function Navbar() {
                         {/* Nav Links Mobile */}
                         {navLinks.map((link) => {
                             const Icon = link.icon;
-                            const isActive = pathname === link.href || pathname.startsWith(link.href + '/');
+                            const isExactDashboard = link.href === '/student' || link.href === '/instructor';
+                            const isActive = isExactDashboard
+                                ? pathname === link.href
+                                : (pathname === link.href || pathname.startsWith(link.href + '/'));
                             return (
                                 <Link
                                     key={link.href}
@@ -273,7 +266,7 @@ export function Navbar() {
 
                         {/* Logout/Login Mobile */}
                         <div className="pt-4 mt-4 border-t border-white/5">
-                            {user ? (
+                            {!isLoading && isAuthenticated ? (
                                 <button
                                     onClick={handleLogout}
                                     className="w-full flex items-center justify-center gap-2 p-3 bg-red-500/10 text-red-400 rounded-xl font-medium"

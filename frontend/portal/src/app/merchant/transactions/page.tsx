@@ -1,127 +1,276 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '../../auth/useAuth';
 import {
-    ArrowUpRight,
     ArrowDownLeft,
-    Search,
-    Filter,
-    Download,
-    Calendar,
-    CreditCard,
-    CheckCircle2,
-    Clock,
-    XCircle,
+    ArrowUpRight,
     ChevronDown,
-    Eye,
+    ChevronRight,
+    Download,
+    Filter,
+    GitBranch,
     RefreshCw,
-    RotateCcw
+    RotateCcw,
+    Search
 } from 'lucide-react';
-import Link from 'next/link';
+import { toRecord, toNumber, toText, formatMoney, formatDateTimeString, getCardBrand, getLastFour, mapStatus, mapType } from '@shared/lib/formatting';
+import StatusBadge from '@shared/components/StatusBadge';
 
-interface Transaction {
+interface MerchantTransaction {
     id: string;
-    type: 'sale' | 'refund' | 'void';
+    transactionId: string;
+    stan: string;
+    maskedPan: string;
     amount: number;
-    cardLastFour: string;
-    cardType: 'visa' | 'mastercard' | 'amex';
-    status: 'approved' | 'declined' | 'pending' | 'voided';
-    timestamp: string;
-    authCode: string;
-    terminalId: string;
-    rrn: string;
-    mcc: string;
+    currency: string;
+    type: string;
+    status: string;
     responseCode: string;
+    authorizationCode: string;
+    terminalId: string;
+    timestamp: string;
+    settledAt: string | null;
+    fraudScore: number | null;
+    threedsStatus: string | null;
+    eci: string | null;
 }
 
-const mockTransactions: Transaction[] = [
-    { id: '1', type: 'sale', amount: 89.90, cardLastFour: '4532', cardType: 'visa', status: 'approved', timestamp: '2024-01-15 14:32:05', authCode: 'A123B4', terminalId: 'POS-001', rrn: '123456789012', mcc: '5411', responseCode: '00' },
-    { id: '2', type: 'sale', amount: 45.50, cardLastFour: '8921', cardType: 'mastercard', status: 'approved', timestamp: '2024-01-15 14:28:12', authCode: 'B456C7', terminalId: 'POS-001', rrn: '123456789013', mcc: '5411', responseCode: '00' },
-    { id: '3', type: 'sale', amount: 156.00, cardLastFour: '3456', cardType: 'visa', status: 'declined', timestamp: '2024-01-15 14:15:45', authCode: '', terminalId: 'POS-002', rrn: '123456789014', mcc: '5411', responseCode: '51' },
-    { id: '4', type: 'refund', amount: 25.00, cardLastFour: '4532', cardType: 'visa', status: 'approved', timestamp: '2024-01-15 13:50:30', authCode: 'C789D0', terminalId: 'POS-001', rrn: '123456789015', mcc: '5411', responseCode: '00' },
-    { id: '5', type: 'sale', amount: 234.99, cardLastFour: '7654', cardType: 'mastercard', status: 'approved', timestamp: '2024-01-15 13:45:18', authCode: 'D012E3', terminalId: 'POS-002', rrn: '123456789016', mcc: '5411', responseCode: '00' },
-    { id: '6', type: 'sale', amount: 12.50, cardLastFour: '9876', cardType: 'visa', status: 'approved', timestamp: '2024-01-15 13:30:00', authCode: 'E345F6', terminalId: 'POS-001', rrn: '123456789017', mcc: '5411', responseCode: '00' },
-    { id: '7', type: 'sale', amount: 78.00, cardLastFour: '5432', cardType: 'mastercard', status: 'pending', timestamp: '2024-01-15 13:28:45', authCode: '', terminalId: 'POS-002', rrn: '123456789018', mcc: '5411', responseCode: '' },
-    { id: '8', type: 'void', amount: 45.50, cardLastFour: '8921', cardType: 'mastercard', status: 'voided', timestamp: '2024-01-15 13:00:00', authCode: 'F678G9', terminalId: 'POS-001', rrn: '123456789019', mcc: '5411', responseCode: '00' },
-    { id: '9', type: 'sale', amount: 567.00, cardLastFour: '1234', cardType: 'amex', status: 'approved', timestamp: '2024-01-15 12:45:30', authCode: 'G901H2', terminalId: 'POS-001', rrn: '123456789020', mcc: '5411', responseCode: '00' },
-    { id: '10', type: 'sale', amount: 33.25, cardLastFour: '6789', cardType: 'visa', status: 'declined', timestamp: '2024-01-15 12:30:15', authCode: '', terminalId: 'POS-002', rrn: '123456789021', mcc: '5411', responseCode: '14' },
-];
+interface GenerationSummary {
+    createdTransactions: number;
+    approvedTransactions: number;
+    declinedTransactions: number;
+    refunds: number;
+    voids: number;
+}
+
+const normalizeTransactions = (rawList: unknown): MerchantTransaction[] => {
+    if (!Array.isArray(rawList)) return [];
+
+    return rawList.map((item) => {
+        const row = toRecord(item);
+        return {
+            id: toText(row.id),
+            transactionId: toText(row.transaction_id || row.transactionId),
+            stan: toText(row.stan),
+            maskedPan: toText(row.masked_pan || row.maskedPan, '****'),
+            amount: toNumber(row.amount),
+            currency: toText(row.currency, 'EUR'),
+            type: toText(row.type, 'PURCHASE'),
+            status: toText(row.status, 'PENDING'),
+            responseCode: toText(row.response_code || row.responseCode, ''),
+            authorizationCode: toText(row.authorization_code || row.authorizationCode, ''),
+            terminalId: toText(row.terminal_id || row.terminalId, '-'),
+            timestamp: toText(row.timestamp),
+            settledAt: row.settled_at ? toText(row.settled_at) : null,
+            fraudScore: row.fraud_score != null ? toNumber(row.fraud_score) : null,
+            threedsStatus: row.threeds_status ? toText(row.threeds_status) : null,
+            eci: row.eci ? toText(row.eci) : null
+        };
+    });
+};
+
+const isDev = process.env.NODE_ENV === 'development';
 
 export default function MerchantTransactionsPage() {
+    const router = useRouter();
     const { isLoading } = useAuth(true);
-    const [transactions] = useState<Transaction[]>(mockTransactions);
+    const [transactions, setTransactions] = useState<MerchantTransaction[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [typeFilter, setTypeFilter] = useState<string>('all');
     const [terminalFilter, setTerminalFilter] = useState<string>('all');
     const [isFilterOpen, setIsFilterOpen] = useState(false);
-    const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
+    const [selectedTx, setSelectedTx] = useState<MerchantTransaction | null>(null);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [generationSummary, setGenerationSummary] = useState<GenerationSummary | null>(null);
 
-    // Filter transactions
-    const filteredTransactions = transactions.filter(tx => {
-        const matchesSearch = tx.cardLastFour.includes(searchTerm) ||
-            tx.authCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            tx.rrn.includes(searchTerm);
-        const matchesStatus = statusFilter === 'all' || tx.status === statusFilter;
-        const matchesType = typeFilter === 'all' || tx.type === typeFilter;
-        const matchesTerminal = terminalFilter === 'all' || tx.terminalId === terminalFilter;
-        return matchesSearch && matchesStatus && matchesType && matchesTerminal;
-    });
+    const fetchTransactions = useCallback(async () => {
+        const token = localStorage.getItem('token');
+        const response = await fetch('/api/merchant/transactions?limit=300&page=1', {
+            headers: { Authorization: `Bearer ${token}` }
+        });
 
-    // Calculate stats
-    const totalSales = filteredTransactions
-        .filter(tx => tx.type === 'sale' && tx.status === 'approved')
-        .reduce((acc, tx) => acc + tx.amount, 0);
-    const totalRefunds = filteredTransactions
-        .filter(tx => tx.type === 'refund' && tx.status === 'approved')
-        .reduce((acc, tx) => acc + tx.amount, 0);
+        if (!response.ok) {
+            throw new Error('Impossible de charger les transactions');
+        }
 
-    const getStatusBadge = (status: string) => {
-        switch (status) {
-            case 'approved':
-                return (
-                    <span className="px-2 py-1 bg-emerald-500/20 text-emerald-400 text-xs rounded-full flex items-center gap-1">
-                        <CheckCircle2 size={12} /> Approuvée
-                    </span>
-                );
-            case 'pending':
-                return (
-                    <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 text-xs rounded-full flex items-center gap-1">
-                        <Clock size={12} /> En attente
-                    </span>
-                );
-            case 'declined':
-                return (
-                    <span className="px-2 py-1 bg-red-500/20 text-red-400 text-xs rounded-full flex items-center gap-1">
-                        <XCircle size={12} /> Refusée
-                    </span>
-                );
-            case 'voided':
-                return (
-                    <span className="px-2 py-1 bg-slate-500/20 text-slate-400 text-xs rounded-full flex items-center gap-1">
-                        <RotateCcw size={12} /> Annulée
-                    </span>
-                );
-            default:
-                return null;
+        const payload = await response.json();
+        setTransactions(normalizeTransactions(payload.transactions));
+    }, []);
+
+    const refreshTransactions = useCallback(async () => {
+        try {
+            setIsRefreshing(true);
+            await fetchTransactions();
+            setError(null);
+        } catch (fetchError: any) {
+            setError(fetchError.message || 'Erreur de chargement');
+        } finally {
+            setLoading(false);
+            setIsRefreshing(false);
+        }
+    }, [fetchTransactions]);
+
+    useEffect(() => {
+        if (isLoading) return;
+        refreshTransactions();
+    }, [isLoading, refreshTransactions]);
+
+    const generateRealHistory = async () => {
+        try {
+            setIsGenerating(true);
+            setError(null);
+            const token = localStorage.getItem('token');
+            const response = await fetch('/api/merchant/account/generate-history', {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    days: 21,
+                    transactionsPerDay: 10,
+                    includeRefunds: true,
+                    includeVoids: true,
+                    includeSettlements: true,
+                    includePayouts: true
+                })
+            });
+
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(payload.error || 'Échec génération historique');
+            }
+
+            const summary = toRecord(payload.summary);
+            setGenerationSummary({
+                createdTransactions: toNumber(summary.createdTransactions),
+                approvedTransactions: toNumber(summary.approvedTransactions),
+                declinedTransactions: toNumber(summary.declinedTransactions),
+                refunds: toNumber(summary.refunds),
+                voids: toNumber(summary.voids)
+            });
+
+            await refreshTransactions();
+        } catch (historyError: any) {
+            setError(historyError.message || 'Erreur génération historique');
+        } finally {
+            setIsGenerating(false);
         }
     };
 
-    const getTypeBadge = (type: string) => {
-        switch (type) {
-            case 'sale':
-                return <span className="text-emerald-400">Vente</span>;
-            case 'refund':
-                return <span className="text-red-400">Remboursement</span>;
-            case 'void':
-                return <span className="text-slate-400">Annulation</span>;
-            default:
-                return null;
+    const performRefund = async (tx: MerchantTransaction) => {
+        try {
+            const typedAmount = window.prompt('Montant du remboursement (laisser vide = total)', tx.amount.toFixed(2));
+            if (typedAmount === null) return;
+            const parsedAmount = typedAmount.trim() === '' ? tx.amount : Number(typedAmount.replace(',', '.'));
+            if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+                setError('Montant de remboursement invalide');
+                return;
+            }
+
+            const token = localStorage.getItem('token');
+            const response = await fetch(`/api/merchant/transactions/${tx.id}/refund`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    amount: parsedAmount,
+                    reason: 'Remboursement manuel depuis portail'
+                })
+            });
+
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(payload.error || 'Échec du remboursement');
+            }
+
+            await refreshTransactions();
+            setSelectedTx(null);
+        } catch (refundError: any) {
+            setError(refundError.message || 'Erreur remboursement');
         }
     };
 
-    if (isLoading) {
+    const performVoid = async (tx: MerchantTransaction) => {
+        try {
+            const confirmVoid = window.confirm('Annuler cette transaction ?');
+            if (!confirmVoid) return;
+
+            const token = localStorage.getItem('token');
+            const response = await fetch(`/api/merchant/transactions/${tx.id}/void`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    reason: 'Annulation manuelle depuis portail'
+                })
+            });
+
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(payload.error || 'Échec de l’annulation');
+            }
+
+            await refreshTransactions();
+            setSelectedTx(null);
+        } catch (voidError: any) {
+            setError(voidError.message || 'Erreur annulation');
+        }
+    };
+
+    const filteredTransactions = useMemo(() => {
+        return transactions.filter((tx) => {
+            const mappedStatus = mapStatus(tx.status);
+            const mappedType = mapType(tx.type);
+
+            const searchableText = [
+                tx.transactionId,
+                tx.stan,
+                tx.maskedPan,
+                tx.authorizationCode,
+                tx.terminalId
+            ].join(' ').toLowerCase();
+
+            const matchesSearch = searchableText.includes(searchTerm.toLowerCase());
+            const matchesStatus = statusFilter === 'all' || mappedStatus === statusFilter;
+            const matchesType = typeFilter === 'all' || mappedType === typeFilter;
+            const matchesTerminal = terminalFilter === 'all' || tx.terminalId === terminalFilter;
+
+            return matchesSearch && matchesStatus && matchesType && matchesTerminal;
+        });
+    }, [transactions, searchTerm, statusFilter, typeFilter, terminalFilter]);
+
+    const stats = useMemo(() => {
+        const totalSales = filteredTransactions
+            .filter((tx) => mapType(tx.type) === 'sale' && mapStatus(tx.status) === 'approved')
+            .reduce((sum, tx) => sum + tx.amount, 0);
+        const totalRefunds = filteredTransactions
+            .filter((tx) => mapType(tx.type) === 'refund' && mapStatus(tx.status) === 'approved')
+            .reduce((sum, tx) => sum + tx.amount, 0);
+
+        return {
+            totalSales,
+            totalRefunds,
+            net: totalSales - totalRefunds
+        };
+    }, [filteredTransactions]);
+
+    const terminals = useMemo(() => {
+        return Array.from(new Set(transactions.map((tx) => tx.terminalId).filter(Boolean)));
+    }, [transactions]);
+
+    if (isLoading || loading) {
         return (
             <div className="min-h-screen bg-slate-950 flex items-center justify-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
@@ -132,45 +281,61 @@ export default function MerchantTransactionsPage() {
     return (
         <div className="min-h-screen bg-slate-950 pt-24 pb-12">
             <div className="max-w-7xl mx-auto px-6">
-                {/* Header */}
                 <div className="flex items-center justify-between mb-8">
                     <div>
-                        <h1 className="text-3xl font-bold text-white mb-2">Transactions</h1>
-                        <p className="text-slate-400">
-                            Historique complet de vos encaissements
-                        </p>
+                        <div className="text-xs text-slate-500 mb-2">
+                            <Link href="/merchant" className="hover:text-purple-400">Dashboard Marchand</Link>
+                            <ChevronRight size={12} className="inline mx-1" />
+                            <span className="text-purple-400">Transactions</span>
+                        </div>
+                        <h1 className="text-3xl font-bold text-white mb-2">Transactions réelles</h1>
+                        <p className="text-slate-400">Historique réel alimenté par la base transactionnelle.</p>
                     </div>
                     <div className="flex items-center gap-3">
-                        <button className="flex items-center gap-2 px-4 py-2 bg-slate-800 border border-white/10 text-white rounded-xl hover:bg-slate-700 transition-colors">
-                            <RefreshCw size={18} />
+                        <button
+                            onClick={refreshTransactions}
+                            className="flex items-center gap-2 px-4 py-2 bg-slate-800 border border-white/10 text-white rounded-xl hover:bg-slate-700"
+                        >
+                            <RefreshCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
                             Actualiser
                         </button>
-                        <button className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition-colors">
-                            <Download size={18} />
-                            Export CSV
-                        </button>
+                        {isDev && (
+                            <button
+                                onClick={generateRealHistory}
+                                disabled={isGenerating}
+                                className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-white rounded-xl hover:bg-purple-600 disabled:opacity-60"
+                            >
+                                <Download size={18} />
+                                {isGenerating ? 'Génération...' : 'Générer historique réel'}
+                            </button>
+                        )}
                     </div>
                 </div>
 
-                {/* Stats */}
+                {error && (
+                    <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-sm">
+                        {error}
+                    </div>
+                )}
+
+                {isDev && generationSummary && (
+                    <div className="mb-6 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-200 text-sm">
+                        Historique créé: {generationSummary.createdTransactions} transactions ({generationSummary.approvedTransactions} approuvées, {generationSummary.declinedTransactions} refusées), {generationSummary.refunds} remboursements, {generationSummary.voids} annulations.
+                    </div>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                     <div className="bg-slate-800/50 border border-white/10 rounded-xl p-4">
                         <p className="text-sm text-slate-400 mb-1">Total ventes</p>
-                        <p className="text-2xl font-bold text-emerald-400">
-                            +{totalSales.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} EUR
-                        </p>
+                        <p className="text-2xl font-bold text-emerald-400">+{formatMoney(stats.totalSales)}</p>
                     </div>
                     <div className="bg-slate-800/50 border border-white/10 rounded-xl p-4">
                         <p className="text-sm text-slate-400 mb-1">Total remboursements</p>
-                        <p className="text-2xl font-bold text-red-400">
-                            -{totalRefunds.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} EUR
-                        </p>
+                        <p className="text-2xl font-bold text-red-400">-{formatMoney(stats.totalRefunds)}</p>
                     </div>
                     <div className="bg-slate-800/50 border border-white/10 rounded-xl p-4">
                         <p className="text-sm text-slate-400 mb-1">Net</p>
-                        <p className="text-2xl font-bold text-white">
-                            {(totalSales - totalRefunds).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} EUR
-                        </p>
+                        <p className="text-2xl font-bold text-white">{formatMoney(stats.net)}</p>
                     </div>
                     <div className="bg-slate-800/50 border border-white/10 rounded-xl p-4">
                         <p className="text-sm text-slate-400 mb-1">Transactions</p>
@@ -178,22 +343,21 @@ export default function MerchantTransactionsPage() {
                     </div>
                 </div>
 
-                {/* Search & Filters */}
                 <div className="flex flex-col md:flex-row gap-4 mb-6">
                     <div className="relative flex-1">
                         <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input
                             type="text"
-                            placeholder="Rechercher par carte, auth code ou RRN..."
+                            placeholder="Rechercher par ID, STAN, carte, auth code..."
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onChange={(event) => setSearchTerm(event.target.value)}
                             className="w-full pl-12 pr-4 py-3 bg-slate-800/50 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
                         />
                     </div>
 
                     <button
-                        onClick={() => setIsFilterOpen(!isFilterOpen)}
-                        className="flex items-center gap-2 px-4 py-3 bg-slate-800/50 border border-white/10 rounded-xl text-white hover:bg-slate-700 transition-colors"
+                        onClick={() => setIsFilterOpen((current) => !current)}
+                        className="flex items-center gap-2 px-4 py-3 bg-slate-800/50 border border-white/10 rounded-xl text-white hover:bg-slate-700"
                     >
                         <Filter size={18} />
                         Filtres
@@ -201,29 +365,28 @@ export default function MerchantTransactionsPage() {
                     </button>
                 </div>
 
-                {/* Filter Panel */}
                 {isFilterOpen && (
                     <div className="bg-slate-800/50 border border-white/10 rounded-xl p-4 mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label className="text-sm text-slate-400 mb-2 block">Statut</label>
                             <select
                                 value={statusFilter}
-                                onChange={(e) => setStatusFilter(e.target.value)}
-                                className="w-full px-4 py-2 bg-slate-900 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                                onChange={(event) => setStatusFilter(event.target.value)}
+                                className="w-full px-4 py-2 bg-slate-900 border border-white/10 rounded-lg text-white"
                             >
                                 <option value="all">Tous</option>
                                 <option value="approved">Approuvée</option>
                                 <option value="pending">En attente</option>
                                 <option value="declined">Refusée</option>
-                                <option value="voided">Annulée</option>
+                                <option value="voided">Annulée / Remboursée</option>
                             </select>
                         </div>
                         <div>
                             <label className="text-sm text-slate-400 mb-2 block">Type</label>
                             <select
                                 value={typeFilter}
-                                onChange={(e) => setTypeFilter(e.target.value)}
-                                className="w-full px-4 py-2 bg-slate-900 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                                onChange={(event) => setTypeFilter(event.target.value)}
+                                className="w-full px-4 py-2 bg-slate-900 border border-white/10 rounded-lg text-white"
                             >
                                 <option value="all">Tous</option>
                                 <option value="sale">Vente</option>
@@ -235,20 +398,19 @@ export default function MerchantTransactionsPage() {
                             <label className="text-sm text-slate-400 mb-2 block">Terminal</label>
                             <select
                                 value={terminalFilter}
-                                onChange={(e) => setTerminalFilter(e.target.value)}
-                                className="w-full px-4 py-2 bg-slate-900 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                                onChange={(event) => setTerminalFilter(event.target.value)}
+                                className="w-full px-4 py-2 bg-slate-900 border border-white/10 rounded-lg text-white"
                             >
                                 <option value="all">Tous</option>
-                                <option value="POS-001">POS-001</option>
-                                <option value="POS-002">POS-002</option>
+                                {terminals.map((terminalId) => (
+                                    <option key={terminalId} value={terminalId}>{terminalId}</option>
+                                ))}
                             </select>
                         </div>
                     </div>
                 )}
 
-                {/* Transactions Table */}
                 <div className="bg-slate-800/50 border border-white/10 rounded-2xl overflow-hidden">
-                    {/* Table Header */}
                     <div className="hidden lg:grid grid-cols-12 gap-4 p-4 border-b border-white/10 text-sm text-slate-400 font-medium">
                         <div className="col-span-2">Type</div>
                         <div className="col-span-2">Carte</div>
@@ -258,152 +420,123 @@ export default function MerchantTransactionsPage() {
                         <div className="col-span-2 text-right">Montant</div>
                     </div>
 
-                    {/* Transactions */}
-                    {filteredTransactions.map((tx, index) => (
-                        <div
-                            key={tx.id}
-                            onClick={() => setSelectedTx(tx)}
-                            className={`grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 hover:bg-white/5 transition-colors cursor-pointer items-center ${
-                                index !== 0 ? 'border-t border-white/5' : ''
-                            }`}
-                        >
-                            {/* Type */}
-                            <div className="lg:col-span-2 flex items-center gap-3">
-                                <div className={`p-2 rounded-lg ${
-                                    tx.type === 'refund' ? 'bg-red-500/20' :
-                                    tx.type === 'void' ? 'bg-slate-500/20' : 'bg-emerald-500/20'
-                                }`}>
-                                    {tx.type === 'refund' ? (
-                                        <ArrowDownLeft size={16} className="text-red-400" />
-                                    ) : tx.type === 'void' ? (
-                                        <RotateCcw size={16} className="text-slate-400" />
-                                    ) : (
-                                        <ArrowUpRight size={16} className="text-emerald-400" />
+                    {filteredTransactions.map((tx, index) => {
+                        const txType = mapType(tx.type);
+                        const txStatus = mapStatus(tx.status);
+                        return (
+                            <div
+                                key={tx.id}
+                                onClick={() => setSelectedTx(tx)}
+                                className={`grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 hover:bg-white/5 transition-colors cursor-pointer items-center ${index !== 0 ? 'border-t border-white/5' : ''}`}
+                            >
+                                <div className="lg:col-span-2 flex items-center gap-3">
+                                    <div className={`p-2 rounded-lg ${txType === 'refund' ? 'bg-red-500/20' : txType === 'void' ? 'bg-slate-500/20' : 'bg-emerald-500/20'}`}>
+                                        {txType === 'refund' ? (
+                                            <ArrowDownLeft size={16} className="text-red-400" />
+                                        ) : txType === 'void' ? (
+                                            <RotateCcw size={16} className="text-slate-400" />
+                                        ) : (
+                                            <ArrowUpRight size={16} className="text-emerald-400" />
+                                        )}
+                                    </div>
+                                    <span className={txType === 'refund' ? 'text-red-400' : txType === 'void' ? 'text-slate-300' : 'text-emerald-400'}>
+                                        {txType === 'refund' ? 'Remboursement' : txType === 'void' ? 'Annulation' : 'Vente'}
+                                    </span>
+                                </div>
+
+                                <div className="lg:col-span-2">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs px-1.5 py-0.5 rounded bg-slate-700 text-slate-300">
+                                            {getCardBrand(tx.maskedPan)}
+                                        </span>
+                                        <span className="text-white font-mono">•••• {getLastFour(tx.maskedPan)}</span>
+                                    </div>
+                                </div>
+
+                                <div className="lg:col-span-2 text-slate-300 text-sm">{formatDateTimeString(tx.timestamp)}</div>
+                                <div className="lg:col-span-2"><span className="text-white font-mono text-sm">{tx.terminalId}</span></div>
+                                <div className="lg:col-span-2"><StatusBadge status={tx.status} /></div>
+
+                                <div className="lg:col-span-2 text-right">
+                                    <p className={`font-semibold ${txType === 'refund' || txStatus === 'voided' ? 'text-red-400' : 'text-white'}`}>
+                                        {txType === 'refund' || txStatus === 'voided' ? '-' : '+'}
+                                        {formatMoney(tx.amount, tx.currency)}
+                                    </p>
+                                    {tx.authorizationCode && (
+                                        <span className="text-xs text-slate-500 font-mono">{tx.authorizationCode}</span>
                                     )}
                                 </div>
-                                {getTypeBadge(tx.type)}
                             </div>
-
-                            {/* Card */}
-                            <div className="lg:col-span-2">
-                                <div className="flex items-center gap-2">
-                                    <span className={`text-xs px-1.5 py-0.5 rounded ${
-                                        tx.cardType === 'visa' ? 'bg-blue-500/20 text-blue-400' :
-                                        tx.cardType === 'mastercard' ? 'bg-orange-500/20 text-orange-400' :
-                                        'bg-slate-500/20 text-slate-400'
-                                    }`}>
-                                        {tx.cardType.toUpperCase()}
-                                    </span>
-                                    <span className="text-white font-mono">•••• {tx.cardLastFour}</span>
-                                </div>
-                            </div>
-
-                            {/* Timestamp */}
-                            <div className="lg:col-span-2 text-slate-300 text-sm">
-                                {tx.timestamp}
-                            </div>
-
-                            {/* Terminal */}
-                            <div className="lg:col-span-2">
-                                <span className="text-white font-mono text-sm">{tx.terminalId}</span>
-                            </div>
-
-                            {/* Status */}
-                            <div className="lg:col-span-2">
-                                {getStatusBadge(tx.status)}
-                            </div>
-
-                            {/* Amount */}
-                            <div className="lg:col-span-2 text-right">
-                                <p className={`font-semibold ${
-                                    tx.type === 'refund' || tx.type === 'void' ? 'text-red-400' : 'text-white'
-                                }`}>
-                                    {tx.type === 'refund' || tx.type === 'void' ? '-' : '+'}
-                                    {tx.amount.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} EUR
-                                </p>
-                                {tx.authCode && (
-                                    <span className="text-xs text-slate-500 font-mono">
-                                        {tx.authCode}
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                    ))}
+                        );
+                    })}
 
                     {filteredTransactions.length === 0 && (
-                        <div className="p-12 text-center">
-                            <Search size={48} className="text-slate-600 mx-auto mb-4" />
-                            <p className="text-slate-400">Aucune transaction trouvée</p>
-                        </div>
+                        <div className="p-12 text-center text-slate-400">Aucune transaction trouvée</div>
                     )}
                 </div>
 
-                {/* Transaction Detail Modal */}
                 {selectedTx && (
                     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                         <div className="bg-slate-800 border border-white/10 rounded-2xl p-6 w-full max-w-lg">
                             <div className="flex items-center justify-between mb-6">
                                 <h2 className="text-xl font-bold text-white">Détail transaction</h2>
-                                <button
-                                    onClick={() => setSelectedTx(null)}
-                                    className="text-slate-400 hover:text-white"
-                                >
-                                    ✕
-                                </button>
+                                <button onClick={() => setSelectedTx(null)} className="text-slate-400 hover:text-white">✕</button>
                             </div>
 
-                            <div className="space-y-4">
+                            <div className="space-y-3 text-sm">
+                                <div className="flex justify-between py-2 border-b border-white/5"><span className="text-slate-400">Transaction ID</span><span className="text-white font-mono">{selectedTx.transactionId}</span></div>
+                                <div className="flex justify-between py-2 border-b border-white/5"><span className="text-slate-400">Montant</span><span className="text-white font-bold">{formatMoney(selectedTx.amount, selectedTx.currency)}</span></div>
+                                <div className="flex justify-between py-2 border-b border-white/5"><span className="text-slate-400">Carte</span><span className="text-white font-mono">{selectedTx.maskedPan}</span></div>
+                                <div className="flex justify-between py-2 border-b border-white/5"><span className="text-slate-400">Statut</span><StatusBadge status={selectedTx.status} /></div>
+                                <div className="flex justify-between py-2 border-b border-white/5"><span className="text-slate-400">Code réponse</span><span className="text-white font-mono">{selectedTx.responseCode || '-'}</span></div>
+                                <div className="flex justify-between py-2 border-b border-white/5"><span className="text-slate-400">Auth code</span><span className="text-white font-mono">{selectedTx.authorizationCode || '-'}</span></div>
+                                <div className="flex justify-between py-2 border-b border-white/5"><span className="text-slate-400">STAN</span><span className="text-white font-mono">{selectedTx.stan || '-'}</span></div>
+                                <div className="flex justify-between py-2 border-b border-white/5"><span className="text-slate-400">Terminal</span><span className="text-white font-mono">{selectedTx.terminalId}</span></div>
+                                <div className="flex justify-between py-2 border-b border-white/5"><span className="text-slate-400">Date</span><span className="text-white">{formatDateTimeString(selectedTx.timestamp)}</span></div>
+                                <div className="flex justify-between py-2 border-b border-white/5"><span className="text-slate-400">Settled at</span><span className="text-white">{selectedTx.settledAt ? formatDateTimeString(selectedTx.settledAt) : '-'}</span></div>
                                 <div className="flex justify-between py-2 border-b border-white/5">
-                                    <span className="text-slate-400">Type</span>
-                                    <span className="text-white">{getTypeBadge(selectedTx.type)}</span>
-                                </div>
-                                <div className="flex justify-between py-2 border-b border-white/5">
-                                    <span className="text-slate-400">Montant</span>
-                                    <span className="text-white font-bold">
-                                        {selectedTx.amount.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} EUR
+                                    <span className="text-slate-400">Fraud Score</span>
+                                    <span className={`font-mono font-bold ${selectedTx.fraudScore != null ? (selectedTx.fraudScore < 30 ? 'text-emerald-400' : selectedTx.fraudScore < 60 ? 'text-amber-400' : 'text-red-400') : 'text-white'}`}>
+                                        {selectedTx.fraudScore != null ? selectedTx.fraudScore : '-'}
                                     </span>
                                 </div>
                                 <div className="flex justify-between py-2 border-b border-white/5">
-                                    <span className="text-slate-400">Carte</span>
-                                    <span className="text-white font-mono">•••• {selectedTx.cardLastFour}</span>
-                                </div>
-                                <div className="flex justify-between py-2 border-b border-white/5">
-                                    <span className="text-slate-400">Réseau</span>
-                                    <span className="text-white">{selectedTx.cardType.toUpperCase()}</span>
-                                </div>
-                                <div className="flex justify-between py-2 border-b border-white/5">
-                                    <span className="text-slate-400">Statut</span>
-                                    {getStatusBadge(selectedTx.status)}
-                                </div>
-                                <div className="flex justify-between py-2 border-b border-white/5">
-                                    <span className="text-slate-400">Code réponse</span>
-                                    <span className="text-white font-mono">{selectedTx.responseCode || '-'}</span>
-                                </div>
-                                <div className="flex justify-between py-2 border-b border-white/5">
-                                    <span className="text-slate-400">Auth Code</span>
-                                    <span className="text-white font-mono">{selectedTx.authCode || '-'}</span>
-                                </div>
-                                <div className="flex justify-between py-2 border-b border-white/5">
-                                    <span className="text-slate-400">RRN</span>
-                                    <span className="text-white font-mono">{selectedTx.rrn}</span>
-                                </div>
-                                <div className="flex justify-between py-2 border-b border-white/5">
-                                    <span className="text-slate-400">Terminal</span>
-                                    <span className="text-white font-mono">{selectedTx.terminalId}</span>
+                                    <span className="text-slate-400">3DS Status</span>
+                                    <span className={`text-xs px-2 py-0.5 rounded font-bold ${selectedTx.threedsStatus === 'Y' ? 'bg-emerald-500/20 text-emerald-400' : selectedTx.threedsStatus === 'N' ? 'bg-red-500/20 text-red-400' : 'text-white'}`}>
+                                        {selectedTx.threedsStatus || '-'}
+                                    </span>
                                 </div>
                                 <div className="flex justify-between py-2">
-                                    <span className="text-slate-400">Date/Heure</span>
-                                    <span className="text-white">{selectedTx.timestamp}</span>
+                                    <span className="text-slate-400">ECI</span>
+                                    <span className="text-white font-mono">{selectedTx.eci || '-'}</span>
                                 </div>
                             </div>
 
-                            {selectedTx.status === 'approved' && selectedTx.type === 'sale' && (
-                                <div className="mt-6 flex gap-3">
-                                    <button className="flex-1 py-3 bg-red-500/20 text-red-400 rounded-xl hover:bg-red-500/30 transition-colors">
+                            <button
+                                onClick={() => {
+                                    const txId = selectedTx.id;
+                                    setSelectedTx(null);
+                                    router.push(`/merchant/transactions/${txId}/timeline`);
+                                }}
+                                className="w-full mt-4 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-violet-600 text-white font-bold hover:from-purple-500 hover:to-violet-500 transition flex items-center justify-center gap-2"
+                            >
+                                <GitBranch size={18} />
+                                Voir la Timeline Interactive
+                            </button>
+
+                            {mapStatus(selectedTx.status) === 'approved' && mapType(selectedTx.type) === 'sale' && (
+                                <div className="mt-3 flex gap-3">
+                                    <button
+                                        onClick={() => performRefund(selectedTx)}
+                                        className="flex-1 py-3 bg-red-500/20 text-red-400 rounded-xl hover:bg-red-500/30"
+                                    >
                                         Rembourser
                                     </button>
-                                    <button className="flex-1 py-3 bg-slate-700 text-white rounded-xl hover:bg-slate-600 transition-colors">
-                                        Imprimer ticket
+                                    <button
+                                        onClick={() => performVoid(selectedTx)}
+                                        className="flex-1 py-3 bg-slate-700 text-white rounded-xl hover:bg-slate-600"
+                                    >
+                                        Annuler (void)
                                     </button>
                                 </div>
                             )}
@@ -414,3 +547,4 @@ export default function MerchantTransactionsPage() {
         </div>
     );
 }
+

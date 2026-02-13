@@ -61,7 +61,9 @@ export const config = {
         simFraudDetection: process.env.SIM_FRAUD_DETECTION_URL || 'http://localhost:8007',
         cryptoService: process.env.CRYPTO_SERVICE_URL || 'http://localhost:8010',
         hsmSimulator: process.env.HSM_SIMULATOR_URL || 'http://localhost:8011',
-        keyManagement: process.env.KEY_MANAGEMENT_URL || 'http://localhost:8012'
+        keyManagement: process.env.KEY_MANAGEMENT_URL || 'http://localhost:8012',
+        acsSimulator: process.env.ACS_SIMULATOR_URL || 'http://localhost:8013',
+        tokenizationService: process.env.TOKENIZATION_URL || 'http://localhost:8014'
     },
 
     circuitBreaker: {

@@ -51,7 +51,7 @@ export default function AnalyzePage() {
     );
 }
 
-function LogRow({ time, service, level, msg, trace, isError }: any) {
+function LogRow({ time, service, level, msg, trace, isError }: { time: string; service: string; level: string; msg: string; trace: string; isError?: boolean }) {
     return (
         <tr className="hover:bg-white/5 transition">
             <td className="p-4 font-mono text-slate-400 text-sm flex items-center gap-2">
@@ -61,7 +61,7 @@ function LogRow({ time, service, level, msg, trace, isError }: any) {
             <td className="p-4">
                 {isError ?
                     <span className="text-red-400 flex items-center gap-1 text-xs font-bold"><AlertCircle size={14} /> ERROR</span> :
-                    <span className="text-green-400 flex items-center gap-1 text-xs font-bold"><CheckCircle size={14} /> INFO</span>
+                    <span className="text-green-400 flex items-center gap-1 text-xs font-bold"><CheckCircle size={14} /> {level}</span>
                 }
             </td>
             <td className="p-4 text-slate-300">{msg}</td>

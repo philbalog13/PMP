@@ -363,7 +363,7 @@ export default function HSMKeysWorkshopPage() {
                                     Avertissement
                                 </div>
                                 <p className="text-xs text-slate-400">
-                                    Les clés présentées sont des exemples pédagogiques. Ne jamais utiliser de vraies clés en dehors d'un environnement sécurisé.
+                                    Les clés présentées sont des exemples pédagogiques. Ne jamais utiliser de vraies clés en dehors d&apos;un environnement sécurisé.
                                 </p>
                             </div>
                         </div>
@@ -415,7 +415,7 @@ export default function HSMKeysWorkshopPage() {
                                     className="px-6 py-3 bg-green-600 hover:bg-green-500 rounded-xl font-bold flex items-center gap-2 transition-colors"
                                 >
                                     <CheckCircle size={18} />
-                                    Terminer l'atelier
+                                    Terminer l&apos;atelier
                                 </Link>
                             ) : (
                                 <button

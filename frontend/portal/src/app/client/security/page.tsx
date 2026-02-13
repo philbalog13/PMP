@@ -7,19 +7,12 @@ import {
     ShieldCheck,
     ShieldAlert,
     CreditCard,
-    Smartphone,
-    Lock,
-    Unlock,
     Globe,
     Wifi,
     ShoppingBag,
     AlertTriangle,
     CheckCircle2,
-    XCircle,
     ChevronRight,
-    Settings,
-    Bell,
-    Key
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -64,7 +57,7 @@ const normalizeCard = (raw: unknown): CardSecurity => {
 };
 
 export default function ClientSecurityPage() {
-    const { user, isLoading } = useAuth(true);
+    const { isLoading } = useAuth(true);
     const [cards, setCards] = useState<CardSecurity[]>([]);
     const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -284,7 +277,7 @@ export default function ClientSecurityPage() {
                                             <Globe className="w-5 h-5 text-amber-400" />
                                             <div>
                                                 <p className="text-sm font-medium text-white">International</p>
-                                                <p className="text-xs text-slate-400">Paiements à l'étranger</p>
+                                                <p className="text-xs text-slate-400">Paiements à l&apos;étranger</p>
                                             </div>
                                         </div>
                                         <button
@@ -354,7 +347,7 @@ export default function ClientSecurityPage() {
                         </li>
                         <li className="flex items-start gap-2">
                             <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
-                            <span>Configurez l'authentification à deux facteurs pour votre compte</span>
+                            <span>Configurez l&apos;authentification à deux facteurs pour votre compte</span>
                         </li>
                         <li className="flex items-start gap-2">
                             <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />

@@ -77,8 +77,13 @@ const createRateLimiter = (
             res.status(429).json(options.message);
         },
         skip: (req: any) => {
-            // Skip for health checks
-            return req.path === '/health' || req.path === '/metrics';
+            // Skip for health checks and CTF endpoints
+            return req.path === '/health' ||
+                req.path.startsWith('/health/') ||
+                req.path === '/api/health' ||
+                req.path.startsWith('/api/health/') ||
+                req.path === '/metrics' ||
+                req.path.startsWith('/api/ctf');
         }
     };
 

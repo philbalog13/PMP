@@ -12,6 +12,9 @@ import progressRoutes from './routes/progress.routes';
 import exercisesRoutes from './routes/exercises.routes';
 import clientRoutes from './routes/client.routes';
 import merchantRoutes from './routes/merchant.routes';
+import platformRoutes from './routes/platform.routes';
+import ctfRoutes from './routes/ctf.routes';
+import cursusRoutes from './routes/cursus.routes';
 import { logger } from './utils/logger';
 
 const app: Application = express();
@@ -112,6 +115,9 @@ app.use('/api/progress', progressRoutes);
 app.use('/api/exercises', exercisesRoutes);
 app.use('/api/client', clientRoutes);
 app.use('/api/merchant', merchantRoutes);
+app.use('/api/platform', platformRoutes);
+app.use('/api/ctf', ctfRoutes);
+app.use('/api/cursus', cursusRoutes);
 
 // Gateway routes (health, auth, proxy)
 app.use(gatewayRoutes);

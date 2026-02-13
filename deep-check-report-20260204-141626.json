@@ -1,0 +1,1511 @@
+﻿{
+    "generatedAt":  "2026-02-04T14:16:43.1163672+01:00",
+    "totals":  {
+                   "total":  166,
+                   "pass":  166,
+                   "warn":  0,
+                   "fail":  0
+               },
+    "failures":  [
+
+                 ],
+    "warnings":  [
+
+                 ],
+    "results":  [
+                    {
+                        "timestamp":  "2026-02-04T14:16:27.2668667+01:00",
+                        "service":  "threeds-challenge-ui",
+                        "category":  "container",
+                        "check":  "docker state/health",
+                        "status":  "pass",
+                        "detail":  "state=running, health=healthy",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:27.3113714+01:00",
+                        "service":  "acs-simulator",
+                        "category":  "container",
+                        "check":  "docker state/health",
+                        "status":  "pass",
+                        "detail":  "state=running, health=healthy",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:27.3169107+01:00",
+                        "service":  "api-gateway",
+                        "category":  "container",
+                        "check":  "docker state/health",
+                        "status":  "pass",
+                        "detail":  "state=running, health=healthy",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:27.3216767+01:00",
+                        "service":  "client-interface",
+                        "category":  "container",
+                        "check":  "docker state/health",
+                        "status":  "pass",
+                        "detail":  "state=running, health=healthy",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:27.3258219+01:00",
+                        "service":  "crypto-service",
+                        "category":  "container",
+                        "check":  "docker state/health",
+                        "status":  "pass",
+                        "detail":  "state=running, health=healthy",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:27.3294801+01:00",
+                        "service":  "directory-server",
+                        "category":  "container",
+                        "check":  "docker state/health",
+                        "status":  "pass",
+                        "detail":  "state=running, health=healthy",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:27.3405664+01:00",
+                        "service":  "elasticsearch",
+                        "category":  "container",
+                        "check":  "docker state/health",
+                        "status":  "pass",
+                        "detail":  "state=running, health=healthy",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:27.3608737+01:00",
+                        "service":  "grafana",
+                        "category":  "container",
+                        "check":  "docker state/health",
+                        "status":  "pass",
+                        "detail":  "state=running, health=healthy",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:27.4140727+01:00",
+                        "service":  "hsm-simulator",
+                        "category":  "container",
+                        "check":  "docker state/health",
+                        "status":  "pass",
+                        "detail":  "state=running, health=healthy",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:27.4307302+01:00",
+                        "service":  "hsm-web",
+                        "category":  "container",
+                        "check":  "docker state/health",
+                        "status":  "pass",
+                        "detail":  "state=running, health=healthy",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:27.4393383+01:00",
+                        "service":  "key-management",
+                        "category":  "container",
+                        "check":  "docker state/health",
+                        "status":  "pass",
+                        "detail":  "state=running, health=healthy",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:27.4443179+01:00",
+                        "service":  "kibana",
+                        "category":  "container",
+                        "check":  "docker state/health",
+                        "status":  "pass",
+                        "detail":  "state=running, health=n/a",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:27.4487721+01:00",
+                        "service":  "monitoring-dashboard",
+                        "category":  "container",
+                        "check":  "docker state/health",
+                        "status":  "pass",
+                        "detail":  "state=running, health=healthy",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:27.4513689+01:00",
+                        "service":  "sim-monitoring-service",
+                        "category":  "container",
+                        "check":  "docker state/health",
+                        "status":  "pass",
+                        "detail":  "state=running, health=healthy",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:27.4576234+01:00",
+                        "service":  "nginx",
+                        "category":  "container",
+                        "check":  "docker state/health",
+                        "status":  "pass",
+                        "detail":  "state=running, health=healthy",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:27.4663726+01:00",
+                        "service":  "pgadmin",
+                        "category":  "container",
+                        "check":  "docker state/health",
+                        "status":  "pass",
+                        "detail":  "state=running, health=healthy",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:27.4757205+01:00",
+                        "service":  "portal",
+                        "category":  "container",
+                        "check":  "docker state/health",
+                        "status":  "pass",
+                        "detail":  "state=running, health=healthy",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:27.4879695+01:00",
+                        "service":  "postgres",
+                        "category":  "container",
+                        "check":  "docker state/health",
+                        "status":  "pass",
+                        "detail":  "state=running, health=healthy",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:27.4985098+01:00",
+                        "service":  "prometheus",
+                        "category":  "container",
+                        "check":  "docker state/health",
+                        "status":  "pass",
+                        "detail":  "state=running, health=healthy",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:27.5071584+01:00",
+                        "service":  "redis",
+                        "category":  "container",
+                        "check":  "docker state/health",
+                        "status":  "pass",
+                        "detail":  "state=running, health=healthy",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:27.5167946+01:00",
+                        "service":  "sim-acquirer-service",
+                        "category":  "container",
+                        "check":  "docker state/health",
+                        "status":  "pass",
+                        "detail":  "state=running, health=healthy",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:27.5285502+01:00",
+                        "service":  "sim-auth-engine",
+                        "category":  "container",
+                        "check":  "docker state/health",
+                        "status":  "pass",
+                        "detail":  "state=running, health=healthy",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:27.5498193+01:00",
+                        "service":  "sim-card-service",
+                        "category":  "container",
+                        "check":  "docker state/health",
+                        "status":  "pass",
+                        "detail":  "state=running, health=healthy",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:27.5552331+01:00",
+                        "service":  "sim-fraud-detection",
+                        "category":  "container",
+                        "check":  "docker state/health",
+                        "status":  "pass",
+                        "detail":  "state=running, health=healthy",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:27.5602024+01:00",
+                        "service":  "sim-issuer-service",
+                        "category":  "container",
+                        "check":  "docker state/health",
+                        "status":  "pass",
+                        "detail":  "state=running, health=healthy",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:27.5685075+01:00",
+                        "service":  "sim-network-switch",
+                        "category":  "container",
+                        "check":  "docker state/health",
+                        "status":  "pass",
+                        "detail":  "state=running, health=healthy",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:27.5734545+01:00",
+                        "service":  "sim-pos-service",
+                        "category":  "container",
+                        "check":  "docker state/health",
+                        "status":  "pass",
+                        "detail":  "state=running, health=healthy",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:27.5833852+01:00",
+                        "service":  "tokenization-service",
+                        "category":  "container",
+                        "check":  "docker state/health",
+                        "status":  "pass",
+                        "detail":  "state=running, health=healthy",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:27.5930798+01:00",
+                        "service":  "user-cards-web",
+                        "category":  "container",
+                        "check":  "docker state/health",
+                        "status":  "pass",
+                        "detail":  "state=running, health=healthy",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:27.8773568+01:00",
+                        "service":  "threeds-challenge-ui",
+                        "category":  "container",
+                        "check":  "restart count",
+                        "status":  "pass",
+                        "detail":  "restarts=0",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:28.0223483+01:00",
+                        "service":  "acs-simulator",
+                        "category":  "container",
+                        "check":  "restart count",
+                        "status":  "pass",
+                        "detail":  "restarts=0",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:28.1075991+01:00",
+                        "service":  "api-gateway",
+                        "category":  "container",
+                        "check":  "restart count",
+                        "status":  "pass",
+                        "detail":  "restarts=0",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:28.1912333+01:00",
+                        "service":  "client-interface",
+                        "category":  "container",
+                        "check":  "restart count",
+                        "status":  "pass",
+                        "detail":  "restarts=0",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:28.2787707+01:00",
+                        "service":  "crypto-service",
+                        "category":  "container",
+                        "check":  "restart count",
+                        "status":  "pass",
+                        "detail":  "restarts=0",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:28.3777669+01:00",
+                        "service":  "directory-server",
+                        "category":  "container",
+                        "check":  "restart count",
+                        "status":  "pass",
+                        "detail":  "restarts=0",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:28.4758587+01:00",
+                        "service":  "elasticsearch",
+                        "category":  "container",
+                        "check":  "restart count",
+                        "status":  "pass",
+                        "detail":  "restarts=0",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:28.5747048+01:00",
+                        "service":  "grafana",
+                        "category":  "container",
+                        "check":  "restart count",
+                        "status":  "pass",
+                        "detail":  "restarts=0",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:28.6519471+01:00",
+                        "service":  "hsm-simulator",
+                        "category":  "container",
+                        "check":  "restart count",
+                        "status":  "pass",
+                        "detail":  "restarts=0",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:28.7358266+01:00",
+                        "service":  "hsm-web",
+                        "category":  "container",
+                        "check":  "restart count",
+                        "status":  "pass",
+                        "detail":  "restarts=0",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:28.8230184+01:00",
+                        "service":  "key-management",
+                        "category":  "container",
+                        "check":  "restart count",
+                        "status":  "pass",
+                        "detail":  "restarts=0",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:28.9091862+01:00",
+                        "service":  "kibana",
+                        "category":  "container",
+                        "check":  "restart count",
+                        "status":  "pass",
+                        "detail":  "restarts=0",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:28.9928221+01:00",
+                        "service":  "monitoring-dashboard",
+                        "category":  "container",
+                        "check":  "restart count",
+                        "status":  "pass",
+                        "detail":  "restarts=0",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:29.0778762+01:00",
+                        "service":  "sim-monitoring-service",
+                        "category":  "container",
+                        "check":  "restart count",
+                        "status":  "pass",
+                        "detail":  "restarts=0",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:29.1716829+01:00",
+                        "service":  "nginx",
+                        "category":  "container",
+                        "check":  "restart count",
+                        "status":  "pass",
+                        "detail":  "restarts=0",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:29.2595672+01:00",
+                        "service":  "pgadmin",
+                        "category":  "container",
+                        "check":  "restart count",
+                        "status":  "pass",
+                        "detail":  "restarts=0",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:29.3600901+01:00",
+                        "service":  "portal",
+                        "category":  "container",
+                        "check":  "restart count",
+                        "status":  "pass",
+                        "detail":  "restarts=0",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:29.4415746+01:00",
+                        "service":  "postgres",
+                        "category":  "container",
+                        "check":  "restart count",
+                        "status":  "pass",
+                        "detail":  "restarts=0",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:29.5234058+01:00",
+                        "service":  "prometheus",
+                        "category":  "container",
+                        "check":  "restart count",
+                        "status":  "pass",
+                        "detail":  "restarts=0",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:29.6052262+01:00",
+                        "service":  "redis",
+                        "category":  "container",
+                        "check":  "restart count",
+                        "status":  "pass",
+                        "detail":  "restarts=0",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:29.6940135+01:00",
+                        "service":  "sim-acquirer-service",
+                        "category":  "container",
+                        "check":  "restart count",
+                        "status":  "pass",
+                        "detail":  "restarts=0",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:29.7771287+01:00",
+                        "service":  "sim-auth-engine",
+                        "category":  "container",
+                        "check":  "restart count",
+                        "status":  "pass",
+                        "detail":  "restarts=0",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:29.8796722+01:00",
+                        "service":  "sim-card-service",
+                        "category":  "container",
+                        "check":  "restart count",
+                        "status":  "pass",
+                        "detail":  "restarts=0",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:29.9547277+01:00",
+                        "service":  "sim-fraud-detection",
+                        "category":  "container",
+                        "check":  "restart count",
+                        "status":  "pass",
+                        "detail":  "restarts=0",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:30.0387103+01:00",
+                        "service":  "sim-issuer-service",
+                        "category":  "container",
+                        "check":  "restart count",
+                        "status":  "pass",
+                        "detail":  "restarts=0",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:30.1134857+01:00",
+                        "service":  "sim-network-switch",
+                        "category":  "container",
+                        "check":  "restart count",
+                        "status":  "pass",
+                        "detail":  "restarts=0",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:30.1931205+01:00",
+                        "service":  "sim-pos-service",
+                        "category":  "container",
+                        "check":  "restart count",
+                        "status":  "pass",
+                        "detail":  "restarts=0",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:30.3091854+01:00",
+                        "service":  "tokenization-service",
+                        "category":  "container",
+                        "check":  "restart count",
+                        "status":  "pass",
+                        "detail":  "restarts=0",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:30.5564675+01:00",
+                        "service":  "user-cards-web",
+                        "category":  "container",
+                        "check":  "restart count",
+                        "status":  "pass",
+                        "detail":  "restarts=0",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:30.7920410+01:00",
+                        "service":  "postgres",
+                        "category":  "infra",
+                        "check":  "pg_isready",
+                        "status":  "pass",
+                        "detail":  "/var/run/postgresql:5432 - accepting connections",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:31.0281059+01:00",
+                        "service":  "redis",
+                        "category":  "infra",
+                        "check":  "redis ping",
+                        "status":  "pass",
+                        "detail":  "PONG",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:31.1350558+01:00",
+                        "service":  "elasticsearch",
+                        "category":  "infra",
+                        "check":  "cluster health endpoint",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  76.02
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:31.1503520+01:00",
+                        "service":  "elasticsearch",
+                        "category":  "infra",
+                        "check":  "cluster status semantic",
+                        "status":  "pass",
+                        "detail":  "status=yellow",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:31.2047278+01:00",
+                        "service":  "pgadmin",
+                        "category":  "infra",
+                        "check":  "UI availability",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  52.74
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:31.5299001+01:00",
+                        "service":  "kibana",
+                        "category":  "infra",
+                        "check":  "UI availability",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  311.12
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:31.5649017+01:00",
+                        "service":  "prometheus",
+                        "category":  "infra",
+                        "check":  "health endpoint",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  32.99
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:31.6012959+01:00",
+                        "service":  "grafana",
+                        "category":  "infra",
+                        "check":  "api health endpoint",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  33.96
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:31.6043021+01:00",
+                        "service":  "grafana",
+                        "category":  "infra",
+                        "check":  "database connectivity semantic",
+                        "status":  "pass",
+                        "detail":  "database=ok",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:31.6437524+01:00",
+                        "service":  "nginx",
+                        "category":  "infra",
+                        "check":  "reverse proxy health endpoint",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  36.6
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:31.6931804+01:00",
+                        "service":  "portal",
+                        "category":  "frontend",
+                        "check":  "api health",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  44.88
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:31.9334472+01:00",
+                        "service":  "client-interface",
+                        "category":  "frontend",
+                        "check":  "api health",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  237.78
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:31.9856199+01:00",
+                        "service":  "user-cards-web",
+                        "category":  "frontend",
+                        "check":  "api health",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  48.76
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:32.1818989+01:00",
+                        "service":  "hsm-web",
+                        "category":  "frontend",
+                        "check":  "api health",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  194.01
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:32.2311760+01:00",
+                        "service":  "monitoring-dashboard",
+                        "category":  "frontend",
+                        "check":  "ui root",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  46.18
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:32.2748004+01:00",
+                        "service":  "threeds-challenge-ui",
+                        "category":  "frontend",
+                        "check":  "ui root",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  40.85
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:32.3263103+01:00",
+                        "service":  "api-gateway",
+                        "category":  "health",
+                        "check":  "/health",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  49.09
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:32.3794196+01:00",
+                        "service":  "api-gateway",
+                        "category":  "health",
+                        "check":  "/api/health",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  50.89
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:32.4193851+01:00",
+                        "service":  "sim-card-service",
+                        "category":  "health",
+                        "check":  "/health",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  37.46
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:32.4615541+01:00",
+                        "service":  "sim-pos-service",
+                        "category":  "health",
+                        "check":  "/health",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  40.25
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:32.5175023+01:00",
+                        "service":  "sim-acquirer-service",
+                        "category":  "health",
+                        "check":  "/health",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  53.09
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:32.5843179+01:00",
+                        "service":  "sim-network-switch",
+                        "category":  "health",
+                        "check":  "/health",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  64.44
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:32.6260068+01:00",
+                        "service":  "sim-network-switch",
+                        "category":  "health",
+                        "check":  "/health/live",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  39.24
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:32.6698562+01:00",
+                        "service":  "sim-network-switch",
+                        "category":  "health",
+                        "check":  "/health/ready",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  41.55
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:32.7164699+01:00",
+                        "service":  "sim-network-switch",
+                        "category":  "health",
+                        "check":  "/health/dependencies",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  44.02
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:32.7616693+01:00",
+                        "service":  "sim-issuer-service",
+                        "category":  "health",
+                        "check":  "/health",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  43.03
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:32.8093980+01:00",
+                        "service":  "sim-auth-engine",
+                        "category":  "health",
+                        "check":  "/health",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  45.71
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:32.8495292+01:00",
+                        "service":  "sim-auth-engine",
+                        "category":  "health",
+                        "check":  "/health/live",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  37.64
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:32.8855890+01:00",
+                        "service":  "sim-auth-engine",
+                        "category":  "health",
+                        "check":  "/health/ready",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  34.85
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:32.9244328+01:00",
+                        "service":  "sim-fraud-detection",
+                        "category":  "health",
+                        "check":  "/health",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  36.31
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:32.9610213+01:00",
+                        "service":  "crypto-service",
+                        "category":  "health",
+                        "check":  "/health",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  34.66
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:32.9979324+01:00",
+                        "service":  "hsm-simulator",
+                        "category":  "health",
+                        "check":  "/health",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  35.07
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:33.0332567+01:00",
+                        "service":  "key-management",
+                        "category":  "health",
+                        "check":  "/health",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  33.79
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:33.0685908+01:00",
+                        "service":  "acs-simulator",
+                        "category":  "health",
+                        "check":  "/health",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  33.27
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:33.1144133+01:00",
+                        "service":  "tokenization-service",
+                        "category":  "health",
+                        "check":  "/health",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  44.38
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:33.1647133+01:00",
+                        "service":  "directory-server",
+                        "category":  "health",
+                        "check":  "/health",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  47.54
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:33.2081509+01:00",
+                        "service":  "sim-monitoring-service",
+                        "category":  "health",
+                        "check":  "/health",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  41.28
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:33.3337774+01:00",
+                        "service":  "sim-card-service",
+                        "category":  "functional",
+                        "check":  "create card",
+                        "status":  "pass",
+                        "detail":  "HTTP 201",
+                        "duration_ms":  123.22
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:33.3410378+01:00",
+                        "service":  "sim-card-service",
+                        "category":  "functional",
+                        "check":  "create card semantic",
+                        "status":  "pass",
+                        "detail":  "pan=4916232387072683",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:33.4100752+01:00",
+                        "service":  "sim-card-service",
+                        "category":  "functional",
+                        "check":  "validate PAN",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  74.3
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:33.4974395+01:00",
+                        "service":  "sim-card-service",
+                        "category":  "functional",
+                        "check":  "validate card for transaction",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  77.59
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:33.5350451+01:00",
+                        "service":  "sim-card-service",
+                        "category":  "functional",
+                        "check":  "get card by pan",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  35.48
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:33.6497537+01:00",
+                        "service":  "sim-card-service",
+                        "category":  "functional",
+                        "check":  "set status BLOCKED",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  112.55
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:33.7424400+01:00",
+                        "service":  "sim-card-service",
+                        "category":  "functional",
+                        "check":  "set status ACTIVE",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  88.68
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:33.7822785+01:00",
+                        "service":  "sim-card-service",
+                        "category":  "functional",
+                        "check":  "delete card",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  37.55
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:33.9202919+01:00",
+                        "service":  "sim-pos-service",
+                        "category":  "functional",
+                        "check":  "create transaction",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  135.4
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:33.9258686+01:00",
+                        "service":  "sim-pos-service",
+                        "category":  "functional",
+                        "check":  "create transaction semantic",
+                        "status":  "pass",
+                        "detail":  "txId=070a499d-ac50-45e9-a20e-b4b16f355293, status=APPROVED, code=00",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:33.9625389+01:00",
+                        "service":  "sim-pos-service",
+                        "category":  "functional",
+                        "check":  "get transaction by id",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  35.34
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:34.0026655+01:00",
+                        "service":  "sim-acquirer-service",
+                        "category":  "functional",
+                        "check":  "list merchants",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  37.49
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:34.0988349+01:00",
+                        "service":  "sim-acquirer-service",
+                        "category":  "functional",
+                        "check":  "process transaction",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  93.2
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:34.1504385+01:00",
+                        "service":  "sim-network-switch",
+                        "category":  "functional",
+                        "check":  "supported networks",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  47.92
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:34.1966629+01:00",
+                        "service":  "sim-network-switch",
+                        "category":  "functional",
+                        "check":  "identify network",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  44.08
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:34.3220415+01:00",
+                        "service":  "sim-network-switch",
+                        "category":  "functional",
+                        "check":  "route transaction",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  118.35
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:34.3813158+01:00",
+                        "service":  "sim-network-switch",
+                        "category":  "security",
+                        "check":  "invalid payload rejected",
+                        "status":  "pass",
+                        "detail":  "HTTP 400",
+                        "duration_ms":  49.61
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:34.4154268+01:00",
+                        "service":  "sim-issuer-service",
+                        "category":  "functional",
+                        "check":  "list accounts",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  32.7
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:34.5129909+01:00",
+                        "service":  "sim-issuer-service",
+                        "category":  "functional",
+                        "check":  "authorize transaction",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  95.53
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:34.5601777+01:00",
+                        "service":  "sim-auth-engine",
+                        "category":  "functional",
+                        "check":  "list rules",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  45.55
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:34.6496709+01:00",
+                        "service":  "sim-auth-engine",
+                        "category":  "functional",
+                        "check":  "authorize request",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  86.69
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:34.6966065+01:00",
+                        "service":  "sim-auth-engine",
+                        "category":  "security",
+                        "check":  "invalid payload rejected",
+                        "status":  "pass",
+                        "detail":  "HTTP 400",
+                        "duration_ms":  44.5
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:34.7803428+01:00",
+                        "service":  "sim-fraud-detection",
+                        "category":  "functional",
+                        "check":  "fraud check",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  81.1
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:34.8221175+01:00",
+                        "service":  "sim-fraud-detection",
+                        "category":  "functional",
+                        "check":  "fraud stats",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  39.51
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:34.8981752+01:00",
+                        "service":  "crypto-service",
+                        "category":  "functional",
+                        "check":  "generate MAC",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  73.77
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:34.9451666+01:00",
+                        "service":  "crypto-service",
+                        "category":  "security",
+                        "check":  "invalid payload rejected",
+                        "status":  "pass",
+                        "detail":  "HTTP 400",
+                        "duration_ms":  43.5
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:34.9838410+01:00",
+                        "service":  "hsm-simulator",
+                        "category":  "functional",
+                        "check":  "get config",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  35.98
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:35.0154031+01:00",
+                        "service":  "hsm-simulator",
+                        "category":  "functional",
+                        "check":  "list keys",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  29.97
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:35.0889954+01:00",
+                        "service":  "key-management",
+                        "category":  "functional",
+                        "check":  "generate key",
+                        "status":  "pass",
+                        "detail":  "HTTP 201",
+                        "duration_ms":  71.8
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:35.1721776+01:00",
+                        "service":  "key-management",
+                        "category":  "functional",
+                        "check":  "rotate key",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  80.07
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:35.2035945+01:00",
+                        "service":  "key-management",
+                        "category":  "functional",
+                        "check":  "delete key",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  29.77
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:35.2482864+01:00",
+                        "service":  "key-management",
+                        "category":  "security",
+                        "check":  "invalid payload rejected",
+                        "status":  "pass",
+                        "detail":  "HTTP 400",
+                        "duration_ms":  43.59
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:35.3341288+01:00",
+                        "service":  "acs-simulator",
+                        "category":  "functional",
+                        "check":  "authenticate flow",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  84.24
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:35.4085264+01:00",
+                        "service":  "acs-simulator",
+                        "category":  "functional",
+                        "check":  "challenge verify flow",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  72.31
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:35.4870355+01:00",
+                        "service":  "tokenization-service",
+                        "category":  "functional",
+                        "check":  "tokenize pan",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  73.57
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:35.5211477+01:00",
+                        "service":  "tokenization-service",
+                        "category":  "functional",
+                        "check":  "token info",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  31.04
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:35.6039491+01:00",
+                        "service":  "tokenization-service",
+                        "category":  "functional",
+                        "check":  "detokenize token",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  80.98
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:35.6882785+01:00",
+                        "service":  "tokenization-service",
+                        "category":  "functional",
+                        "check":  "refresh token",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  83.4
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:35.7397551+01:00",
+                        "service":  "tokenization-service",
+                        "category":  "security",
+                        "check":  "invalid PAN rejected",
+                        "status":  "pass",
+                        "detail":  "HTTP 400",
+                        "duration_ms":  48.9
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:35.8259126+01:00",
+                        "service":  "directory-server",
+                        "category":  "functional",
+                        "check":  "3ds authenticate route",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  83.8
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:35.8584622+01:00",
+                        "service":  "sim-monitoring-service",
+                        "category":  "functional",
+                        "check":  "list transactions api",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  32.52
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:35.9098630+01:00",
+                        "service":  "sim-monitoring-service",
+                        "category":  "functional",
+                        "check":  "prometheus metrics endpoint",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  48.08
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:36.3076970+01:00",
+                        "service":  "api-gateway",
+                        "category":  "security",
+                        "check":  "client login",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  332.54
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:36.3124051+01:00",
+                        "service":  "api-gateway",
+                        "category":  "security",
+                        "check":  "protected route denied without token",
+                        "status":  "pass",
+                        "detail":  "HTTP 401",
+                        "duration_ms":  3
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:36.3629058+01:00",
+                        "service":  "api-gateway",
+                        "category":  "security",
+                        "check":  "SQLi-like login attempt handled safely",
+                        "status":  "pass",
+                        "detail":  "HTTP 401",
+                        "duration_ms":  48.51
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:36.4052244+01:00",
+                        "service":  "api-gateway",
+                        "category":  "security",
+                        "check":  "client route allowed with client token",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  39.23
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:36.4116224+01:00",
+                        "service":  "api-gateway",
+                        "category":  "security",
+                        "check":  "merchant route denied with client token",
+                        "status":  "pass",
+                        "detail":  "HTTP 403",
+                        "duration_ms":  4.99
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:36.5156596+01:00",
+                        "service":  "api-gateway",
+                        "category":  "functional",
+                        "check":  "orchestrated transaction process (authed)",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  102.19
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:36.6162811+01:00",
+                        "service":  "api-gateway",
+                        "category":  "security",
+                        "check":  "refresh token rotation",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  97.9
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:37.5588973+01:00",
+                        "service":  "api-gateway",
+                        "category":  "performance",
+                        "check":  "latency http://localhost:8000/health",
+                        "status":  "pass",
+                        "detail":  "samples=20, avg=44.82ms, p95=53.63ms, errorRate=0%",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:38.1936258+01:00",
+                        "service":  "sim-network-switch",
+                        "category":  "performance",
+                        "check":  "latency http://localhost:8004/health/live",
+                        "status":  "pass",
+                        "detail":  "samples=20, avg=31.62ms, p95=34.75ms, errorRate=0%",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:38.8576200+01:00",
+                        "service":  "portal",
+                        "category":  "performance",
+                        "check":  "latency http://localhost:3000/api/health",
+                        "status":  "pass",
+                        "detail":  "samples=20, avg=33.08ms, p95=35.47ms, errorRate=0%",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:41.8996131+01:00",
+                        "service":  "tokenization-service",
+                        "category":  "resilience",
+                        "check":  "restart and recover",
+                        "status":  "pass",
+                        "detail":  "Recovered after restart",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:41.9651986+01:00",
+                        "service":  "prometheus",
+                        "category":  "observability",
+                        "check":  "query up metric",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  62.09
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:41.9704615+01:00",
+                        "service":  "prometheus",
+                        "category":  "observability",
+                        "check":  "up metric has samples",
+                        "status":  "pass",
+                        "detail":  "samples=3",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:42.0194682+01:00",
+                        "service":  "sim-monitoring-service",
+                        "category":  "observability",
+                        "check":  "service logs latest endpoint",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  47.07
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:42.0343334+01:00",
+                        "service":  "sim-monitoring-service",
+                        "category":  "observability",
+                        "check":  "service logs latest semantic",
+                        "status":  "pass",
+                        "detail":  "count=20",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:42.2272783+01:00",
+                        "service":  "monitoring-dashboard",
+                        "category":  "observability",
+                        "check":  "api proxy service logs endpoint",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  187.25
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:42.2305764+01:00",
+                        "service":  "monitoring-dashboard",
+                        "category":  "observability",
+                        "check":  "api proxy semantic",
+                        "status":  "pass",
+                        "detail":  "json=true, count=20",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:42.8304124+01:00",
+                        "service":  "elasticsearch",
+                        "category":  "observability",
+                        "check":  "service logs index count",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  598.17
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:42.8316131+01:00",
+                        "service":  "elasticsearch",
+                        "category":  "observability",
+                        "check":  "service logs index semantic",
+                        "status":  "pass",
+                        "detail":  "docs=534",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:42.8646767+01:00",
+                        "service":  "prometheus",
+                        "category":  "observability",
+                        "check":  "targets endpoint",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  31.03
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:42.8763678+01:00",
+                        "service":  "prometheus",
+                        "category":  "observability",
+                        "check":  "targets health semantic",
+                        "status":  "pass",
+                        "detail":  "active=3, down=0",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:42.9114499+01:00",
+                        "service":  "prometheus",
+                        "category":  "observability",
+                        "check":  "query pmp_service_up metric",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  33.75
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:42.9136636+01:00",
+                        "service":  "prometheus",
+                        "category":  "observability",
+                        "check":  "pmp_service_up metric semantic",
+                        "status":  "pass",
+                        "detail":  "samples=20",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:42.9825705+01:00",
+                        "service":  "grafana",
+                        "category":  "observability",
+                        "check":  "datasources api",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  52.21
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:42.9874799+01:00",
+                        "service":  "grafana",
+                        "category":  "observability",
+                        "check":  "datasources semantic",
+                        "status":  "pass",
+                        "detail":  "count=1",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:43.0333575+01:00",
+                        "service":  "grafana",
+                        "category":  "observability",
+                        "check":  "dashboards search api",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  45.07
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:43.0507588+01:00",
+                        "service":  "grafana",
+                        "category":  "observability",
+                        "check":  "dashboards semantic",
+                        "status":  "pass",
+                        "detail":  "count=1, has_pmp_dashboard=true",
+                        "duration_ms":  0
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:43.0906153+01:00",
+                        "service":  "kibana",
+                        "category":  "observability",
+                        "check":  "index patterns api",
+                        "status":  "pass",
+                        "detail":  "HTTP 200",
+                        "duration_ms":  37.3
+                    },
+                    {
+                        "timestamp":  "2026-02-04T14:16:43.0972052+01:00",
+                        "service":  "kibana",
+                        "category":  "observability",
+                        "check":  "index patterns semantic",
+                        "status":  "pass",
+                        "detail":  "total=1, has_pmp_pattern=true",
+                        "duration_ms":  0
+                    }
+                ]
+}

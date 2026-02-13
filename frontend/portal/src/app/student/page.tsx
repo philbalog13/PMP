@@ -1,123 +1,217 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-    Book, CheckCircle, ArrowRight, Zap, Target, Award, Play, History, Shield,
+    Book, CheckCircle, Zap, Target, Award, Play, History, Shield,
     GraduationCap, ChevronRight, BookOpen, Code, Terminal, Beaker, Lock,
-    Clock, TrendingUp, Star, Trophy, Flame, BarChart3
+    Clock, TrendingUp, Star, Trophy, BarChart3, RefreshCw
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '../auth/useAuth';
 
-// Workshop data linked to curriculum
-const workshops = [
-    {
-        id: 'intro',
-        number: '01',
-        title: 'Introduction à la Monétique',
-        desc: 'Comprendre le cycle de vie d\'une transaction carte.',
-        icon: BookOpen,
-        color: 'blue',
-        duration: '45 min',
-        difficulty: 'Débutant',
-        xp: 100,
-        status: 'completed',
-        progress: 100,
-        quizScore: 85,
-    },
-    {
-        id: 'iso8583',
-        number: '02',
-        title: 'Protocole ISO 8583',
-        desc: 'Maîtrisez le format standard des messages financiers.',
-        icon: Code,
-        color: 'purple',
-        duration: '1h 30min',
-        difficulty: 'Intermédiaire',
-        xp: 200,
-        status: 'completed',
-        progress: 100,
-        quizScore: 92,
-    },
-    {
-        id: 'hsm-keys',
-        number: '03',
-        title: 'Gestion des Clés HSM',
-        desc: 'Manipulation des composants de clés et cryptographie.',
-        icon: Terminal,
-        color: 'amber',
-        duration: '2h',
-        difficulty: 'Avancé',
-        xp: 300,
-        status: 'in-progress',
-        progress: 65,
-        quizScore: null,
-    },
-    {
-        id: '3ds-flow',
-        number: '04',
-        title: '3D Secure v2',
-        desc: 'Analyse du flux Directory Server, ACS et challenge.',
-        icon: Zap,
-        color: 'emerald',
-        duration: '1h',
-        difficulty: 'Avancé',
-        xp: 250,
-        status: 'locked',
-        progress: 0,
-        quizScore: null,
-    },
-    {
-        id: 'fraud-lab',
-        number: '05',
-        title: 'Simulation de Fraude',
-        desc: 'Détection de patterns suspects et scoring.',
-        icon: Shield,
-        color: 'red',
-        duration: '1h 15min',
-        difficulty: 'Intermédiaire',
-        xp: 200,
-        status: 'locked',
-        progress: 0,
-        quizScore: null,
-    },
-    {
-        id: 'kernel-emv',
-        number: '06',
-        title: 'Kernels EMV & L2',
-        desc: 'Interaction entre la puce et le lecteur (APDU).',
-        icon: Beaker,
-        color: 'indigo',
-        duration: '3h',
-        difficulty: 'Expert',
-        xp: 500,
-        status: 'locked',
-        progress: 0,
-        quizScore: null,
-    },
-];
+/* ── Types ──────────────────────────────────────────────────────── */
 
-const achievements = [
-    { id: 1, name: 'Premier Pas', icon: '🎯', desc: 'Compléter le premier atelier', unlocked: true, date: '15 Jan' },
-    { id: 2, name: 'ISO Master', icon: '📜', desc: 'Score parfait au quiz ISO 8583', unlocked: true, date: '20 Jan' },
-    { id: 3, name: 'Crypto Ninja', icon: '🔐', desc: 'Compléter l\'atelier HSM', unlocked: false },
-    { id: 4, name: 'Speed Runner', icon: '⚡', desc: 'Finir un atelier en moins de 30 min', unlocked: true, date: '18 Jan' },
-    { id: 5, name: 'Perfectionist', icon: '💎', desc: '3 quiz consécutifs à 100%', unlocked: false },
-    { id: 6, name: 'Expert PMP', icon: '🏆', desc: 'Compléter tous les ateliers', unlocked: false },
-];
+interface WorkshopProgress {
+    workshop_id: string;
+    title: string;
+    status: string;
+    progress_percent: number;
+    current_section: number;
+    total_sections: number;
+    time_spent_minutes: number;
+    started_at?: string;
+    completed_at?: string;
+    last_accessed_at?: string;
+}
+
+interface Badge {
+    type: string;
+    name: string;
+    description: string;
+    icon: string;
+    xp: number;
+    earned: boolean;
+    earnedAt?: string;
+}
+
+interface Stats {
+    workshops: { notStarted: number; inProgress: number; completed: number; total: number; totalTime: number };
+    quizzes: { total: number; passed: number; avgScore: number; bestScore: number };
+    badges: { earned: number; total: number };
+    totalXP: number;
+}
+
+interface LeaderboardEntry {
+    rank: number;
+    id: string;
+    username: string;
+    first_name: string;
+    last_name: string;
+    total_xp: number;
+    badge_count: number;
+    workshops_completed: number;
+}
+
+/* ── Workshop metadata for icons/colors ─────────────────────────── */
+
+const WORKSHOP_META: Record<string, { icon: typeof BookOpen; color: string; difficulty: string; duration: string }> = {
+    'intro': { icon: BookOpen, color: 'blue', difficulty: 'Débutant', duration: '45 min' },
+    'iso8583': { icon: Code, color: 'purple', difficulty: 'Intermédiaire', duration: '1h 30min' },
+    'hsm-keys': { icon: Terminal, color: 'amber', difficulty: 'Avancé', duration: '2h' },
+    '3ds-flow': { icon: Zap, color: 'emerald', difficulty: 'Avancé', duration: '1h' },
+    'fraud-detection': { icon: Shield, color: 'red', difficulty: 'Intermédiaire', duration: '1h 15min' },
+    'emv': { icon: Beaker, color: 'indigo', difficulty: 'Expert', duration: '3h' },
+};
+
+const BADGE_ICONS: Record<string, string> = {
+    'star': '\u{1F3AF}', 'clipboard-check': '\u{1F4CB}', 'award': '\u{1F3C5}', 'trophy': '\u{1F3C6}',
+    'book-open': '\u{1F4D6}', 'graduation-cap': '\u{1F393}', 'zap': '\u26A1', 'flame': '\u{1F525}',
+};
+
+/* ── Workshop ordering ───────────────────────────────────────────── */
+const WORKSHOP_ORDER = ['intro', 'iso8583', 'hsm-keys', '3ds-flow', 'fraud-detection', 'emv'];
+
+/* ── Main Component ───────────────────────────────────────────────── */
 
 export default function StudentDashboard() {
-    const { isLoading } = useAuth(true);
+    const { user, isLoading } = useAuth(true);
     const [activeTab, setActiveTab] = useState<'ateliers' | 'progression' | 'badges'>('ateliers');
-    const [dailyStreak, setDailyStreak] = useState(7);
 
-    // Calculate stats
-    const completedWorkshops = workshops.filter(w => w.status === 'completed').length;
-    const totalXP = workshops.filter(w => w.status === 'completed').reduce((acc, w) => acc + w.xp, 0);
-    const averageScore = workshops.filter(w => w.quizScore !== null).reduce((acc, w, _, arr) => acc + (w.quizScore || 0) / arr.length, 0);
-    const overallProgress = Math.round(workshops.reduce((acc, w) => acc + w.progress, 0) / workshops.length);
+    const [workshops, setWorkshops] = useState<WorkshopProgress[]>([]);
+    const [stats, setStats] = useState<Stats | null>(null);
+    const [badges, setBadges] = useState<Badge[]>([]);
+    const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+    const [ctfPoints, setCtfPoints] = useState(0);
+    const [ctfSolved, setCtfSolved] = useState(0);
+    const [dataLoading, setDataLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
-    if (isLoading) {
+    const fetchData = useCallback(async () => {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        const headers = { Authorization: `Bearer ${token}` };
+
+        const [progressRes, statsRes, badgesRes, leaderboardRes, ctfProgressRes] = await Promise.all([
+            fetch('/api/progress', { headers }).catch(() => null),
+            fetch('/api/progress/stats', { headers }).catch(() => null),
+            fetch('/api/progress/badges', { headers }).catch(() => null),
+            fetch('/api/progress/leaderboard?limit=10', { headers }).catch(() => null),
+            fetch('/api/ctf/progress', { headers }).catch(() => null),
+        ]);
+
+        if (progressRes?.ok) {
+            const data = await progressRes.json();
+            const progressMap = data.progress || {};
+            const workshopList: WorkshopProgress[] = Object.entries(
+                progressMap as Record<string, Partial<WorkshopProgress>>
+            ).map(([id, progress]) => ({
+                workshop_id: id,
+                title: progress.title || id,
+                status: progress.status || 'NOT_STARTED',
+                progress_percent: Number(progress.progress_percent || 0),
+                current_section: Number(progress.current_section || 0),
+                total_sections: Number(progress.total_sections || 0),
+                time_spent_minutes: Number(progress.time_spent_minutes || 0),
+                started_at: progress.started_at,
+                completed_at: progress.completed_at,
+                last_accessed_at: progress.last_accessed_at,
+            }));
+            workshopList.sort((a, b) => {
+                const ai = WORKSHOP_ORDER.indexOf(a.workshop_id);
+                const bi = WORKSHOP_ORDER.indexOf(b.workshop_id);
+                return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+            });
+            setWorkshops(workshopList);
+        }
+
+        if (statsRes?.ok) {
+            const data = await statsRes.json();
+            setStats(data.stats || null);
+        }
+
+        if (badgesRes?.ok) {
+            const data = await badgesRes.json();
+            setBadges(data.badges || []);
+        }
+
+        if (leaderboardRes?.ok) {
+            const data = await leaderboardRes.json();
+            setLeaderboard(data.leaderboard || []);
+        }
+
+        if (ctfProgressRes?.ok) {
+            const data = await ctfProgressRes.json();
+            setCtfPoints(Number(data.summary?.totalPoints || 0));
+            setCtfSolved(Number(data.summary?.solvedChallenges || 0));
+        }
+    }, []);
+
+    const refreshData = useCallback(async () => {
+        try {
+            setIsRefreshing(true);
+            setError(null);
+            await fetchData();
+        } catch (error: any) {
+            setError(error instanceof Error ? error.message : 'Erreur de chargement');
+        } finally {
+            setDataLoading(false);
+            setIsRefreshing(false);
+        }
+    }, [fetchData]);
+
+    useEffect(() => {
+        if (isLoading) return;
+        refreshData();
+    }, [isLoading, refreshData]);
+
+    /* ── Computed values ──────────────────────────────────────────── */
+
+    const computed = useMemo(() => {
+        const totalXP = stats?.totalXP ?? 0;
+        const completedCount = stats?.workshops.completed ?? 0;
+        const totalWorkshops = stats?.workshops.total ?? workshops.length;
+        const avgScore = stats?.quizzes.avgScore ?? 0;
+        const badgesEarned = stats?.badges.earned ?? 0;
+
+        const overallProgress = totalWorkshops > 0
+            ? Math.round(workshops.reduce((acc, w) => acc + (w.progress_percent || 0), 0) / totalWorkshops)
+            : 0;
+
+        const inProgressWorkshop = workshops.find(w => w.status === 'IN_PROGRESS');
+
+        const currentUserId = user?.id || '';
+        const myRank = currentUserId ? leaderboard.find((entry) => entry.id === currentUserId) : undefined;
+
+        return { totalXP, completedCount, totalWorkshops, avgScore, badgesEarned, overallProgress, inProgressWorkshop, myRank };
+    }, [stats, workshops, leaderboard, user]);
+
+    /* ── Determine locked workshops ──────────────────────────────── */
+    const workshopStatuses = useMemo(() => {
+        const statuses: Record<string, 'completed' | 'in-progress' | 'not-started' | 'locked'> = {};
+        let previousCompleted = true;
+
+        for (const w of workshops) {
+            if (w.status === 'COMPLETED') {
+                statuses[w.workshop_id] = 'completed';
+                previousCompleted = true;
+            } else if (w.status === 'IN_PROGRESS') {
+                statuses[w.workshop_id] = 'in-progress';
+                previousCompleted = false;
+            } else if (previousCompleted) {
+                statuses[w.workshop_id] = 'not-started';
+                previousCompleted = false;
+            } else {
+                statuses[w.workshop_id] = 'locked';
+            }
+        }
+        return statuses;
+    }, [workshops]);
+
+    /* ── Loading ───────────────────────────────────────────────────── */
+
+    if (isLoading || dataLoading) {
         return (
             <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">
                 <div className="flex flex-col items-center gap-4">
@@ -129,19 +223,60 @@ export default function StudentDashboard() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-950 text-white">
-            {/* Background */}
-            <div className="fixed inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 pointer-events-none" />
-            <div className="fixed top-0 right-0 w-[600px] h-[600px] bg-emerald-600/5 rounded-full blur-[150px]" />
-            <div className="fixed bottom-0 left-0 w-[400px] h-[400px] bg-blue-600/5 rounded-full blur-[100px]" />
+        <div className="min-h-screen bg-slate-950 text-white pt-24 pb-12">
+            <div className="relative z-10 max-w-7xl mx-auto px-6">
+                {/* Breadcrumb */}
+                <div className="text-xs text-slate-500 mb-6">
+                    <Link href="/" className="hover:text-emerald-400">Accueil</Link>
+                    <ChevronRight size={12} className="inline mx-1" />
+                    <span className="text-emerald-400">Espace Étudiant</span>
+                </div>
 
-            <div className="relative z-10 max-w-7xl mx-auto px-6 py-8">
+                {/* Header */}
+                <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
+                    <div>
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-xs font-medium">
+                                <GraduationCap size={14} /> Parcours Monétique
+                            </div>
+                            {computed.overallProgress > 0 && (
+                                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-800 border border-white/10 rounded-full text-xs font-mono">
+                                    <div className="w-16 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                                        <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${computed.overallProgress}%` }} />
+                                    </div>
+                                    <span className="text-emerald-400">{computed.overallProgress}%</span>
+                                </div>
+                            )}
+                        </div>
+                        <h1 className="text-3xl font-bold text-white mb-2">
+                            Bonjour, {user?.firstName || 'Étudiant'}
+                        </h1>
+                        <p className="text-slate-400">
+                            Suivez votre progression et validez vos compétences en monétique.
+                        </p>
+                    </div>
+                    <button
+                        onClick={refreshData}
+                        className={`flex items-center gap-2 px-4 py-2 bg-slate-800 border border-white/10 text-white rounded-xl hover:bg-slate-700 ${isRefreshing ? 'animate-pulse' : ''}`}
+                    >
+                        <RefreshCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
+                        Actualiser
+                    </button>
+                </div>
+
+                {error && (
+                    <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-sm mb-6">
+                        {error}
+                    </div>
+                )}
+
                 {/* Header Stats */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                    <StatCard icon={<Trophy className="text-amber-400" />} label="XP Total" value={totalXP} suffix="pts" color="amber" />
-                    <StatCard icon={<Target className="text-emerald-400" />} label="Ateliers" value={`${completedWorkshops}/${workshops.length}`} color="emerald" />
-                    <StatCard icon={<Star className="text-blue-400" />} label="Score Moyen" value={Math.round(averageScore)} suffix="%" color="blue" />
-                    <StatCard icon={<Flame className="text-orange-400" />} label="Série" value={dailyStreak} suffix="jours" color="orange" />
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+                    <StatCard icon={<Trophy className="text-amber-400" />} label="XP Total" value={computed.totalXP} suffix="pts" color="amber" />
+                    <StatCard icon={<Target className="text-emerald-400" />} label="Ateliers" value={`${computed.completedCount}/${computed.totalWorkshops}`} color="emerald" />
+                    <StatCard icon={<Star className="text-blue-400" />} label="Score Moyen" value={computed.avgScore} suffix="%" color="blue" />
+                    <StatCard icon={<Award className="text-purple-400" />} label="Badges" value={`${computed.badgesEarned}/${badges.length || 8}`} color="purple" />
+                    <StatCard icon={<Shield className="text-orange-400" />} label="CTF Points" value={`${ctfPoints} (${ctfSolved})`} color="amber" />
                 </div>
 
                 {/* Main Content */}
@@ -158,37 +293,46 @@ export default function StudentDashboard() {
                         {/* Tab Content */}
                         {activeTab === 'ateliers' && (
                             <div className="space-y-4">
-                                {workshops.map((workshop) => (
-                                    <WorkshopCard key={workshop.id} workshop={workshop} />
+                                {workshops.map((workshop, idx) => (
+                                    <WorkshopCard
+                                        key={workshop.workshop_id}
+                                        workshop={workshop}
+                                        displayStatus={workshopStatuses[workshop.workshop_id] || 'locked'}
+                                        number={String(idx + 1).padStart(2, '0')}
+                                    />
                                 ))}
+                                {workshops.length === 0 && (
+                                    <div className="text-center py-12 text-slate-500">
+                                        Aucun atelier disponible pour le moment.
+                                    </div>
+                                )}
                             </div>
                         )}
 
                         {activeTab === 'progression' && (
                             <div className="space-y-6">
-                                <div className="bg-slate-900/50 rounded-3xl border border-white/5 p-8">
+                                <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-8">
                                     <h3 className="text-xl font-bold mb-6">Progression Globale</h3>
                                     <div className="space-y-4">
                                         <div className="flex items-center justify-between">
                                             <span className="text-slate-400">Parcours Complet</span>
-                                            <span className="font-mono font-bold">{overallProgress}%</span>
+                                            <span className="font-mono font-bold">{computed.overallProgress}%</span>
                                         </div>
                                         <div className="h-4 bg-slate-800 rounded-full overflow-hidden">
                                             <div
                                                 className="h-full bg-gradient-to-r from-emerald-500 to-blue-500 transition-all duration-1000"
-                                                style={{ width: `${overallProgress}%` }}
+                                                style={{ width: `${computed.overallProgress}%` }}
                                             />
                                         </div>
                                     </div>
 
                                     <div className="grid grid-cols-3 gap-4 mt-8">
                                         {workshops.map((w) => (
-                                            <div key={w.id} className="text-center p-4 bg-slate-800/50 rounded-xl">
-                                                <div className={`text-2xl font-bold mb-1 ${
-                                                    w.status === 'completed' ? 'text-emerald-400' :
-                                                    w.status === 'in-progress' ? 'text-amber-400' : 'text-slate-600'
-                                                }`}>
-                                                    {w.progress}%
+                                            <div key={w.workshop_id} className="text-center p-4 bg-slate-900/50 rounded-xl">
+                                                <div className={`text-2xl font-bold mb-1 ${w.status === 'COMPLETED' ? 'text-emerald-400' :
+                                                        w.status === 'IN_PROGRESS' ? 'text-amber-400' : 'text-slate-600'
+                                                    }`}>
+                                                    {w.progress_percent || 0}%
                                                 </div>
                                                 <div className="text-xs text-slate-500 truncate">{w.title}</div>
                                             </div>
@@ -197,50 +341,59 @@ export default function StudentDashboard() {
                                 </div>
 
                                 {/* Quiz Scores */}
-                                <div className="bg-slate-900/50 rounded-3xl border border-white/5 p-8">
-                                    <h3 className="text-xl font-bold mb-6">Scores des Quiz</h3>
-                                    <div className="space-y-4">
-                                        {workshops.filter(w => w.quizScore !== null).map((w) => (
-                                            <div key={w.id} className="flex items-center gap-4">
-                                                <div className="w-40 text-sm text-slate-400 truncate">{w.title}</div>
-                                                <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
-                                                    <div
-                                                        className={`h-full ${w.quizScore! >= 80 ? 'bg-emerald-500' : w.quizScore! >= 60 ? 'bg-amber-500' : 'bg-red-500'}`}
-                                                        style={{ width: `${w.quizScore}%` }}
-                                                    />
-                                                </div>
-                                                <div className="w-12 text-right font-mono font-bold">{w.quizScore}%</div>
+                                {stats && (
+                                    <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-8">
+                                        <h3 className="text-xl font-bold mb-6">Statistiques Quiz</h3>
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                            <MiniStat label="Total passés" value={stats.quizzes.total} />
+                                            <MiniStat label="Réussis" value={stats.quizzes.passed} />
+                                            <MiniStat label="Score moyen" value={`${stats.quizzes.avgScore}%`} />
+                                            <MiniStat label="Meilleur score" value={`${stats.quizzes.bestScore}%`} />
+                                        </div>
+                                        {stats.workshops.totalTime > 0 && (
+                                            <div className="mt-6 p-4 bg-slate-900/50 rounded-xl flex items-center gap-3">
+                                                <Clock className="text-slate-400" size={18} />
+                                                <span className="text-sm text-slate-400">
+                                                    Temps total d&apos;étude : <strong className="text-white">{stats.workshops.totalTime} min</strong>
+                                                </span>
                                             </div>
-                                        ))}
+                                        )}
                                     </div>
-                                </div>
+                                )}
                             </div>
                         )}
 
                         {activeTab === 'badges' && (
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                {achievements.map((achievement) => (
+                                {badges.map((badge) => (
                                     <div
-                                        key={achievement.id}
-                                        className={`p-6 rounded-2xl border transition-all ${
-                                            achievement.unlocked
-                                                ? 'bg-slate-900/50 border-amber-500/20 hover:border-amber-500/40'
+                                        key={badge.type}
+                                        className={`p-6 rounded-2xl border transition-all ${badge.earned
+                                                ? 'bg-slate-800/50 border-amber-500/20 hover:border-amber-500/40'
                                                 : 'bg-slate-900/30 border-white/5 opacity-50'
-                                        }`}
+                                            }`}
                                     >
-                                        <div className="text-4xl mb-3">{achievement.icon}</div>
-                                        <h4 className="font-bold mb-1">{achievement.name}</h4>
-                                        <p className="text-xs text-slate-500 mb-2">{achievement.desc}</p>
-                                        {achievement.unlocked && achievement.date && (
-                                            <div className="text-xs text-emerald-400">Débloqué le {achievement.date}</div>
+                                        <div className="text-4xl mb-3">{BADGE_ICONS[badge.icon] || '\u{1F396}\uFE0F'}</div>
+                                        <h4 className="font-bold mb-1">{badge.name}</h4>
+                                        <p className="text-xs text-slate-500 mb-2">{badge.description}</p>
+                                        <div className="text-xs text-amber-400/60 mb-1">+{badge.xp} XP</div>
+                                        {badge.earned && badge.earnedAt && (
+                                            <div className="text-xs text-emerald-400">
+                                                Débloqué le {new Date(badge.earnedAt).toLocaleDateString('fr-FR')}
+                                            </div>
                                         )}
-                                        {!achievement.unlocked && (
+                                        {!badge.earned && (
                                             <div className="flex items-center gap-1 text-xs text-slate-600">
                                                 <Lock size={12} /> Verrouillé
                                             </div>
                                         )}
                                     </div>
                                 ))}
+                                {badges.length === 0 && (
+                                    <div className="col-span-full text-center py-12 text-slate-500">
+                                        Aucun badge disponible pour le moment.
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -248,46 +401,70 @@ export default function StudentDashboard() {
                     {/* Right Column - Sidebar */}
                     <div className="space-y-6">
                         {/* Continue Learning */}
-                        <div className="bg-gradient-to-br from-emerald-600/20 to-teal-600/10 rounded-3xl border border-emerald-500/20 p-6">
-                            <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-4">
-                                <Play size={14} /> Continuer
+                        {computed.inProgressWorkshop && (
+                            <div className="bg-gradient-to-br from-emerald-600/20 to-teal-600/10 rounded-2xl border border-emerald-500/20 p-6">
+                                <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-4">
+                                    <Play size={14} /> Continuer
+                                </div>
+                                <h3 className="text-xl font-bold mb-2">{computed.inProgressWorkshop.title}</h3>
+                                <p className="text-sm text-slate-400 mb-4">
+                                    Vous êtes à {computed.inProgressWorkshop.progress_percent}% — Continuez là où vous vous êtes arrêté.
+                                </p>
+                                <div className="h-2 bg-slate-800 rounded-full overflow-hidden mb-4">
+                                    <div className="h-full bg-emerald-500" style={{ width: `${computed.inProgressWorkshop.progress_percent}%` }} />
+                                </div>
+                                <Link
+                                    href={`/student/theory/${computed.inProgressWorkshop.workshop_id}`}
+                                    className="block w-full py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-center font-bold transition-colors"
+                                >
+                                    Reprendre l&apos;atelier
+                                </Link>
                             </div>
-                            <h3 className="text-xl font-bold mb-2">Gestion des Clés HSM</h3>
-                            <p className="text-sm text-slate-400 mb-4">Vous êtes à 65% - Continuez là où vous vous êtes arrêté.</p>
-                            <div className="h-2 bg-slate-800 rounded-full overflow-hidden mb-4">
-                                <div className="h-full bg-emerald-500 w-[65%]" />
-                            </div>
-                            <Link
-                                href="/workshops/hsm-keys"
-                                className="block w-full py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-center font-bold transition-colors"
-                            >
-                                Reprendre l'atelier
-                            </Link>
-                        </div>
+                        )}
 
                         {/* Quick Actions */}
-                        <div className="bg-slate-900/50 rounded-3xl border border-white/5 p-6">
-                            <h3 className="font-bold mb-4">Actions Rapides</h3>
+                        <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
+                            <h3 className="font-bold mb-4">Accès Rapide</h3>
                             <div className="space-y-2">
-                                <QuickAction href="/workshops" icon={<BookOpen size={18} />} label="Tous les ateliers" />
-                                <QuickAction href="/student/quiz/03" icon={<CheckCircle size={18} />} label="Passer un quiz" />
-                                <QuickAction href="/lab" icon={<Beaker size={18} />} label="Laboratoire" />
-                                <QuickAction href="/tools" icon={<Terminal size={18} />} label="Outils Crypto" />
+                                <QuickAction href="/student/cursus" icon={<GraduationCap size={18} />} label="Mes Cursus" />
+                                <QuickAction href="/student/quizzes" icon={<Target size={18} />} label="Mes Quiz" />
+                                <QuickAction href="/student/progress" icon={<BarChart3 size={18} />} label="Ma Progression" />
+                                <QuickAction href="/student/badges" icon={<Award size={18} />} label="Mes Badges" />
+                                <QuickAction href="/student/transactions" icon={<History size={18} />} label="Transactions" />
                             </div>
                         </div>
 
-                        {/* Leaderboard Preview */}
-                        <div className="bg-slate-900/50 rounded-3xl border border-white/5 p-6">
+                        {/* Leaderboard */}
+                        <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
                             <h3 className="font-bold mb-4 flex items-center gap-2">
                                 <TrendingUp size={18} className="text-amber-400" />
                                 Classement
                             </h3>
-                            <div className="space-y-3">
-                                <LeaderboardRow rank={1} name="Sophie M." xp={2450} isYou={false} />
-                                <LeaderboardRow rank={2} name="Marc D." xp={1890} isYou={false} />
-                                <LeaderboardRow rank={3} name="Vous" xp={totalXP} isYou={true} />
-                                <LeaderboardRow rank={4} name="Julie P." xp={580} isYou={false} />
-                            </div>
+                            {leaderboard.length > 0 ? (
+                                <div className="space-y-2">
+                                    {leaderboard.slice(0, 5).map((entry) => {
+                                        const name = [entry.first_name, entry.last_name].filter(Boolean).join(' ') || entry.username;
+                                        const isMe = entry.id === (user?.id || '');
+                                        return (
+                                            <div key={entry.id} className={`flex items-center gap-3 p-2 rounded-lg ${isMe ? 'bg-emerald-500/10' : ''}`}>
+                                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${entry.rank === 1 ? 'bg-amber-500 text-slate-950' :
+                                                        entry.rank === 2 ? 'bg-slate-400 text-slate-950' :
+                                                            entry.rank === 3 ? 'bg-amber-700 text-white' :
+                                                                'bg-slate-800 text-slate-400'
+                                                    }`}>
+                                                    {entry.rank}
+                                                </div>
+                                                <span className={`flex-1 text-sm truncate ${isMe ? 'font-bold text-emerald-400' : ''}`}>
+                                                    {isMe ? 'Vous' : name}
+                                                </span>
+                                                <span className="text-xs font-mono text-slate-500">{entry.total_xp} XP</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-slate-500">Pas encore de classement.</p>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -296,12 +473,14 @@ export default function StudentDashboard() {
     );
 }
 
-function StatCard({ icon, label, value, suffix, color }: any) {
+/* ── Sub-components ───────────────────────────────────────────────── */
+
+function StatCard({ icon, label, value, suffix, color }: { icon: React.ReactNode; label: string; value: string | number; suffix?: string; color: string }) {
     const colors: Record<string, string> = {
         amber: 'from-amber-500/10 to-amber-600/5 border-amber-500/20',
         emerald: 'from-emerald-500/10 to-emerald-600/5 border-emerald-500/20',
         blue: 'from-blue-500/10 to-blue-600/5 border-blue-500/20',
-        orange: 'from-orange-500/10 to-orange-600/5 border-orange-500/20',
+        purple: 'from-purple-500/10 to-purple-600/5 border-purple-500/20',
     };
 
     return (
@@ -317,15 +496,14 @@ function StatCard({ icon, label, value, suffix, color }: any) {
     );
 }
 
-function TabButton({ active, onClick, icon, label }: any) {
+function TabButton({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
     return (
         <button
             onClick={onClick}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-sm transition-all ${
-                active
+            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-sm transition-all ${active
                     ? 'bg-white text-slate-950'
                     : 'text-slate-400 hover:text-white hover:bg-white/5'
-            }`}
+                }`}
         >
             {icon}
             {label}
@@ -333,8 +511,19 @@ function TabButton({ active, onClick, icon, label }: any) {
     );
 }
 
-function WorkshopCard({ workshop }: { workshop: typeof workshops[0] }) {
-    const Icon = workshop.icon;
+function MiniStat({ label, value }: { label: string; value: string | number }) {
+    return (
+        <div className="text-center p-4 bg-slate-900/50 rounded-xl">
+            <div className="text-2xl font-bold text-white mb-1">{value}</div>
+            <div className="text-xs text-slate-500">{label}</div>
+        </div>
+    );
+}
+
+function WorkshopCard({ workshop, displayStatus, number }: { workshop: WorkshopProgress; displayStatus: string; number: string }) {
+    const meta = WORKSHOP_META[workshop.workshop_id] || { icon: BookOpen, color: 'blue', difficulty: '-', duration: '-' };
+    const Icon = meta.icon;
+
     const colors: Record<string, { bg: string; text: string; border: string }> = {
         blue: { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/20' },
         purple: { bg: 'bg-purple-500/10', text: 'text-purple-400', border: 'border-purple-500/20' },
@@ -344,15 +533,14 @@ function WorkshopCard({ workshop }: { workshop: typeof workshops[0] }) {
         indigo: { bg: 'bg-indigo-500/10', text: 'text-indigo-400', border: 'border-indigo-500/20' },
     };
 
-    const colorScheme = colors[workshop.color];
-    const isLocked = workshop.status === 'locked';
+    const colorScheme = colors[meta.color] || colors.blue;
+    const isLocked = displayStatus === 'locked';
 
     return (
-        <div className={`p-6 rounded-2xl border transition-all ${
-            isLocked
+        <div className={`p-6 rounded-2xl border transition-all ${isLocked
                 ? 'bg-slate-900/30 border-white/5 opacity-60'
-                : 'bg-slate-900/50 border-white/5 hover:border-white/10'
-        }`}>
+                : 'bg-slate-800/50 border-white/10 hover:border-white/20'
+            }`}>
             <div className="flex items-start gap-4">
                 <div className={`p-3 rounded-xl ${colorScheme.bg} ${colorScheme.border} border`}>
                     <Icon className={colorScheme.text} size={24} />
@@ -362,26 +550,23 @@ function WorkshopCard({ workshop }: { workshop: typeof workshops[0] }) {
                     <div className="flex items-start justify-between gap-4">
                         <div>
                             <div className="flex items-center gap-2 mb-1">
-                                <span className="text-xs text-slate-500 font-mono">#{workshop.number}</span>
-                                <span className={`text-xs px-2 py-0.5 rounded-full ${
-                                    workshop.difficulty === 'Débutant' ? 'bg-green-500/10 text-green-400' :
-                                    workshop.difficulty === 'Intermédiaire' ? 'bg-blue-500/10 text-blue-400' :
-                                    workshop.difficulty === 'Avancé' ? 'bg-amber-500/10 text-amber-400' :
-                                    'bg-purple-500/10 text-purple-400'
-                                }`}>
-                                    {workshop.difficulty}
+                                <span className="text-xs text-slate-500 font-mono">#{number}</span>
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${meta.difficulty === 'Débutant' ? 'bg-green-500/10 text-green-400' :
+                                        meta.difficulty === 'Intermédiaire' ? 'bg-blue-500/10 text-blue-400' :
+                                            meta.difficulty === 'Avancé' ? 'bg-amber-500/10 text-amber-400' :
+                                                'bg-purple-500/10 text-purple-400'
+                                    }`}>
+                                    {meta.difficulty}
                                 </span>
                             </div>
                             <h3 className="font-bold text-lg">{workshop.title}</h3>
-                            <p className="text-sm text-slate-400 mt-1">{workshop.desc}</p>
                         </div>
 
                         <div className="text-right">
                             <div className="text-xs text-slate-500 flex items-center gap-1 justify-end">
                                 <Clock size={12} />
-                                {workshop.duration}
+                                {meta.duration}
                             </div>
-                            <div className="text-xs text-amber-400 font-bold mt-1">+{workshop.xp} XP</div>
                         </div>
                     </div>
 
@@ -389,17 +574,18 @@ function WorkshopCard({ workshop }: { workshop: typeof workshops[0] }) {
                     {!isLocked && (
                         <div className="mt-4">
                             <div className="flex items-center justify-between text-xs mb-1">
-                                <span className="text-slate-500">Progression</span>
-                                <span className={workshop.status === 'completed' ? 'text-emerald-400' : 'text-slate-400'}>
-                                    {workshop.progress}%
+                                <span className="text-slate-500">
+                                    Section {workshop.current_section || 0}/{workshop.total_sections || '?'}
+                                </span>
+                                <span className={displayStatus === 'completed' ? 'text-emerald-400' : 'text-slate-400'}>
+                                    {workshop.progress_percent || 0}%
                                 </span>
                             </div>
                             <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
                                 <div
-                                    className={`h-full transition-all ${
-                                        workshop.status === 'completed' ? 'bg-emerald-500' : 'bg-amber-500'
-                                    }`}
-                                    style={{ width: `${workshop.progress}%` }}
+                                    className={`h-full transition-all ${displayStatus === 'completed' ? 'bg-emerald-500' : 'bg-amber-500'
+                                        }`}
+                                    style={{ width: `${workshop.progress_percent || 0}%` }}
                                 />
                             </div>
                         </div>
@@ -410,29 +596,20 @@ function WorkshopCard({ workshop }: { workshop: typeof workshops[0] }) {
                         {isLocked ? (
                             <div className="flex items-center gap-2 text-sm text-slate-600">
                                 <Lock size={14} />
-                                Complétez l'atelier précédent pour débloquer
+                                Complétez l&apos;atelier précédent pour débloquer
                             </div>
                         ) : (
                             <>
                                 <Link
-                                    href={`/workshops/${workshop.id}`}
-                                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
-                                        workshop.status === 'completed'
+                                    href={`/student/theory/${workshop.workshop_id}`}
+                                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${displayStatus === 'completed'
                                             ? 'bg-slate-800 hover:bg-slate-700 text-white'
                                             : `${colorScheme.bg} ${colorScheme.text} hover:opacity-80`
-                                    }`}
+                                        }`}
                                 >
-                                    {workshop.status === 'completed' ? 'Revoir' : workshop.status === 'in-progress' ? 'Continuer' : 'Commencer'}
+                                    {displayStatus === 'completed' ? 'Revoir' : displayStatus === 'in-progress' ? 'Continuer' : 'Commencer'}
                                 </Link>
-                                {workshop.status !== 'locked' && (
-                                    <Link
-                                        href={`/student/quiz/${workshop.number}`}
-                                        className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-bold transition-colors"
-                                    >
-                                        Quiz {workshop.quizScore !== null && `(${workshop.quizScore}%)`}
-                                    </Link>
-                                )}
-                                {workshop.status === 'completed' && (
+                                {displayStatus === 'completed' && (
                                     <CheckCircle size={20} className="text-emerald-500" />
                                 )}
                             </>
@@ -454,22 +631,5 @@ function QuickAction({ href, icon, label }: { href: string; icon: React.ReactNod
             <span className="text-sm">{label}</span>
             <ChevronRight size={14} className="ml-auto text-slate-600 group-hover:text-slate-400 transition-colors" />
         </Link>
-    );
-}
-
-function LeaderboardRow({ rank, name, xp, isYou }: { rank: number; name: string; xp: number; isYou: boolean }) {
-    return (
-        <div className={`flex items-center gap-3 p-2 rounded-lg ${isYou ? 'bg-emerald-500/10' : ''}`}>
-            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                rank === 1 ? 'bg-amber-500 text-slate-950' :
-                rank === 2 ? 'bg-slate-400 text-slate-950' :
-                rank === 3 ? 'bg-amber-700 text-white' :
-                'bg-slate-800 text-slate-400'
-            }`}>
-                {rank}
-            </div>
-            <span className={`flex-1 text-sm ${isYou ? 'font-bold text-emerald-400' : ''}`}>{name}</span>
-            <span className="text-xs font-mono text-slate-500">{xp} XP</span>
-        </div>
     );
 }

@@ -10,6 +10,8 @@ import { accountLockout } from '../services/accountLockout.service';
 import { tokenBlacklist } from '../services/tokenBlacklist.service';
 import { refreshTokenService } from '../services/refreshToken.service';
 import { validate2FACode } from './twofa.controller';
+import { provisionFinancialAccountForUser } from '../services/bankingProvisioning.service';
+import { UserRole } from '../middleware/roles';
 
 /**
  * Login user
@@ -205,6 +207,14 @@ export const register = async (req: Request, res: Response) => {
         return;
     }
 
+    const validRoles = [
+        UserRole.CLIENT,
+        UserRole.MARCHAND,
+        UserRole.ETUDIANT,
+        UserRole.FORMATEUR
+    ];
+    const normalizedRole = validRoles.includes(role) ? role : UserRole.ETUDIANT;
+
     // SECURITY: Validate password strength
     const passwordValidation = passwordValidator.validate(password);
     if (!passwordValidation.valid) {
@@ -240,10 +250,18 @@ export const register = async (req: Request, res: Response) => {
             `INSERT INTO users.users (username, email, password_hash, first_name, last_name, role) 
             VALUES ($1, $2, $3, $4, $5, $6) 
             RETURNING id, username, email, first_name, last_name, role, created_at`,
-            [username, email, passwordHash, firstName, lastName, role || 'USER']
+            [username, email, passwordHash, firstName, lastName, normalizedRole]
         );
 
         const user = result.rows[0];
+
+        try {
+            await provisionFinancialAccountForUser(user.id, user.role);
+        } catch (provisionError: any) {
+            await query(`DELETE FROM users.users WHERE id = $1`, [user.id]);
+            throw provisionError;
+        }
+
         const token = generateToken(user.id, user.role);
 
         res.status(201).json({

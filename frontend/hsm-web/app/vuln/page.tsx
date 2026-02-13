@@ -2,13 +2,13 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { AlertTriangle, Shield, ShieldOff, Wifi, Key, Zap, CreditCard, Lock, ChevronRight, Play, CheckCircle, XCircle } from 'lucide-react';
+import { AlertTriangle, Shield, ShieldOff, Wifi, Key, Zap, ChevronRight, type LucideIcon } from 'lucide-react';
 
 interface Scenario {
     id: string;
     title: string;
     description: string;
-    icon: any;
+    icon: LucideIcon;
     severity: 'critical' | 'high' | 'medium';
     phases: string[];
 }
@@ -91,17 +91,17 @@ export default function VulnPage() {
                     Quick Security Toggles
                 </h3>
                 <div className="grid md:grid-cols-2 gap-4">
-                    <VulnToggle id="tls" label="TLS Encryption" description="Encrypt all network traffic" defaultEnabled={true} />
-                    <VulnToggle id="rate" label="Rate Limiting" description="Limit requests per second" defaultEnabled={true} />
-                    <VulnToggle id="pin-policy" label="PIN Policy" description="Block weak PIN patterns" defaultEnabled={true} />
-                    <VulnToggle id="audit" label="Audit Logging" description="Log all security events" defaultEnabled={true} />
+                    <VulnToggle label="TLS Encryption" description="Encrypt all network traffic" defaultEnabled={true} />
+                    <VulnToggle label="Rate Limiting" description="Limit requests per second" defaultEnabled={true} />
+                    <VulnToggle label="PIN Policy" description="Block weak PIN patterns" defaultEnabled={true} />
+                    <VulnToggle label="Audit Logging" description="Log all security events" defaultEnabled={true} />
                 </div>
             </div>
         </div>
     );
 }
 
-function VulnToggle({ id, label, description, defaultEnabled }: { id: string; label: string; description: string; defaultEnabled: boolean }) {
+function VulnToggle({ label, description, defaultEnabled }: { label: string; description: string; defaultEnabled: boolean }) {
     const [enabled, setEnabled] = useState(defaultEnabled);
     return (
         <div className="flex items-center justify-between p-4 rounded-xl bg-slate-800/50">

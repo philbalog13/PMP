@@ -7,8 +7,9 @@
         "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
         "build": "tsc -p tsconfig.json",
         "start": "node dist/index.js",
-        "test": "jest --coverage",
-        "lint": "eslint src/**/*.ts"
+        "test": "jest --coverage --testPathIgnorePatterns=src/__tests__/endpoints.test.ts",
+        "test:integration": "jest --coverage src/__tests__/endpoints.test.ts",
+        "lint": "tsc -p tsconfig.json --noEmit"
     },
     "dependencies": {
         "@types/bcrypt": "^6.0.0",
@@ -39,9 +40,12 @@
     "devDependencies": {
         "@types/cors": "^2.8.17",
         "@types/express": "^4.17.21",
+        "@types/jest": "^30.0.0",
         "@types/jsonwebtoken": "^9.0.10",
         "@types/node": "^20.10.4",
         "@types/uuid": "^9.0.7",
+        "jest": "^30.2.0",
+        "ts-jest": "^29.4.6",
         "ts-node-dev": "^2.0.0",
         "typescript": "^5.3.3"
     }

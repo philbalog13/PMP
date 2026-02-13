@@ -30,8 +30,13 @@ export const rateLimitMiddleware = rateLimit({
     },
 
     skip: (req) => {
-        // Skip rate limiting for health checks
-        return req.path === '/health' || req.path === '/metrics';
+        // Skip rate limiting for health checks and CTF endpoints (high read volume)
+        return req.path === '/health' ||
+            req.path.startsWith('/health/') ||
+            req.path === '/api/health' ||
+            req.path.startsWith('/api/health/') ||
+            req.path === '/metrics' ||
+            req.path.startsWith('/api/ctf');
     },
 
     keyGenerator: (req) => {

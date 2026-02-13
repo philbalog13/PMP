@@ -1,15 +1,16 @@
-import app from './app';
 import dotenv from 'dotenv';
-import { KeyStore } from './services/KeyStore';
+import app from './app';
+import { HSMSimulator } from './core/HSMSimulator';
 
 dotenv.config();
 
-const PORT = process.env.HSM_PORT || 8011;
+const parsedPort = Number(process.env.HSM_PORT ?? process.env.PORT ?? 8011);
+const PORT = Number.isFinite(parsedPort) && parsedPort > 0 ? parsedPort : 8011;
 
-// Initialize KeyStore
-KeyStore.initialize();
+const hsm = HSMSimulator.getInstance();
 
 app.listen(PORT, () => {
-    console.log(`🔒 HSM Simulator running on port ${PORT}`);
-    console.log(`🔑 Master Keys Loaded`);
+    const status = hsm.getStatus();
+    console.log(`[HSM] Simulator listening on port ${PORT}`);
+    console.log(`[HSM] Keys loaded: ${status.keysLoaded}`);
 });

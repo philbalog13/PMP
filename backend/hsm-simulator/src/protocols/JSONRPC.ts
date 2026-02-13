@@ -1,4 +1,5 @@
 import { HSMSimulator } from '../core/HSMSimulator';
+import { ValidationError } from '../core/errors';
 
 export class JSONRPCProtocol {
     private hsm: HSMSimulator;
@@ -8,7 +9,7 @@ export class JSONRPCProtocol {
     }
 
     // Adapt API Request to Firmware Command
-    async handleRequest(method: string, params: any) {
+    async handleRequest(method: string, params: unknown): Promise<unknown> {
         // Map high-level method to Command Code
         let commandCode = '';
         switch (method) {
@@ -20,7 +21,7 @@ export class JSONRPCProtocol {
             case 'generate-cvv': commandCode = 'D4'; break;
             case 'encrypt-data': commandCode = 'E1'; break;
             case 'calculate-kcv': commandCode = 'K1'; break;
-            default: throw new Error(`Method ${method} not mapped to Firmware Command`);
+            default: throw new ValidationError(`Method '${method}' not mapped to a firmware command`);
         }
 
         return await this.hsm.executeCommand(commandCode, params);

@@ -157,10 +157,10 @@ SELECT
     u.username,
     u.first_name,
     u.last_name,
-    COALESCE(SUM(b.xp_awarded), 0) as total_xp,
-    COUNT(DISTINCT b.id) as badge_count,
-    COUNT(DISTINCT CASE WHEN sp.status = 'COMPLETED' THEN sp.workshop_id END) as workshops_completed,
-    COUNT(DISTINCT CASE WHEN qr.passed = true THEN qr.quiz_id END) as quizzes_passed
+    COALESCE(SUM(b.xp_awarded)::integer, 0)::integer as total_xp,
+    COUNT(DISTINCT b.id)::integer as badge_count,
+    COUNT(DISTINCT CASE WHEN sp.status = 'COMPLETED' THEN sp.workshop_id END)::integer as workshops_completed,
+    COUNT(DISTINCT CASE WHEN qr.passed = true THEN qr.quiz_id END)::integer as quizzes_passed
 FROM users.users u
 LEFT JOIN learning.badges b ON u.id = b.student_id
 LEFT JOIN learning.student_progress sp ON u.id = sp.student_id

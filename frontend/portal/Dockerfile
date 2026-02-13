@@ -14,9 +14,13 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app/portal
 
-# Build arguments for Next.js public env vars (needed at build time)
+# Build arguments for Next.js env vars (needed at build time)
 ARG NEXT_PUBLIC_API_URL=http://localhost:8000
+ARG INTERNAL_API_URL=http://api-gateway:8000
+ARG NEXT_PUBLIC_CTF_ATTACKBOX_URL=http://localhost:7681
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV INTERNAL_API_URL=$INTERNAL_API_URL
+ENV NEXT_PUBLIC_CTF_ATTACKBOX_URL=$NEXT_PUBLIC_CTF_ATTACKBOX_URL
 
 # Copy dependencies from deps stage
 COPY --from=deps /app/portal/node_modules ./node_modules

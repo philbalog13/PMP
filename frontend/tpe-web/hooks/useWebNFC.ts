@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 
 interface UseWebNFCResult {
     supported: boolean;
@@ -9,17 +9,37 @@ interface UseWebNFCResult {
     simulateNFC: (data: string) => void;
 }
 
+interface NdefRecordLike {
+    recordType?: string;
+    mediaType?: string;
+    data?: unknown;
+}
+
+interface NdefMessageLike {
+    records: NdefRecordLike[];
+}
+
+interface NdefReadingEventLike extends Event {
+    message: NdefMessageLike;
+    serialNumber?: string;
+}
+
+interface NdefReaderLike {
+    scan: () => Promise<void>;
+    addEventListener(type: 'reading', listener: (event: NdefReadingEventLike) => void): void;
+    addEventListener(type: 'readingerror', listener: () => void): void;
+}
+
+type NdefWindow = Window & {
+    NDEFReader?: new () => NdefReaderLike;
+};
+
 export function useWebNFC(): UseWebNFCResult {
-    const [supported, setSupported] = useState(false);
+    const [supported] = useState<boolean>(() => (
+        typeof window !== 'undefined' && 'NDEFReader' in window
+    ));
     const [reading, setReading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-
-    useEffect(() => {
-        // Check for Web NFC API support
-        if ('NDEFReader' in window) {
-            setSupported(true);
-        }
-    }, []);
 
     const startScan = useCallback(async () => {
         if (!supported) {
@@ -31,11 +51,17 @@ export function useWebNFC(): UseWebNFCResult {
             setReading(true);
             setError(null);
 
-            // @ts-ignore - NDEFReader is experimental
-            const ndef = new NDEFReader();
+            const ndefCtor = (window as NdefWindow).NDEFReader;
+            if (!ndefCtor) {
+                setError('Web NFC not supported on this browser');
+                setReading(false);
+                return;
+            }
+
+            const ndef = new ndefCtor();
             await ndef.scan();
 
-            ndef.addEventListener('reading', ({ message, serialNumber }: any) => {
+            ndef.addEventListener('reading', ({ message, serialNumber }) => {
                 console.log('NFC tag detected:', { serialNumber });
 
                 for (const record of message.records) {

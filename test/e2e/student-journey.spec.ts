@@ -1,158 +1,132 @@
-/**
- * E2E Test: Student Journey
- * Tests the complete student learning path
+﻿/**
+ * E2E Test: Student Journey (current portal)
  *
  * Requirements:
  * - npm install -D @playwright/test
  * - npx playwright install
  *
- * Run: npx playwright test test/e2e/student-journey.spec.ts
+ * Run:
+ * npx playwright test test/e2e/student-journey.spec.ts
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect, type Locator, type Page } from '@playwright/test';
 
-test.describe('Student Learning Journey', () => {
+const BASE_URL = process.env.PORTAL_URL || 'http://localhost:3000';
+
+async function isVisible(locator: Locator, timeout = 5000): Promise<boolean> {
+    try {
+        await locator.first().waitFor({ state: 'visible', timeout });
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+async function loginAsStudent(page: Page): Promise<void> {
+    await page.goto(`${BASE_URL}/login`, { waitUntil: 'domcontentloaded' });
+
+    const studentRoleButton = page.getByRole('button', { name: /Apprenant\s*Etudiant/i });
+    if (await isVisible(studentRoleButton, 3000)) {
+        await studentRoleButton.click();
+    }
+
+    const autoFillButton = page.getByRole('button', { name: /Auto Fill Demo/i });
+    if (await isVisible(autoFillButton, 8000)) {
+        await autoFillButton.click();
+    } else {
+        await page.getByLabel('Email').fill('student01@pmp.edu');
+        await page.locator('input[type="password"]').first().fill('qa-pass-123');
+    }
+
+    await page.getByRole('button', { name: /Se connecter/i }).click();
+    await page.waitForURL('**/student', { timeout: 30000 });
+    await expect(page.locator('h1').first()).toContainText(/Bonjour/i);
+}
+
+async function answerCurrentQuestion(page: Page): Promise<void> {
+    const answerButton = page.locator('h2 + div button').first();
+    await expect(answerButton).toBeVisible();
+    await answerButton.click();
+}
+
+test.describe('Student Journey', () => {
     test.beforeEach(async ({ page }) => {
-        // Mock login as student
-        await page.goto('http://localhost:3001/login');
-        await page.fill('input[name="email"]', 'student01@pmp.edu');
-        await page.fill('input[name="password"]', 'student123');
-        await page.click('button[type="submit"]');
-
-        // Wait for redirect to student dashboard
-        await page.waitForURL('http://localhost:3001/student');
+        await loginAsStudent(page);
     });
 
-    test('should display student dashboard with modules', async ({ page }) => {
-        // Verify student page loaded
-        await expect(page.locator('h1')).toContainText('Mon Parcours');
-
-        // Verify modules are displayed
-        await expect(page.locator('text=Module 05')).toBeVisible();
-        await expect(page.locator('text=3D Secure Multi-Domain')).toBeVisible();
-
-        // Verify progress bar
-        await expect(page.locator('text=65% COMPLÉTÉ')).toBeVisible();
+    test('shows student dashboard quick actions', async ({ page }) => {
+        await expect(page.getByRole('link', { name: /Mes Quiz/i })).toBeVisible();
+        await expect(page.getByRole('link', { name: /Ma Progression/i })).toBeVisible();
+        await expect(page.getByRole('link', { name: /Mes Badges/i })).toBeVisible();
+        await expect(page.getByRole('link', { name: /Transactions/i }).first()).toBeVisible();
     });
 
-    test('should navigate to exercise from module', async ({ page }) => {
-        // Click "Continuer l'exercice" link for Module 05
-        await page.click('a[href*="localhost:3000?role=etudiant&module=5"]');
+    test('completes quiz flow from quiz catalog', async ({ page }) => {
+        await page.goto(`${BASE_URL}/student/quizzes`, { waitUntil: 'domcontentloaded' });
+        await expect(page.getByRole('heading', { name: /Mes Quiz/i })).toBeVisible();
 
-        // Should land on TPE-Web with exercise loaded
-        await page.waitForURL(/localhost:3000\?role=etudiant&module=5/);
+        const quizLink = page.locator('a[href^="/student/quiz/"]').first();
+        await expect(quizLink).toBeVisible();
+        await quizLink.click();
 
-        // Verify TPE-Web loaded
-        await expect(page.locator('text=TPE')).toBeVisible();
-    });
+        await page.waitForURL(/\/student\/quiz\//, { timeout: 20000 });
+        await expect(page.getByRole('heading', { name: /Quiz non disponible/i })).toHaveCount(0);
 
-    test('should navigate to theory page', async ({ page }) => {
-        // Click theory link for Module 05
-        await page.click('a[href="/student/theory/05"]');
+        for (let i = 0; i < 20; i++) {
+            const submitButton = page.getByRole('button', { name: /Soumettre/i });
+            const submitVisible = await submitButton.isVisible().catch(() => false);
 
-        // Verify theory page loaded
-        await expect(page.locator('h1')).toContainText('Module 05: 3D Secure');
-        await expect(page.locator('text=Introduction')).toBeVisible();
-    });
-
-    test('should complete quiz and show results', async ({ page }) => {
-        // Navigate to quiz
-        await page.click('a[href="/student/quiz/04"]');
-
-        // Verify quiz loaded
-        await expect(page.locator('h1')).toContainText('Module 04: Protocoles ISO 8583');
-
-        // Answer all questions
-        for (let i = 0; i < 5; i++) {
-            // Select first option (may not be correct, but for testing)
-            await page.click('button:has-text("Identifier le type de transaction")');
-
-            // Click Next/Finish
-            if (i < 4) {
-                await page.click('button:has-text("Suivant")');
-            } else {
-                await page.click('button:has-text("Terminer")');
+            if (submitVisible) {
+                const submitEnabled = await submitButton.isEnabled().catch(() => false);
+                if (!submitEnabled) {
+                    await answerCurrentQuestion(page);
+                }
+                await expect(submitButton).toBeEnabled();
+                await submitButton.click();
+                break;
             }
 
-            // Wait for next question or results
-            await page.waitForTimeout(500);
-        }
-
-        // Verify results page loaded
-        await expect(
-            page.locator('text=Félicitations').or(page.locator('text=Presque'))
-        ).toBeVisible();
-
-        // Should show score percentage
-        await expect(page.locator('text=%')).toBeVisible();
-    });
-
-    test('should show badges and achievements', async ({ page }) => {
-        // Verify achievements section exists
-        await expect(page.locator('text=Succès')).toBeVisible();
-
-        // Verify at least one badge is shown
-        await expect(page.locator('text=ISO Master').or(page.locator('text=Key Guardian'))).toBeVisible();
-    });
-
-    test('should navigate between apps with context preserved', async ({ page }) => {
-        // Click link to User-Cards-Web
-        const [newPage] = await Promise.all([
-            page.context().waitForEvent('page'),
-            page.click('a[href*="localhost:3006"]'),
-        ]);
-
-        // Verify new page opened
-        await newPage.waitForLoadState();
-        expect(newPage.url()).toContain('localhost:3006');
-
-        // Verify user is still authenticated (should see cards page, not login)
-        await expect(newPage.locator('text=Cartes').or(newPage.locator('text=Cards'))).toBeVisible({
-            timeout: 10000,
-        });
-    });
-});
-
-test.describe('Student Quiz Validation', () => {
-    test('should require 80% to pass quiz', async ({ page }) => {
-        await page.goto('http://localhost:3001/student/quiz/04');
-
-        // Answer questions (simulate failing)
-        for (let i = 0; i < 5; i++) {
-            // Select first option every time
-            await page.locator('button').nth(1).click(); // Click first option
-
-            if (i < 4) {
-                await page.click('button:has-text("Suivant")');
-            } else {
-                await page.click('button:has-text("Terminer")');
+            await answerCurrentQuestion(page);
+            const nextButton = page.getByRole('button', { name: /Suivant/i });
+            const nextVisible = await nextButton.isVisible().catch(() => false);
+            if (nextVisible) {
+                await expect(nextButton).toBeEnabled();
+                await nextButton.click();
+                continue;
             }
-            await page.waitForTimeout(300);
+
+            const submitVisibleAfterAnswer = await submitButton.isVisible().catch(() => false);
+            if (submitVisibleAfterAnswer) {
+                await expect(submitButton).toBeEnabled();
+                await submitButton.click();
+                break;
+            }
+
+            throw new Error('Neither next nor submit buttons were available after answering.');
         }
 
-        // Should show percentage
-        await expect(page.locator('text=%')).toBeVisible();
-
-        // If score < 80%, should show retry button
-        const score = await page.locator('text=/%').textContent();
-        if (score && parseInt(score) < 80) {
-            await expect(page.locator('button:has-text("Réessayer")')).toBeVisible();
-        }
+        const passHeading = page.getByRole('heading', { name: /Quiz valide/i });
+        const failHeading = page.getByRole('heading', { name: /Quiz non valide/i });
+        await expect(passHeading.or(failHeading)).toBeVisible();
     });
-});
 
-test.describe('Student Module Progression', () => {
-    test('should track module completion', async ({ page }) => {
-        await page.goto('http://localhost:3001/student');
+    test('opens student pages for progression, badges and transactions', async ({ page }) => {
+        await page.goto(`${BASE_URL}/student/progress`, { waitUntil: 'domcontentloaded' });
+        await expect(page.getByRole('heading', { name: /Ma Progression/i })).toBeVisible();
 
-        // Verify completed module shows checkmark
-        await expect(
-            page.locator('text=Module 04').locator('..').locator('[data-icon="check-circle"]')
-        ).toBeVisible();
+        await page.goto(`${BASE_URL}/student/badges`, { waitUntil: 'domcontentloaded' });
+        await expect(page.getByRole('heading', { name: /Mes Badges/i })).toBeVisible();
 
-        // Verify locked module shows shield icon
-        await expect(
-            page.locator('text=Module 06').locator('..').locator('[data-icon="shield"]')
-        ).toBeVisible();
+        await page.goto(`${BASE_URL}/student/transactions`, { waitUntil: 'domcontentloaded' });
+        await expect(page.getByRole('heading', { name: /Transactions Plateforme/i })).toBeVisible();
+    });
+
+    test('opens lab and ctf student pages', async ({ page }) => {
+        await page.goto(`${BASE_URL}/lab`, { waitUntil: 'domcontentloaded' });
+        await expect(page.getByRole('heading', { name: /Security\s*Lab/i })).toBeVisible();
+
+        await page.goto(`${BASE_URL}/student/ctf`, { waitUntil: 'domcontentloaded' });
+        await expect(page.getByRole('heading', { name: '404' })).toHaveCount(0);
+        await expect(page.getByRole('heading', { name: /Security Labs/i })).toBeVisible();
     });
 });

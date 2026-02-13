@@ -1,30 +1,61 @@
 # HSM Simulator (Hardware Security Module)
 
-A simulated HSM for educational purposes, permitting cryptographic operations and key management via REST API.
+Educational HSM simulator used by PMP services (`issuer`, `gateway`, `hsm-web`) for key-backed crypto operations.
+
+## Run
+
+```bash
+npm install
+npm run build
+npm run dev
+```
+
+Environment variables:
+
+- `HSM_PORT` or `PORT`: service port (default `8011`)
+- `HSM_BOOTSTRAP_KEYS`: optional JSON object of additional startup keys
+
+Example:
+
+```json
+{
+  "ZAK_010": { "type": "ZAK", "value": "00112233445566778899AABBCCDDEEFF" }
+}
+```
 
 ## API Endpoints
 
+### Health
+
+- `GET /health`
+- `GET /hsm/health`
+
 ### PIN Operations
-- `POST /hsm/encrypt-pin`: Encrypt a clear PIN using a ZPK.
+
+- `POST /hsm/encrypt-pin`
+- `POST /hsm/decrypt-pin`
 
 ### MAC Operations
-- `POST /hsm/generate-mac`: Generate a MAC (ISO 9797 Alg 3 or Alg 1).
-- `POST /hsm/verify-mac`: Verify a MAC.
 
-### Key Management
-- `POST /hsm/translate-key`: Translate a key from one Zone Key to another (or to LMK).
+- `POST /hsm/generate-mac` (hex or utf8 input)
+- `POST /hsm/verify-mac`
 
-## Configuration
+### Key/Data Operations
 
-Environment variables:
-- `HSM_PORT`: Port to listen on (default 3004).
-- `VULN_ENABLED`: Enable vulnerability engine.
+- `POST /hsm/translate-key`
+- `POST /hsm/encrypt-data`
+- `POST /hsm/calculate-kcv`
+- `POST /hsm/generate-cvv`
 
-## Vulnerability Engine
+### Admin/Runtime
 
-The simulator includes a `VulnEngine` to enable:
-- Weak Keys
-- Key Leaks (in logs)
-- Replay Attacks (permissive check)
+- `GET /hsm/keys`
+- `GET /hsm/status`
+- `GET /hsm/config`
+- `POST /hsm/config` (vuln config, tamper simulation/reset, key reload)
 
-Enable these via the Web Admin Interface.
+## Notes
+
+- Includes default keys required by current issuer flow (`ZAK_002`, `ZEK_001`).
+- Tamper mode zeroizes keys and blocks crypto commands until reset.
+- Built for simulation/learning, not for PCI production use.

@@ -8,6 +8,50 @@ import { logger } from '../utils/logger';
 class TokenBlacklistService {
     private client: RedisClientType | null = null;
     private initialized = false;
+    private inMemoryTokenBlacklist = new Map<string, number>();
+    private inMemoryUserRevocations = new Map<string, number>();
+
+    private nowSeconds(): number {
+        return Math.floor(Date.now() / 1000);
+    }
+
+    private purgeExpiredMemoryEntries(): void {
+        const now = this.nowSeconds();
+
+        for (const [token, expiry] of this.inMemoryTokenBlacklist.entries()) {
+            if (expiry <= now) {
+                this.inMemoryTokenBlacklist.delete(token);
+            }
+        }
+
+        for (const [userId, expiry] of this.inMemoryUserRevocations.entries()) {
+            if (expiry <= now) {
+                this.inMemoryUserRevocations.delete(userId);
+            }
+        }
+    }
+
+    private setInMemoryToken(token: string, expiresInSeconds: number): void {
+        const ttl = Math.max(expiresInSeconds, 1);
+        this.inMemoryTokenBlacklist.set(token, this.nowSeconds() + ttl);
+    }
+
+    private setInMemoryUserRevocation(userId: string, expiresInSeconds: number): void {
+        const ttl = Math.max(expiresInSeconds, 1);
+        this.inMemoryUserRevocations.set(userId, this.nowSeconds() + ttl);
+    }
+
+    private isInMemoryTokenBlacklisted(token: string): boolean {
+        this.purgeExpiredMemoryEntries();
+        const expiry = this.inMemoryTokenBlacklist.get(token);
+        return typeof expiry === 'number' && expiry > this.nowSeconds();
+    }
+
+    private isInMemoryUserRevoked(userId: string): boolean {
+        this.purgeExpiredMemoryEntries();
+        const expiry = this.inMemoryUserRevocations.get(userId);
+        return typeof expiry === 'number' && expiry > this.nowSeconds();
+    }
 
     /**
      * Initialize Redis connection
@@ -37,8 +81,7 @@ class TokenBlacklistService {
             logger.info('Token blacklist service initialized');
         } catch (error: any) {
             logger.error('Failed to initialize token blacklist', { error: error.message });
-            // Don't throw - allow app to start even if Redis is unavailable
-            // Tokens just won't be revocable until Redis is available
+            // Don't throw - app stays available with in-memory fallback revocation.
         }
     }
 
@@ -46,8 +89,11 @@ class TokenBlacklistService {
      * Add token to blacklist
      */
     async blacklistToken(token: string, expiresInSeconds: number): Promise<void> {
+        this.purgeExpiredMemoryEntries();
+
         if (!this.client || !this.initialized) {
-            logger.warn('Token blacklist not initialized, cannot blacklist token');
+            this.setInMemoryToken(token, expiresInSeconds);
+            logger.warn('Token blacklist Redis unavailable, using in-memory fallback');
             return;
         }
 
@@ -61,6 +107,7 @@ class TokenBlacklistService {
             logger.info('Token blacklisted', { tokenPreview: token.substring(0, 20) + '...' });
         } catch (error: any) {
             logger.error('Failed to blacklist token', { error: error.message });
+            this.setInMemoryToken(token, expiresInSeconds);
         }
     }
 
@@ -68,8 +115,11 @@ class TokenBlacklistService {
      * Check if token is blacklisted
      */
     async isBlacklisted(token: string): Promise<boolean> {
+        if (this.isInMemoryTokenBlacklisted(token)) {
+            return true;
+        }
+
         if (!this.client || !this.initialized) {
-            // If Redis unavailable, assume not blacklisted (fail open)
             return false;
         }
 
@@ -80,8 +130,7 @@ class TokenBlacklistService {
             return result === 'revoked';
         } catch (error: any) {
             logger.error('Failed to check token blacklist', { error: error.message });
-            // Fail open - if Redis error, don't block valid tokens
-            return false;
+            return this.isInMemoryTokenBlacklisted(token);
         }
     }
 
@@ -89,8 +138,11 @@ class TokenBlacklistService {
      * Revoke all tokens for a user (e.g., on password change)
      */
     async revokeAllUserTokens(userId: string, expirationSeconds: number = 86400): Promise<void> {
+        this.purgeExpiredMemoryEntries();
+
         if (!this.client || !this.initialized) {
-            logger.warn('Token blacklist not initialized, cannot revoke user tokens');
+            this.setInMemoryUserRevocation(userId, expirationSeconds);
+            logger.warn('Token blacklist Redis unavailable, using in-memory fallback');
             return;
         }
 
@@ -101,6 +153,7 @@ class TokenBlacklistService {
             logger.info('All user tokens revoked', { userId });
         } catch (error: any) {
             logger.error('Failed to revoke user tokens', { error: error.message });
+            this.setInMemoryUserRevocation(userId, expirationSeconds);
         }
     }
 
@@ -108,6 +161,10 @@ class TokenBlacklistService {
      * Check if all user tokens are revoked
      */
     async areAllUserTokensRevoked(userId: string): Promise<boolean> {
+        if (this.isInMemoryUserRevoked(userId)) {
+            return true;
+        }
+
         if (!this.client || !this.initialized) {
             return false;
         }
@@ -119,27 +176,41 @@ class TokenBlacklistService {
             return result === 'revoked';
         } catch (error: any) {
             logger.error('Failed to check user token revocation', { error: error.message });
-            return false;
+            return this.isInMemoryUserRevoked(userId);
         }
     }
 
     /**
      * Get blacklist statistics
      */
-    async getStats(): Promise<{ totalBlacklisted: number; initialized: boolean }> {
+    async getStats(): Promise<{ totalBlacklisted: number; initialized: boolean; inMemoryBlacklisted: number; inMemoryRevokedUsers: number }> {
+        this.purgeExpiredMemoryEntries();
+
         if (!this.client || !this.initialized) {
-            return { totalBlacklisted: 0, initialized: false };
+            return {
+                totalBlacklisted: 0,
+                initialized: false,
+                inMemoryBlacklisted: this.inMemoryTokenBlacklist.size,
+                inMemoryRevokedUsers: this.inMemoryUserRevocations.size
+            };
         }
 
         try {
             const keys = await this.client.keys('blacklist:token:*');
             return {
                 totalBlacklisted: keys.length,
-                initialized: true
+                initialized: true,
+                inMemoryBlacklisted: this.inMemoryTokenBlacklist.size,
+                inMemoryRevokedUsers: this.inMemoryUserRevocations.size
             };
         } catch (error: any) {
             logger.error('Failed to get blacklist stats', { error: error.message });
-            return { totalBlacklisted: 0, initialized: this.initialized };
+            return {
+                totalBlacklisted: 0,
+                initialized: this.initialized,
+                inMemoryBlacklisted: this.inMemoryTokenBlacklist.size,
+                inMemoryRevokedUsers: this.inMemoryUserRevocations.size
+            };
         }
     }
 

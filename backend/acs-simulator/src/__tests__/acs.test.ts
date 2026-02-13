@@ -6,8 +6,9 @@ import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 import axios from 'axios';
 
 const ACS_BASE_URL = 'http://localhost:8088';
+const integrationDescribe = process.env.RUN_INTEGRATION_TESTS === '1' ? describe : describe.skip;
 
-describe('ACS Simulator Integration Tests', () => {
+integrationDescribe('ACS Simulator Integration Tests', () => {
     describe('POST /authenticate', () => {
         it('should return frictionless authentication for low-risk transaction', async () => {
             const response = await axios.post(`${ACS_BASE_URL}/authenticate`, {

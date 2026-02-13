@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { Beaker, ShieldAlert, Cpu, Terminal, Lock, ArrowRight, Zap, Database, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
@@ -29,13 +30,13 @@ export default function LabPage() {
                         </h1>
                         <p className="text-slate-400 text-xl max-w-2xl font-medium leading-relaxed">
                             Exploitez les failles protocolaires, manipulez les messages ISO8583 et
-                            maîtrisez l'ingénierie inverse des flux bancaires.
+                            maîtrisez l&apos;ingénierie inverse des flux bancaires.
                         </p>
                     </div>
                     <div className="flex items-center gap-4 p-6 bg-slate-900/50 rounded-3xl border border-white/5 backdrop-blur-md">
                         <div className="text-right">
-                            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Votre Score</div>
-                            <div className="text-3xl font-black font-mono italic text-blue-500">2,450 XP</div>
+                            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Mode CTF</div>
+                            <div className="text-3xl font-black font-mono italic text-blue-500">Progression Live</div>
                         </div>
                         <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
                             <Zap size={24} className="fill-current text-white" />
@@ -52,6 +53,7 @@ export default function LabPage() {
                         difficulty="Facile"
                         points={150}
                         color="blue"
+                        href="/student/ctf/PIN-001"
                     />
                     <LabCard
                         title="Key Exposure"
@@ -60,6 +62,7 @@ export default function LabPage() {
                         difficulty="Intermédiaire"
                         points={300}
                         color="purple"
+                        href="/student/ctf/HSM-003"
                     />
                     <LabCard
                         title="Replay ISO8583"
@@ -68,6 +71,7 @@ export default function LabPage() {
                         difficulty="Avancé"
                         points={450}
                         color="emerald"
+                        href="/student/ctf/REPLAY-001"
                     />
                     <LabCard
                         title="Bypass 3DS"
@@ -76,6 +80,7 @@ export default function LabPage() {
                         difficulty="Expert"
                         points={750}
                         color="amber"
+                        href="/student/ctf/3DS-001"
                     />
                     <LabCard
                         title="HSM Buffer Overflow"
@@ -84,6 +89,7 @@ export default function LabPage() {
                         difficulty="Critique"
                         points={1200}
                         color="red"
+                        href="/student/ctf/HSM-004"
                     />
                     <LabCard
                         title="SQL Audit"
@@ -92,6 +98,7 @@ export default function LabPage() {
                         difficulty="Avancé"
                         points={600}
                         color="indigo"
+                        href="/student/ctf/PRIV-001"
                     />
                 </div>
 
@@ -105,12 +112,12 @@ export default function LabPage() {
                         <div className="space-y-3 text-center md:text-left flex-1">
                             <h4 className="text-2xl font-black italic uppercase tracking-tighter text-red-500">Charte Éthique & Légalité</h4>
                             <p className="text-slate-400 font-medium leading-relaxed">
-                                Les outils et scénarios présentés ici sont strictement réservés à l'apprentissage au sein de ce bac à sable.
-                                L'utilisation de ces techniques contre des infrastructures réelles est un crime fédéral.
+                                Les outils et scénarios présentés ici sont strictement réservés à l&apos;apprentissage au sein de ce bac à sable.
+                                L&apos;utilisation de ces techniques contre des infrastructures réelles est un crime fédéral.
                             </p>
                         </div>
                         <button className="px-10 py-5 bg-red-500 hover:bg-red-400 text-white font-black uppercase tracking-widest rounded-2xl transition-all shadow-xl shadow-red-500/30 active:scale-95">
-                            J'ai compris le risque
+                            J&apos;ai compris le risque
                         </button>
                     </div>
                 </div>
@@ -119,8 +126,10 @@ export default function LabPage() {
     );
 }
 
-function LabCard({ title, desc, icon, difficulty, points, color }: any) {
-    const colors: any = {
+type LabColor = 'blue' | 'purple' | 'emerald' | 'amber' | 'red' | 'indigo';
+
+function LabCard({ title, desc, icon, difficulty, points, color, href }: { title: string; desc: string; icon: ReactNode; difficulty: string; points: number; color: LabColor; href: string }) {
+    const colors: Record<LabColor, string> = {
         blue: "hover:border-blue-500/30 text-blue-500 shadow-blue-500/5",
         purple: "hover:border-purple-500/30 text-purple-500 shadow-purple-500/5",
         emerald: "hover:border-emerald-500/30 text-emerald-500 shadow-emerald-500/5",
@@ -146,9 +155,9 @@ function LabCard({ title, desc, icon, difficulty, points, color }: any) {
                 {desc}
             </p>
 
-            <button className="w-full py-5 bg-white/5 hover:bg-current group-hover:text-slate-950 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 transition-all">
+            <Link href={href} className="w-full py-5 bg-white/5 hover:bg-current group-hover:text-slate-950 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 transition-all">
                 Initialiser le Lab <ArrowRight size={14} />
-            </button>
+            </Link>
         </div>
     );
 }

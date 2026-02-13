@@ -1,35 +1,39 @@
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '../utils/logger';
 
+export interface VulnerabilityConfig {
+    allowReplay: boolean;
+    weakKeysEnabled: boolean;
+    verboseErrors: boolean;
+    keyLeakInLogs: boolean;
+}
+
 export class VulnEngine {
-    private static config = {
+    private static config: VulnerabilityConfig = {
         allowReplay: false,
         weakKeysEnabled: false,
-        verboseErrors: false, // Leaks internal paths/logic
-        keyLeakInLogs: false
+        verboseErrors: false,
+        keyLeakInLogs: false,
     };
 
-    static updateConfig(newConfig: Partial<typeof VulnEngine.config>) {
+    static updateConfig(newConfig: Partial<VulnerabilityConfig>): void {
         this.config = { ...this.config, ...newConfig };
         logger.warn('HSM: Vulnerability Configuration Updated', this.config);
     }
 
-    static getConfig() {
-        return this.config;
+    static getConfig(): VulnerabilityConfig {
+        return { ...this.config };
     }
 
-    // Middleware to check for vulnerabilities
-    static middleware(req: Request, res: Response, next: NextFunction) {
-        // 1. Weak Key Injection (Pedagogical)
-        if (VulnEngine.config.weakKeysEnabled) {
-            // If user provides a key, maybe we force it to be weak?
-            // Or we allow weak keys (all 0s, all 1s) without warning.
-        }
+    static middleware(req: Request, _res: Response, next: NextFunction): void {
+        const body = (req.body ?? {}) as Record<string, unknown>;
 
-        // 2. Key Leak in Logs
         if (VulnEngine.config.keyLeakInLogs) {
-            if (req.body.key || req.body.keyLabel) {
-                logger.warn(`[VULN: LEAK] Processing op with Key Info: ${JSON.stringify(req.body)}`);
+            if (body.key || body.keyLabel || body.pinBlock || body.clearKey) {
+                logger.warn('[VULN:LEAK] Request contains sensitive material', {
+                    path: req.path,
+                    body,
+                });
             }
         }
 

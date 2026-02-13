@@ -1,7 +1,8 @@
 'use client';
 
+import type { Dispatch, SetStateAction } from 'react';
 import { useState } from 'react';
-import { Calculator, Binary, FileCode, Hash, Repeat, ChevronRight, Copy, Check, Terminal, Shield } from 'lucide-react';
+import { Calculator, Binary, FileCode, Hash, Repeat, ChevronRight, Copy, Check, Terminal, type LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 
 export default function ToolsPage() {
@@ -31,7 +32,7 @@ export default function ToolsPage() {
                         </h1>
                         <p className="text-slate-400 text-xl max-w-2xl font-medium leading-relaxed">
                             Utilitaires essentiels pour le débogage de trames ISO8583,
-                            la validation d'algorithmes de Luhn et la manipulation de clés HSM.
+                            la validation d&apos;algorithmes de Luhn et la manipulation de clés HSM.
                         </p>
                     </div>
                 </div>
@@ -70,7 +71,7 @@ export default function ToolsPage() {
     );
 }
 
-function ToolTab({ id, label, icon: Icon, active, set }: any) {
+function ToolTab({ id, label, icon: Icon, active, set }: { id: string; label: string; icon: LucideIcon; active: string; set: Dispatch<SetStateAction<string>> }) {
     const isActive = active === id;
     return (
         <button
@@ -127,7 +128,7 @@ function HexConverter() {
                 str += String.fromCharCode(parseInt(clean.substr(i, 2), 16));
             }
             setAscii(str);
-        } catch (e) { /* ignore */ }
+        } catch { /* ignore */ }
     };
 
     return (
@@ -169,7 +170,7 @@ function Base64Tool() {
 
     const handleChange = (val: string) => {
         setText(val);
-        try { setEncoded(btoa(val)); } catch (e) { setEncoded('Invalid characters'); }
+        try { setEncoded(btoa(val)); } catch { setEncoded('Invalid characters'); }
     };
 
     return (
@@ -246,7 +247,7 @@ function LuhnTool() {
                             <h3 className={`text-3xl font-black italic uppercase tracking-tighter ${isValid ? 'text-emerald-400' : 'text-red-400'}`}>
                                 {isValid ? 'Checksum Valide' : 'Checksum Invalide'}
                             </h3>
-                            <p className="text-slate-400 font-medium">L'algorithme de Luhn confirme l'intégrité du numéro fourni.</p>
+                            <p className="text-slate-400 font-medium">L&apos;algorithme de Luhn confirme l&apos;intégrité du numéro fourni.</p>
                         </div>
                     </div>
                 )}
@@ -329,7 +330,7 @@ function XORTool() {
                 res += (byteA ^ byteB).toString(16).padStart(2, '0');
             }
             setResult(res.toUpperCase());
-        } catch (e) { setResult('INVALID HEX'); }
+        } catch { setResult('INVALID HEX'); }
     };
 
     return (

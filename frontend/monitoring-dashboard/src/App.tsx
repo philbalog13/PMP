@@ -52,9 +52,9 @@ const navSections: NavSectionConfig[] = [
         ]
     },
     {
-        title: 'Securite et infra',
+        title: 'Sécurité et infra',
         items: [
-            { to: '/logs', icon: ShieldAlert, label: 'Logs securite' },
+            { to: '/logs', icon: ShieldAlert, label: 'Logs sécurité' },
             { to: '/hsm', icon: Server, label: 'HSM master' },
             { to: '/fraud', icon: Zap, label: 'Anti-fraude' }
         ]
@@ -75,15 +75,15 @@ const navSections: NavSectionConfig[] = [
 ];
 
 const routeTitles: Record<string, string> = {
-    '/': 'Vue globale du systeme',
+    '/': 'Vue globale du système',
     '/map': 'Carte 3D des transactions',
     '/terminals': 'Monitoring des terminaux',
-    '/analytics': 'Analytics pedagogiques',
+    '/analytics': 'Analytics pédagogiques',
     '/students': 'Suivi des utilisateurs',
-    '/logs': 'Logs de securite',
+    '/logs': 'Logs de sécurité',
     '/hsm': 'Gestion HSM',
-    '/debug': 'Outils de debogage',
-    '/fraud': 'Detection de fraude'
+    '/debug': 'Outils de débogage',
+    '/fraud': 'Détection de fraude'
 };
 
 interface NavItemProps extends NavItemConfig {
@@ -136,12 +136,12 @@ function App() {
             return { label: 'Mode simulation', className: 'simulated' };
         }
         if (connected) {
-            return { label: 'Connecte', className: 'live' };
+            return { label: 'Connecté', className: 'live' };
         }
         if (reconnecting) {
             return { label: 'Reconnexion...', className: 'reconnecting' };
         }
-        return { label: 'Deconnecte', className: 'offline' };
+        return { label: 'Déconnecté', className: 'offline' };
     }, [connected, reconnecting, dataSource]);
 
     return (

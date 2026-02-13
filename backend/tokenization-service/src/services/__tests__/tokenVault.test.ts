@@ -2,10 +2,56 @@
  * Unit Tests for Tokenization Service
  */
 
+type StoredRecord = { value: string; expiresAt: number | null };
+const inMemoryStore = new Map<string, StoredRecord>();
+
+const mockRedisClient = {
+    connect: jest.fn(async () => undefined),
+    quit: jest.fn(async () => undefined),
+    get: jest.fn(async (key: string) => {
+        const record = inMemoryStore.get(key);
+        if (!record) return null;
+        if (record.expiresAt !== null && record.expiresAt <= Date.now()) {
+            inMemoryStore.delete(key);
+            return null;
+        }
+        return record.value;
+    }),
+    setEx: jest.fn(async (key: string, ttlSeconds: number, value: string) => {
+        inMemoryStore.set(key, {
+            value,
+            expiresAt: Date.now() + ttlSeconds * 1000
+        });
+        return 'OK';
+    }),
+    ttl: jest.fn(async (key: string) => {
+        const record = inMemoryStore.get(key);
+        if (!record) return -2;
+        if (record.expiresAt === null) return -1;
+        const remaining = Math.floor((record.expiresAt - Date.now()) / 1000);
+        return remaining > 0 ? remaining : -2;
+    }),
+    del: jest.fn(async (...keys: string[]) => {
+        let deleted = 0;
+        for (const key of keys) {
+            if (inMemoryStore.delete(key)) deleted++;
+        }
+        return deleted;
+    })
+};
+
+jest.mock('redis', () => ({
+    createClient: jest.fn(() => mockRedisClient)
+}));
+
 import { TokenVault } from '../tokenVault';
 
 describe('TokenVault', () => {
     let vault: TokenVault;
+
+    beforeEach(() => {
+        inMemoryStore.clear();
+    });
 
     beforeAll(async () => {
         vault = new TokenVault('redis://localhost:6379');

@@ -11,7 +11,14 @@ type SimulationScenario =
     | 'FRAUD_SUSPECTED'
     | 'SYSTEM_ERROR';
 
-const scenarioResponses: Record<SimulationScenario, any> = {
+type ScenarioResponse = {
+    approved: boolean;
+    responseCode: string;
+    responseMessage: string;
+    authorizationCode?: string;
+};
+
+const scenarioResponses: Record<SimulationScenario, ScenarioResponse> = {
     APPROVED: {
         approved: true,
         responseCode: '00',
@@ -79,7 +86,7 @@ export async function POST(request: NextRequest) {
         };
 
         return NextResponse.json(response);
-    } catch (error) {
+    } catch {
         return NextResponse.json(
             { error: 'Simulation failed' },
             { status: 500 }

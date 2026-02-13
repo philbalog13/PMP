@@ -53,7 +53,7 @@ Ouvrez [http://localhost:3000](http://localhost:3000) dans votre navigateur.
 ### Scénarios Prédéfinis
 - 🟢 **Carte Valide** (`4111111111111111`): Transaction approuvée
 - 🔴 **Solde Insuffisant** (`4000056655665556`): Code 51
-- �� **Carte Expirée** (`4532015112830366`): Code 54
+- 🟠 **Carte Expirée** (`4532015112830366`): Code 54
 - 🟣 **Carte Volée** (`4916338506082832`): Code 43
 
 ## 📂 Structure du Projet

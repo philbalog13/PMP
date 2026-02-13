@@ -1,12 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { CreditCard, Github, Twitter, Linkedin, Mail } from 'lucide-react';
+import { type ReactNode } from 'react';
+import { CreditCard, Github, Twitter, Linkedin } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
 export function Footer() {
     const pathname = usePathname();
-    const isAuthPage = pathname === '/login' || pathname === '/register';
+    const isAuthPage = pathname === '/login' || pathname === '/register' || pathname.startsWith('/auth/');
     if (isAuthPage) return null;
 
     return (
@@ -22,7 +23,7 @@ export function Footer() {
                             <span className="text-xl font-bold text-white tracking-tight">FINED-SIM</span>
                         </Link>
                         <p className="text-slate-400 max-w-sm leading-relaxed">
-                            La première plateforme open-source dédiée à l'apprentissage pratique de la monétique,
+                            La première plateforme open-source dédiée à l&apos;apprentissage pratique de la monétique,
                             de la cryptographie bancaire et de la sécurité des paiements.
                         </p>
                         <div className="flex gap-4">
@@ -80,7 +81,7 @@ function FooterLink({ href, label }: { href: string; label: string }) {
     );
 }
 
-function SocialIcon({ icon, href }: { icon: any; href: string }) {
+function SocialIcon({ icon, href }: { icon: ReactNode; href: string }) {
     return (
         <Link href={href} className="w-10 h-10 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-slate-400 hover:bg-white/10 hover:text-white transition-all">
             {icon}

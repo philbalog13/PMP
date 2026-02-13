@@ -1,14 +1,13 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { UserRole } from '@shared/types/user';
-import { normalizeRole } from '@shared/utils/roleUtils';
+import { getRoleRedirectUrl } from '@shared/lib/app-urls';
+import { useAuth } from './auth/useAuth';
 import {
   CreditCard,
   Shield,
   Cpu,
-  BookOpen,
   ArrowRight,
   ChevronRight,
   Terminal,
@@ -19,19 +18,8 @@ import {
 } from 'lucide-react';
 
 export default function LandingPage() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [dashboardHref, setDashboardHref] = useState('/login');
-
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    const storedRole = localStorage.getItem('role');
-    if (token) {
-      setIsAuthenticated(true);
-      setDashboardHref(getDashboardHref(storedRole));
-    }
-    setIsLoading(false);
-  }, []);
+  const { isAuthenticated, isLoading, role } = useAuth(false);
+  const dashboardHref = isAuthenticated ? getDashboardHref(role) : '/login';
 
   if (isLoading) {
     return (
@@ -56,11 +44,11 @@ export default function LandingPage() {
           <div className="max-w-4xl mx-auto text-center space-y-8">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-blue-400 text-xs font-black uppercase tracking-widest backdrop-blur-md">
               <Zap size={14} className="fill-current" />
-              L'écosystème Pédagogique Industriel
+              L&apos;écosystème pédagogique industriel
             </div>
 
             <h1 className="text-6xl md:text-8xl font-black mb-8 leading-[0.9] tracking-tighter text-white">
-              SIMULEZ <span className="text-blue-500 italic">L'INVISIBLE</span><br />
+              SIMULEZ <span className="text-blue-500 italic">L&apos;INVISIBLE</span><br />
               MAÎTRISEZ LE <span className="italic underline decoration-blue-500/30 underline-offset-8">FLUX.</span>
             </h1>
 
@@ -71,10 +59,10 @@ export default function LandingPage() {
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-6 pt-4">
               <Link
-                href={isAuthenticated ? dashboardHref : "/login"}
+                href={isAuthenticated ? dashboardHref : '/login'}
                 className="group px-10 py-5 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-widest rounded-2xl transition-all shadow-2xl shadow-blue-500/40 flex items-center gap-3 active:scale-95"
               >
-                {isAuthenticated ? "Accéder à mon espace" : "Démarrer l'aventure"}
+                {isAuthenticated ? 'Accéder à mon espace' : "Démarrer l'aventure"}
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
               <Link
@@ -106,34 +94,34 @@ export default function LandingPage() {
             <div className="space-y-4">
               <div className="h-1 w-20 bg-blue-500 rounded-full" />
               <h2 className="text-4xl md:text-6xl font-black italic uppercase tracking-tighter text-white">
-                L'Architecture <span className="text-blue-500">PMP.</span>
+                L&apos;Architecture <span className="text-blue-500">PMP.</span>
               </h2>
               <p className="text-slate-500 max-w-xl font-medium text-lg">
                 Chaque service est une réplique exacte des briques bancaires réelles.
               </p>
             </div>
             <Link href="/lab" className="px-6 py-3 bg-white/5 rounded-xl border border-white/10 text-white text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white/10 transition">
-              Explorer l'Infrastructure
+              Explorer l&apos;Infrastructure
             </Link>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             <ModuleCard
-              href={process.env.NEXT_PUBLIC_TPE_URL || "http://localhost:3001"}
+              href={process.env.NEXT_PUBLIC_TPE_URL || 'http://localhost:3001'}
               icon={<Terminal className="w-8 h-8" />}
               title="TPE Web"
               desc="Terminal de paiement virtuel complet. Débogage ISO8583 temps réel."
               color="blue"
             />
             <ModuleCard
-              href={process.env.NEXT_PUBLIC_MONITORING_URL || "http://localhost:3082"}
+              href={process.env.NEXT_PUBLIC_MONITORING_URL || 'http://localhost:3082'}
               icon={<BarChart3 className="w-8 h-8" />}
               title="Monitoring"
               desc="Flux de messages, latences de switch et alertes fraude."
               color="emerald"
             />
             <ModuleCard
-              href={process.env.NEXT_PUBLIC_HSM_URL || "http://localhost:3006"}
+              href={process.env.NEXT_PUBLIC_HSM_URL || 'http://localhost:3006'}
               icon={<Lock className="w-8 h-8" />}
               title="HSM Admin"
               desc="Console cryptographique. Gestion LMK/ZMK et PIN blocks."
@@ -153,7 +141,7 @@ export default function LandingPage() {
                   Technologie <span className="text-blue-500">Sans Compromis.</span>
                 </h2>
                 <p className="text-slate-400 text-xl font-medium leading-relaxed">
-                  Découvrez comment les messages voyagent entre l'acquéreur, l'émetteur et le switch central.
+                  Découvrez comment les messages voyagent entre l&apos;acquéreur, l&apos;émetteur et le switch central.
                 </p>
               </div>
 
@@ -189,16 +177,29 @@ export default function LandingPage() {
                   <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 ml-6">PROTO_DEBUG:ISO_0110_AUTH_REPLY</span>
                 </div>
                 <code className="text-sm md:text-base font-mono leading-relaxed space-y-2 block">
-                  <span className="text-blue-400 block">{"{"}</span>
-                  <span className="text-slate-500 block pl-4">"header": "ISO023400070",</span>
-                  <span className="text-slate-300 block pl-4">"mti": "<span className="text-emerald-400">0110</span>",</span>
-                  <span className="text-slate-500 block pl-4">"fields": {"{"}</span>
-                  <span className="text-slate-400 block pl-8">"3": "000000",</span>
-                  <span className="text-slate-400 block pl-8">"39": "<span className="text-emerald-500 font-black underline">00</span>", <span className="text-slate-600 text-[10px]">// APPROVED</span></span>
-                  <span className="text-slate-400 block pl-8">"52": "BF72D1E5001A8...",</span>
-                  <span className="text-slate-500 block pl-4">{"}"},</span>
-                  <span className="text-slate-300 block pl-4">"status": "<span className="text-emerald-500 italic">SUCCESS</span>"</span>
-                  <span className="text-blue-400 block">{"}"}</span>
+                  <span className="text-blue-400 block">{'{'}</span>
+                  <span className="text-slate-500 block pl-4">{'"header": "ISO023400070",'}</span>
+                  <span className="text-slate-300 block pl-4">
+                    {'"mti": "'}
+                    <span className="text-emerald-400">0110</span>
+                    {'",'}
+                  </span>
+                  <span className="text-slate-500 block pl-4">{'"fields": {'}</span>
+                  <span className="text-slate-400 block pl-8">{'"3": "000000",'}</span>
+                  <span className="text-slate-400 block pl-8">
+                    {'"39": "'}
+                    <span className="text-emerald-500 font-black underline">00</span>
+                    {'", '}
+                    <span className="text-slate-600 text-[10px]">{'// APPROVED'}</span>
+                  </span>
+                  <span className="text-slate-400 block pl-8">{'"52": "BF72D1E5001A8...",'}</span>
+                  <span className="text-slate-500 block pl-4">{'},'}</span>
+                  <span className="text-slate-300 block pl-4">
+                    {'"status": "'}
+                    <span className="text-emerald-500 italic">SUCCESS</span>
+                    {'"'}
+                  </span>
+                  <span className="text-blue-400 block">{'}'}</span>
                 </code>
               </div>
             </div>
@@ -225,7 +226,7 @@ export default function LandingPage() {
 
             <div className="relative z-10 flex flex-col sm:flex-row items-center justify-center gap-6 pt-6">
               <Link
-                href="/register"
+                href="/login?mode=register"
                 className="px-12 py-5 bg-white text-slate-950 font-black uppercase tracking-widest rounded-3xl hover:bg-white/90 hover:scale-105 transition shadow-2xl flex items-center gap-3"
               >
                 Créer un compte <ArrowRight size={20} />
@@ -245,23 +246,25 @@ export default function LandingPage() {
 }
 
 function getDashboardHref(role: string | null): string {
-  const normalizedRole = normalizeRole(role);
-
-  switch (normalizedRole) {
-    case UserRole.CLIENT:
-      return 'http://localhost:3004';
-    case UserRole.MARCHAND:
-      return 'http://localhost:3001';
-    case UserRole.ETUDIANT:
-      return '/etudiant/dashboard';
-    case UserRole.FORMATEUR:
-      return '/formateur/dashboard';
-    default:
-      return '/login';
-  }
+  const redirectUrl = getRoleRedirectUrl(role);
+  return redirectUrl === '/' ? '/login' : redirectUrl;
 }
 
-// --- Internal Components ---
+type ModuleColor = 'blue' | 'purple' | 'emerald' | 'amber';
+
+type ModuleCardProps = {
+  href: string;
+  icon: ReactNode;
+  title: string;
+  desc: string;
+  color: ModuleColor;
+};
+
+type FeatureRowProps = {
+  icon: ReactNode;
+  title: string;
+  desc: string;
+};
 
 function StatBox({ value, label }: { value: string; label: string }) {
   return (
@@ -272,19 +275,19 @@ function StatBox({ value, label }: { value: string; label: string }) {
   );
 }
 
-function ModuleCard({ href, icon, title, desc, color }: any) {
-  const variants: any = {
-    blue: "hover:border-blue-500/30 hover:bg-blue-500/5",
-    purple: "hover:border-purple-500/30 hover:bg-purple-500/5",
-    emerald: "hover:border-emerald-500/30 hover:bg-emerald-500/5",
-    amber: "hover:border-amber-500/30 hover:bg-amber-500/5",
+function ModuleCard({ href, icon, title, desc, color }: ModuleCardProps) {
+  const variants: Record<ModuleColor, string> = {
+    blue: 'hover:border-blue-500/30 hover:bg-blue-500/5',
+    purple: 'hover:border-purple-500/30 hover:bg-purple-500/5',
+    emerald: 'hover:border-emerald-500/30 hover:bg-emerald-500/5',
+    amber: 'hover:border-amber-500/30 hover:bg-amber-500/5',
   };
 
-  const iconColors: any = {
-    blue: "text-blue-500 bg-blue-500/10",
-    purple: "text-purple-500 bg-purple-500/10",
-    emerald: "text-emerald-500 bg-emerald-500/10",
-    amber: "text-amber-500 bg-amber-500/10",
+  const iconColors: Record<ModuleColor, string> = {
+    blue: 'text-blue-500 bg-blue-500/10',
+    purple: 'text-purple-500 bg-purple-500/10',
+    emerald: 'text-emerald-500 bg-emerald-500/10',
+    amber: 'text-amber-500 bg-amber-500/10',
   };
 
   return (
@@ -303,7 +306,7 @@ function ModuleCard({ href, icon, title, desc, color }: any) {
   );
 }
 
-function FeatureRow({ icon, title, desc }: any) {
+function FeatureRow({ icon, title, desc }: FeatureRowProps) {
   return (
     <div className="flex items-start gap-8 group">
       <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0 group-hover:bg-white/10 group-hover:border-white/20 transition duration-500 group-hover:scale-110">

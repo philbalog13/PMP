@@ -186,6 +186,8 @@ services:
       dockerfile: portal/Dockerfile
       args:
         - NEXT_PUBLIC_API_URL=http://localhost:8000
+        - INTERNAL_API_URL=http://api-gateway:8000
+        - NEXT_PUBLIC_CTF_ATTACKBOX_URL=${NEXT_PUBLIC_CTF_ATTACKBOX_URL:-http://localhost:7681}
     container_name: pmp-portal
     restart: unless-stopped
     user: "node:node"
@@ -193,6 +195,8 @@ services:
       - NODE_ENV=${NODE_ENV}
       - PORT=3000
       - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - INTERNAL_API_URL=http://api-gateway:8000
+      - NEXT_PUBLIC_CTF_ATTACKBOX_URL=${NEXT_PUBLIC_CTF_ATTACKBOX_URL:-http://localhost:7681}
     ports:
       - "3000:3000"
     networks:
@@ -213,6 +217,56 @@ services:
         reservations:
           cpus: '0.25'
           memory: 128M
+
+  ctf-attackbox:
+    build:
+      context: .
+      dockerfile: docker/ctf-attackbox/Dockerfile
+    container_name: pmp-ctf-attackbox
+    restart: unless-stopped
+    environment:
+      - WETTY_HOST=0.0.0.0
+      - WETTY_PORT=7681
+      - PMP_GATEWAY_URL=http://api-gateway:8000
+      - PMP_HSM_URL=http://hsm-simulator:8011
+      - PMP_SWITCH_URL=http://sim-network-switch:8004
+      - PMP_ISSUER_URL=http://sim-issuer-service:8005
+      - PMP_POS_URL=http://sim-pos-service:8002
+      - PMP_ACS_URL=http://acs-simulator:8013
+      - PMP_FRAUD_URL=http://sim-fraud-detection:8007
+    ports:
+      - "7681:7681"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - monetic-network
+    depends_on:
+      - api-gateway
+      - hsm-simulator
+      - sim-network-switch
+      - sim-issuer-service
+      - sim-pos-service
+      - acs-simulator
+      - sim-fraud-detection
+    healthcheck:
+      test: ["CMD-SHELL", "code=$$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:7681/ || true); [ \"$$code\" = \"200\" ] || [ \"$$code\" = \"401\" ]"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   client-interface:
     build:
@@ -472,6 +526,8 @@ services:
       - CRYPTO_SERVICE_URL=http://crypto-service:8010
       - HSM_SIMULATOR_URL=http://hsm-simulator:8011
       - KEY_MANAGEMENT_URL=http://key-management:8012
+      - ACS_SIMULATOR_URL=http://acs-simulator:8013
+      - TOKENIZATION_URL=http://tokenization-service:8014
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
       - REDIS_PASSWORD=${REDIS_PASSWORD}
     ports:

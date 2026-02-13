@@ -13,28 +13,17 @@ interface RoleViewProps {
 }
 
 export function RoleView({ allowedRoles, children, fallback = null, redirectTo }: RoleViewProps) {
-    const [userRole, setUserRole] = useState<UserRole | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const [userRole] = useState<UserRole | null>(() => {
+        if (typeof window === 'undefined') return null;
+        return normalizeRole(localStorage.getItem('role'));
+    });
     const router = useRouter();
 
     useEffect(() => {
-        const storedRole = localStorage.getItem('role') as UserRole | null;
-        setUserRole(storedRole);
-        setIsLoading(false);
-    }, []);
-
-    useEffect(() => {
-        if (!isLoading && redirectTo) {
-            if (userRole && !hasRole(userRole, allowedRoles)) {
-                router.push(redirectTo);
-            }
+        if (redirectTo && userRole && !hasRole(userRole, allowedRoles)) {
+            router.push(redirectTo);
         }
-    }, [userRole, allowedRoles, redirectTo, isLoading, router]);
-
-
-    if (isLoading) {
-        return null; // Or a spinner
-    }
+    }, [userRole, allowedRoles, redirectTo, router]);
 
     if (userRole && hasRole(userRole, allowedRoles)) {
         return <>{children}</>;

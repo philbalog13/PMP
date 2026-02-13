@@ -22,6 +22,42 @@ router.use(RequireRole(UserRole.CLIENT));
 router.get('/dashboard', clientController.getDashboard);
 
 /**
+ * GET /api/client/account
+ * Get client bank account
+ */
+router.get('/account', clientController.getAccount);
+
+/**
+ * PATCH /api/client/account
+ * Update account settings (label, limits, status)
+ */
+router.patch('/account', clientController.updateAccount);
+
+/**
+ * GET /api/client/account/entries
+ * List bank account entries
+ */
+router.get('/account/entries', clientController.getAccountEntries);
+
+/**
+ * POST /api/client/account/deposit
+ * Deposit funds into bank account
+ */
+router.post('/account/deposit', clientController.deposit);
+
+/**
+ * POST /api/client/account/withdraw
+ * Withdraw funds from bank account
+ */
+router.post('/account/withdraw', clientController.withdraw);
+
+/**
+ * POST /api/client/cards
+ * Create a new additional card with assigned amount
+ */
+router.post('/cards', clientController.createCard);
+
+/**
  * GET /api/client/cards
  * List all my cards
  */
@@ -52,6 +88,12 @@ router.patch('/cards/:id/block', clientController.toggleCardBlock);
 router.patch('/cards/:id/features', clientController.updateCardFeatures);
 
 /**
+ * GET /api/client/merchants
+ * List available merchants for payment
+ */
+router.get('/merchants', clientController.listMerchants);
+
+/**
  * GET /api/client/transactions
  * List my transactions
  */
@@ -62,6 +104,12 @@ router.get('/transactions', clientController.getMyTransactions);
  * Get transaction details
  */
 router.get('/transactions/:id', clientController.getTransactionById);
+
+/**
+ * GET /api/client/transactions/:id/timeline
+ * Get transaction timeline
+ */
+router.get('/transactions/:id/timeline', clientController.getTransactionTimeline);
 
 /**
  * POST /api/client/transactions/simulate

@@ -32,7 +32,7 @@ class AuditLoggerService {
 
         try {
             await query(
-                'INSERT INTO security.audit_logs (event_type, user_id, username, ip_address, user_agent, metadata, success, error_message) VALUES (\, \, \, \, \, \, \, \)',
+                'INSERT INTO security.audit_logs (event_type, user_id, username, ip_address, user_agent, metadata, success, error_message) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
                 [
                     event.eventType,
                     event.userId || null,

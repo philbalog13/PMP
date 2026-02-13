@@ -21,6 +21,12 @@ interface RequestOptions<TBody> {
     signal?: AbortSignal;
 }
 
+interface ErrorLikeResponse {
+    error?: string;
+    message?: string;
+    code?: string;
+}
+
 export interface HsmKey {
     label: string;
     type: string;
@@ -48,10 +54,67 @@ export interface GenerateMacPayload {
     data: string;
     method: 'ALG1' | 'ALG3';
     keyLabel?: string;
+    inputEncoding?: 'auto' | 'hex' | 'utf8';
+}
+
+export interface VerifyMacPayload {
+    data: string;
+    mac: string;
+    method: 'ALG1' | 'ALG3';
+    keyLabel?: string;
+    inputEncoding?: 'auto' | 'hex' | 'utf8';
 }
 
 export interface CalculateKcvPayload {
     keyLabel: string;
+}
+
+export interface HsmStatus {
+    state: 'OPERATIONAL' | 'TAMPERED';
+    uptimeSec: number;
+    keysLoaded: number;
+    commandCount: number;
+    activeSessions: number;
+    lastCommand: {
+        code: string;
+        at: string;
+        durationMs: number;
+        success: boolean;
+        error?: string;
+    } | null;
+    leds: Record<string, string>;
+    tamper: {
+        tampered: boolean;
+        reason: string | null;
+        monitoredSince: string | null;
+        monitoring: boolean;
+    };
+    defaultsLoadedAt: string;
+}
+
+export interface VulnerabilityConfig {
+    allowReplay: boolean;
+    weakKeysEnabled: boolean;
+    verboseErrors: boolean;
+    keyLeakInLogs: boolean;
+}
+
+export interface HsmStatusResponse {
+    success: boolean;
+    status: HsmStatus;
+}
+
+export interface HsmConfigResponse {
+    success: boolean;
+    vulnerabilities: VulnerabilityConfig;
+    status: HsmStatus;
+}
+
+export interface UpdateHsmConfigPayload {
+    vulnerabilities?: Partial<VulnerabilityConfig>;
+    simulateTamper?: boolean;
+    resetTamper?: boolean;
+    reloadKeys?: boolean;
 }
 
 export interface HsmCommandResponse {
@@ -59,6 +122,8 @@ export interface HsmCommandResponse {
     command_code?: string;
     encrypted_pin_block?: string;
     mac?: string;
+    verified?: boolean;
+    calculated_mac?: string;
     kcv?: string;
     full_check_value?: string;
     trace?: string[];
@@ -96,7 +161,7 @@ async function request<TResponse, TBody = unknown>(
     });
 
     const raw = await response.text();
-    let parsed: any = null;
+    let parsed: unknown = null;
 
     if (raw) {
         try {
@@ -107,8 +172,9 @@ async function request<TResponse, TBody = unknown>(
     }
 
     if (!response.ok) {
-        const message = parsed?.error || parsed?.message || `Request failed (${response.status})`;
-        throw new HsmApiError(message, response.status, parsed?.code, parsed);
+        const parsedObject = (parsed && typeof parsed === 'object') ? parsed as ErrorLikeResponse : null;
+        const message = parsedObject?.error || parsedObject?.message || `Request failed (${response.status})`;
+        throw new HsmApiError(message, response.status, parsedObject?.code, parsed);
     }
 
     return parsed as TResponse;
@@ -147,6 +213,33 @@ export async function generateMac(payload: GenerateMacPayload, token?: string | 
 
 export async function calculateKcv(payload: CalculateKcvPayload, token?: string | null): Promise<HsmCommandResponse> {
     return request<HsmCommandResponse, CalculateKcvPayload>('/hsm/calculate-kcv', {
+        method: 'POST',
+        body: payload,
+        token,
+    });
+}
+
+export async function verifyMac(payload: VerifyMacPayload, token?: string | null): Promise<HsmCommandResponse> {
+    return request<HsmCommandResponse, VerifyMacPayload>('/hsm/verify-mac', {
+        method: 'POST',
+        body: payload,
+        token,
+    });
+}
+
+export async function getHsmStatus(token?: string | null): Promise<HsmStatusResponse> {
+    return request<HsmStatusResponse>('/hsm/status', { token });
+}
+
+export async function getHsmConfig(token?: string | null): Promise<HsmConfigResponse> {
+    return request<HsmConfigResponse>('/hsm/config', { token });
+}
+
+export async function updateHsmConfig(
+    payload: UpdateHsmConfigPayload,
+    token?: string | null
+): Promise<HsmConfigResponse> {
+    return request<HsmConfigResponse, UpdateHsmConfigPayload>('/hsm/config', {
         method: 'POST',
         body: payload,
         token,

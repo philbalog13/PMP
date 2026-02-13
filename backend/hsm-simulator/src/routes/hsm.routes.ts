@@ -25,6 +25,7 @@ router.post('/generate-cvv', controller.generateCvv);
 
 // Admin Routes
 router.get('/keys', controller.listKeys);
+router.get('/status', controller.status);
 router.get('/config', controller.getConfig);
 router.post('/config', controller.setConfig);
 

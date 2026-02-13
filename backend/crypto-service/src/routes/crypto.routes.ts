@@ -9,9 +9,7 @@ router.get('/health', (req: Request, res: Response) => {
     res.json({ status: 'healthy', service: 'crypto-service', timestamp: new Date().toISOString() });
 });
 
-router.post('/encrypt', authenticate, (req: Request, res: Response) => {
-    res.json({ status: 'healthy', service: 'crypto-service', timestamp: new Date().toISOString() });
-});
+router.post('/encrypt', authenticate, controller.encrypt);
 
 // Symmetric encryption
 router.post('/decrypt', controller.decrypt);

@@ -20,7 +20,9 @@ const services: Record<string, ServiceConfig> = {
     'sim-fraud-detection': { name: 'Fraud Detection', url: config.services.simFraudDetection },
     'crypto-service': { name: 'Crypto Service', url: config.services.cryptoService },
     'hsm-simulator': { name: 'HSM Simulator', url: config.services.hsmSimulator },
-    'key-management': { name: 'Key Management', url: config.services.keyManagement }
+    'key-management': { name: 'Key Management', url: config.services.keyManagement },
+    'acs-simulator': { name: 'ACS Simulator', url: config.services.acsSimulator },
+    'tokenization-service': { name: 'Tokenization Service', url: config.services.tokenizationService }
 };
 
 // Circuit breakers per service

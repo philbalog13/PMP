@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">71.69% </span>
+                <span class="strong">70.75% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>76/106</span>
+                <span class='fraction'>75/106</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">40.81% </span>
+                <span class="strong">38.33% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>20/49</span>
+                <span class='fraction'>23/60</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line high'></div>
+    <div class='status-line medium'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -377,7 +377,9 @@
 <a name='L312'></a><a href='#L312'>312</a>
 <a name='L313'></a><a href='#L313'>313</a>
 <a name='L314'></a><a href='#L314'>314</a>
-<a name='L315'></a><a href='#L315'>315</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L315'></a><a href='#L315'>315</a>
+<a name='L316'></a><a href='#L316'>316</a>
+<a name='L317'></a><a href='#L317'>317</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -590,6 +592,8 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-yes">3x</span>
@@ -745,7 +749,7 @@ export class HealthService {
             // Check critical dependencies
             const redisOk = await this.checkRedis();
 &nbsp;
-            if (!redisOk) {
+            <span class="missing-if-branch" title="else path not taken" >E</span>if (!redisOk) {
                 return { status: 'error', message: 'Redis connection failed' };
             }
 &nbsp;
@@ -769,7 +773,7 @@ export class HealthService {
         const redisCheck = await this.performRedisCheck();
         checks.push(redisCheck);
         if (redisCheck.status === 'fail') overallStatus = 'unhealthy';
-        else <span class="cstat-no" title="statement not covered" ><span class="missing-if-branch" title="if path not taken" >I</span><span class="missing-if-branch" title="else path not taken" >E</span>if (redisCheck.status === 'warn') <span class="cstat-no" title="statement not covered" >overallStatus = 'degraded';</span></span>
+        else <span class="cstat-no" title="statement not covered" ><span class="missing-if-branch" title="else path not taken" >E</span>if (redisCheck.status === 'warn') <span class="cstat-no" title="statement not covered" >overallStatus = 'degraded';</span></span>
 &nbsp;
         // Check Issuer Service
         const issuerCheck = await this.performServiceCheck(
@@ -809,7 +813,7 @@ export class HealthService {
      * Check Redis connectivity
      */
     private async checkRedis(): Promise&lt;boolean&gt; {
-        if (!redisClient) return false;
+        <span class="missing-if-branch" title="else path not taken" >E</span>if (!redisClient) return false;
 <span class="cstat-no" title="statement not covered" >        try {</span>
             const pong = <span class="cstat-no" title="statement not covered" >await redisClient.ping();</span>
 <span class="cstat-no" title="statement not covered" >            return pong === 'PONG';</span>
@@ -824,7 +828,7 @@ export class HealthService {
     private async performRedisCheck(): Promise&lt;HealthCheckResponse['checks'][0]&gt; {
         const startTime = Date.now();
         try {
-            if (!redisClient) {
+            <span class="missing-if-branch" title="else path not taken" >E</span>if (!redisClient) {
                 return {
                     name: 'redis',
                     status: 'fail',
@@ -835,7 +839,7 @@ export class HealthService {
             const pong = <span class="cstat-no" title="statement not covered" >await redisClient.ping();</span>
             const responseTime = <span class="cstat-no" title="statement not covered" >Date.now() - startTime;</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" >            <span class="missing-if-branch" title="if path not taken" >I</span>if (pong === 'PONG') {</span>
+<span class="cstat-no" title="statement not covered" >            if (pong === 'PONG') {</span>
 <span class="cstat-no" title="statement not covered" >                return {</span>
                     name: 'redis',
                     status: responseTime &gt; 100 ? 'warn' : 'pass',
@@ -874,7 +878,7 @@ export class HealthService {
             });
             const responseTime = <span class="cstat-no" title="statement not covered" >Date.now() - startTime;</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" >            <span class="missing-if-branch" title="if path not taken" >I</span>if (response.status === 200) {</span>
+<span class="cstat-no" title="statement not covered" >            if (response.status === 200) {</span>
 <span class="cstat-no" title="statement not covered" >                return {</span>
                     name,
                     status: responseTime &gt; 500 ? 'warn' : 'pass',
@@ -904,18 +908,20 @@ export class HealthService {
      */
     private performMemoryCheck(): HealthCheckResponse['checks'][0] {
         const memoryUsage = process.memoryUsage();
+        // Check against a reasonable max heap size (e.g., 512MB) instead of current heap total
+        // V8 expands heap dynamically, so heapUsed/heapTotal is often high
+        const MAX_HEAP_SIZE_MB = 512;
         const heapUsedMB = Math.round(memoryUsage.heapUsed / 1024 / 1024);
-        const heapTotalMB = Math.round(memoryUsage.heapTotal / 1024 / 1024);
-        const usagePercent = (heapUsedMB / heapTotalMB) * 100;
+        const usagePercent = (heapUsedMB / MAX_HEAP_SIZE_MB) * 100;
 &nbsp;
         let status: 'pass' | 'warn' | 'fail' = 'pass';
         <span class="missing-if-branch" title="if path not taken" >I</span>if (usagePercent &gt; 90) <span class="cstat-no" title="statement not covered" >status = 'fail';</span>
-        else if (usagePercent &gt; 75) status = 'warn';
+        else <span class="missing-if-branch" title="if path not taken" >I</span>if (usagePercent &gt; 75) <span class="cstat-no" title="statement not covered" >status = 'warn';</span>
 &nbsp;
         return {
             name: 'memory',
             status,
-            message: `Heap: ${heapUsedMB}MB / ${heapTotalMB}MB (${usagePercent.toFixed(1)}%)`,
+            message: `Heap: ${heapUsedMB}MB / ${MAX_HEAP_SIZE_MB}MB (${usagePercent.toFixed(1)}%)`,
         };
     }
 &nbsp;
@@ -928,7 +934,7 @@ export class HealthService {
             s =&gt; s?.state === 'open'
         );
 &nbsp;
-        if (openCircuits.length === 0) {
+        <span class="missing-if-branch" title="else path not taken" >E</span>if (openCircuits.length === 0) {
             return {
                 name: 'circuit-breakers',
                 status: 'pass',
@@ -1012,7 +1018,7 @@ export default healthService;
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-01-28T10:11:09.202Z
+                at 2026-02-12T08:46:42.262Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

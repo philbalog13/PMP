@@ -1,35 +1,50 @@
 import { ICommand } from '../ICommand';
 import { HSMSimulator } from '../../core/HSMSimulator';
 import { CVVGenerator, hexToBuffer } from '@pmp/crypto-edu';
+import { ensurePan, ensureString, normalizeKeyLabel } from '../../utils/input';
+import { ValidationError } from '../../core/errors';
 
 export class GenerateCVV implements ICommand {
-    private cvvMgr = new CVVGenerator();
-    constructor(private hsm: HSMSimulator) { }
+    private readonly cvvMgr = new CVVGenerator();
 
-    async execute(payload: any): Promise<any> {
-        const { pan, expiry, serviceCode, keyLabel } = payload;
-        const keyInfo = this.hsm.keyStorage.getKey(keyLabel || 'CVK_TEST');
-        if (!keyInfo) throw new Error('CVK not found');
+    constructor(private readonly hsm: HSMSimulator) { }
 
-        // staticCVV expects: cardData, keyA, keyB
-        // We have one key. CVV usually splits key into A and B?
-        // Or we use single length key?
-        // If key is 16 bytes: A = 0-8, B = 8-16
-        const key = hexToBuffer(keyInfo.value);
-        let keyA = key;
-        let keyB = key;
-        if (key.length === 16) {
-            keyA = key.subarray(0, 8);
-            keyB = key.subarray(8, 16);
+    async execute(payload: unknown): Promise<unknown> {
+        const body = (payload ?? {}) as Record<string, unknown>;
+        const pan = ensurePan(body.pan);
+        const expiry = ensureString(body.expiry, 'expiry');
+        const serviceCode = ensureString(body.serviceCode ?? '101', 'serviceCode');
+        const keyLabel = normalizeKeyLabel(body.keyLabel, 'CVK_TEST');
+
+        if (!/^\d{4}$/.test(expiry)) {
+            throw new ValidationError('expiry must use YYMM format (4 digits)');
         }
+        if (!/^\d{3}$/.test(serviceCode)) {
+            throw new ValidationError('serviceCode must contain exactly 3 digits');
+        }
+
+        const keyInfo = this.hsm.keyStorage.requireKey(keyLabel, ['CVK', 'UNKNOWN']);
+        const key = hexToBuffer(keyInfo.value);
+        if (key.length < 16) {
+            throw new ValidationError('CVK must be at least 16 bytes');
+        }
+
+        const keyA = key.subarray(0, 8);
+        const keyB = key.subarray(8, 16);
 
         const cardData = {
             pan,
             expiryDate: expiry,
-            serviceCode
+            serviceCode,
         };
 
-        const res = this.cvvMgr.staticCVV(cardData, keyA, keyB);
-        return { command_code: 'D4', cvv: res.result, trace: res.steps };
+        const result = this.cvvMgr.staticCVV(cardData, keyA, keyB);
+
+        return {
+            command_code: 'D4',
+            cvv: result.result,
+            keyLabel,
+            trace: result.steps.map((s) => `${s.name}: ${s.output}`),
+        };
     }
 }

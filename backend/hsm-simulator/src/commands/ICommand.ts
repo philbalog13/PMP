@@ -1,3 +1,3 @@
 export interface ICommand {
-    execute(payload: any): Promise<any>;
+    execute(payload: unknown): Promise<unknown>;
 }

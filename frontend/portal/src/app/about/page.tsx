@@ -1,6 +1,7 @@
 'use client';
 
-import { Shield, CreditCard, Cpu, Globe, Zap, Users, ArrowRight, ShieldCheck, Github, ChevronRight, Terminal } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { Shield, Cpu, Globe, Zap, Users, Github, ChevronRight, Terminal } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AboutPage() {
@@ -37,7 +38,7 @@ export default function AboutPage() {
                         <div className="space-y-6">
                             <h2 className="text-4xl md:text-5xl font-black italic uppercase tracking-tighter">Rendre <span className="text-blue-500">Le Complexe Tangible.</span></h2>
                             <p className="text-slate-400 text-lg leading-relaxed font-medium">
-                                Dans un monde où les transactions numériques sont invisibles, nous décomposons chaque bit d'un message ISO 8583,
+                                Dans un monde où les transactions numériques sont invisibles, nous décomposons chaque bit d&apos;un message ISO 8583,
                                 chaque échange de clés HSM et chaque challenge 3DS pour offrir une compréhension parfaite des infrastructures critiques.
                             </p>
                         </div>
@@ -103,7 +104,7 @@ export default function AboutPage() {
     );
 }
 
-function TechWidget({ label, icon }: any) {
+function TechWidget({ label, icon }: { label: string; icon: ReactNode }) {
     return (
         <div className="p-10 rounded-[50px] bg-slate-900/50 border border-white/5 flex flex-col items-center gap-6 hover:border-blue-500/30 transition-all duration-500 hover:-translate-y-2 group shadow-xl">
             <div className="w-16 h-16 rounded-3xl bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-all duration-500 shadow-lg shadow-blue-500/5">
@@ -114,7 +115,7 @@ function TechWidget({ label, icon }: any) {
     );
 }
 
-function AudienceItem({ icon, title, text }: any) {
+function AudienceItem({ icon, title, text }: { icon: ReactNode; title: string; text: string }) {
     return (
         <div className="flex items-start gap-4 p-4 rounded-3xl hover:bg-white/5 transition duration-300">
             <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">

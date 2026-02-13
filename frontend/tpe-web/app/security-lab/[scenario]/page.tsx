@@ -3,8 +3,28 @@
 import { useState, use } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, CreditCard, Lock, Play, CheckCircle, Shield, ShieldOff, RotateCcw } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
-const scenarioData: Record<string, any> = {
+interface ScenarioPhase {
+    name: string;
+    description: string;
+    action: string;
+}
+
+interface ScenarioLog {
+    type: 'warning' | 'error' | 'info' | 'success';
+    message: string;
+}
+
+interface ScenarioDefinition {
+    title: string;
+    icon: LucideIcon;
+    description: string;
+    phases: ScenarioPhase[];
+    logs: ScenarioLog[];
+}
+
+const scenarioData: Record<string, ScenarioDefinition> = {
     'pan-harvesting': {
         title: 'PAN Harvesting Attack',
         icon: CreditCard,
@@ -107,7 +127,7 @@ export default function ScenarioPage({ params }: { params: Promise<{ scenario: s
 
                 {/* Phases */}
                 <div className="grid grid-cols-4 gap-4">
-                    {scenario.phases.map((phase: any, idx: number) => (
+                    {scenario.phases.map((phase, idx: number) => (
                         <div
                             key={idx}
                             className={`p-4 rounded-xl border transition-all cursor-pointer ${currentPhase === idx ? 'border-orange-500/50 bg-orange-500/10' :

@@ -1,10 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../../auth/useAuth';
 import Link from 'next/link';
 import {
-    ArrowLeft,
     CheckCircle2,
     XCircle,
     Clock,
@@ -13,11 +12,21 @@ import {
     Trophy,
     Target,
     BookOpen,
-    Lock
+    Lock,
+    RefreshCw,
+    ChevronRight
 } from 'lucide-react';
+
+interface QuizAttempt {
+    date: string;
+    score: number;
+    passed: boolean;
+    timeSpent: number;
+}
 
 interface Quiz {
     id: string;
+    quizId: string | null;
     name: string;
     workshopId: string;
     workshopName: string;
@@ -29,81 +38,141 @@ interface Quiz {
     available: boolean;
 }
 
-interface QuizAttempt {
-    date: string;
-    score: number;
-    passed: boolean;
-    timeSpent: number;
+interface WorkshopCatalogEntry {
+    id: string;
+    title?: string;
+    sections?: number;
+    quizId?: string | null;
+    moduleOrder?: number;
 }
 
-const mockQuizzes: Quiz[] = [
-    {
-        id: 'quiz-01',
-        name: 'Quiz Module 1',
-        workshopId: 'intro',
-        workshopName: 'Introduction à la Monétique',
-        questions: 10,
-        timeLimit: 15,
-        attempts: [
-            { date: '2024-01-10', score: 70, passed: false, timeSpent: 12 },
-            { date: '2024-01-11', score: 92, passed: true, timeSpent: 10 },
-        ],
-        bestScore: 92,
-        passed: true,
-        available: true
-    },
-    {
-        id: 'quiz-02',
-        name: 'Quiz Module 2',
-        workshopId: 'iso8583',
-        workshopName: 'Protocole ISO 8583',
-        questions: 15,
-        timeLimit: 20,
-        attempts: [
-            { date: '2024-01-14', score: 65, passed: false, timeSpent: 18 },
-        ],
-        bestScore: 65,
-        passed: false,
-        available: true
-    },
-    {
-        id: 'quiz-03',
-        name: 'Quiz Module 3',
-        workshopId: 'hsm-keys',
-        workshopName: 'Gestion des Clés HSM',
-        questions: 12,
-        timeLimit: 18,
-        attempts: [],
-        passed: false,
-        available: true
-    },
-    {
-        id: 'quiz-04',
-        name: 'Quiz Module 4',
-        workshopId: '3ds-flow',
-        workshopName: '3D Secure v2',
-        questions: 10,
-        timeLimit: 15,
-        attempts: [],
-        passed: false,
-        available: false
-    },
-];
+const WORKSHOP_ORDER = ['intro', 'iso8583', 'hsm-keys', '3ds-flow', 'fraud-detection', 'emv'];
+
+const WORKSHOP_NAMES: Record<string, string> = {
+    'intro': 'Introduction aux Paiements',
+    'iso8583': 'Protocole ISO 8583',
+    'hsm-keys': 'Gestion des Clés HSM',
+    '3ds-flow': '3D Secure v2',
+    'fraud-detection': 'Détection de Fraude',
+    'emv': 'Cartes EMV',
+};
 
 export default function StudentQuizzesPage() {
     const { isLoading } = useAuth(true);
     const [filter, setFilter] = useState<'all' | 'passed' | 'pending' | 'failed'>('all');
+    const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+    const [dataLoading, setDataLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    const fetchQuizData = useCallback(async () => {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        try {
+            setError(null);
+            const headers = { Authorization: `Bearer ${token}` };
+            const [progressRes, statsRes, workshopsRes] = await Promise.all([
+                fetch('/api/progress', { headers }).catch(() => null),
+                fetch('/api/progress/stats', { headers }).catch(() => null),
+                fetch('/api/progress/workshops', { headers }).catch(() => null),
+            ]);
+
+            const progressData = progressRes?.ok ? await progressRes.json() : null;
+            const statsData = statsRes?.ok ? await statsRes.json() : null;
+            const workshopsData = workshopsRes?.ok ? await workshopsRes.json() : null;
+
+            const progressMap = progressData?.progress || {};
+            const quizResults = statsData?.stats?.quizResults || [];
+            const workshopCatalog: WorkshopCatalogEntry[] = workshopsData?.workshops || [];
+            const orderedWorkshopIds = workshopCatalog.length > 0
+                ? [...workshopCatalog]
+                    .sort((a, b) => (a.moduleOrder || 0) - (b.moduleOrder || 0))
+                    .map((entry) => entry.id)
+                : WORKSHOP_ORDER;
+            const workshopCatalogMap = new Map(workshopCatalog.map((entry) => [entry.id, entry]));
+
+            // Build quiz list from workshop progress
+            let previousCompleted = true;
+            const builtQuizzes: Quiz[] = orderedWorkshopIds.map((workshopId, index) => {
+                const wp = progressMap[workshopId];
+                const workshopMeta = workshopCatalogMap.get(workshopId);
+                const workshopName = workshopMeta?.title || wp?.title || WORKSHOP_NAMES[workshopId] || workshopId;
+                const totalSections = wp?.total_sections || workshopMeta?.sections || 5;
+                const status = wp?.status || 'NOT_STARTED';
+                const quizId = wp?.quiz_id || workshopMeta?.quizId || null;
+
+                // Collect all attempts for this workshop/quiz
+                const matchingResults = quizResults.filter((q: Record<string, unknown>) => {
+                    const byWorkshopId = q?.workshop_id === workshopId || q?.workshopId === workshopId;
+                    const byQuizId =
+                        (quizId && (q?.quiz_id === quizId || q?.quizId === quizId))
+                        || false;
+                    return byWorkshopId || byQuizId;
+                });
+
+                const attempts: QuizAttempt[] = matchingResults.map((result: Record<string, unknown>) => ({
+                    date: result?.submitted_at || result?.date || new Date().toISOString(),
+                    score: Number(result?.percentage ?? 0),
+                    passed: Number(result?.percentage ?? 0) >= 80,
+                    timeSpent: Number(result?.time_taken_seconds ?? result?.timeSpent ?? 0),
+                }));
+
+                const bestScore = attempts.length > 0 ? Math.max(...attempts.map(a => a.score)) : undefined;
+                const passed = bestScore !== undefined && bestScore >= 80;
+
+                // Workshop availability: sequential unlock
+                const available = Boolean(quizId) && (
+                    index === 0
+                    || previousCompleted
+                    || status === 'IN_PROGRESS'
+                    || status === 'COMPLETED'
+                );
+
+                if (status === 'COMPLETED') {
+                    previousCompleted = true;
+                } else {
+                    previousCompleted = false;
+                }
+
+                return {
+                    id: `quiz-${workshopId}`,
+                    quizId,
+                    name: `Quiz ${workshopName}`,
+                    workshopId,
+                    workshopName,
+                    questions: Math.max(5, totalSections * 2),
+                    timeLimit: Math.max(10, totalSections * 3),
+                    attempts,
+                    bestScore,
+                    passed,
+                    available,
+                };
+            });
+
+            setQuizzes(builtQuizzes);
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : 'Erreur lors du chargement des quiz');
+        } finally {
+            setDataLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (isLoading) return;
+        fetchQuizData();
+    }, [isLoading, fetchQuizData]);
 
     // Stats
-    const totalQuizzes = mockQuizzes.length;
-    const passedQuizzes = mockQuizzes.filter(q => q.passed).length;
-    const totalAttempts = mockQuizzes.reduce((acc, q) => acc + q.attempts.length, 0);
-    const averageScore = mockQuizzes
-        .filter(q => q.bestScore !== undefined)
-        .reduce((acc, q, _, arr) => acc + (q.bestScore || 0) / arr.length, 0);
+    const totalQuizzes = quizzes.length;
+    const passedQuizzes = quizzes.filter(q => q.passed).length;
+    const totalAttempts = quizzes.reduce((acc, q) => acc + q.attempts.length, 0);
+    const quizzesWithScore = quizzes.filter(q => q.bestScore !== undefined);
+    const averageScore = quizzesWithScore.length > 0
+        ? quizzesWithScore.reduce((acc, q) => acc + (q.bestScore || 0), 0) / quizzesWithScore.length
+        : 0;
 
     // Filter quizzes
-    const filteredQuizzes = mockQuizzes.filter(quiz => {
+    const filteredQuizzes = quizzes.filter(quiz => {
         if (filter === 'all') return true;
         if (filter === 'passed') return quiz.passed;
         if (filter === 'pending') return !quiz.passed && quiz.attempts.length === 0;
@@ -111,10 +180,13 @@ export default function StudentQuizzesPage() {
         return true;
     });
 
-    if (isLoading) {
+    if (isLoading || dataLoading) {
         return (
             <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
+                <div className="flex flex-col items-center gap-4">
+                    <Target className="animate-bounce w-12 h-12 text-emerald-500" />
+                    <span className="text-sm text-slate-500">Chargement des quiz...</span>
+                </div>
             </div>
         );
     }
@@ -122,20 +194,35 @@ export default function StudentQuizzesPage() {
     return (
         <div className="min-h-screen bg-slate-950 pt-24 pb-12">
             <div className="max-w-4xl mx-auto px-6">
-                {/* Header */}
-                <div className="mb-8">
-                    <Link
-                        href="/student"
-                        className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-4"
-                    >
-                        <ArrowLeft size={18} />
-                        Retour au dashboard
-                    </Link>
-                    <h1 className="text-3xl font-bold text-white mb-2">Mes Quiz</h1>
-                    <p className="text-slate-400">
-                        Testez vos connaissances et validez vos acquis
-                    </p>
+                {/* Breadcrumb */}
+                <div className="text-xs text-slate-500 mb-6">
+                    <Link href="/student" className="hover:text-emerald-400">Mon Parcours</Link>
+                    <ChevronRight size={12} className="inline mx-1" />
+                    <span className="text-emerald-400">Mes Quiz</span>
                 </div>
+
+                {/* Header */}
+                <div className="flex items-center justify-between mb-8">
+                    <div>
+                        <h1 className="text-3xl font-bold text-white mb-2">Mes Quiz</h1>
+                        <p className="text-slate-400">
+                            Testez vos connaissances et validez vos acquis
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => { setDataLoading(true); fetchQuizData(); }}
+                        className="flex items-center gap-2 px-4 py-2 bg-slate-800 border border-white/10 text-white rounded-xl hover:bg-slate-700"
+                    >
+                        <RefreshCw size={18} />
+                        Actualiser
+                    </button>
+                </div>
+
+                {error && (
+                    <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-sm mb-6">
+                        {error}
+                    </div>
+                )}
 
                 {/* Stats */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -185,14 +272,14 @@ export default function StudentQuizzesPage() {
                 {/* Filter Tabs */}
                 <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
                     {[
-                        { value: 'all', label: 'Tous', count: mockQuizzes.length },
-                        { value: 'passed', label: 'Réussis', count: mockQuizzes.filter(q => q.passed).length },
-                        { value: 'pending', label: 'À faire', count: mockQuizzes.filter(q => !q.passed && q.attempts.length === 0).length },
-                        { value: 'failed', label: 'À refaire', count: mockQuizzes.filter(q => !q.passed && q.attempts.length > 0).length },
+                        { value: 'all', label: 'Tous', count: quizzes.length },
+                        { value: 'passed', label: 'Réussis', count: quizzes.filter(q => q.passed).length },
+                        { value: 'pending', label: 'À faire', count: quizzes.filter(q => !q.passed && q.attempts.length === 0).length },
+                        { value: 'failed', label: 'À refaire', count: quizzes.filter(q => !q.passed && q.attempts.length > 0).length },
                     ].map((tab) => (
                         <button
                             key={tab.value}
-                            onClick={() => setFilter(tab.value as any)}
+                            onClick={() => setFilter(tab.value as typeof filter)}
                             className={`px-4 py-2 rounded-xl font-medium whitespace-nowrap transition-colors ${
                                 filter === tab.value
                                     ? 'bg-emerald-500 text-white'
@@ -232,8 +319,8 @@ export default function StudentQuizzesPage() {
                                             )}
                                         </div>
                                         <Link
-                                            href={`/workshops/${quiz.workshopId}`}
-                                            className="text-sm text-slate-400 hover:text-blue-400 transition-colors flex items-center gap-1"
+                                            href={`/student/theory/${quiz.workshopId}`}
+                                            className="text-sm text-slate-400 hover:text-emerald-400 transition-colors flex items-center gap-1"
                                         >
                                             <BookOpen size={14} />
                                             {quiz.workshopName}
@@ -288,8 +375,10 @@ export default function StudentQuizzesPage() {
                                                         <XCircle size={12} />
                                                     )}
                                                     <span>{attempt.score}%</span>
-                                                    <span className="text-slate-500">•</span>
-                                                    <span className="text-slate-500">{attempt.date}</span>
+                                                    <span className="text-slate-500">&middot;</span>
+                                                    <span className="text-slate-500">
+                                                        {new Date(attempt.date).toLocaleDateString('fr-FR')}
+                                                    </span>
                                                 </div>
                                             ))}
                                         </div>
@@ -299,7 +388,7 @@ export default function StudentQuizzesPage() {
                                 {/* Action Button */}
                                 {quiz.available ? (
                                     <Link
-                                        href={`/quiz?module=${quiz.workshopId.replace('-', '')}`}
+                                        href={`/student/quiz/${quiz.workshopId}`}
                                         className={`w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors ${
                                             quiz.passed
                                                 ? 'bg-slate-700 text-white hover:bg-slate-600'
@@ -325,10 +414,15 @@ export default function StudentQuizzesPage() {
                                             </>
                                         )}
                                     </Link>
+                                ) : !quiz.quizId ? (
+                                    <div className="w-full py-3 bg-slate-900 text-slate-500 rounded-xl text-center flex items-center justify-center gap-2">
+                                        <Lock size={18} />
+                                        Quiz indisponible pour cet atelier
+                                    </div>
                                 ) : (
                                     <div className="w-full py-3 bg-slate-900 text-slate-500 rounded-xl text-center flex items-center justify-center gap-2">
                                         <Lock size={18} />
-                                        Terminez l'atelier pour débloquer
+                                        Terminez l&apos;atelier précédent pour débloquer
                                     </div>
                                 )}
                             </div>
@@ -344,16 +438,17 @@ export default function StudentQuizzesPage() {
                 )}
 
                 {/* Info Box */}
-                <div className="mt-8 p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
+                <div className="mt-8 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
                     <h3 className="text-sm font-medium text-white mb-2">Comment valider un quiz ?</h3>
                     <ul className="text-sm text-slate-400 space-y-1">
-                        <li>• Un score minimum de <span className="text-emerald-400 font-medium">80%</span> est requis pour valider</li>
-                        <li>• Vous pouvez repasser les quiz autant de fois que nécessaire</li>
-                        <li>• Seul le meilleur score est conservé</li>
-                        <li>• Les quiz validés donnent des XP et débloquent des badges</li>
+                        <li>Un score minimum de <span className="text-emerald-400 font-medium">80%</span> est requis pour valider</li>
+                        <li>Vous pouvez repasser les quiz autant de fois que nécessaire</li>
+                        <li>Seul le meilleur score est conservé</li>
+                        <li>Les quiz validés donnent des XP et débloquent des badges</li>
                     </ul>
                 </div>
             </div>
         </div>
     );
 }
+

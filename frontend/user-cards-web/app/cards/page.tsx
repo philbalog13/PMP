@@ -1,152 +1,137 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useState } from 'react';
 import { useAuth } from '@shared/context/AuthContext';
-import {
-    Plus,
-    Shield,
-    Eye,
-    EyeOff,
-    Settings,
-    Lock,
-    Unlock,
-    CheckCircle2,
-    AlertTriangle,
-    Wifi,
-} from 'lucide-react';
+import { UserRole } from '@shared/types/user';
+import { CreditCard, Lock, Unlock, Shield, Wifi, RefreshCcw, AlertTriangle, Plus } from 'lucide-react';
+import { CardFeaturesUpdateBody, clientApi } from '@/lib/api-client';
 
-interface VirtualCard {
+type ClientCard = {
     id: string;
-    lastFour: string;
-    fullNumber: string;
-    type: 'visa' | 'mastercard';
+    maskedPan: string;
+    cardholderName: string;
     expiryDate: string;
-    cvv: string;
+    cardType: string;
+    network: string;
+    status: string;
     balance: number;
-    limit: number;
-    status: 'active' | 'blocked' | 'expired';
-    is3dsEnabled: boolean;
+    currency: string;
     dailyLimit: number;
-    onlineLimit: number;
+    dailySpent: number;
+    monthlyLimit: number;
+    monthlySpent: number;
+    threedsEnrolled: boolean;
     contactlessEnabled: boolean;
-    createdAt: string;
-}
+    internationalEnabled: boolean;
+    ecommerceEnabled: boolean;
+    isAutoIssued: boolean;
+};
 
-const mockCards: VirtualCard[] = [
-    {
-        id: '1',
-        lastFour: '4532',
-        fullNumber: '4532 8921 7654 4532',
-        type: 'visa',
-        expiryDate: '12/27',
-        cvv: '123',
-        balance: 2450.75,
-        limit: 5000,
-        status: 'active',
-        is3dsEnabled: true,
-        dailyLimit: 1000,
-        onlineLimit: 500,
-        contactlessEnabled: true,
-        createdAt: '2024-01-01',
-    },
-    {
-        id: '2',
-        lastFour: '8921',
-        fullNumber: '5432 1098 7654 8921',
-        type: 'mastercard',
-        expiryDate: '06/26',
-        cvv: '456',
-        balance: 890.50,
-        limit: 2000,
-        status: 'active',
-        is3dsEnabled: false,
-        dailyLimit: 500,
-        onlineLimit: 250,
-        contactlessEnabled: true,
-        createdAt: '2024-01-10',
-    },
-    {
-        id: '3',
-        lastFour: '3456',
-        fullNumber: '4111 1111 1111 3456',
-        type: 'visa',
-        expiryDate: '03/24',
-        cvv: '789',
-        balance: 0,
-        limit: 1000,
-        status: 'expired',
-        is3dsEnabled: true,
-        dailyLimit: 200,
-        onlineLimit: 100,
-        contactlessEnabled: false,
-        createdAt: '2023-03-15',
-    },
-];
+const asObject = (value: unknown): Record<string, unknown> =>
+    value !== null && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+
+const getErrorMessage = (error: unknown, fallback: string): string => {
+    if (error instanceof Error && error.message) return error.message;
+    const candidate = asObject(error);
+    return typeof candidate.message === 'string' ? candidate.message : fallback;
+};
+
+const toNumber = (value: unknown): number => {
+    const parsed = Number.parseFloat(String(value));
+    return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const formatMoney = (value: number, currency = 'EUR') =>
+    new Intl.NumberFormat('fr-FR', {
+        style: 'currency',
+        currency,
+        minimumFractionDigits: 2
+    }).format(value);
+
+const normalizeCard = (raw: unknown): ClientCard => {
+    const card = asObject(raw);
+    return {
+        id: String(card.id || ''),
+        maskedPan: String(card.masked_pan || card.maskedPan || ''),
+        cardholderName: String(card.cardholder_name || card.cardholderName || ''),
+        expiryDate: String(card.expiry_date || card.expiryDate || ''),
+        cardType: String(card.card_type || card.cardType || 'DEBIT'),
+        network: String(card.network || 'VISA'),
+        status: String(card.status || 'ACTIVE'),
+        balance: toNumber(card.balance),
+        currency: String(card.currency || 'EUR'),
+        dailyLimit: toNumber(card.daily_limit || card.dailyLimit),
+        dailySpent: toNumber(card.daily_spent || card.dailySpent),
+        monthlyLimit: toNumber(card.monthly_limit || card.monthlyLimit),
+        monthlySpent: toNumber(card.monthly_spent || card.monthlySpent),
+        threedsEnrolled: Boolean(card.threeds_enrolled ?? card.threedsEnrolled),
+        contactlessEnabled: Boolean(card.contactless_enabled ?? card.contactlessEnabled),
+        internationalEnabled: Boolean(card.international_enabled ?? card.internationalEnabled),
+        ecommerceEnabled: Boolean(card.ecommerce_enabled ?? card.ecommerceEnabled),
+        isAutoIssued: Boolean(card.is_auto_issued ?? card.isAutoIssued)
+    };
+};
 
 export default function CardsPage() {
-    const { isLoading, isAuthenticated } = useAuth();
-    const [cards, setCards] = useState<VirtualCard[]>(mockCards);
-    const [showCardDetails, setShowCardDetails] = useState<Record<string, boolean>>({});
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [newCardType, setNewCardType] = useState<'visa' | 'mastercard'>('visa');
+    const { isLoading, isAuthenticated, user } = useAuth();
+    const [cards, setCards] = useState<ClientCard[]>([]);
+    const [isRefreshing, setIsRefreshing] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [actionId, setActionId] = useState<string | null>(null);
 
-    const toggleCardDetails = (cardId: string) => {
-        setShowCardDetails((prev) => ({
-            ...prev,
-            [cardId]: !prev[cardId],
-        }));
+    const isClient = user?.role === UserRole.CLIENT;
+
+    const loadCards = async () => {
+        setIsRefreshing(true);
+        setError(null);
+
+        try {
+            const response = await clientApi.getCards();
+            setCards((response.cards || []).map(normalizeCard));
+        } catch (loadError: unknown) {
+            setError(getErrorMessage(loadError, 'Impossible de charger les cartes'));
+        } finally {
+            setIsRefreshing(false);
+        }
     };
 
-    const toggleCardStatus = (cardId: string) => {
-        setCards((prev) =>
-            prev.map((card) => {
-                if (card.id === cardId) {
-                    return {
-                        ...card,
-                        status: card.status === 'active' ? 'blocked' : 'active',
-                    };
-                }
-                return card;
-            }),
-        );
+    useEffect(() => {
+        if (!isAuthenticated || !isClient) return;
+        loadCards();
+    }, [isAuthenticated, isClient]);
+
+    const updateCardFeature = async (card: ClientCard, body: CardFeaturesUpdateBody) => {
+        setActionId(card.id);
+        setError(null);
+        try {
+            await clientApi.updateCardFeatures(card.id, body);
+            await loadCards();
+        } catch (featureError: unknown) {
+            setError(getErrorMessage(featureError, 'Mise à jour impossible'));
+        } finally {
+            setActionId(null);
+        }
     };
 
-    const toggle3DS = (cardId: string) => {
-        setCards((prev) =>
-            prev.map((card) => {
-                if (card.id === cardId) {
-                    return {
-                        ...card,
-                        is3dsEnabled: !card.is3dsEnabled,
-                    };
-                }
-                return card;
-            }),
-        );
+    const toggleBlockStatus = async (card: ClientCard) => {
+        setActionId(card.id);
+        setError(null);
+
+        try {
+            await clientApi.toggleCardBlock(card.id, card.status === 'ACTIVE');
+            await loadCards();
+        } catch (statusError: unknown) {
+            setError(getErrorMessage(statusError, 'Impossible de changer le statut de la carte'));
+        } finally {
+            setActionId(null);
+        }
     };
 
-    const createNewCard = () => {
-        const newCard: VirtualCard = {
-            id: Date.now().toString(),
-            lastFour: Math.floor(1000 + Math.random() * 9000).toString(),
-            fullNumber: `${newCardType === 'visa' ? '4' : '5'}${Math.random().toString().slice(2, 5)} ${Math.random().toString().slice(2, 6)} ${Math.random().toString().slice(2, 6)} ${Math.floor(1000 + Math.random() * 9000)}`,
-            type: newCardType,
-            expiryDate: '12/29',
-            cvv: Math.floor(100 + Math.random() * 900).toString(),
-            balance: 0,
-            limit: 1000,
-            status: 'active',
-            is3dsEnabled: true,
-            dailyLimit: 500,
-            onlineLimit: 250,
-            contactlessEnabled: true,
-            createdAt: new Date().toISOString().split('T')[0],
-        };
-
-        setCards((prev) => [...prev, newCard]);
-        setIsCreateModalOpen(false);
-    };
+    const totalBalance = useMemo(
+        () => cards.reduce((sum, card) => sum + card.balance, 0),
+        [cards]
+    );
 
     if (isLoading) {
         return (
@@ -160,8 +145,8 @@ export default function CardsPage() {
         return (
             <div className="min-h-screen bg-slate-950 flex items-center justify-center px-6">
                 <div className="max-w-md w-full rounded-3xl border border-white/10 bg-slate-900/70 p-8 text-center space-y-4">
-                    <h1 className="text-2xl font-bold text-white">Session expiree</h1>
-                    <p className="text-slate-400">Reconnectez-vous sur le portail pour acceder a votre espace client.</p>
+                    <h1 className="text-2xl font-bold text-white">Session expirée</h1>
+                    <p className="text-slate-400">Reconnectez-vous sur le portail pour accéder à votre espace client.</p>
                     <a
                         href={`${process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:3000'}/login`}
                         className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-amber-500 text-slate-950 font-semibold hover:bg-amber-400 transition-colors"
@@ -173,242 +158,145 @@ export default function CardsPage() {
         );
     }
 
+    if (!isClient) {
+        return (
+            <div className="min-h-screen bg-slate-950 flex items-center justify-center px-6">
+                <div className="max-w-xl w-full rounded-3xl border border-white/10 bg-slate-900/70 p-8 text-center space-y-4">
+                    <AlertTriangle className="w-10 h-10 mx-auto text-amber-400" />
+                    <h1 className="text-2xl font-bold text-white">Cartes non disponibles</h1>
+                    <p className="text-slate-400">
+                        Les cartes bancaires sont réservées aux clients. Les comptes marchands n&apos;ont pas de carte.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-slate-950 py-8 pb-12">
-            <div className="max-w-7xl mx-auto px-6">
-                <div className="flex items-center justify-between mb-8">
+            <div className="max-w-6xl mx-auto px-6 space-y-6">
+                <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold text-white mb-2">Mes cartes virtuelles</h1>
-                        <p className="text-slate-400">
-                            Gerez vos cartes, limites et parametres de securite
-                        </p>
+                        <h1 className="text-3xl font-bold text-white mb-1">Mes cartes</h1>
+                        <p className="text-slate-400">Données synchronisées depuis l&apos;API client.</p>
                     </div>
-                    <button
-                        onClick={() => setIsCreateModalOpen(true)}
-                        className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold rounded-xl hover:opacity-90 transition-opacity shadow-lg shadow-amber-500/25"
-                    >
-                        <Plus size={20} />
-                        Nouvelle carte
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <Link
+                            href="/cards/add"
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 text-slate-950 font-semibold hover:bg-amber-400 transition-colors"
+                        >
+                            <Plus size={16} />
+                            Nouvelle carte
+                        </Link>
+                        <button
+                            onClick={loadCards}
+                            disabled={isRefreshing}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 border border-white/10 text-white hover:bg-slate-700 disabled:opacity-60"
+                        >
+                            <RefreshCcw size={16} className={isRefreshing ? 'animate-spin' : ''} />
+                            Actualiser
+                        </button>
+                    </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-5">
+                        <p className="text-sm text-slate-400">Cartes totales</p>
+                        <p className="text-2xl font-bold text-white">{cards.length}</p>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-5">
+                        <p className="text-sm text-slate-400">Cartes actives</p>
+                        <p className="text-2xl font-bold text-white">{cards.filter((card) => card.status === 'ACTIVE').length}</p>
+                    </div>
+                    <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5">
+                        <p className="text-sm text-amber-300">Solde total cartes</p>
+                        <p className="text-2xl font-bold text-white">{formatMoney(totalBalance, cards[0]?.currency || 'EUR')}</p>
+                    </div>
+                </div>
+
+                {error && (
+                    <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200">
+                        {error}
+                    </div>
+                )}
+
+                <div className="space-y-4">
                     {cards.map((card) => (
-                        <div
-                            key={card.id}
-                            className={`bg-slate-800/50 border rounded-2xl overflow-hidden ${card.status === 'expired'
-                                ? 'border-red-500/30 opacity-60'
-                                : card.status === 'blocked'
-                                    ? 'border-yellow-500/30'
-                                    : 'border-white/10'
-                                }`}
-                        >
-                            <div
-                                className={`relative p-6 ${card.type === 'visa'
-                                    ? 'bg-gradient-to-br from-slate-800 via-slate-800 to-blue-900'
-                                    : 'bg-gradient-to-br from-slate-800 via-slate-800 to-orange-900'
-                                    }`}
-                            >
-                                <div className="absolute top-4 right-4">
-                                    {card.status === 'active' && (
-                                        <span className="px-2 py-1 bg-emerald-500/20 text-emerald-400 text-xs rounded-full flex items-center gap-1">
-                                            <CheckCircle2 size={12} /> Active
-                                        </span>
-                                    )}
-                                    {card.status === 'blocked' && (
-                                        <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 text-xs rounded-full flex items-center gap-1">
-                                            <Lock size={12} /> Bloquee
-                                        </span>
-                                    )}
-                                    {card.status === 'expired' && (
-                                        <span className="px-2 py-1 bg-red-500/20 text-red-400 text-xs rounded-full flex items-center gap-1">
-                                            <AlertTriangle size={12} /> Expiree
-                                        </span>
+                        <div key={card.id} className="rounded-2xl border border-white/10 bg-slate-800/50 p-5 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-white font-semibold">{card.maskedPan}</p>
+                                    <p className="text-xs text-slate-400">{card.network} - {card.cardType} - Exp {card.expiryDate}</p>
+                                    {card.isAutoIssued && (
+                                        <p className="text-xs text-emerald-300 mt-1">Carte auto (solde du compte)</p>
                                     )}
                                 </div>
+                                <span className={`px-3 py-1 rounded-full text-xs ${card.status === 'ACTIVE' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-yellow-500/20 text-yellow-300'}`}>
+                                    {card.status}
+                                </span>
+                            </div>
 
-                                <div className="absolute inset-0 opacity-10">
-                                    <div className="absolute top-4 right-4 w-32 h-32 rounded-full bg-white/20 blur-2xl"></div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                                <div className="rounded-xl bg-slate-900/50 p-3 border border-white/5">
+                                    <p className="text-slate-400 mb-1">{card.isAutoIssued ? 'Solde compte' : 'Solde attribué'}</p>
+                                    <p className="text-white font-semibold">{formatMoney(card.balance, card.currency)}</p>
                                 </div>
-
-                                <div className="relative">
-                                    <div className="flex items-center gap-3 mb-6">
-                                        <div className="w-10 h-7 rounded bg-gradient-to-br from-yellow-400 to-yellow-600"></div>
-                                        {card.contactlessEnabled && (
-                                            <Wifi size={20} className="text-white/60 rotate-90" />
-                                        )}
-                                    </div>
-
-                                    <div className="mb-4">
-                                        <p className="text-lg font-mono text-white/90 tracking-widest">
-                                            {showCardDetails[card.id] ? card.fullNumber : `**** **** **** ${card.lastFour}`}
-                                        </p>
-                                    </div>
-
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-xs text-white/40 mb-1">CVV</p>
-                                            <p className="text-white font-mono">
-                                                {showCardDetails[card.id] ? card.cvv : '***'}
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-white/40 mb-1">Expire</p>
-                                            <p className="text-white font-mono">{card.expiryDate}</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-xs text-white/40 mb-1">{card.type.toUpperCase()}</p>
-                                        </div>
-                                    </div>
+                                <div className="rounded-xl bg-slate-900/50 p-3 border border-white/5">
+                                    <p className="text-slate-400 mb-1">Dépense / limite jour</p>
+                                    <p className="text-white font-semibold">
+                                        {formatMoney(card.dailySpent, card.currency)} / {formatMoney(card.dailyLimit, card.currency)}
+                                    </p>
+                                </div>
+                                <div className="rounded-xl bg-slate-900/50 p-3 border border-white/5">
+                                    <p className="text-slate-400 mb-1">Dépense / limite mois</p>
+                                    <p className="text-white font-semibold">
+                                        {formatMoney(card.monthlySpent, card.currency)} / {formatMoney(card.monthlyLimit, card.currency)}
+                                    </p>
                                 </div>
                             </div>
 
-                            <div className="p-6 space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <p className="text-sm text-slate-400 mb-1">Solde disponible</p>
-                                        <p className="text-xl font-bold text-white">
-                                            {card.balance.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} EUR
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p className="text-sm text-slate-400 mb-1">Limite</p>
-                                        <p className="text-xl font-bold text-white">
-                                            {card.limit.toLocaleString('fr-FR')} EUR
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <div className="flex justify-between text-xs text-slate-400 mb-1">
-                                        <span>Utilisation</span>
-                                        <span>{((card.limit - card.balance) / card.limit * 100).toFixed(0)}%</span>
-                                    </div>
-                                    <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full"
-                                            style={{ width: `${((card.limit - card.balance) / card.limit * 100)}%` }}
-                                        ></div>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4 text-sm">
-                                    <div className="p-3 bg-slate-900/50 rounded-lg">
-                                        <p className="text-slate-400 mb-1">Limite quotidienne</p>
-                                        <p className="text-white font-medium">{card.dailyLimit} EUR</p>
-                                    </div>
-                                    <div className="p-3 bg-slate-900/50 rounded-lg">
-                                        <p className="text-slate-400 mb-1">Limite en ligne</p>
-                                        <p className="text-white font-medium">{card.onlineLimit} EUR</p>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center gap-2 pt-4 border-t border-white/5">
-                                    <button
-                                        onClick={() => toggleCardDetails(card.id)}
-                                        className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
-                                    >
-                                        {showCardDetails[card.id] ? <EyeOff size={16} /> : <Eye size={16} />}
-                                        {showCardDetails[card.id] ? 'Masquer' : 'Afficher'}
-                                    </button>
-
-                                    {card.status !== 'expired' && (
-                                        <>
-                                            <button
-                                                onClick={() => toggleCardStatus(card.id)}
-                                                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${card.status === 'active'
-                                                    ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30'
-                                                    : 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30'
-                                                    }`}
-                                            >
-                                                {card.status === 'active' ? <Lock size={16} /> : <Unlock size={16} />}
-                                                {card.status === 'active' ? 'Bloquer' : 'Debloquer'}
-                                            </button>
-
-                                            <button
-                                                onClick={() => toggle3DS(card.id)}
-                                                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${card.is3dsEnabled
-                                                    ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30'
-                                                    : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-                                                    }`}
-                                            >
-                                                <Shield size={16} />
-                                                3DS {card.is3dsEnabled ? 'ON' : 'OFF'}
-                                            </button>
-                                        </>
-                                    )}
-
-                                    <Link
-                                        href="/security"
-                                        className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors ml-auto"
-                                    >
-                                        <Settings size={16} />
-                                    </Link>
-                                </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <button
+                                    onClick={() => toggleBlockStatus(card)}
+                                    disabled={actionId === card.id}
+                                    className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-700 text-white hover:bg-slate-600 disabled:opacity-60"
+                                >
+                                    {card.status === 'ACTIVE' ? <Lock size={14} /> : <Unlock size={14} />}
+                                    {card.status === 'ACTIVE' ? 'Bloquer' : 'Débloquer'}
+                                </button>
+                                <button
+                                    onClick={() => updateCardFeature(card, { threedsEnrolled: !card.threedsEnrolled })}
+                                    disabled={actionId === card.id}
+                                    className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl disabled:opacity-60 ${card.threedsEnrolled ? 'bg-blue-500/20 text-blue-300 hover:bg-blue-500/30' : 'bg-slate-700 text-slate-200 hover:bg-slate-600'}`}
+                                >
+                                    <Shield size={14} />
+                                    3DS {card.threedsEnrolled ? 'ON' : 'OFF'}
+                                </button>
+                                <button
+                                    onClick={() => updateCardFeature(card, { contactlessEnabled: !card.contactlessEnabled })}
+                                    disabled={actionId === card.id}
+                                    className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl disabled:opacity-60 ${card.contactlessEnabled ? 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30' : 'bg-slate-700 text-slate-200 hover:bg-slate-600'}`}
+                                >
+                                    <Wifi size={14} />
+                                    NFC {card.contactlessEnabled ? 'ON' : 'OFF'}
+                                </button>
+                                <span className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-900/60 text-slate-300 border border-white/10">
+                                    <CreditCard size={14} />
+                                    {card.cardholderName || 'Titulaire non renseigné'}
+                                </span>
                             </div>
                         </div>
                     ))}
-                </div>
 
-                {isCreateModalOpen && (
-                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                        <div className="bg-slate-800 border border-white/10 rounded-2xl p-6 w-full max-w-md">
-                            <h2 className="text-xl font-bold text-white mb-4">Creer une nouvelle carte</h2>
-                            <p className="text-slate-400 mb-6">
-                                Choisissez le type de carte que vous souhaitez creer.
-                            </p>
-
-                            <div className="grid grid-cols-2 gap-4 mb-6">
-                                <button
-                                    onClick={() => setNewCardType('visa')}
-                                    className={`p-4 rounded-xl border-2 transition-all ${newCardType === 'visa'
-                                        ? 'border-blue-500 bg-blue-500/10'
-                                        : 'border-white/10 hover:border-white/30'
-                                        }`}
-                                >
-                                    <div className="text-2xl font-bold text-white mb-2">VISA</div>
-                                    <p className="text-sm text-slate-400">Acceptee partout</p>
-                                </button>
-                                <button
-                                    onClick={() => setNewCardType('mastercard')}
-                                    className={`p-4 rounded-xl border-2 transition-all ${newCardType === 'mastercard'
-                                        ? 'border-orange-500 bg-orange-500/10'
-                                        : 'border-white/10 hover:border-white/30'
-                                        }`}
-                                >
-                                    <div className="text-2xl font-bold text-white mb-2">MC</div>
-                                    <p className="text-sm text-slate-400">Mastercard</p>
-                                </button>
-                            </div>
-
-                            <div className="p-4 bg-slate-900/50 rounded-xl mb-6">
-                                <h3 className="text-sm font-medium text-white mb-2">Caracteristiques</h3>
-                                <ul className="text-sm text-slate-400 space-y-1">
-                                    <li>- Limite initiale: 1 000 EUR</li>
-                                    <li>- 3D Secure active par defaut</li>
-                                    <li>- Paiement sans contact inclus</li>
-                                    <li>- Valide 5 ans</li>
-                                </ul>
-                            </div>
-
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={() => setIsCreateModalOpen(false)}
-                                    className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl transition-colors"
-                                >
-                                    Annuler
-                                </button>
-                                <button
-                                    onClick={createNewCard}
-                                    className="flex-1 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl hover:opacity-90 transition-opacity font-semibold"
-                                >
-                                    Creer la carte
-                                </button>
-                            </div>
+                    {cards.length === 0 && (
+                        <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-8 text-center text-slate-400">
+                            Aucune carte disponible.
                         </div>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
         </div>
     );
 }
+
+

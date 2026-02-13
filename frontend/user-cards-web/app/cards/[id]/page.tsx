@@ -4,7 +4,7 @@ import { use } from 'react';
 
 // Handle dynamic router params
 import { useUserStore } from '@/lib/store';
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Card3D from '@/components/card/Card3D';
 import QRCodeDisplay from '@/components/card/QRCodeDisplay';
 import SecuritySettings from '@/components/security/SecuritySettings';

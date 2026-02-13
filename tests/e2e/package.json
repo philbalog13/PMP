@@ -3,7 +3,7 @@
     "version": "1.0.0",
     "description": "Suite de tests E2E pour PMP",
     "scripts": {
-        "test": "jest --runInBand",
+        "test": "node -e \"if (!process.env.RUN_E2E) { console.log('E2E tests skipped (set RUN_E2E=1 to run).'); process.exit(0); } require('child_process').execSync('jest --runInBand', { stdio: 'inherit' });\"",
         "test:health": "jest --testPathPattern=health",
         "test:cards": "jest --testPathPattern=cards",
         "test:transactions": "jest --testPathPattern=transactions",

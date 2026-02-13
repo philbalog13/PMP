@@ -4,7 +4,7 @@
  */
 import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth.middleware';
-import { RequireRole, UserRole } from '../middleware/roles';
+import { RequireAnyRole, RequireRole, UserRole } from '../middleware/roles';
 import * as progressController from '../controllers/progress.controller';
 
 const router = Router();
@@ -25,6 +25,16 @@ router.get('/', RequireRole(UserRole.ETUDIANT), progressController.getMyProgress
 router.get('/workshops', progressController.getWorkshopsCatalog);
 
 /**
+ * GET /api/progress/workshops/:workshopId/content
+ * Get workshop theory/content payload
+ */
+router.get(
+    '/workshops/:workshopId/content',
+    RequireAnyRole(UserRole.ETUDIANT, UserRole.FORMATEUR),
+    progressController.getWorkshopContent
+);
+
+/**
  * GET /api/progress/leaderboard
  * Get leaderboard (all authenticated users)
  */
@@ -41,6 +51,16 @@ router.post('/workshop/:workshopId', RequireRole(UserRole.ETUDIANT), progressCon
  * Mark workshop as completed (Student only)
  */
 router.post('/workshop/:workshopId/complete', RequireRole(UserRole.ETUDIANT), progressController.completeWorkshop);
+
+/**
+ * GET /api/progress/quiz/:quizId
+ * Get quiz definition (without correct answers)
+ */
+router.get(
+    '/quiz/:quizId',
+    RequireAnyRole(UserRole.ETUDIANT, UserRole.FORMATEUR),
+    progressController.getQuizDefinition
+);
 
 /**
  * POST /api/progress/quiz/:quizId
@@ -65,6 +85,34 @@ router.get('/badges', RequireRole(UserRole.ETUDIANT), progressController.getMyBa
  * Get my statistics (Student only)
  */
 router.get('/stats', RequireRole(UserRole.ETUDIANT), progressController.getMyStats);
+
+/**
+ * GET /api/progress/lab/conditions
+ * Get active lab conditions (students + trainers)
+ */
+router.get(
+    '/lab/conditions',
+    RequireAnyRole(UserRole.ETUDIANT, UserRole.FORMATEUR),
+    progressController.getLabConditions
+);
+
+/**
+ * PUT /api/progress/lab/conditions
+ * Update lab conditions (trainer only)
+ */
+router.put('/lab/conditions', RequireRole(UserRole.FORMATEUR), progressController.updateLabConditions);
+
+/**
+ * POST /api/progress/lab/conditions/reset
+ * Reset lab conditions to defaults (trainer only)
+ */
+router.post('/lab/conditions/reset', RequireRole(UserRole.FORMATEUR), progressController.resetLabConditions);
+
+/**
+ * GET /api/progress/certificate/me
+ * Get current student certificate (auto-issue when eligible)
+ */
+router.get('/certificate/me', RequireRole(UserRole.ETUDIANT), progressController.getMyCertificate);
 
 /**
  * GET /api/progress/student/:studentId

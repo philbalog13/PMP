@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { CardType, CardScheme, generateCard } from '@/lib/card-engine/generator';
+import { generateCard } from '@/lib/card-engine/generator';
 import { useUserStore } from '@/lib/store';
 import { Loader2, Plus, Sparkles } from 'lucide-react';
 

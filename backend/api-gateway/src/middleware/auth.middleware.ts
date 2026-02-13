@@ -21,7 +21,12 @@ export interface AuthenticatedRequest extends Request {
  */
 const isPublicPath = (path: string): boolean => {
     // Health checks are always public
-    if (path === '/health' || path === '/api/health') {
+    if (
+        path === '/health' ||
+        path.startsWith('/health/') ||
+        path === '/api/health' ||
+        path.startsWith('/api/health/')
+    ) {
         return true;
     }
 

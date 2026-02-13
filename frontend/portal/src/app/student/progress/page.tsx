@@ -1,10 +1,9 @@
-'use client';
+﻿'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../../auth/useAuth';
 import Link from 'next/link';
 import {
-    ArrowLeft,
     BookOpen,
     CheckCircle2,
     Clock,
@@ -13,8 +12,16 @@ import {
     Play,
     Lock,
     Star,
-    TrendingUp
+    TrendingUp,
+    RefreshCw
 } from 'lucide-react';
+
+interface SectionProgress {
+    id: string;
+    name: string;
+    completed: boolean;
+    timeSpent: number;
+}
 
 interface WorkshopProgress {
     id: string;
@@ -30,93 +37,143 @@ interface WorkshopProgress {
     xpTotal: number;
 }
 
-interface SectionProgress {
-    id: string;
-    name: string;
-    completed: boolean;
-    timeSpent: number;
-}
-
-const mockProgress: WorkshopProgress[] = [
-    {
-        id: 'intro',
-        name: 'Introduction à la Monétique',
-        description: 'Découvrez les fondamentaux du monde des paiements',
-        sections: [
-            { id: '1', name: 'Les acteurs de la monétique', completed: true, timeSpent: 12 },
-            { id: '2', name: 'Types de cartes bancaires', completed: true, timeSpent: 8 },
-            { id: '3', name: 'Flux de transaction simplifié', completed: true, timeSpent: 15 },
-            { id: '4', name: 'Vocabulaire essentiel', completed: true, timeSpent: 10 },
-        ],
-        totalTime: 60,
-        completedTime: 45,
-        quizScore: 92,
-        quizPassed: true,
-        status: 'completed',
-        xpEarned: 350,
-        xpTotal: 350
-    },
-    {
-        id: 'iso8583',
-        name: 'Protocole ISO 8583',
-        description: 'Maîtrisez le standard de communication bancaire',
-        sections: [
-            { id: '1', name: 'Structure du message', completed: true, timeSpent: 20 },
-            { id: '2', name: 'MTI - Message Type Indicator', completed: true, timeSpent: 15 },
-            { id: '3', name: 'Bitmap et Data Elements', completed: true, timeSpent: 25 },
-            { id: '4', name: 'Codes de réponse', completed: false, timeSpent: 0 },
-            { id: '5', name: 'Exercices pratiques', completed: false, timeSpent: 0 },
-        ],
-        totalTime: 90,
-        completedTime: 60,
-        status: 'in_progress',
-        xpEarned: 280,
-        xpTotal: 450
-    },
-    {
-        id: 'hsm-keys',
-        name: 'Gestion des Clés HSM',
-        description: 'Sécurisez les transactions avec la cryptographie',
-        sections: [
-            { id: '1', name: 'Introduction au HSM', completed: true, timeSpent: 10 },
-            { id: '2', name: 'Hiérarchie des clés', completed: false, timeSpent: 0 },
-            { id: '3', name: 'Opérations PIN', completed: false, timeSpent: 0 },
-            { id: '4', name: 'ARQC/ARPC', completed: false, timeSpent: 0 },
-            { id: '5', name: 'Lab pratique', completed: false, timeSpent: 0 },
-        ],
-        totalTime: 120,
-        completedTime: 10,
-        status: 'in_progress',
-        xpEarned: 50,
-        xpTotal: 500
-    },
-    {
-        id: '3ds-flow',
-        name: '3D Secure v2',
-        description: 'Authentification forte pour les paiements en ligne',
-        sections: [
-            { id: '1', name: 'Les acteurs du 3DS', completed: false, timeSpent: 0 },
-            { id: '2', name: 'Flux d\'authentification', completed: false, timeSpent: 0 },
-            { id: '3', name: 'Challenge vs Frictionless', completed: false, timeSpent: 0 },
-            { id: '4', name: 'Exemptions SCA', completed: false, timeSpent: 0 },
-        ],
-        totalTime: 75,
-        completedTime: 0,
-        status: 'not_started',
-        xpEarned: 0,
-        xpTotal: 400
-    },
-];
+const WORKSHOP_ORDER = ['intro', 'iso8583', 'hsm-keys', '3ds-flow', 'fraud-detection', 'emv'];
+const WORKSHOP_DESCRIPTIONS: Record<string, string> = {
+    'intro': 'Découvrez les fondamentaux du monde des paiements',
+    'iso8583': 'Maîtrisez le standard de communication bancaire',
+    'hsm-keys': 'Sécurisez les transactions avec la cryptographie',
+    '3ds-flow': 'Authentification forte pour les paiements en ligne',
+    'fraud-detection': 'Détectez et prévenez les transactions frauduleuses',
+    'emv': 'Comprenez les cartes à puce et le protocole EMV',
+};
 
 export default function StudentProgressPage() {
     const { isLoading } = useAuth(true);
-    const [expandedWorkshop, setExpandedWorkshop] = useState<string | null>('iso8583');
+    const [workshops, setWorkshops] = useState<WorkshopProgress[]>([]);
+    const [expandedWorkshop, setExpandedWorkshop] = useState<string | null>(null);
+    const [dataLoading, setDataLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    // Calculate totals
-    const totalXpEarned = mockProgress.reduce((acc, w) => acc + w.xpEarned, 0);
-    const totalXpPossible = mockProgress.reduce((acc, w) => acc + w.xpTotal, 0);
-    const totalTimeSpent = mockProgress.reduce((acc, w) => acc + w.completedTime, 0);
-    const completedWorkshops = mockProgress.filter(w => w.status === 'completed').length;
+    const fetchProgress = useCallback(async () => {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        try {
+            setError(null);
+            const headers = { Authorization: `Bearer ${token}` };
+            const [progressRes, statsRes] = await Promise.all([
+                fetch('/api/progress', { headers }).catch(() => null),
+                fetch('/api/progress/stats', { headers }).catch(() => null),
+            ]);
+
+            const progressData = progressRes?.ok ? await progressRes.json() : null;
+            const statsData = statsRes?.ok ? await statsRes.json() : null;
+            const progressMap = progressData?.progress || {};
+            const quizResults = statsData?.stats?.quizResults || [];
+
+            let previousCompleted = true;
+            const builtWorkshops: WorkshopProgress[] = WORKSHOP_ORDER.map((workshopId) => {
+                const wp = progressMap[workshopId];
+                const name = wp?.title || workshopId;
+                const description = WORKSHOP_DESCRIPTIONS[workshopId] || '';
+                const totalSections = wp?.total_sections || 5;
+                const currentSection = wp?.current_section || 0;
+                const progressPercent = wp?.progress_percent || 0;
+                const timeSpent = wp?.time_spent_minutes || 0;
+                const rawStatus = wp?.status || 'NOT_STARTED';
+
+                // Build sections
+                const sections: SectionProgress[] = [];
+                for (let i = 1; i <= totalSections; i++) {
+                    sections.push({
+                        id: String(i),
+                        name: `Section ${i}`,
+                        completed: i <= currentSection,
+                        timeSpent: i <= currentSection ? Math.round(timeSpent / Math.max(1, currentSection)) : 0,
+                    });
+                }
+
+                // Quiz result (best attempt for this workshop)
+                const matchingAttempts = quizResults.filter((q: Record<string, unknown>) => {
+                    const byWorkshopId = q?.workshop_id === workshopId || q?.workshopId === workshopId;
+                    const byQuizId =
+                        (wp?.quiz_id && (q?.quiz_id === wp.quiz_id || q?.quizId === wp.quiz_id))
+                        || false;
+                    return byWorkshopId || byQuizId;
+                });
+
+                let bestAttempt: Record<string, unknown> | null = null;
+                for (const attempt of matchingAttempts) {
+                    const currentPercentage = Number(attempt?.percentage ?? 0);
+                    if (!Number.isFinite(currentPercentage)) {
+                        continue;
+                    }
+
+                    const bestPercentage = Number(bestAttempt?.percentage ?? -1);
+                    if (!bestAttempt || currentPercentage > bestPercentage) {
+                        bestAttempt = attempt;
+                    }
+                }
+
+                const quizScore = bestAttempt ? Number(bestAttempt.percentage ?? 0) : undefined;
+                const quizPassed = quizScore !== undefined ? quizScore >= 80 : undefined;
+
+                // Status with sequential lock
+                let status: WorkshopProgress['status'] = 'not_started';
+                if (rawStatus === 'COMPLETED') {
+                    status = 'completed';
+                    previousCompleted = true;
+                } else if (rawStatus === 'IN_PROGRESS') {
+                    status = 'in_progress';
+                    previousCompleted = false;
+                } else if (previousCompleted) {
+                    status = 'not_started';
+                    previousCompleted = false;
+                } else {
+                    status = 'locked';
+                }
+
+                const xpTotal = totalSections * 50 + 100;
+                const xpEarned = Math.round((progressPercent / 100) * xpTotal);
+
+                return {
+                    id: workshopId,
+                    name,
+                    description,
+                    sections,
+                    totalTime: totalSections * 15,
+                    completedTime: timeSpent,
+                    quizScore,
+                    quizPassed,
+                    status,
+                    xpEarned,
+                    xpTotal,
+                };
+            });
+
+            // Auto-expand first in-progress workshop
+            const inProgress = builtWorkshops.find(w => w.status === 'in_progress');
+            if (inProgress) {
+                setExpandedWorkshop(prev => prev || inProgress.id);
+            }
+
+            setWorkshops(builtWorkshops);
+        } catch (e: any) {
+            setError(e.message || 'Erreur lors du chargement');
+        } finally {
+            setDataLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (isLoading) return;
+        fetchProgress();
+    }, [isLoading, fetchProgress]);
+
+    const totalXpEarned = workshops.reduce((acc, w) => acc + w.xpEarned, 0);
+    const totalXpPossible = workshops.reduce((acc, w) => acc + w.xpTotal, 0);
+    const totalTimeSpent = workshops.reduce((acc, w) => acc + w.completedTime, 0);
+    const completedWorkshops = workshops.filter(w => w.status === 'completed').length;
 
     const getStatusBadge = (status: string) => {
         switch (status) {
@@ -149,10 +206,13 @@ export default function StudentProgressPage() {
         }
     };
 
-    if (isLoading) {
+    if (isLoading || dataLoading) {
         return (
             <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
+                <div className="flex flex-col items-center gap-4">
+                    <TrendingUp className="animate-bounce w-12 h-12 text-emerald-500" />
+                    <span className="text-sm text-slate-500">Chargement de votre progression...</span>
+                </div>
             </div>
         );
     }
@@ -160,20 +220,35 @@ export default function StudentProgressPage() {
     return (
         <div className="min-h-screen bg-slate-950 pt-24 pb-12">
             <div className="max-w-4xl mx-auto px-6">
-                {/* Header */}
-                <div className="mb-8">
-                    <Link
-                        href="/student"
-                        className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-4"
-                    >
-                        <ArrowLeft size={18} />
-                        Retour au dashboard
-                    </Link>
-                    <h1 className="text-3xl font-bold text-white mb-2">Ma Progression</h1>
-                    <p className="text-slate-400">
-                        Suivez votre avancement dans chaque atelier
-                    </p>
+                {/* Breadcrumb */}
+                <div className="text-xs text-slate-500 mb-6">
+                    <Link href="/student" className="hover:text-emerald-400">Mon Parcours</Link>
+                    <ChevronRight size={12} className="inline mx-1" />
+                    <span className="text-emerald-400">Ma Progression</span>
                 </div>
+
+                {/* Header */}
+                <div className="flex items-center justify-between mb-8">
+                    <div>
+                        <h1 className="text-3xl font-bold text-white mb-2">Ma Progression</h1>
+                        <p className="text-slate-400">
+                            Suivez votre avancement dans chaque atelier
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => { setDataLoading(true); fetchProgress(); }}
+                        className="flex items-center gap-2 px-4 py-2 bg-slate-800 border border-white/10 text-white rounded-xl hover:bg-slate-700"
+                    >
+                        <RefreshCw size={18} />
+                        Actualiser
+                    </button>
+                </div>
+
+                {error && (
+                    <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-sm mb-6">
+                        {error}
+                    </div>
+                )}
 
                 {/* Overall Stats */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -193,9 +268,11 @@ export default function StudentProgressPage() {
                             <div className="p-2 bg-purple-500/20 rounded-lg">
                                 <Clock size={18} className="text-purple-400" />
                             </div>
-                            <span className="text-sm text-slate-400">Temps d'étude</span>
+                            <span className="text-sm text-slate-400">Temps d&apos;étude</span>
                         </div>
-                        <p className="text-2xl font-bold text-white">{Math.floor(totalTimeSpent / 60)}h {totalTimeSpent % 60}m</p>
+                        <p className="text-2xl font-bold text-white">
+                            {totalTimeSpent >= 60 ? `${Math.floor(totalTimeSpent / 60)}h ${totalTimeSpent % 60}m` : `${totalTimeSpent} min`}
+                        </p>
                     </div>
 
                     <div className="bg-slate-800/50 border border-white/10 rounded-xl p-4">
@@ -205,7 +282,7 @@ export default function StudentProgressPage() {
                             </div>
                             <span className="text-sm text-slate-400">Ateliers</span>
                         </div>
-                        <p className="text-2xl font-bold text-white">{completedWorkshops}/{mockProgress.length}</p>
+                        <p className="text-2xl font-bold text-white">{completedWorkshops}/{workshops.length}</p>
                         <p className="text-xs text-slate-500">terminés</p>
                     </div>
 
@@ -216,14 +293,18 @@ export default function StudentProgressPage() {
                             </div>
                             <span className="text-sm text-slate-400">Progression</span>
                         </div>
-                        <p className="text-2xl font-bold text-white">{Math.round((totalXpEarned / totalXpPossible) * 100)}%</p>
+                        <p className="text-2xl font-bold text-white">
+                            {totalXpPossible > 0 ? Math.round((totalXpEarned / totalXpPossible) * 100) : 0}%
+                        </p>
                     </div>
                 </div>
 
                 {/* Workshop List */}
                 <div className="space-y-4">
-                    {mockProgress.map((workshop) => {
-                        const progress = Math.round((workshop.completedTime / workshop.totalTime) * 100);
+                    {workshops.map((workshop) => {
+                        const progress = workshop.totalTime > 0
+                            ? Math.min(100, Math.round((workshop.completedTime / workshop.totalTime) * 100))
+                            : 0;
                         const completedSections = workshop.sections.filter(s => s.completed).length;
                         const isExpanded = expandedWorkshop === workshop.id;
 
@@ -238,7 +319,6 @@ export default function StudentProgressPage() {
                                         : 'border-white/10'
                                 }`}
                             >
-                                {/* Workshop Header */}
                                 <button
                                     onClick={() => setExpandedWorkshop(isExpanded ? null : workshop.id)}
                                     className="w-full p-6 flex items-center justify-between text-left hover:bg-white/5 transition-colors"
@@ -267,12 +347,10 @@ export default function StudentProgressPage() {
 
                                     <div className="flex items-center gap-6">
                                         {getStatusBadge(workshop.status)}
-
                                         <div className="text-right hidden md:block">
                                             <p className="text-sm text-white font-medium">{workshop.xpEarned} XP</p>
                                             <p className="text-xs text-slate-500">{completedSections}/{workshop.sections.length} sections</p>
                                         </div>
-
                                         <ChevronRight
                                             size={20}
                                             className={`text-slate-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
@@ -280,7 +358,6 @@ export default function StudentProgressPage() {
                                     </div>
                                 </button>
 
-                                {/* Progress Bar */}
                                 <div className="px-6 pb-4">
                                     <div className="flex justify-between text-xs mb-1">
                                         <span className="text-slate-400">{progress}% complété</span>
@@ -294,11 +371,10 @@ export default function StudentProgressPage() {
                                                     : 'bg-gradient-to-r from-blue-500 to-blue-400'
                                             }`}
                                             style={{ width: `${progress}%` }}
-                                        ></div>
+                                        />
                                     </div>
                                 </div>
 
-                                {/* Expanded Sections */}
                                 {isExpanded && (
                                     <div className="border-t border-white/5 px-6 py-4">
                                         <h4 className="text-sm font-medium text-slate-400 mb-3">Sections</h4>
@@ -322,14 +398,13 @@ export default function StudentProgressPage() {
                                                             {section.name}
                                                         </span>
                                                     </div>
-                                                    {section.completed && (
+                                                    {section.completed && section.timeSpent > 0 && (
                                                         <span className="text-xs text-slate-500">{section.timeSpent} min</span>
                                                     )}
                                                 </div>
                                             ))}
                                         </div>
 
-                                        {/* Quiz Result */}
                                         {workshop.quizScore !== undefined && (
                                             <div className={`mt-4 p-4 rounded-xl ${
                                                 workshop.quizPassed
@@ -348,17 +423,16 @@ export default function StudentProgressPage() {
                                                             {workshop.quizScore}%
                                                         </span>
                                                         <p className="text-xs text-slate-400">
-                                                            {workshop.quizPassed ? 'Réussi !' : 'À refaire'}
+                                                            {workshop.quizPassed ? 'Réussi !' : 'À refaire (80% requis)'}
                                                         </p>
                                                     </div>
                                                 </div>
                                             </div>
                                         )}
 
-                                        {/* Continue Button */}
                                         {workshop.status !== 'completed' && workshop.status !== 'locked' && (
                                             <Link
-                                                href={`/workshops/${workshop.id}`}
+                                                href={`/student/theory/${workshop.id}`}
                                                 className="mt-4 w-full py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-semibold rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
                                             >
                                                 <Play size={18} />
@@ -370,6 +444,12 @@ export default function StudentProgressPage() {
                             </div>
                         );
                     })}
+
+                    {workshops.length === 0 && (
+                        <div className="text-center py-12 text-slate-500">
+                            Aucun atelier disponible pour le moment.
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

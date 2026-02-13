@@ -1,20 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../auth/useAuth';
 import { useParams } from 'next/navigation';
 import {
-    User,
     Mail,
     Calendar,
     Award,
     BookOpen,
     Clock,
-    TrendingUp,
     CheckCircle2,
     XCircle,
-    ChevronRight,
-    BarChart3,
     Target,
     Trophy,
     Zap,
@@ -142,7 +138,7 @@ const normalizeBadge = (raw: unknown): Badge => {
 };
 
 export default function StudentDetailPage() {
-    const { user: authUser, isLoading: authLoading } = useAuth(true);
+    const { isLoading: authLoading } = useAuth(true);
     const params = useParams();
     const studentId = params.id as string;
 
@@ -153,13 +149,7 @@ export default function StudentDetailPage() {
     const [badges, setBadges] = useState<Badge[]>([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        if (studentId) {
-            fetchStudentData();
-        }
-    }, [studentId]);
-
-    const fetchStudentData = async () => {
+    const fetchStudentData = useCallback(async () => {
         try {
             const token = localStorage.getItem('token');
             const response = await fetch(`/api/users/${studentId}/progress`, {
@@ -219,7 +209,13 @@ export default function StudentDetailPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [studentId]);
+
+    useEffect(() => {
+        if (studentId) {
+            fetchStudentData();
+        }
+    }, [studentId, fetchStudentData]);
 
     if (authLoading || loading) {
         return (

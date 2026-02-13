@@ -291,6 +291,7 @@ CREATE TRIGGER update_webhooks_updated_at
 -- =============================================================================
 -- VIEWS: Merchant Dashboard Stats
 -- =============================================================================
+DROP VIEW IF EXISTS merchant.dashboard_stats;
 CREATE OR REPLACE VIEW merchant.dashboard_stats AS
 SELECT
     m.id as merchant_id,
@@ -315,6 +316,7 @@ GROUP BY m.id;
 -- =============================================================================
 -- VIEWS: Client Card Summary
 -- =============================================================================
+DROP VIEW IF EXISTS client.card_summary;
 CREATE OR REPLACE VIEW client.card_summary AS
 SELECT
     c.id as client_id,

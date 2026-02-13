@@ -1,6 +1,6 @@
 'use client';
 
-import { Book, Code, Box, Layers, Globe, Shield } from 'lucide-react';
+import { Book, Code, Box, Layers, Globe, Shield, type LucideIcon } from 'lucide-react';
 
 export default function ApiDocsPage() {
     return (
@@ -86,7 +86,13 @@ export default function ApiDocsPage() {
     );
 }
 
-function ServiceCard({ title, port, icon: Icon, desc, endpoints }: any) {
+type ApiEndpoint = {
+    method: string;
+    path: string;
+    desc: string;
+};
+
+function ServiceCard({ title, port, icon: Icon, desc, endpoints }: { title: string; port: string; icon: LucideIcon; desc: string; endpoints: ApiEndpoint[] }) {
     return (
         <div className="bg-slate-900/30 border border-white/5 rounded-2xl p-6 hover:border-teal-500/30 transition shadow-lg hover:shadow-teal-500/5 group">
             <div className="flex items-center justify-between mb-4">
@@ -104,7 +110,7 @@ function ServiceCard({ title, port, icon: Icon, desc, endpoints }: any) {
             <p className="text-slate-400 text-sm mb-6 h-10">{desc}</p>
 
             <div className="space-y-3">
-                {endpoints.map((ep: any, idx: number) => (
+                {endpoints.map((ep, idx) => (
                     <div key={idx} className="flex gap-3 text-sm p-2 rounded hover:bg-white/5 transition">
                         <span className={`font-mono font-bold w-12 text-right ${ep.method === 'GET' ? 'text-blue-400' :
                                 ep.method === 'POST' ? 'text-green-400' : 'text-amber-400'
