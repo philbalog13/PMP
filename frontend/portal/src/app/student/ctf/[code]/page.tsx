@@ -1,16 +1,47 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { use, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useAuth } from '../../../auth/useAuth';
+import { useRouter } from 'next/navigation';
 import {
-    ArrowLeft, ChevronRight, CheckCircle2, Flame, ShieldAlert,
-    Lock, Play, Eye, EyeOff, Send, Lightbulb, Terminal,
-    Clock, Target, AlertTriangle, RefreshCw, BookOpen
+    AlertCircle,
+    ArrowLeft,
+    Beaker,
+    CheckCircle2,
+    Flame,
+    Lightbulb,
+    Lock,
+    Play,
+    RefreshCw,
+    Send,
+    Terminal,
+    Trophy,
 } from 'lucide-react';
+import { useAuth } from '../../../auth/useAuth';
+import { CourseCard, CoursePageShell, CoursePill } from '@/components/course/CoursePageShell';
+import { APP_URLS } from '@shared/lib/app-urls';
 
-interface ChallengeDetail {
+type CtfStatus = 'LOCKED' | 'UNLOCKED' | 'IN_PROGRESS' | 'COMPLETED';
+type CtfMode = 'GUIDED' | 'FREE';
+
+type GuidedStep = {
+    stepNumber: number;
+    stepTitle: string;
+    stepDescription: string;
+    stepType: string;
+    commandTemplate: string | null;
+    expectedOutput: string | null;
+    hintText: string | null;
+};
+
+type HintInfo = {
+    hintNumber: number;
+    hintText: string | null;
+    costPoints: number;
+    unlocked: boolean;
+};
+
+type ChallengeDetail = {
     id: string;
     code: string;
     title: string;
@@ -25,458 +56,722 @@ interface ChallengeDetail {
     attackVector: string;
     learningObjectives: string[];
     estimatedMinutes: number;
-    status: 'LOCKED' | 'UNLOCKED' | 'IN_PROGRESS' | 'COMPLETED';
-    solveCount: number;
-}
+    status: CtfStatus;
+    started?: boolean;
+    mode?: CtfMode;
+    currentGuidedStep?: number;
+    totalSteps?: number;
+    guidedSteps?: GuidedStep[];
+    freeModeDescription?: string;
+    hints?: HintInfo[];
+    hintsUnlocked?: number[];
+};
 
-interface GuidedStep {
-    stepNumber: number;
-    stepTitle: string;
-    stepDescription: string;
-    stepType: string;
-    commandTemplate: string | null;
-    hintText: string | null;
-}
-
-interface HintInfo {
-    hintNumber: number;
-    hintText: string | null;
-    costPoints: number;
-    unlocked: boolean;
-}
-
-const categoryLabels: Record<string, string> = {
-    HSM_ATTACK: 'HSM Attack',
-    REPLAY_ATTACK: 'Replay Attack',
-    '3DS_BYPASS': '3DS Bypass',
-    FRAUD_CNP: 'Fraud CNP',
+const CATEGORY_LABELS: Record<string, string> = {
+    HSM_ATTACK: 'HSM',
+    REPLAY_ATTACK: 'Replay',
+    '3DS_BYPASS': '3DS',
+    FRAUD_CNP: 'Fraude CNP',
     ISO8583_MANIPULATION: 'ISO 8583',
-    PIN_CRACKING: 'PIN Cracking',
+    PIN_CRACKING: 'PIN',
     MITM: 'MITM',
-    PRIVILEGE_ESCALATION: 'Privilege Escalation',
-    CRYPTO_WEAKNESS: 'Crypto Weakness',
+    PRIVILEGE_ESCALATION: 'Privesc',
+    CRYPTO_WEAKNESS: 'Crypto',
 };
 
-const difficultyStyles: Record<string, string> = {
-    BEGINNER: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
-    INTERMEDIATE: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
-    ADVANCED: 'bg-orange-500/15 text-orange-300 border-orange-500/30',
-    EXPERT: 'bg-red-500/20 text-red-300 border-red-500/40',
+const DIFFICULTY_PILL: Record<string, { label: string; tone: Parameters<typeof CoursePill>[0]['tone'] }> = {
+    BEGINNER: { label: 'Beginner', tone: 'emerald' },
+    INTERMEDIATE: { label: 'Intermediate', tone: 'amber' },
+    ADVANCED: { label: 'Advanced', tone: 'rose' },
+    EXPERT: { label: 'Expert', tone: 'violet' },
 };
 
-export default function CtfChallengeDetailPage() {
-    const { user, isLoading: authLoading } = useAuth(true);
-    const params = useParams();
+function statusMeta(status: CtfStatus): { label: string; tone: Parameters<typeof CoursePill>[0]['tone']; icon: React.ReactNode } {
+    if (status === 'COMPLETED') {
+        return { label: 'Résolu', tone: 'emerald', icon: <CheckCircle2 className="h-4 w-4" /> };
+    }
+    if (status === 'IN_PROGRESS') {
+        return { label: 'En cours', tone: 'amber', icon: <Flame className="h-4 w-4" /> };
+    }
+    if (status === 'LOCKED') {
+        return { label: 'Verrouillé', tone: 'slate', icon: <Lock className="h-4 w-4" /> };
+    }
+    return { label: 'Disponible', tone: 'cyan', icon: <Trophy className="h-4 w-4" /> };
+}
+
+export default function CtfChallengeDetailPage({ params }: { params: Promise<{ code: string }> }) {
+    const { code } = use(params);
     const router = useRouter();
-    const challengeCode = params?.code as string;
+    const { isLoading: authLoading } = useAuth(true);
 
+    const challengeCode = useMemo(() => decodeURIComponent(String(code || '')).trim(), [code]);
+    const normalizedCode = useMemo(() => challengeCode.toUpperCase(), [challengeCode]);
+
+    const [mode, setMode] = useState<CtfMode>('GUIDED');
     const [challenge, setChallenge] = useState<ChallengeDetail | null>(null);
-    const [guidedSteps, setGuidedSteps] = useState<GuidedStep[]>([]);
-    const [currentStep, setCurrentStep] = useState(0);
-    const [hints, setHints] = useState<HintInfo[]>([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const [flagInput, setFlagInput] = useState('');
     const [submitting, setSubmitting] = useState(false);
-    const [submitResult, setSubmitResult] = useState<{ success: boolean; message: string; pointsAwarded?: number } | null>(null);
-    const [mode, setMode] = useState<'GUIDED' | 'FREE'>('GUIDED');
+    const [submitResult, setSubmitResult] = useState<{ ok: boolean; message: string; pointsAwarded?: number } | null>(null);
 
     const getHeaders = useCallback(() => {
         const token = localStorage.getItem('token');
         return token ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } : null;
     }, []);
 
-    const fetchChallenge = useCallback(async () => {
+    const fetchChallenge = useCallback(async (requestedMode?: CtfMode) => {
+        if (!normalizedCode) return;
+
         const headers = getHeaders();
-        if (!headers || !challengeCode) return;
+        if (!headers) {
+            setError('Session expirée. Merci de vous reconnecter.');
+            setLoading(false);
+            return;
+        }
+
+        const activeMode = requestedMode || mode;
 
         try {
             setError(null);
-            setLoading(true);
-            const res = await fetch(`/api/ctf/challenges/${challengeCode}`, { headers });
-            if (!res.ok) {
-                const payload = await res.json().catch(() => null);
-                throw new Error(payload?.error || 'Challenge introuvable');
+            setRefreshing(true);
+            setLoading((prev) => prev || !challenge);
+
+            const res = await fetch(`/api/ctf/challenges/${encodeURIComponent(normalizedCode)}?mode=${activeMode}`, {
+                headers,
+            });
+
+            const data = await res.json().catch(() => ({}));
+
+            if (res.ok && data?.success && data?.challenge) {
+                setChallenge(data.challenge);
+                if (data.challenge.mode === 'GUIDED' || data.challenge.mode === 'FREE') {
+                    setMode(data.challenge.mode);
+                }
+                return;
             }
-            const data = await res.json();
-            setChallenge(data.challenge || null);
-            setGuidedSteps(data.guidedSteps || []);
-            setCurrentStep(data.currentStep || 0);
-            setHints(data.hints || []);
-            if (data.challenge?.status === 'IN_PROGRESS' || data.challenge?.status === 'COMPLETED') {
-                setMode(data.modePreference || 'GUIDED');
+
+            if (data?.challenge) {
+                setChallenge(data.challenge);
             }
-        } catch (err: any) {
-            setError(err.message || 'Erreur de chargement');
+
+            throw new Error(data?.error || 'Impossible de charger ce challenge.');
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Erreur de chargement.');
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
-    }, [challengeCode, getHeaders]);
+    }, [challenge, getHeaders, mode, normalizedCode]);
 
     useEffect(() => {
         if (authLoading) return;
-        fetchChallenge();
+        void fetchChallenge();
     }, [authLoading, fetchChallenge]);
 
-    const startChallenge = async () => {
+    const startChallenge = useCallback(async () => {
         const headers = getHeaders();
-        if (!headers) return;
+        if (!headers || !normalizedCode) return;
+
         try {
-            const res = await fetch(`/api/ctf/challenges/${challengeCode}/start`, {
+            setSubmitting(true);
+            setSubmitResult(null);
+            setError(null);
+
+            const res = await fetch(`/api/ctf/challenges/${encodeURIComponent(normalizedCode)}/start`, {
                 method: 'POST',
                 headers,
                 body: JSON.stringify({ mode }),
             });
-            if (res.ok) {
-                await fetchChallenge();
-            }
-        } catch {}
-    };
 
-    const advanceStep = async () => {
-        const headers = getHeaders();
-        if (!headers) return;
-        try {
-            const res = await fetch(`/api/ctf/challenges/${challengeCode}/step/next`, {
-                method: 'POST',
-                headers,
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setCurrentStep(data.currentStep || currentStep + 1);
-                await fetchChallenge();
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data?.success) {
+                throw new Error(data?.error || 'Impossible de démarrer ce challenge.');
             }
-        } catch {}
-    };
 
-    const unlockHint = async (hintNumber: number) => {
-        const headers = getHeaders();
-        if (!headers) return;
-        try {
-            const res = await fetch(`/api/ctf/challenges/${challengeCode}/hint/${hintNumber}`, {
-                method: 'POST',
-                headers,
-            });
-            if (res.ok) {
-                await fetchChallenge();
-            }
-        } catch {}
-    };
-
-    const submitFlag = async () => {
-        const headers = getHeaders();
-        if (!headers || !flagInput.trim()) return;
-        try {
-            setSubmitting(true);
-            setSubmitResult(null);
-            const res = await fetch(`/api/ctf/challenges/${challengeCode}/submit`, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({ flag: flagInput.trim() }),
-            });
-            const data = await res.json();
-            if (data.correct) {
-                setSubmitResult({ success: true, message: 'Flag correct ! Challenge résolu !', pointsAwarded: data.pointsAwarded });
-                await fetchChallenge();
-            } else {
-                setSubmitResult({ success: false, message: data.message || 'Flag incorrect. Réessayez.' });
-            }
-        } catch (err: any) {
-            setSubmitResult({ success: false, message: 'Erreur lors de la soumission' });
+            await fetchChallenge(mode);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Erreur lors du démarrage.');
         } finally {
             setSubmitting(false);
         }
-    };
+    }, [fetchChallenge, getHeaders, mode, normalizedCode]);
+
+    const advanceGuidedStep = useCallback(async () => {
+        const headers = getHeaders();
+        if (!headers || !normalizedCode) return;
+
+        try {
+            setSubmitting(true);
+            setError(null);
+
+            const res = await fetch(`/api/ctf/challenges/${encodeURIComponent(normalizedCode)}/step/next`, {
+                method: 'POST',
+                headers,
+            });
+
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data?.success) {
+                throw new Error(data?.error || 'Impossible d’avancer l’étape guidée.');
+            }
+
+            await fetchChallenge('GUIDED');
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Erreur lors de l’avancement.');
+        } finally {
+            setSubmitting(false);
+        }
+    }, [fetchChallenge, getHeaders, normalizedCode]);
+
+    const unlockHint = useCallback(async (hintNumber: number) => {
+        const headers = getHeaders();
+        if (!headers || !normalizedCode) return;
+
+        try {
+            setSubmitting(true);
+            setError(null);
+
+            const res = await fetch(`/api/ctf/challenges/${encodeURIComponent(normalizedCode)}/hint/${hintNumber}`, {
+                method: 'POST',
+                headers,
+            });
+
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data?.success) {
+                throw new Error(data?.error || 'Impossible de débloquer cet indice.');
+            }
+
+            await fetchChallenge();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Erreur lors du déblocage.');
+        } finally {
+            setSubmitting(false);
+        }
+    }, [fetchChallenge, getHeaders, normalizedCode]);
+
+    const submitFlag = useCallback(async () => {
+        const headers = getHeaders();
+        if (!headers || !normalizedCode) return;
+        if (!flagInput.trim()) return;
+
+        try {
+            setSubmitting(true);
+            setSubmitResult(null);
+            setError(null);
+
+            const res = await fetch(`/api/ctf/challenges/${encodeURIComponent(normalizedCode)}/submit`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ submittedFlag: flagInput.trim(), mode }),
+            });
+
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data?.success || !data?.result) {
+                throw new Error(data?.error || 'Soumission impossible.');
+            }
+
+            if (data.result.isCorrect) {
+                setSubmitResult({
+                    ok: true,
+                    message: data.result.alreadySolved ? 'Déjà résolu. Bravo.' : 'Flag correct. Challenge résolu.',
+                    pointsAwarded: data.result.pointsAwarded,
+                });
+                await fetchChallenge();
+                router.push(`${APP_URLS.studentCtf}/${encodeURIComponent(normalizedCode)}/remediation`);
+            } else {
+                setSubmitResult({
+                    ok: false,
+                    message: data.result.message || 'Flag incorrect. Réessayez.',
+                });
+            }
+        } catch (err) {
+            setSubmitResult({ ok: false, message: err instanceof Error ? err.message : 'Erreur lors de la soumission.' });
+        } finally {
+            setSubmitting(false);
+        }
+    }, [fetchChallenge, flagInput, getHeaders, mode, normalizedCode, router]);
+
+    const viewModel = useMemo(() => {
+        const status: CtfStatus = challenge?.status || 'UNLOCKED';
+        const statusInfo = statusMeta(status);
+        const difficultyInfo =
+            DIFFICULTY_PILL[challenge?.difficulty || ''] || { label: challenge?.difficulty || 'N/A', tone: 'slate' as const };
+
+        const guidedSteps = challenge?.guidedSteps || [];
+        const totalSteps = Math.max(0, Number(challenge?.totalSteps || guidedSteps.length || 0));
+        const currentGuidedStep = Math.max(1, Number(challenge?.currentGuidedStep || guidedSteps.length || 1));
+        const activeStepNumber = status === 'COMPLETED' ? totalSteps : currentGuidedStep;
+
+        const hints = challenge?.hints || [];
+
+        return {
+            status,
+            statusInfo,
+            difficultyInfo,
+            categoryLabel: CATEGORY_LABELS[challenge?.category || ''] || challenge?.category || 'N/A',
+            totalSteps,
+            activeStepNumber,
+            guidedSteps,
+            hints,
+        };
+    }, [challenge]);
 
     if (authLoading || loading) {
         return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">
-                <div className="flex flex-col items-center gap-4">
-                    <ShieldAlert className="h-12 w-12 animate-bounce text-orange-400" />
-                    <p className="text-sm text-slate-400">Chargement du challenge...</p>
-                </div>
-            </div>
+            <CoursePageShell
+                title="Chargement du challenge..."
+                description="Preparation du contenu CTF et de votre progression."
+                icon={<Beaker className="h-8 w-8 text-emerald-300" />}
+                crumbs={[
+                    { label: 'Mon Parcours', href: '/student' },
+                    { label: 'Security Labs', href: APP_URLS.studentCtf },
+                    { label: 'Chargement' },
+                ]}
+                backHref={APP_URLS.studentCtf}
+                backLabel="Retour aux challenges"
+            >
+                <CourseCard className="p-8">
+                    <div className="flex items-center gap-3 text-slate-300">
+                        <RefreshCw className="h-5 w-5 animate-spin text-emerald-400" />
+                        <span className="text-sm">Chargement...</span>
+                    </div>
+                    <div className="mt-6 space-y-3 animate-pulse">
+                        <div className="h-3 w-2/3 rounded bg-slate-800/70" />
+                        <div className="h-3 w-full rounded bg-slate-800/50" />
+                        <div className="h-3 w-5/6 rounded bg-slate-800/40" />
+                    </div>
+                </CourseCard>
+            </CoursePageShell>
         );
     }
 
-    if (error || !challenge) {
+    if (!challenge) {
         return (
-            <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center gap-4 text-white">
-                <AlertTriangle size={48} className="text-red-400" />
-                <p className="text-slate-400">{error || 'Challenge introuvable'}</p>
-                <div className="flex gap-3">
-                    <button onClick={fetchChallenge} className="px-4 py-2 bg-slate-800 rounded-lg text-sm hover:bg-slate-700">
-                        Réessayer
-                    </button>
-                    <Link href="/student/ctf" className="px-4 py-2 bg-orange-600 rounded-lg text-sm hover:bg-orange-500 flex items-center gap-2">
-                        <ArrowLeft size={14} /> Retour aux challenges
+            <CoursePageShell
+                title="Challenge introuvable"
+                description={error || 'Le challenge demande est introuvable.'}
+                icon={<AlertCircle className="h-8 w-8 text-red-200" />}
+                crumbs={[
+                    { label: 'Mon Parcours', href: '/student' },
+                    { label: 'Security Labs', href: APP_URLS.studentCtf },
+                    { label: 'Erreur' },
+                ]}
+                backHref={APP_URLS.studentCtf}
+                backLabel="Retour aux challenges"
+            >
+                <CourseCard className="border border-red-500/20 bg-red-500/5 p-6 md:p-8">
+                    <div className="flex items-start gap-3">
+                        <AlertCircle className="mt-0.5 h-5 w-5 text-red-300" />
+                        <div className="min-w-0">
+                            <h2 className="text-lg font-semibold text-white">Impossible de charger le challenge</h2>
+                            <p className="mt-1 text-sm text-red-100/90">{error || 'Erreur inconnue.'}</p>
+                            <div className="mt-4 flex flex-wrap items-center gap-2">
+                                <button
+                                    onClick={() => void fetchChallenge()}
+                                    className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold"
+                                >
+                                    Reessayer
+                                </button>
+                                <Link
+                                    href={APP_URLS.studentCtf}
+                                    className="px-4 py-2.5 rounded-xl border border-white/10 bg-slate-900/40 text-sm font-semibold hover:bg-slate-900/60"
+                                >
+                                    Retour aux challenges
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
+                </CourseCard>
+            </CoursePageShell>
+        );
+    }
+
+    const isLocked = viewModel.status === 'LOCKED';
+    const isUnlocked = viewModel.status === 'UNLOCKED';
+    const isInProgress = viewModel.status === 'IN_PROGRESS';
+    const isCompleted = viewModel.status === 'COMPLETED';
+    const showGuided = mode === 'GUIDED';
+
+    const aside = (
+        <div className="space-y-4">
+            <CourseCard className="p-4">
+                <p className="text-[11px] text-slate-500 font-semibold uppercase tracking-[0.2em] mb-3">
+                    Mode
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                    {(['GUIDED', 'FREE'] as const).map((m) => {
+                        const active = mode === m;
+                        return (
+                            <button
+                                key={m}
+                                onClick={() => {
+                                    setMode(m);
+                                    void fetchChallenge(m);
+                                }}
+                                className={`px-3 py-2 rounded-xl text-sm font-semibold border transition ${
+                                    active
+                                        ? 'bg-white text-slate-950 border-white/10'
+                                        : 'bg-slate-950/40 border-white/10 text-slate-200 hover:bg-white/5'
+                                }`}
+                            >
+                                {m === 'GUIDED' ? 'Guide' : 'Libre'}
+                            </button>
+                        );
+                    })}
+                </div>
+                {challenge.prerequisiteChallengeCode && (
+                    <div className="mt-4 text-sm text-slate-400">
+                        Prerequis: <span className="font-mono text-slate-200">{challenge.prerequisiteChallengeCode}</span>
+                    </div>
+                )}
+            </CourseCard>
+
+            <CourseCard className="p-4">
+                <p className="text-[11px] text-slate-500 font-semibold uppercase tracking-[0.2em] mb-3">
+                    Actions
+                </p>
+                <div className="space-y-2">
+                    <Link
+                        href={`${APP_URLS.studentCtf}/${encodeURIComponent(normalizedCode)}/terminal`}
+                        className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-slate-950/50 border border-white/10 text-sm font-semibold text-slate-200 hover:bg-slate-950 hover:border-white/20 transition"
+                    >
+                        <Terminal className="h-4 w-4 text-cyan-300" />
+                        Ouvrir AttackBox
+                    </Link>
+                    <Link
+                        href={APP_URLS.studentCtfLeaderboard}
+                        className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-slate-950/50 border border-white/10 text-sm font-semibold text-slate-200 hover:bg-slate-950 hover:border-white/20 transition"
+                    >
+                        <Trophy className="h-4 w-4 text-amber-300" />
+                        Leaderboard
+                    </Link>
+                    <Link
+                        href={APP_URLS.studentCtf}
+                        className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-slate-950/50 border border-white/10 text-sm font-semibold text-slate-200 hover:bg-slate-950 hover:border-white/20 transition"
+                    >
+                        <ArrowLeft className="h-4 w-4" />
+                        Retour
                     </Link>
                 </div>
-            </div>
-        );
-    }
-
-    const isCompleted = challenge.status === 'COMPLETED';
-    const isInProgress = challenge.status === 'IN_PROGRESS';
-    const isUnlocked = challenge.status === 'UNLOCKED';
+            </CourseCard>
+        </div>
+    );
 
     return (
-        <div className="min-h-screen bg-slate-950 text-white pt-24 pb-12">
-            <div className="max-w-4xl mx-auto px-6">
-                {/* Breadcrumb */}
-                <div className="text-xs text-slate-500 mb-6 flex items-center gap-1.5">
-                    <Link href="/student" className="hover:text-emerald-400">Mon Parcours</Link>
-                    <ChevronRight size={12} />
-                    <Link href="/student/ctf" className="hover:text-orange-300">Security Labs</Link>
-                    <ChevronRight size={12} />
-                    <span className="text-orange-300 truncate max-w-[200px]">{challenge.title}</span>
-                </div>
-
-                <Link href="/student/ctf" className="inline-flex items-center gap-2 text-slate-400 hover:text-white text-sm mb-6">
-                    <ArrowLeft size={16} /> Retour aux challenges
-                </Link>
-
-                {/* Header */}
-                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-700/20 via-orange-700/10 to-slate-900/50 border border-white/10 p-8 mb-8">
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,120,80,0.15),transparent_50%)]" />
-                    <div className="relative z-10">
-                        <div className="flex items-start justify-between gap-4 mb-4">
-                            <div>
-                                <div className="flex items-center gap-3 mb-3 flex-wrap">
-                                    <span className="font-mono text-xs text-slate-400">{challenge.code}</span>
-                                    <span className={`text-[10px] px-2 py-1 rounded-full border ${difficultyStyles[challenge.difficulty] || 'bg-slate-700/60 border-white/20 text-slate-200'}`}>
-                                        {challenge.difficulty}
-                                    </span>
-                                    <span className="text-[10px] px-2 py-1 rounded-full border bg-slate-700/60 border-white/20 text-slate-200">
-                                        {categoryLabels[challenge.category] || challenge.category}
-                                    </span>
-                                    {isCompleted && (
-                                        <span className="text-[10px] px-2 py-1 rounded-full border bg-emerald-500/20 border-emerald-500/30 text-emerald-300 flex items-center gap-1">
-                                            <CheckCircle2 size={10} /> Résolu
-                                        </span>
-                                    )}
-                                    {isInProgress && (
-                                        <span className="text-[10px] px-2 py-1 rounded-full border bg-orange-500/20 border-orange-500/30 text-orange-300 flex items-center gap-1">
-                                            <Flame size={10} /> En cours
-                                        </span>
-                                    )}
-                                </div>
-                                <h1 className="text-2xl md:text-3xl font-black">{challenge.title}</h1>
-                                <p className="text-slate-300 mt-2 text-sm leading-relaxed max-w-2xl">{challenge.description}</p>
-                            </div>
-                            <div className="text-right flex-shrink-0">
-                                <div className="text-2xl font-black text-orange-300">{challenge.points} pts</div>
-                                <div className="text-xs text-slate-400 mt-1">{challenge.solveCount} résolutions</div>
-                            </div>
+        <CoursePageShell
+            title={challenge.title}
+            description={challenge.description}
+            icon={<Beaker className="h-8 w-8 text-emerald-300" />}
+            crumbs={[
+                { label: 'Mon Parcours', href: '/student' },
+                { label: 'Security Labs', href: APP_URLS.studentCtf },
+                { label: challenge.code },
+            ]}
+            backHref={APP_URLS.studentCtf}
+            backLabel="Retour aux challenges"
+            meta={
+                <>
+                    <CoursePill tone="slate">{challenge.code}</CoursePill>
+                    <CoursePill tone={viewModel.difficultyInfo.tone}>{viewModel.difficultyInfo.label}</CoursePill>
+                    <CoursePill tone="slate">{viewModel.categoryLabel}</CoursePill>
+                    <CoursePill tone="slate">{challenge.points} pts</CoursePill>
+                    <CoursePill tone={viewModel.statusInfo.tone}>
+                        {viewModel.statusInfo.icon}
+                        {viewModel.statusInfo.label}
+                    </CoursePill>
+                    <CoursePill tone="slate">~{challenge.estimatedMinutes} min</CoursePill>
+                </>
+            }
+            headerFooter={
+                showGuided && (isInProgress || isCompleted) ? (
+                    <div className="flex items-center gap-3">
+                        <div className="h-2 flex-1 bg-slate-800/70 rounded-full overflow-hidden">
+                            <div
+                                className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-cyan-400 transition-all duration-700"
+                                style={{
+                                    width: `${viewModel.totalSteps > 0 ? Math.round((viewModel.activeStepNumber / viewModel.totalSteps) * 100) : 0}%`,
+                                }}
+                            />
                         </div>
-
-                        <div className="flex items-center gap-6 mt-4 flex-wrap text-sm text-slate-400">
-                            <div className="flex items-center gap-2">
-                                <Clock size={14} className="text-slate-500" />
-                                <span>{challenge.estimatedMinutes} min estimées</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <Target size={14} className="text-slate-500" />
-                                <span>{challenge.vulnerabilityType}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <Terminal size={14} className="text-slate-500" />
-                                <span>{challenge.targetService}</span>
-                            </div>
-                        </div>
-
-                        {challenge.learningObjectives.length > 0 && (
-                            <div className="mt-4 pt-4 border-t border-white/5">
-                                <p className="text-xs text-slate-500 mb-2">Objectifs pédagogiques</p>
-                                <ul className="space-y-1">
-                                    {challenge.learningObjectives.map((obj, i) => (
-                                        <li key={i} className="text-xs text-slate-400 flex items-start gap-2">
-                                            <BookOpen size={12} className="text-orange-400 mt-0.5 flex-shrink-0" />
-                                            {obj}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        )}
+                        <span className="text-xs font-mono text-emerald-200">
+                            {viewModel.activeStepNumber}/{Math.max(1, viewModel.totalSteps)}
+                        </span>
                     </div>
-                </div>
-
-                {/* Start Challenge */}
-                {isUnlocked && (
-                    <div className="mb-8 p-6 rounded-2xl bg-slate-800/50 border border-white/10 text-center">
-                        <h2 className="text-lg font-bold mb-3">Prêt à commencer ?</h2>
-                        <p className="text-sm text-slate-400 mb-4">Choisissez votre mode et lancez le challenge.</p>
-                        <div className="flex gap-3 justify-center mb-4">
-                            <button
-                                onClick={() => setMode('GUIDED')}
-                                className={`px-4 py-2 rounded-lg text-sm border transition ${mode === 'GUIDED' ? 'bg-orange-500/20 border-orange-500/40 text-orange-200' : 'bg-slate-800 border-white/10 text-slate-400 hover:text-white'}`}
-                            >
-                                Mode Guidé
-                            </button>
-                            <button
-                                onClick={() => setMode('FREE')}
-                                className={`px-4 py-2 rounded-lg text-sm border transition ${mode === 'FREE' ? 'bg-orange-500/20 border-orange-500/40 text-orange-200' : 'bg-slate-800 border-white/10 text-slate-400 hover:text-white'}`}
-                            >
-                                Mode Libre
-                            </button>
+                ) : null
+            }
+            actions={
+                <button
+                    onClick={() => void fetchChallenge()}
+                    className={`px-4 py-2.5 rounded-xl border border-white/10 bg-slate-900/40 hover:bg-slate-900/60 text-sm font-semibold inline-flex items-center gap-2 ${
+                        refreshing ? 'opacity-70' : ''
+                    }`}
+                >
+                    <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                    Actualiser
+                </button>
+            }
+            aside={aside}
+        >
+            <div className="space-y-6">
+                {error && (
+                    <CourseCard className="border border-red-500/20 bg-red-500/5 p-4 md:p-5">
+                        <div className="flex items-start gap-3">
+                            <AlertCircle className="mt-0.5 h-5 w-5 text-red-300" />
+                            <p className="text-sm text-red-100/90">{error}</p>
                         </div>
-                        <button
-                            onClick={startChallenge}
-                            className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl font-bold hover:opacity-90 flex items-center gap-2 mx-auto"
-                        >
-                            <Play size={18} /> Lancer le challenge
-                        </button>
-                    </div>
+                    </CourseCard>
                 )}
 
-                {/* Guided Steps */}
-                {(isInProgress || isCompleted) && guidedSteps.length > 0 && mode === 'GUIDED' && (
-                    <div className="mb-8">
-                        <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-                            <Terminal size={18} className="text-orange-400" />
-                            Étapes guidées ({currentStep}/{guidedSteps.length})
-                        </h2>
-                        <div className="space-y-3">
-                            {guidedSteps.map((step, idx) => {
-                                const isActive = idx === currentStep;
-                                const isDone = idx < currentStep;
-                                const isLocked = idx > currentStep && !isCompleted;
-
-                                return (
-                                    <div
-                                        key={step.stepNumber}
-                                        className={`p-5 rounded-xl border transition-all ${
-                                            isDone ? 'bg-emerald-500/10 border-emerald-500/20' :
-                                            isActive ? 'bg-orange-500/10 border-orange-500/30' :
-                                            'bg-slate-900/50 border-white/5 opacity-60'
-                                        }`}
+                {isLocked && (
+                    <CourseCard className="p-6 md:p-8 border border-amber-500/20 bg-amber-500/5">
+                        <div className="flex items-start gap-3">
+                            <Lock className="mt-0.5 h-5 w-5 text-amber-300" />
+                            <div className="min-w-0">
+                                <h2 className="text-lg font-bold text-white">Challenge verrouille</h2>
+                                <p className="mt-1 text-sm text-slate-300">
+                                    Terminez le prerequis pour le debloquer.
+                                </p>
+                                {challenge.prerequisiteChallengeCode && (
+                                    <p className="mt-3 text-sm text-slate-400">
+                                        Prerequis: <span className="font-mono text-slate-200">{challenge.prerequisiteChallengeCode}</span>
+                                    </p>
+                                )}
+                                <div className="mt-4 flex flex-wrap items-center gap-2">
+                                    <Link
+                                        href={APP_URLS.studentCtf}
+                                        className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold"
                                     >
-                                        <div className="flex items-start gap-3">
-                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                                                isDone ? 'bg-emerald-500 text-white' :
-                                                isActive ? 'bg-orange-500 text-white' :
-                                                'bg-slate-800 text-slate-500'
-                                            }`}>
-                                                {isDone ? <CheckCircle2 size={14} /> : step.stepNumber}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <h3 className="font-semibold text-sm">{step.stepTitle}</h3>
-                                                {(isActive || isDone || isCompleted) && (
-                                                    <p className="text-xs text-slate-400 mt-1">{step.stepDescription}</p>
-                                                )}
-                                                {(isActive || isDone || isCompleted) && step.commandTemplate && (
-                                                    <div className="mt-2 p-2 bg-slate-950 rounded-lg font-mono text-xs text-orange-300 overflow-x-auto">
-                                                        {step.commandTemplate}
-                                                    </div>
-                                                )}
-                                                {isActive && step.hintText && (
-                                                    <p className="text-xs text-amber-400/80 mt-2 italic">
-                                                        Indice : {step.hintText}
-                                                    </p>
-                                                )}
+                                        Voir les challenges
+                                    </Link>
+                                </div>
+                            </div>
+                        </div>
+                    </CourseCard>
+                )}
+
+                {isUnlocked && (
+                    <CourseCard className="p-6 md:p-8">
+                        <h2 className="text-xl font-black tracking-tight text-white">Pret a commencer</h2>
+                        <p className="mt-2 text-sm text-slate-300 leading-relaxed">
+                            Choisissez un mode, ouvrez l AttackBox, puis demarrez le challenge.
+                        </p>
+                        <div className="mt-5 flex flex-wrap items-center gap-2">
+                            <Link
+                                href={`${APP_URLS.studentCtf}/${encodeURIComponent(normalizedCode)}/terminal`}
+                                className="px-4 py-2.5 rounded-xl border border-white/10 bg-slate-900/40 hover:bg-slate-900/60 text-sm font-semibold inline-flex items-center gap-2"
+                            >
+                                <Terminal className="h-4 w-4 text-cyan-300" />
+                                Ouvrir AttackBox
+                            </Link>
+                            <button
+                                onClick={() => void startChallenge()}
+                                disabled={submitting}
+                                className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white text-sm font-semibold inline-flex items-center gap-2 shadow-lg shadow-emerald-900/20"
+                            >
+                                <Play className="h-4 w-4" />
+                                {submitting ? 'Demarrage...' : 'Demarrer'}
+                            </button>
+                        </div>
+                    </CourseCard>
+                )}
+
+                {(isInProgress || isCompleted) && showGuided && (
+                    <CourseCard className="p-6 md:p-8">
+                        <div className="flex items-start justify-between gap-4 flex-wrap">
+                            <div>
+                                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                                    <Terminal className="h-5 w-5 text-cyan-300" />
+                                    Etapes guidees
+                                </h2>
+                                <p className="mt-1 text-sm text-slate-400">
+                                    Avancez une etape a la fois. Les commandes affichees sont adaptees au lab.
+                                </p>
+                            </div>
+                            {!isCompleted && (
+                                <button
+                                    onClick={() => void advanceGuidedStep()}
+                                    disabled={submitting}
+                                    className="px-4 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-60 text-white text-sm font-semibold inline-flex items-center gap-2"
+                                >
+                                    <RefreshCw className={`h-4 w-4 ${submitting ? 'animate-spin' : ''}`} />
+                                    Etape suivante
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="mt-6 space-y-3">
+                            {viewModel.guidedSteps.length > 0 ? (
+                                viewModel.guidedSteps.map((step) => {
+                                    const isActive = !isCompleted && step.stepNumber === viewModel.activeStepNumber;
+                                    const isDone = isCompleted || step.stepNumber < viewModel.activeStepNumber;
+                                    return (
+                                        <div
+                                            key={step.stepNumber}
+                                            className={`rounded-2xl border p-5 transition ${
+                                                isDone
+                                                    ? 'bg-emerald-500/5 border-emerald-500/15'
+                                                    : isActive
+                                                        ? 'bg-cyan-500/5 border-cyan-500/20'
+                                                        : 'bg-slate-950/40 border-white/10'
+                                            }`}
+                                        >
+                                            <div className="flex items-start gap-3">
+                                                <div
+                                                    className={`h-9 w-9 rounded-xl flex items-center justify-center text-sm font-black ${
+                                                        isDone ? 'bg-emerald-500 text-slate-950' : isActive ? 'bg-cyan-500 text-slate-950' : 'bg-slate-800 text-slate-200'
+                                                    }`}
+                                                >
+                                                    {isDone ? <CheckCircle2 className="h-5 w-5" /> : step.stepNumber}
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-sm font-semibold text-white">{step.stepTitle}</p>
+                                                    <p className="mt-1 text-sm text-slate-300 leading-relaxed">{step.stepDescription}</p>
+
+                                                    {step.commandTemplate && (
+                                                        <pre className="mt-3 rounded-xl border border-white/10 bg-slate-950/60 p-3 text-xs text-emerald-200 overflow-auto whitespace-pre-wrap">
+                                                            {step.commandTemplate}
+                                                        </pre>
+                                                    )}
+
+                                                    {isActive && step.hintText && (
+                                                        <div className="mt-3 text-xs text-amber-200 flex items-start gap-2">
+                                                            <Lightbulb className="h-4 w-4 text-amber-300 mt-0.5 flex-shrink-0" />
+                                                            <p className="leading-relaxed">{step.hintText}</p>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
-                                        {isActive && !isCompleted && (
-                                            <div className="mt-3 flex justify-end">
-                                                <button
-                                                    onClick={advanceStep}
-                                                    className="px-4 py-2 bg-orange-600 hover:bg-orange-500 rounded-lg text-xs font-bold flex items-center gap-1"
-                                                >
-                                                    Étape suivante <ChevronRight size={14} />
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
+                                    );
+                                })
+                            ) : (
+                                <p className="text-sm text-slate-400">Aucune etape disponible pour le moment.</p>
+                            )}
                         </div>
-                    </div>
+                    </CourseCard>
                 )}
 
-                {/* Hints */}
-                {(isInProgress || isCompleted) && hints.length > 0 && (
-                    <div className="mb-8">
-                        <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-                            <Lightbulb size={18} className="text-amber-400" />
+                {(isInProgress || isCompleted) && mode === 'FREE' && (
+                    <CourseCard className="p-6 md:p-8">
+                        <h2 className="text-lg font-bold text-white">Mode libre</h2>
+                        <p className="mt-2 text-sm text-slate-300 leading-relaxed">
+                            {challenge.freeModeDescription || 'Objectif: resoudre le challenge en autonomie, puis soumettre le flag.'}
+                        </p>
+                        <div className="mt-4 rounded-xl border border-white/10 bg-slate-950/40 p-4 text-sm text-slate-300">
+                            <p className="font-semibold text-white mb-2">Cible</p>
+                            <p className="font-mono text-xs text-slate-200 whitespace-pre-wrap">{challenge.targetEndpoint}</p>
+                            <p className="mt-2 text-xs text-slate-500">Service: {challenge.targetService}</p>
+                        </div>
+                    </CourseCard>
+                )}
+
+                {(isInProgress || isCompleted) && viewModel.hints.length > 0 && (
+                    <CourseCard className="p-6 md:p-8">
+                        <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                            <Lightbulb className="h-5 w-5 text-amber-300" />
                             Indices
                         </h2>
-                        <div className="space-y-2">
-                            {hints.map((hint) => (
-                                <div key={hint.hintNumber} className="p-4 rounded-xl bg-slate-800/50 border border-white/10">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-sm font-medium">Indice {hint.hintNumber}</span>
+                        <div className="mt-5 space-y-2">
+                            {viewModel.hints.map((hint) => (
+                                <div
+                                    key={hint.hintNumber}
+                                    className="rounded-2xl border border-white/10 bg-slate-950/40 p-4"
+                                >
+                                    <div className="flex items-center justify-between gap-3">
+                                        <p className="text-sm font-semibold text-white">Indice {hint.hintNumber}</p>
                                         {hint.unlocked ? (
-                                            <span className="text-xs text-emerald-400">Débloqué</span>
+                                            <span className="text-xs font-semibold text-emerald-300">Debloque</span>
                                         ) : (
                                             <button
-                                                onClick={() => unlockHint(hint.hintNumber)}
-                                                className="text-xs px-3 py-1 bg-amber-500/20 text-amber-300 rounded-lg hover:bg-amber-500/30 flex items-center gap-1"
+                                                onClick={() => void unlockHint(hint.hintNumber)}
+                                                disabled={submitting}
+                                                className="px-3 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-200 text-xs font-semibold hover:bg-amber-500/20 disabled:opacity-60"
                                             >
-                                                <Eye size={12} /> Débloquer (-{hint.costPoints} pts)
+                                                Debloquer (-{hint.costPoints} pts)
                                             </button>
                                         )}
                                     </div>
                                     {hint.unlocked && hint.hintText && (
-                                        <p className="text-sm text-slate-300 mt-2">{hint.hintText}</p>
+                                        <p className="mt-2 text-sm text-slate-300 leading-relaxed">{hint.hintText}</p>
                                     )}
                                 </div>
                             ))}
                         </div>
-                    </div>
+                    </CourseCard>
                 )}
 
-                {/* Flag Submission */}
                 {(isInProgress || isCompleted) && (
-                    <div className="p-6 rounded-2xl bg-slate-800/50 border border-white/10">
-                        <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-                            <Send size={18} className="text-orange-400" />
+                    <CourseCard className="p-6 md:p-8">
+                        <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                            <Send className="h-5 w-5 text-cyan-300" />
                             Soumettre le flag
                         </h2>
 
                         {submitResult && (
-                            <div className={`mb-4 p-3 rounded-lg text-sm ${
-                                submitResult.success
-                                    ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-300'
-                                    : 'bg-red-500/15 border border-red-500/30 text-red-300'
-                            }`}>
-                                {submitResult.message}
-                                {submitResult.pointsAwarded && (
-                                    <span className="ml-2 font-bold">+{submitResult.pointsAwarded} pts</span>
-                                )}
+                            <div
+                                className={`mt-4 rounded-2xl border p-4 text-sm ${
+                                    submitResult.ok
+                                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-100'
+                                        : 'bg-rose-500/10 border-rose-500/20 text-rose-100'
+                                }`}
+                            >
+                                <p className="font-semibold">
+                                    {submitResult.ok ? 'Succes' : 'Erreur'}: {submitResult.message}
+                                    {typeof submitResult.pointsAwarded === 'number' && submitResult.ok && (
+                                        <span className="ml-2 font-mono text-emerald-200">+{submitResult.pointsAwarded} pts</span>
+                                    )}
+                                </p>
                             </div>
                         )}
 
-                        {!isCompleted && (
-                            <div className="flex gap-3">
+                        {!isCompleted ? (
+                            <div className="mt-4 flex flex-col sm:flex-row gap-2">
                                 <input
                                     type="text"
                                     value={flagInput}
-                                    onChange={(e) => setFlagInput(e.target.value)}
+                                    onChange={(event) => setFlagInput(event.target.value)}
                                     placeholder="PMP{...}"
-                                    className="flex-1 px-4 py-3 bg-slate-900 border border-white/10 rounded-xl text-sm font-mono placeholder-slate-600 focus:outline-none focus:border-orange-500/40 focus:ring-1 focus:ring-orange-500/20"
-                                    onKeyDown={(e) => { if (e.key === 'Enter') submitFlag(); }}
+                                    className="flex-1 px-4 py-3 rounded-xl bg-slate-950/40 border border-white/10 text-sm font-mono text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                                    onKeyDown={(event) => {
+                                        if (event.key === 'Enter') {
+                                            void submitFlag();
+                                        }
+                                    }}
                                 />
                                 <button
-                                    onClick={submitFlag}
+                                    onClick={() => void submitFlag()}
                                     disabled={submitting || !flagInput.trim()}
-                                    className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl font-bold text-sm hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+                                    className="px-5 py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 disabled:opacity-50 text-white text-sm font-bold inline-flex items-center justify-center gap-2"
                                 >
-                                    {submitting ? <RefreshCw size={16} className="animate-spin" /> : <Send size={16} />}
+                                    {submitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                                     Soumettre
                                 </button>
                             </div>
-                        )}
-
-                        {isCompleted && (
-                            <div className="text-center py-4">
-                                <CheckCircle2 size={48} className="text-emerald-400 mx-auto mb-2" />
-                                <p className="text-emerald-300 font-bold">Challenge résolu !</p>
+                        ) : (
+                            <div className="mt-6 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-6 text-center">
+                                <CheckCircle2 className="h-10 w-10 text-emerald-300 mx-auto" />
+                                <p className="mt-2 text-emerald-100 font-bold">Challenge resolu</p>
+                                <div className="mt-4 flex flex-wrap justify-center gap-2">
+                                    <Link
+                                        href={`${APP_URLS.studentCtf}/${encodeURIComponent(normalizedCode)}/remediation`}
+                                        className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold"
+                                    >
+                                        Voir la remediation
+                                    </Link>
+                                    <Link
+                                        href={APP_URLS.studentCtf}
+                                        className="px-4 py-2.5 rounded-xl border border-white/10 bg-slate-900/40 hover:bg-slate-900/60 text-sm font-semibold"
+                                    >
+                                        Retour au dashboard
+                                    </Link>
+                                </div>
                             </div>
                         )}
-                    </div>
+                    </CourseCard>
                 )}
             </div>
-        </div>
+        </CoursePageShell>
     );
 }

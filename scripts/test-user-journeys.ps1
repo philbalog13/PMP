@@ -1,150 +1,58 @@
-# PMP Comprehensive User Journey Test Script
+# PMP Comprehensive User Journey Test Script (Updated)
+# Runs the maintained end-to-end journey scripts to avoid drift.
 
-$baseUrl = "http://localhost:8000"
-$ProgressPreference = 'SilentlyContinue'
+$ErrorActionPreference = "Stop"
 
-function Test-Step {
-    param (
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$rootDir = Resolve-Path (Join-Path $scriptDir "..")
+
+function Run-Test {
+    param(
         [string]$Name,
-        [scriptblock]$Action
+        [string]$Path
     )
-    Write-Host "[$Name]..." -NoNewline
-    try {
-        $result = & $Action
-        Write-Host " [OK]" -ForegroundColor Green
-        return $result
-    } catch {
-        Write-Host " [FAILED]" -ForegroundColor Red
-        Write-Host "   Error: $_"
-        return $null
-    }
-}
 
-function Get-Token {
-    param ([string]$Username, [string]$Role)
-    $url = "$baseUrl/api/auth/token"
-    # Create a dev token directly to bypass login complexity for testing if needed, 
-    # OR use the register/login flow. Let's use register to be authentic.
-    
-    $random = Get-Random
-    $userBody = @{
-        username = "${Username}_${random}"
-        email = "${Username}_${random}@test.local"
-        password = "StrongPass123!@#"
-        firstName = "Test"
-        lastName = $Username
-        role = $Role
-    }
-    
-    try {
-        $response = Invoke-RestMethod -Method Post -Uri "$baseUrl/api/auth/register" -Body ($userBody | ConvertTo-Json) -ContentType "application/json" -ErrorAction Stop
-        return $response.token
-    } catch {
-        Write-Error "Failed to register $Username : $($_.Exception.Message)"
-        return $null
-    }
-}
+    Write-Host "`n--- $Name ---" -ForegroundColor Cyan
+    Write-Host "Running: $Path" -ForegroundColor DarkGray
 
-function Invoke-Api {
-    param ([string]$Method, [string]$Uri, [string]$Token, [object]$Body = $null)
-    $params = @{
-        Method = $Method
-        Uri = "$baseUrl$Uri"
-        Headers = @{ Authorization = "Bearer $Token" }
-        ContentType = "application/json"
-        ErrorAction = "Stop"
+    & powershell -ExecutionPolicy Bypass -File $Path
+    $code = $LASTEXITCODE
+
+    if ($code -eq 0) {
+        Write-Host "[OK] $Name" -ForegroundColor Green
+        return $true
     }
-    if ($Body) { $params.Body = ($Body | ConvertTo-Json -Depth 10) }
-    
-    return Invoke-RestMethod @params
+
+    Write-Host "[FAILED] $Name (exit=$code)" -ForegroundColor Red
+    return $false
 }
 
 Write-Host "========================================"
-Write-Host "   PMP USER JOURNEY TESTING"
+Write-Host "   PMP USER JOURNEY TESTING (UPDATED)"
 Write-Host "========================================"
-Write-Host ""
 
-# ==========================================
-# 1. STUDENT JOURNEY
-# ==========================================
-Write-Host "--- 1. STUDENT JOURNEY ---" -ForegroundColor Cyan
-$studentToken = Test-Step "Authentication (Register Student)" { Get-Token "student" "ROLE_ETUDIANT" }
+$tests = @(
+    @{ Name = "Student Production Journey"; Path = (Join-Path $scriptDir "test-student-production-journey.ps1") }
+    @{ Name = "Instructor Production Journey"; Path = (Join-Path $scriptDir "test-instructor-production-journey.ps1") }
+    @{ Name = "Client Production Journey"; Path = (Join-Path $scriptDir "test-client-production-journey.ps1") }
+    @{ Name = "Merchant Production Journey"; Path = (Join-Path $scriptDir "test-merchant-production-journey.ps1") }
+    @{ Name = "Vuln Sandbox Journey"; Path = (Join-Path $rootDir "test-vuln-sandbox.ps1") }
+)
 
-if ($studentToken) {
-    Test-Step "View Dashboard (Get Progress)" { 
-        Invoke-Api "GET" "/api/etudiant/progression" $studentToken 
-    }
-    Test-Step "View Quizzes (Get Quiz List)" { 
-        Invoke-Api "GET" "/api/etudiant/quiz" $studentToken 
-    }
-    Test-Step "View Exercises (Get Exercises)" { 
-        Invoke-Api "GET" "/api/etudiant/exercises" $studentToken 
-    }
-    Test-Step "View Docs (Get Documentation)" { 
-        Invoke-Api "GET" "/api/etudiant/docs" $studentToken 
-    }
-    Test-Step "Save Progress (Simulate)" { 
-        Invoke-Api "POST" "/api/etudiant/progression/save" $studentToken @{ workshopId = "1"; sectionId = "2" }
-    }
-}
-Write-Host ""
-
-# ==========================================
-# 2. INSTRUCTOR JOURNEY
-# ==========================================
-Write-Host "--- 2. INSTRUCTOR JOURNEY ---" -ForegroundColor Cyan
-$instructorToken = Test-Step "Authentication (Register Instructor)" { Get-Token "instructor" "ROLE_FORMATEUR" }
-
-if ($instructorToken) {
-    Test-Step "View Dashboard (Get Active Sessions)" { 
-        Invoke-Api "GET" "/api/formateur/sessions-actives" $instructorToken 
-    }
-    Test-Step "Manage Exercises (List Exercises)" { 
-        Invoke-Api "GET" "/api/formateur/exercises" $instructorToken 
-    }
-    Test-Step "Create Exercise (Defaut)" { 
-        Invoke-Api "POST" "/api/formateur/exercises" $instructorToken @{ title = "New Exercise"; type = "quiz" }
-    }
-    Test-Step "View Users (Admin view)" { 
-        Invoke-Api "GET" "/api/admin/users" $instructorToken 
-    }
-}
-Write-Host ""
-
-# ==========================================
-# 3. CLIENT JOURNEY
-# ==========================================
-Write-Host "--- 3. CLIENT JOURNEY ---" -ForegroundColor Cyan
-$clientToken = Test-Step "Authentication (Register Client)" { Get-Token "client" "ROLE_CLIENT" }
-
-if ($clientToken) {
-    Test-Step "View Cards (Get My Cards)" { 
-        Invoke-Api "GET" "/api/client/cards" $clientToken 
-    }
-    # Note: Transactions are proxied to sim-pos-service/transactions usually
-    # But checking if Client has specific mock endpoints or if we use the generic
-    # For now, let's assume client access to their own transaction history might be via /api/client/transactions (if it existed)
-    # The routes file showed mocked /api/client/cards but verify others.
-    # We will skip transaction history if not explicitly mocked in gateway.routes.ts for demo.
-}
-Write-Host ""
-
-# ==========================================
-# 4. MERCHANT JOURNEY
-# ==========================================
-Write-Host "--- 4. MERCHANT JOURNEY ---" -ForegroundColor Cyan
-$merchantToken = Test-Step "Authentication (Register Merchant)" { Get-Token "merchant" "ROLE_MARCHAND" }
-
-if ($merchantToken) {
-    Test-Step "View Dashboard (Get Daily Report)" { 
-        Invoke-Api "GET" "/api/marchand/reports/daily" $merchantToken 
-    }
-    Test-Step "View Transactions (Get Recent)" { 
-        Invoke-Api "GET" "/api/marchand/transactions" $merchantToken 
-    }
+$failed = 0
+foreach ($t in $tests) {
+    $ok = Run-Test -Name $t.Name -Path $t.Path
+    if (-not $ok) { $failed++ }
 }
 
-Write-Host ""
+Write-Host "`n========================================"
+Write-Host "   SUMMARY"
 Write-Host "========================================"
-Write-Host "   TESTING UPDATE COMPLETE "
-Write-Host "========================================"
+if ($failed -eq 0) {
+    Write-Host "All journeys passed." -ForegroundColor Green
+    exit 0
+}
+
+Write-Host "$failed journey(s) failed." -ForegroundColor Red
+exit 1
+

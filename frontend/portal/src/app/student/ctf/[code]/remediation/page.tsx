@@ -1,172 +1,305 @@
-﻿'use client';
+'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { use, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { AlertCircle, ArrowLeft, BookOpen, CheckCircle2, Shield } from 'lucide-react';
 import { useAuth } from '../../../../auth/useAuth';
-import { ChevronRight, Crown, Medal, RefreshCw, Trophy } from 'lucide-react';
+import { CourseCard, CoursePageShell, CoursePill } from '@/components/course/CoursePageShell';
+import { APP_URLS } from '@shared/lib/app-urls';
 
-interface LeaderboardEntry {
-    student_id: string;
-    username: string;
-    first_name: string;
-    last_name: string;
-    challenges_solved: number;
-    total_points: number;
-    first_bloods: number;
-    rank: number;
+type CtfStatus = 'LOCKED' | 'UNLOCKED' | 'IN_PROGRESS' | 'COMPLETED';
+
+type ChallengeDetail = {
+    code: string;
+    title: string;
+    description: string;
+    category: string;
+    difficulty: string;
+    points: number;
+    status: CtfStatus;
+    vulnerabilityType: string;
+    attackVector: string;
+    learningObjectives: string[];
+    targetService: string;
+    targetEndpoint: string;
+    freeModeDescription?: string;
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+    HSM_ATTACK: 'HSM',
+    REPLAY_ATTACK: 'Replay',
+    '3DS_BYPASS': '3DS',
+    FRAUD_CNP: 'Fraude CNP',
+    ISO8583_MANIPULATION: 'ISO 8583',
+    PIN_CRACKING: 'PIN',
+    MITM: 'MITM',
+    PRIVILEGE_ESCALATION: 'Privesc',
+    CRYPTO_WEAKNESS: 'Crypto',
+};
+
+function remediationBlocks(category: string): Array<{ title: string; items: string[] }> {
+    const key = String(category || '').trim().toUpperCase();
+
+    if (key === 'REPLAY_ATTACK') {
+        return [
+            { title: 'Correctifs serveur', items: ['Idempotency key obligatoire', 'Nonce + fenetre temporelle', 'Deduplication cote backend'] },
+            { title: 'Observabilite', items: ['Tracer STAN/RRN/nonce', 'Alerting sur doublons', 'Metriques taux de rejouage'] },
+            { title: 'Validation', items: ['Tests e2e de rejeu', 'Tests concurrency', 'Rejeu sur plusieurs noeuds'] },
+        ];
+    }
+
+    if (key === 'HSM_ATTACK') {
+        return [
+            { title: 'Isolation', items: ['Reseau prive uniquement', 'Allowlist stricte', 'mTLS entre services'] },
+            { title: 'Autorisation', items: ['RBAC sur operations sensibles', 'Separation des environnements', 'Audit complet des appels'] },
+            { title: 'Validation', items: ['Tests d acces non autorise', 'Revue des endpoints admin', 'Rotation des cles exposees'] },
+        ];
+    }
+
+    if (key === 'ISO8583_MANIPULATION') {
+        return [
+            { title: 'Validation messages', items: ['Schema strict', 'Verification champs critiques', 'Rejet des incoherences bitmap/DE'] },
+            { title: 'Protection', items: ['Authentifier les messages (MAC)', 'Controle de rejeu', 'Rate limit sur endpoints sensibles'] },
+            { title: 'Validation', items: ['Fuzzing format', 'Cas limites DE', 'Tests de rejet'] },
+        ];
+    }
+
+    return [
+        { title: 'Correctifs', items: ['Validation cote serveur', 'Controle d acces / ownership', 'Gestion d erreurs non bavarde'] },
+        { title: 'Surveillance', items: ['Logs structurels', 'Correlation IDs', 'Alerting sur patterns anormaux'] },
+        { title: 'Validation', items: ['Tests unitaires controles', 'Tests d integration', 'Revue securite'] },
+    ];
 }
 
-export default function StudentCtfLeaderboardPage() {
-    const { user, isLoading } = useAuth(true);
+export default function CtfRemediationPage({ params }: { params: Promise<{ code: string }> }) {
+    const { code } = use(params);
+    const { isLoading: authLoading } = useAuth(true);
 
-    const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
+    const normalizedCode = useMemo(
+        () => decodeURIComponent(String(code || '')).trim().toUpperCase(),
+        [code]
+    );
+
+    const [challenge, setChallenge] = useState<ChallengeDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [refreshing, setRefreshing] = useState(false);
 
-    const fetchLeaderboard = useCallback(async () => {
+    const fetchChallenge = useCallback(async () => {
         const token = localStorage.getItem('token');
         if (!token) {
+            setError('Session expiree. Merci de vous reconnecter.');
+            setLoading(false);
             return;
         }
 
-        const response = await fetch('/api/ctf/leaderboard?limit=200', {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        });
-
-        const payload = await response.json();
-        if (!response.ok) {
-            throw new Error(payload.error || 'Impossible de charger le leaderboard');
-        }
-
-        setEntries(payload.leaderboard || []);
-    }, []);
-
-    const refresh = useCallback(async () => {
         try {
-            setRefreshing(true);
             setError(null);
-            await fetchLeaderboard();
-        } catch (fetchError: any) {
-            setError(fetchError.message || 'Erreur de chargement');
+            setLoading(true);
+
+            const res = await fetch(`/api/ctf/challenges/${encodeURIComponent(normalizedCode)}?mode=FREE`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data?.success || !data?.challenge) {
+                throw new Error(data?.error || 'Impossible de charger la remediation.');
+            }
+
+            setChallenge(data.challenge);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Erreur de chargement.');
         } finally {
             setLoading(false);
-            setRefreshing(false);
         }
-    }, [fetchLeaderboard]);
+    }, [normalizedCode]);
 
     useEffect(() => {
-        if (isLoading) {
-            return;
-        }
+        if (authLoading) return;
+        void fetchChallenge();
+    }, [authLoading, fetchChallenge]);
 
-        refresh();
-
-        const interval = window.setInterval(() => {
-            void fetchLeaderboard();
-        }, 30000);
-
-        return () => window.clearInterval(interval);
-    }, [fetchLeaderboard, isLoading, refresh]);
-
-    const topThree = useMemo(() => entries.slice(0, 3), [entries]);
-
-    if (isLoading || loading) {
+    if (authLoading || loading) {
         return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">
-                <div className="flex flex-col items-center gap-4">
-                    <Trophy className="h-12 w-12 animate-bounce text-amber-400" />
-                    <p className="text-sm text-slate-400">Chargement du classement CTF...</p>
-                </div>
-            </div>
+            <CoursePageShell
+                title="Chargement..."
+                description="Recuperation des informations de remediation."
+                icon={<Shield className="h-8 w-8 text-emerald-300" />}
+                crumbs={[
+                    { label: 'Mon Parcours', href: '/student' },
+                    { label: 'Security Labs', href: APP_URLS.studentCtf },
+                    { label: normalizedCode || 'Remediation' },
+                    { label: 'Remediation' },
+                ]}
+                backHref={`${APP_URLS.studentCtf}/${encodeURIComponent(normalizedCode)}`}
+                backLabel="Retour au challenge"
+            >
+                <CourseCard className="p-8">
+                    <div className="flex items-center gap-3 text-slate-300">
+                        <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                        <span className="text-sm">Chargement...</span>
+                    </div>
+                </CourseCard>
+            </CoursePageShell>
         );
     }
 
+    if (!challenge) {
+        return (
+            <CoursePageShell
+                title="Remediation indisponible"
+                description={error || 'La remediation est indisponible.'}
+                icon={<AlertCircle className="h-8 w-8 text-red-200" />}
+                crumbs={[
+                    { label: 'Mon Parcours', href: '/student' },
+                    { label: 'Security Labs', href: APP_URLS.studentCtf },
+                    { label: normalizedCode || 'Remediation' },
+                    { label: 'Erreur' },
+                ]}
+                backHref={APP_URLS.studentCtf}
+                backLabel="Retour aux challenges"
+            >
+                <CourseCard className="border border-red-500/20 bg-red-500/5 p-6 md:p-8">
+                    <div className="flex items-start gap-3">
+                        <AlertCircle className="mt-0.5 h-5 w-5 text-red-300" />
+                        <div className="min-w-0">
+                            <h2 className="text-lg font-semibold text-white">Impossible de charger</h2>
+                            <p className="mt-1 text-sm text-red-100/90">{error || 'Erreur inconnue.'}</p>
+                            <div className="mt-4 flex flex-wrap items-center gap-2">
+                                <button
+                                    onClick={() => void fetchChallenge()}
+                                    className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold"
+                                >
+                                    Reessayer
+                                </button>
+                                <Link
+                                    href={APP_URLS.studentCtf}
+                                    className="px-4 py-2.5 rounded-xl border border-white/10 bg-slate-900/40 text-sm font-semibold hover:bg-slate-900/60"
+                                >
+                                    Retour
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
+                </CourseCard>
+            </CoursePageShell>
+        );
+    }
+
+    const categoryLabel = CATEGORY_LABELS[challenge.category] || challenge.category;
+    const blocks = remediationBlocks(challenge.category);
+    const completed = challenge.status === 'COMPLETED';
+
     return (
-        <div className="min-h-screen bg-slate-950 text-white pt-24 pb-12">
-            <div className="max-w-6xl mx-auto px-6">
-                <div className="text-xs text-slate-500 mb-6">
-                    <Link href="/student/ctf" className="hover:text-orange-300">Security Labs</Link>
-                    <ChevronRight size={12} className="inline mx-1" />
-                    <span className="text-orange-300">Leaderboard</span>
-                </div>
-
-                <div className="flex items-center justify-between mb-6">
-                    <div>
-                        <h1 className="text-3xl font-black">CTF Leaderboard</h1>
-                        <p className="text-sm text-slate-400 mt-1">Mise a jour automatique toutes les 30 secondes.</p>
-                    </div>
-                    <button
-                        onClick={refresh}
-                        className={`px-3 py-2 rounded-lg border border-white/20 bg-slate-900/60 text-xs flex items-center gap-2 ${refreshing ? 'animate-pulse' : ''}`}
-                    >
-                        <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} /> Refresh
-                    </button>
-                </div>
-
-                {error && (
-                    <div className="mb-6 rounded-xl border border-red-500/40 bg-red-500/10 text-red-200 text-sm p-4">
-                        {error}
-                    </div>
+        <CoursePageShell
+            title="Remediation"
+            description={challenge.title}
+            icon={<Shield className="h-8 w-8 text-emerald-300" />}
+            crumbs={[
+                { label: 'Mon Parcours', href: '/student' },
+                { label: 'Security Labs', href: APP_URLS.studentCtf },
+                { label: normalizedCode || 'Challenge', href: `${APP_URLS.studentCtf}/${encodeURIComponent(normalizedCode)}` },
+                { label: 'Remediation' },
+            ]}
+            backHref={`${APP_URLS.studentCtf}/${encodeURIComponent(normalizedCode)}`}
+            backLabel="Retour au challenge"
+            meta={
+                <>
+                    <CoursePill tone="slate">{challenge.code}</CoursePill>
+                    <CoursePill tone="slate">{categoryLabel}</CoursePill>
+                    <CoursePill tone="slate">{challenge.difficulty}</CoursePill>
+                    <CoursePill tone={completed ? 'emerald' : 'amber'}>
+                        {completed ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+                        {completed ? 'Resolu' : 'Non resolu'}
+                    </CoursePill>
+                </>
+            }
+            actions={
+                <Link
+                    href={APP_URLS.studentCtf}
+                    className="px-4 py-2.5 rounded-xl border border-white/10 bg-slate-900/40 hover:bg-slate-900/60 text-sm font-semibold inline-flex items-center gap-2"
+                >
+                    <ArrowLeft className="h-4 w-4" />
+                    Dashboard CTF
+                </Link>
+            }
+        >
+            <div className="space-y-6">
+                {!completed && (
+                    <CourseCard className="border border-amber-500/20 bg-amber-500/5 p-6 md:p-8">
+                        <div className="flex items-start gap-3">
+                            <AlertCircle className="mt-0.5 h-5 w-5 text-amber-300" />
+                            <div>
+                                <h2 className="text-lg font-bold text-white">Remediation disponible apres resolution</h2>
+                                <p className="mt-2 text-sm text-slate-300">
+                                    Terminez le challenge, puis revenez ici pour valider les correctifs.
+                                </p>
+                            </div>
+                        </div>
+                    </CourseCard>
                 )}
 
-                <div className="grid md:grid-cols-3 gap-4 mb-8">
-                    {topThree.map((entry, index) => {
-                        const name = [entry.first_name, entry.last_name].filter(Boolean).join(' ') || entry.username;
-                        const isMe = entry.student_id === user?.id;
-                        const style = index === 0
-                            ? 'from-amber-500/35 to-yellow-500/20 border-amber-300/40'
-                            : index === 1
-                                ? 'from-slate-300/25 to-slate-500/20 border-slate-300/30'
-                                : 'from-orange-700/30 to-amber-700/20 border-orange-400/30';
+                <CourseCard className="p-6 md:p-8">
+                    <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                        <BookOpen className="h-5 w-5 text-cyan-300" />
+                        Resume
+                    </h2>
+                    <div className="mt-4 grid gap-3">
+                        <div className="rounded-xl border border-white/10 bg-slate-950/40 p-4">
+                            <p className="text-xs text-slate-500 uppercase tracking-wider">Vulnerabilite</p>
+                            <p className="mt-1 text-sm text-slate-200">{challenge.vulnerabilityType}</p>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-slate-950/40 p-4">
+                            <p className="text-xs text-slate-500 uppercase tracking-wider">Vecteur</p>
+                            <p className="mt-1 text-sm text-slate-200">{challenge.attackVector}</p>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-slate-950/40 p-4">
+                            <p className="text-xs text-slate-500 uppercase tracking-wider">Cible</p>
+                            <p className="mt-1 text-xs font-mono text-slate-200 whitespace-pre-wrap">{challenge.targetEndpoint}</p>
+                            <p className="mt-2 text-xs text-slate-500">Service: {challenge.targetService}</p>
+                        </div>
+                    </div>
+                </CourseCard>
 
-                        return (
-                            <div key={entry.student_id} className={`rounded-2xl border bg-gradient-to-br ${style} p-5 backdrop-blur`}>
-                                <div className="flex items-center justify-between mb-3">
-                                    <span className="text-xs font-mono text-white/80">#{entry.rank}</span>
-                                    {index === 0 ? <Crown size={18} className="text-amber-200" /> : <Medal size={18} className="text-white/80" />}
-                                </div>
-                                <p className={`font-bold ${isMe ? 'text-orange-100' : 'text-white'}`}>{isMe ? 'Vous' : name}</p>
-                                <p className="text-xs text-white/75 mt-1">{entry.challenges_solved} challenges resolus</p>
-                                <p className="text-lg font-extrabold mt-3">{entry.total_points} pts</p>
-                            </div>
-                        );
-                    })}
-                </div>
+                {blocks.map((block) => (
+                    <CourseCard key={block.title} className="p-6 md:p-8">
+                        <h2 className="text-lg font-bold text-white">{block.title}</h2>
+                        <ul className="mt-4 space-y-2 text-sm text-slate-300">
+                            {block.items.map((item) => (
+                                <li key={item} className="flex items-start gap-2">
+                                    <span className="mt-1 h-2 w-2 rounded-full bg-emerald-400 flex-shrink-0" />
+                                    <span>{item}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </CourseCard>
+                ))}
 
-                <div className="rounded-2xl border border-white/10 bg-slate-800/50 overflow-hidden">
-                    <table className="w-full text-sm">
-                        <thead className="bg-slate-900/70 text-xs uppercase text-slate-400 tracking-wide">
-                            <tr>
-                                <th className="text-left px-4 py-3">Rank</th>
-                                <th className="text-left px-4 py-3">Username</th>
-                                <th className="text-left px-4 py-3">Challenges</th>
-                                <th className="text-left px-4 py-3">Points</th>
-                                <th className="text-left px-4 py-3">First Bloods</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {entries.map((entry) => {
-                                const isMe = entry.student_id === user?.id;
-                                const name = [entry.first_name, entry.last_name].filter(Boolean).join(' ') || entry.username;
-
-                                return (
-                                    <tr key={entry.student_id} className={`${isMe ? 'bg-orange-500/15' : 'hover:bg-white/5'} border-t border-white/5`}>
-                                        <td className="px-4 py-3 font-mono text-slate-300">#{entry.rank}</td>
-                                        <td className={`px-4 py-3 ${isMe ? 'text-orange-200 font-bold' : 'text-white'}`}>{isMe ? `Vous (${name})` : name}</td>
-                                        <td className="px-4 py-3 text-slate-300">{entry.challenges_solved}</td>
-                                        <td className="px-4 py-3 text-amber-300 font-semibold">{entry.total_points}</td>
-                                        <td className="px-4 py-3 text-slate-300">{entry.first_bloods}</td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
+                <CourseCard className="p-6 md:p-8">
+                    <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                        <Shield className="h-5 w-5 text-emerald-300" />
+                        Prochaine etape
+                    </h2>
+                    <p className="mt-2 text-sm text-slate-300">
+                        Appliquez les correctifs dans votre code, puis verifiez dans le lab. Vous pouvez ensuite enchainer
+                        sur la Sandbox Defense.
+                    </p>
+                    <div className="mt-4 flex flex-wrap items-center gap-2">
+                        <Link
+                            href="/student/defense"
+                            className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold"
+                        >
+                            Aller a Sandbox Defense
+                        </Link>
+                        <Link
+                            href={`${APP_URLS.studentCtf}/${encodeURIComponent(normalizedCode)}`}
+                            className="px-4 py-2.5 rounded-xl border border-white/10 bg-slate-900/40 hover:bg-slate-900/60 text-sm font-semibold"
+                        >
+                            Retour au challenge
+                        </Link>
+                    </div>
+                </CourseCard>
             </div>
-        </div>
+        </CoursePageShell>
     );
 }
 

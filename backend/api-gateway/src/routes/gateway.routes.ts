@@ -10,9 +10,13 @@ import {
     twoFALimiter,
     tokenRefreshLimiter
 } from '../middleware/advancedRateLimit.middleware';
-import { generateToken, authMiddleware } from '../middleware/auth.middleware';
+import { generateToken, authMiddleware, optionalAuthMiddleware, AuthenticatedRequest } from '../middleware/auth.middleware';
+import { UserRole } from '../middleware/roles';
+import { vulnStateMiddleware } from '../middleware/vulnState.middleware';
 import * as authController from '../controllers/auth.controller';
 import * as twofaController from '../controllers/twofa.controller';
+import * as defenseController from '../controllers/defense.controller';
+import { vulnStateService } from '../services/vulnState.service';
 
 const router = Router();
 
@@ -24,12 +28,13 @@ const buildProxyHeaders = (req: Request): Record<string, string> => ({
 const CRITICAL_DB_TABLES = [
     'users.users',
     'learning.migration_history',
+    'learning.student_vuln_state', // Added for sandbox
+    'learning.vuln_catalog',       // Added for sandbox
+    'learning.defense_quizzes',    // Added for sandbox
     'learning.cursus',
     'learning.cursus_modules',
     'learning.cursus_chapters',
     'learning.cursus_quizzes',
-    'learning.cursus_quiz_questions',
-    'learning.cursus_exercises',
     'learning.ctf_challenges'
 ];
 
@@ -54,6 +59,56 @@ const getDatabaseHealth = async () => {
         latencyMs: Date.now() - startedAt,
         tables,
         missingTables
+    };
+};
+
+const applyCardOverrides = async (
+    studentId: string,
+    responseData: any
+): Promise<any> => {
+    const overridesByResource = await vulnStateService.getResourceOverridesByType(studentId, 'CARD');
+    const cards = Array.isArray(responseData?.data)
+        ? responseData.data
+        : (Array.isArray(responseData) ? responseData : null);
+
+    if (!cards) {
+        return responseData;
+    }
+
+    const patchedCards = cards
+        .map((card: Record<string, any>) => {
+            const candidates = [card.id, card.pan, card.maskedPan]
+                .filter(Boolean)
+                .map((value) => String(value));
+
+            let mergedCard: Record<string, any> = { ...card };
+            let deleted = false;
+
+            for (const resourceId of candidates) {
+                const overrides = overridesByResource[resourceId];
+                if (!overrides) {
+                    continue;
+                }
+
+                if (overrides.deleted === true || overrides.is_deleted === true) {
+                    deleted = true;
+                    break;
+                }
+
+                mergedCard = { ...mergedCard, ...overrides };
+            }
+
+            return deleted ? null : mergedCard;
+        })
+        .filter(Boolean);
+
+    if (Array.isArray(responseData)) {
+        return patchedCards;
+    }
+
+    return {
+        ...responseData,
+        data: patchedCards
     };
 };
 
@@ -147,18 +202,42 @@ router.post('/api/auth/2fa/disable', authMiddleware, twofaController.disable2FA)
 router.get('/api/auth/2fa/status', authMiddleware, twofaController.get2FAStatus);
 
 /**
- * Dev token generation
+ * --- DEFENSIVE SANDBOX ROUTES ---
+ * New endpoints for fixing vulnerabilities and getting defensive status
+ * Using 'any' cast for handlers to avoid Express Request compatibility issues
  */
-router.post('/api/auth/token', strictRateLimitMiddleware, (req: Request, res: Response) => {
-    const { userId = 'dev-user', role = 'admin', expired = false } = req.body;
-    if (process.env.NODE_ENV === 'production') return res.status(403).json({ success: false, error: 'Disabled in production' });
+// Routes for defensive sandbox
+router.get('/api/defense/status', authMiddleware, vulnStateMiddleware, defenseController.getDefenseStatus as any);
+router.get('/api/defense/catalog', authMiddleware, vulnStateMiddleware, defenseController.getVulnCatalog as any);
+router.post('/api/defense/probe', authMiddleware, vulnStateMiddleware, defenseController.probeFlag as any);
+router.post('/api/defense/submit-flag', authMiddleware, vulnStateMiddleware, defenseController.submitFlag as any);
+router.post('/api/defense/fix', authMiddleware, vulnStateMiddleware, defenseController.submitDefenseFix as any);
+router.post('/api/defense/reset', authMiddleware, vulnStateMiddleware, defenseController.resetDefenseState as any);
 
-    // If expired requested, set expiration to -1s (immediately expired)
-    const expiresIn = expired ? '-1s' : '24h';
-    const token = generateToken(userId, role, expiresIn);
+/**
+ * Dev token generation (VULNERABLE ENDPOINT)
+ * Sandbox Logic: Checks if DEV_TOKEN_OPEN flag is active (default: true)
+ */
+router.post('/api/auth/token',
+    strictRateLimitMiddleware,
+    optionalAuthMiddleware as any,
+    vulnStateMiddleware as any,
+    (req: Request, res: Response) => {
+        // Enforce sandbox check (only if identified as student and vulnerability is fixed)
+        const authReq = req as AuthenticatedRequest;
+        if (authReq.vulnProfile && authReq.vulnProfile['DEV_TOKEN_OPEN'] === false) {
+            return res.status(404).json({ success: false, error: 'Not Found' });
+        }
 
-    res.json({ success: true, token, note: expired ? 'Expired token' : 'Dev token', expiresIn });
-});
+        const { userId = 'dev-user', role = 'admin', expired = false } = req.body;
+        if (process.env.NODE_ENV === 'production') return res.status(403).json({ success: false, error: 'Disabled in production' });
+
+        // If expired requested, set expiration to -1s (immediately expired)
+        const expiresIn = expired ? '-1s' : '24h';
+        const token = generateToken(userId, role, expiresIn);
+
+        res.json({ success: true, token, note: expired ? 'Expired token' : 'Dev token', expiresIn });
+    });
 
 /**
  * Orchestrated Transaction Processing
@@ -289,6 +368,84 @@ router.post('/api/route/process', async (req: Request, res: Response) => {
         });
     }
 });
+
+/**
+ * --- SANDBOX VULNERABILITY INTERCEPTORS ---
+ * Specific handlers for patched vulnerabilities before they hit the proxy
+ */
+
+// Interceptor for /cards (IDOR Protection)
+router.get('/api/cards',
+    authMiddleware,
+    vulnStateMiddleware,
+    (async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+        const requestedUserId = req.query.userId as string;
+        const currentUserId = req.user?.userId;
+
+        // If IDOR is fixed (false), enforce ownership
+        if (req.vulnProfile && req.vulnProfile['IDOR_CARDS_NO_AUTH'] === false) {
+            // Security Policy: Must provide userId and must match token
+            if (!requestedUserId || requestedUserId !== currentUserId) {
+                return res.status(403).json({
+                    success: false,
+                    error: 'Access Denied: In secure mode, you must filter by your own userId.',
+                    code: 'IDOR_PREVENTION_ENFORCED',
+                    hint: 'Add ?userId=YOUR_ID to the request'
+                });
+            }
+        }
+
+        const correlationId = (req as any).correlationId;
+        const search = req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '';
+
+        try {
+            const response = await proxyRequest({
+                serviceName: 'sim-card-service',
+                method: 'GET',
+                path: `/cards${search}`,
+                headers: buildProxyHeaders(req),
+                correlationId
+            });
+
+            let responseData = response.data;
+
+            // Apply per-student virtual data overrides (resource isolation).
+            if (req.user?.role === UserRole.ETUDIANT && req.user.userId) {
+                responseData = await applyCardOverrides(req.user.userId, responseData);
+            }
+
+            Object.entries(response.headers).forEach(([key, value]) => {
+                if (typeof value === 'string') {
+                    res.setHeader(key, value);
+                }
+            });
+
+            // When the sandbox vulnerability is active for a student, we expose the flag via headers
+            // only when the request demonstrates the broken control (missing or mismatched userId).
+            if (req.user?.role === UserRole.ETUDIANT
+                && currentUserId
+                && req.vulnProfile
+                && req.vulnProfile['IDOR_CARDS_NO_AUTH'] === true
+                && (!requestedUserId || requestedUserId !== currentUserId)) {
+                const flag = await vulnStateService.getFlagValue('IDOR_CARDS_NO_AUTH');
+                if (flag) {
+                    res.setHeader('X-Defense-Vuln', 'IDOR_CARDS_NO_AUTH');
+                    res.setHeader('X-Defense-Flag', flag);
+                }
+            }
+
+            res.status(response.status).json(responseData);
+        } catch (error: any) {
+            res.status(error.statusCode || 500).json({
+                success: false,
+                error: error.message || 'Proxy error',
+                code: error.code || 'PROXY_ERROR',
+                correlationId
+            });
+        }
+    }) as any
+);
+
 
 /**
  * Dynamic proxy handler

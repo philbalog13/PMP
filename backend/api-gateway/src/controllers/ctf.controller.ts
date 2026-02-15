@@ -374,6 +374,17 @@ export const getChallengeDetail = async (req: Request, res: Response) => {
         );
 
         const hintsUnlocked = normalizeIntArray(progress?.hints_unlocked);
+        const hints = hintRows.rows.map((row) => {
+            const hintNumber = Number(row.hint_number);
+            const unlockedHint = hintsUnlocked.includes(hintNumber);
+
+            return {
+                hintNumber,
+                costPoints: Number(row.cost_points || 10),
+                unlocked: unlockedHint,
+                hintText: unlockedHint ? row.hint_text : null,
+            };
+        });
 
         if (mode === 'GUIDED') {
             const stepsResult = await query(
@@ -412,22 +423,11 @@ export const getChallengeDetail = async (req: Request, res: Response) => {
                     currentGuidedStep,
                     totalSteps,
                     hintsUnlocked,
+                    hints,
                     guidedSteps,
                 },
             });
         }
-
-        const freeHints = hintRows.rows.map((row) => {
-            const hintNumber = Number(row.hint_number);
-            const unlockedHint = hintsUnlocked.includes(hintNumber);
-
-            return {
-                hintNumber,
-                costPoints: Number(row.cost_points || 10),
-                unlocked: unlockedHint,
-                hintText: unlockedHint ? row.hint_text : null,
-            };
-        });
 
         return res.json({
             success: true,
@@ -438,7 +438,7 @@ export const getChallengeDetail = async (req: Request, res: Response) => {
                 mode,
                 freeModeDescription: CTF_CHALLENGES.find((item) => item.code === challenge.challenge_code)?.freeModeDescription
                     || challenge.description,
-                hints: freeHints,
+                hints,
                 hintsUnlocked,
             },
         });
@@ -583,7 +583,8 @@ export const submitFlag = async (req: Request, res: Response) => {
         }
 
         const challengeCode = req.params.code;
-        const submittedFlag = String(req.body?.submittedFlag || '').trim();
+        // Backward compatible payload: frontend may send {flag} or {submittedFlag}.
+        const submittedFlag = String(req.body?.submittedFlag ?? req.body?.flag ?? '').trim();
         if (!submittedFlag) {
             return res.status(400).json({ success: false, error: 'submittedFlag is required' });
         }

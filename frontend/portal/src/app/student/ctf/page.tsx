@@ -256,20 +256,58 @@ export default function StudentCtfDashboardPage() {
                 <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
                     {filteredChallenges.map((challenge) => {
                         const isLocked = challenge.status === 'LOCKED';
+                        const CardWrapper = isLocked ? 'button' : 'div';
+                        const cardProps = isLocked
+                            ? {
+                                type: 'button' as const,
+                                onClick: () => setError('Challenge verrouillé: terminez les prérequis pour le débloquer.'),
+                            }
+                            : {};
+
+                        const cardClassName = `group rounded-2xl border backdrop-blur bg-slate-800/50 p-5 transition ${isLocked
+                            ? 'border-white/10 opacity-60 cursor-not-allowed'
+                            : 'border-white/10 hover:border-orange-300/40 hover:-translate-y-0.5'
+                            }`;
+
+                        if (isLocked) {
+                            return (
+                                <CardWrapper
+                                    key={challenge.code}
+                                    className={cardClassName}
+                                    {...cardProps}
+                                >
+                                    <div className="flex items-start justify-between gap-3 mb-4">
+                                        <div>
+                                            <p className="text-xs text-slate-400 font-mono">{challenge.code}</p>
+                                            <h3 className="font-bold text-lg leading-tight mt-1">{challenge.title}</h3>
+                                        </div>
+                                        {resolveChallengeIcon(challenge.status)}
+                                    </div>
+
+                                    <p className="text-sm text-slate-300 min-h-12">{challenge.description}</p>
+
+                                    <div className="mt-4 flex items-center gap-2 flex-wrap">
+                                        <span className={`text-[11px] px-2 py-1 rounded-full border ${categoryStyles[challenge.category] || 'bg-slate-700/60 border-white/20 text-slate-200'}`}>
+                                            {categoryLabels[challenge.category] || challenge.category}
+                                        </span>
+                                        <span className={`text-[11px] px-2 py-1 rounded-full border ${difficultyStyles[challenge.difficulty] || 'bg-slate-700/60 border-white/20 text-slate-200'}`}>
+                                            {challenge.difficulty}
+                                        </span>
+                                    </div>
+
+                                    <div className="mt-4 flex items-center justify-between text-xs">
+                                        <span className="text-orange-300 font-semibold">{challenge.points} pts</span>
+                                        <span className="text-slate-400">{challenge.solveCount} résolutions</span>
+                                    </div>
+                                </CardWrapper>
+                            );
+                        }
 
                         return (
                             <Link
                                 key={challenge.code}
-                                href={isLocked ? '#' : `/student/ctf/${challenge.code}`}
-                                onClick={(event) => {
-                                    if (isLocked) {
-                                        event.preventDefault();
-                                    }
-                                }}
-                                className={`group rounded-2xl border backdrop-blur bg-slate-800/50 p-5 transition ${isLocked
-                                    ? 'border-white/10 opacity-60 cursor-not-allowed'
-                                    : 'border-white/10 hover:border-orange-300/40 hover:-translate-y-0.5'
-                                    }`}
+                                href={`/student/ctf/${challenge.code}`}
+                                className={cardClassName}
                             >
                                 <div className="flex items-start justify-between gap-3 mb-4">
                                     <div>
@@ -320,4 +358,3 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string
         </div>
     );
 }
-

@@ -7,9 +7,10 @@ dotenv.config();
 // Use DATABASE_URL from environment or fallback to default
 const connectionString = process.env.DATABASE_URL || 'postgresql://pmp_user:pmp_secure_pass_2024@localhost:5435/pmp_db';
 
-const pool = new Pool({
+export const pool = new Pool({
     connectionString,
 });
+export const db = pool;
 
 pool.on('error', (err) => {
     logger.error('Unexpected error on idle client', err);

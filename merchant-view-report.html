@@ -4,7 +4,7 @@
 <title>PMP Merchant Validation</title>
 <style>
 body { font-family: sans-serif; padding: 20px; }
-table { border-collapse: collapse; width: 100%; max-width: 800px; }
+table { border-collapse: collapse; width: 100%; max-width: 1000px; }
 th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
 th { background-color: #f2f2f2; }
 .PASS { color: green; font-weight: bold; }
@@ -12,7 +12,7 @@ th { background-color: #f2f2f2; }
 </style>
 </head>
 <body>
-<h1>âœ… Audit PMP - Vue Marchand</h1>
-<p>Date: 02/03/2026 20:56:36</p>
+<h1>PMP - Merchant View Validation</h1>
+<p>Date: 02/14/2026 15:49:03</p>
 <table>
-<tr><th>Checklist Item</th><th>Status</th><th>Note</th></tr><tr><td>Login with Certificate</td><td class='FAIL'>FAIL</td><td>Login failed response</td></tr><tr><td>Block No-Cert Login</td><td class='FAIL'>FAIL</td><td>Security Leak</td></tr><tr><td>Short Session (15m)</td><td class='PASS'>PASS</td><td>Confirmed by Server Response</td></tr><tr><td>Access Own Transactions</td><td class='FAIL'>FAIL</td><td>Le serveur distant a retourné une erreur : (401) Non autorisé.</td></tr><tr><td>Generate Daily Report</td><td class='FAIL'>FAIL</td><td>Le serveur distant a retourné une erreur : (401) Non autorisé.</td></tr><tr><td>No Access to Client Data</td><td class='FAIL'>FAIL</td><td>Unexpected status</td></tr><tr><td>Force Re-Login on Expiry</td><td class='PASS'>PASS</td><td>Re-login enforced</td></tr></table></body></html>
+<tr><th>Checklist Item</th><th>Status</th><th>Note</th></tr><tr><td>Login</td><td class='PASS'>PASS</td><td>Access token received</td></tr><tr><td>Wrong Password Rejected</td><td class='PASS'>PASS</td><td>Rejected (401)</td></tr><tr><td>Token TTL</td><td class='PASS'>PASS</td><td>15m</td></tr><tr><td>Access Own Transactions</td><td class='PASS'>PASS</td><td>OK</td></tr><tr><td>Daily Report</td><td class='PASS'>PASS</td><td>OK</td></tr><tr><td>RBAC Client Isolation</td><td class='PASS'>PASS</td><td>Blocked (403)</td></tr><tr><td>Expired Token Blocked</td><td class='PASS'>PASS</td><td>Blocked (401)</td></tr></table></body></html>

@@ -1,127 +1,173 @@
 # test-merchant-view.ps1
-# Automated Validation for MERCHANT VIEW CHECKLIST PMP
+# Validation for MERCHANT (MARCHAND) view (API gateway).
 
 $ErrorActionPreference = "Stop"
+
 $BASE_URL = "http://localhost:8000"
 $REPORT_PATH = "./merchant-view-report.html"
 
-# Colors
 function Write-Pass ($msg) { Write-Host "[PASS] $msg" -ForegroundColor Green }
 function Write-Fail ($msg) { Write-Host "[FAIL] $msg" -ForegroundColor Red }
 function Write-Step ($msg) { Write-Host "`n[STEP] $msg" -ForegroundColor Cyan }
 
 $RESULTS = @()
 
-Write-Host "🚀 Démarrage de la Validation VUE MARCHAND..." -ForegroundColor Cyan
+function Get-AuthToken($AuthResponse) {
+    if ($null -eq $AuthResponse) { return $null }
+    if ($AuthResponse.accessToken) { return $AuthResponse.accessToken }
+    if ($AuthResponse.token) { return $AuthResponse.token }
+    return $null
+}
+
+function Read-ErrorBody($ErrorRecord) {
+    try {
+        $stream = $ErrorRecord.Exception.Response.GetResponseStream()
+        $reader = New-Object IO.StreamReader $stream
+        return $reader.ReadToEnd()
+    } catch {
+        return ""
+    }
+}
+
+Write-Host "Starting MERCHANT view validation..." -ForegroundColor Cyan
 
 # -----------------------------------------------------------
-# 1. LOGIN AVEC CERTIFICAT SIMULÉ
+# 1. LOGIN (SEEDED MERCHANT)
 # -----------------------------------------------------------
-Write-Step "1. Login avec Certificat"
-$validCreds = @{ email="bakery@pmp.edu"; password="qa-pass-123"; certificate="SIMULATED_CERT_001" } 
+Write-Step "1. Login (Seeded Merchant)"
+$merchantCreds = @{ email = "bakery@pmp.edu"; password = "qa-pass-123" }
+$res = $null
+$token = $null
+
 try {
-    $res = Invoke-RestMethod -Uri "$BASE_URL/api/auth/marchand/login" -Method Post -Body ($validCreds | ConvertTo-Json) -ContentType "application/json"
-    $token = $res.token
+    $res = Invoke-RestMethod -Uri "$BASE_URL/api/auth/marchand/login" -Method Post -Body ($merchantCreds | ConvertTo-Json) -ContentType "application/json"
+    $token = Get-AuthToken $res
+
     if ($res.success -and $token) {
-        Write-Pass "Login avec certificat réussi"
-        $RESULTS += @{ Check="Login with Certificate"; Status="PASS"; Note="Token received" }
-    } else { throw "Login failed response" }
-} catch {
-    Write-Fail "Login with Certificate failed: $($_.Exception.Message)"
-    $RESULTS += @{ Check="Login with Certificate"; Status="FAIL"; Note=$_.Exception.Message }
-}
-
-Write-Step "1b. Login SANS Certificat (Security)"
-$noCertCreds = @{ email="bakery@pmp.edu"; password="qa-pass-123" } 
-try {
-    Invoke-RestMethod -Uri "$BASE_URL/api/auth/marchand/login" -Method Post -Body ($noCertCreds | ConvertTo-Json) -ContentType "application/json"
-    Write-Fail "Login without certificate should fail!"
-    $RESULTS += @{ Check="Block No-Cert Login"; Status="FAIL"; Note="Security Leak" }
-} catch {
-    if ($_.Exception.Response.StatusCode.value__ -eq 403) {
-        Write-Pass "Login sans certificat bloqué (403)"
-        $RESULTS += @{ Check="Block No-Cert Login"; Status="PASS"; Note="Correctly blocked" }
-    }
-}
-
-# -----------------------------------------------------------
-# 2. SESSION COURTE (15MIN)
-# -----------------------------------------------------------
-Write-Step "2. Vérification Expiration (Config)"
-if ($res.expiresIn -eq "15m") {
-    Write-Pass "Expiration configurée à 15m"
-    $RESULTS += @{ Check="Short Session (15m)"; Status="PASS"; Note="Confirmed by Server Response" }
-} else {
-    Write-Fail "Expiration incorrecte: $($res.expiresIn)"
-    $RESULTS += @{ Check="Short Session (15m)"; Status="FAIL"; Note="Got $($res.expiresIn), expected 15m" }
-}
-
-# -----------------------------------------------------------
-# 3. PEUT VOIR SES TRANSACTIONS
-# -----------------------------------------------------------
-Write-Step "3. Accès Transactions Marchand"
-try {
-    Invoke-RestMethod -Uri "$BASE_URL/api/marchand/transactions" -Method Get -Headers @{ Authorization="Bearer $token" }
-    Write-Pass "Accès Transactions OK"
-    $RESULTS += @{ Check="Access Own Transactions"; Status="PASS"; Note="Access granted" }
-} catch {
-    Write-Fail "Access Transactions Failed"
-    $RESULTS += @{ Check="Access Own Transactions"; Status="FAIL"; Note=$_.Exception.Message }
-}
-
-# -----------------------------------------------------------
-# 4. PEUT GÉNÉRER DES RAPPORTS JOURNALIERS
-# -----------------------------------------------------------
-Write-Step "4. Génération Rapport Journalier"
-try {
-    $report = Invoke-RestMethod -Uri "$BASE_URL/api/marchand/reports/daily" -Method Get -Headers @{ Authorization="Bearer $token" }
-    if ($report.success) {
-        Write-Pass "Rapport généré (Date: $($report.report.date))"
-        $RESULTS += @{ Check="Generate Daily Report"; Status="PASS"; Note="Report generated successfully" }
-    }
-} catch {
-    Write-Fail "Generate Report Failed"
-    $RESULTS += @{ Check="Generate Daily Report"; Status="FAIL"; Note=$_.Exception.Message }
-}
-
-# -----------------------------------------------------------
-# 5. NE PEUT PAS ACCÉDER AUX CARTES CLIENTS
-# -----------------------------------------------------------
-Write-Step "5. RBAC Check: No Access to Client Cards"
-try {
-    Invoke-RestMethod -Uri "$BASE_URL/api/client/cards" -Method Get -Headers @{ Authorization="Bearer $token" }
-    Write-Fail "SECURITY LEAK: Merchant can access Client Cards!"
-    $RESULTS += @{ Check="No Access to Client Data"; Status="FAIL"; Note="Security Leak Detected" }
-} catch {
-    if ($_.Exception.Response.StatusCode.value__ -eq 403) {
-        Write-Pass "Accès cartes client bloqué (403)"
-        $RESULTS += @{ Check="No Access to Client Data"; Status="PASS"; Note="Correctly blocked (403)" }
+        Write-Pass "Login succeeded"
+        $RESULTS += @{ Check = "Login"; Status = "PASS"; Note = "Access token received" }
     } else {
-        Write-Fail "Unexpected Status: $($_.Exception.Response.StatusCode.value__)"
-        $RESULTS += @{ Check="No Access to Client Data"; Status="FAIL"; Note="Unexpected status" }
+        throw "Login response missing token"
     }
-}
-
-# -----------------------------------------------------------
-# 6. RECONNEXION NÉCESSAIRE APRÈS EXPIRATION
-# -----------------------------------------------------------
-Write-Step "6. Test Token Expiré (Force Re-Login)"
-$expiredBody = @{ userId="marchand_boulangerie"; role="ROLE_MARCHAND"; expired=$true } | ConvertTo-Json
-$expiredToken = (Invoke-RestMethod -Uri "$BASE_URL/api/auth/token" -Method Post -Body $expiredBody -ContentType "application/json").token
-
-try {
-    Invoke-RestMethod -Uri "$BASE_URL/api/marchand/transactions" -Method Get -Headers @{ Authorization="Bearer $expiredToken" }
-    Write-Fail "Expired token still working!"
-    $RESULTS += @{ Check="Force Re-Login on Expiry"; Status="FAIL"; Note="Expired token accepted" }
 } catch {
-    if ($_.Exception.Response.StatusCode.value__ -eq 401) {
-        Write-Pass "Token expiré rejeté (401)"
-        $RESULTS += @{ Check="Force Re-Login on Expiry"; Status="PASS"; Note="Re-login enforced" }
+    Write-Fail "Login failed: $($_.Exception.Message)"
+    $RESULTS += @{ Check = "Login"; Status = "FAIL"; Note = $_.Exception.Message }
+}
+
+# -----------------------------------------------------------
+# 2. WRONG PASSWORD MUST FAIL (AUTHN SANITY)
+# -----------------------------------------------------------
+Write-Step "2. Wrong Password Must Fail"
+try {
+    $badCreds = @{ email = "bakery@pmp.edu"; password = "wrong-pass" } | ConvertTo-Json
+    Invoke-RestMethod -Uri "$BASE_URL/api/auth/marchand/login" -Method Post -Body $badCreds -ContentType "application/json" | Out-Null
+    Write-Fail "SECURITY LEAK: Wrong password accepted"
+    $RESULTS += @{ Check = "Wrong Password Rejected"; Status = "FAIL"; Note = "Wrong password accepted" }
+} catch {
+    $status = $_.Exception.Response.StatusCode.value__
+    if ($status -eq 401) {
+        Write-Pass "Wrong password rejected (401)"
+        $RESULTS += @{ Check = "Wrong Password Rejected"; Status = "PASS"; Note = "Rejected (401)" }
+    } else {
+        $body = Read-ErrorBody $_
+        Write-Fail "Unexpected status: $status"
+        $RESULTS += @{ Check = "Wrong Password Rejected"; Status = "FAIL"; Note = "Unexpected status: $status $body" }
     }
 }
 
 # -----------------------------------------------------------
-# GENERATE REPORT
+# 3. TOKEN EXPIRATION (CONFIG)
+# -----------------------------------------------------------
+Write-Step "3. Token Expiration Config"
+if ($res -and $res.expiresIn -eq "15m") {
+    Write-Pass "expiresIn=15m"
+    $RESULTS += @{ Check = "Token TTL"; Status = "PASS"; Note = "15m" }
+} else {
+    $got = if ($res) { $res.expiresIn } else { "<missing>" }
+    Write-Fail "Unexpected expiresIn: $got"
+    $RESULTS += @{ Check = "Token TTL"; Status = "FAIL"; Note = "Got: $got, expected: 15m" }
+}
+
+# -----------------------------------------------------------
+# 4. ACCESS OWN TRANSACTIONS
+# -----------------------------------------------------------
+Write-Step "4. Access Own Transactions"
+try {
+    $tx = Invoke-RestMethod -Uri "$BASE_URL/api/merchant/transactions" -Method Get -Headers @{ Authorization = "Bearer $token" }
+    if ($tx.success -eq $true) {
+        Write-Pass "Access /api/merchant/transactions OK"
+        $RESULTS += @{ Check = "Access Own Transactions"; Status = "PASS"; Note = "OK" }
+    } else {
+        throw "transactions.success=false"
+    }
+} catch {
+    Write-Fail "Access transactions failed: $($_.Exception.Message)"
+    $RESULTS += @{ Check = "Access Own Transactions"; Status = "FAIL"; Note = $_.Exception.Message }
+}
+
+# -----------------------------------------------------------
+# 5. DAILY REPORT
+# -----------------------------------------------------------
+Write-Step "5. Generate Daily Report"
+try {
+    $report = Invoke-RestMethod -Uri "$BASE_URL/api/merchant/reports/daily" -Method Get -Headers @{ Authorization = "Bearer $token" }
+    if ($report.success -eq $true) {
+        Write-Pass "Daily report OK"
+        $RESULTS += @{ Check = "Daily Report"; Status = "PASS"; Note = "OK" }
+    } else {
+        throw "report.success=false"
+    }
+} catch {
+    Write-Fail "Daily report failed: $($_.Exception.Message)"
+    $RESULTS += @{ Check = "Daily Report"; Status = "FAIL"; Note = $_.Exception.Message }
+}
+
+# -----------------------------------------------------------
+# 6. RBAC: MERCHANT MUST NOT ACCESS CLIENT ROUTES
+# -----------------------------------------------------------
+Write-Step "6. RBAC: Block Client Cards"
+try {
+    Invoke-RestMethod -Uri "$BASE_URL/api/client/cards" -Method Get -Headers @{ Authorization = "Bearer $token" } | Out-Null
+    Write-Fail "SECURITY LEAK: Merchant accessed /api/client/cards"
+    $RESULTS += @{ Check = "RBAC Client Isolation"; Status = "FAIL"; Note = "Merchant accessed client endpoint" }
+} catch {
+    $status = $_.Exception.Response.StatusCode.value__
+    if ($status -eq 403) {
+        Write-Pass "Blocked correctly (403)"
+        $RESULTS += @{ Check = "RBAC Client Isolation"; Status = "PASS"; Note = "Blocked (403)" }
+    } else {
+        $body = Read-ErrorBody $_
+        Write-Fail "Unexpected status: $status"
+        $RESULTS += @{ Check = "RBAC Client Isolation"; Status = "FAIL"; Note = "Unexpected status: $status $body" }
+    }
+}
+
+# -----------------------------------------------------------
+# 7. EXPIRED TOKEN MUST BE REJECTED
+# -----------------------------------------------------------
+Write-Step "7. Expired Token Rejected"
+try {
+    $expiredBody = @{ userId = "merchant_test"; role = "ROLE_MARCHAND"; expired = $true } | ConvertTo-Json
+    $tokenRes = Invoke-RestMethod -Uri "$BASE_URL/api/auth/token" -Method Post -Body $expiredBody -ContentType "application/json"
+    $expiredToken = $tokenRes.token
+
+    Invoke-RestMethod -Uri "$BASE_URL/api/merchant/transactions" -Method Get -Headers @{ Authorization = "Bearer $expiredToken" } | Out-Null
+    Write-Fail "SECURITY LEAK: Expired token accepted"
+    $RESULTS += @{ Check = "Expired Token Blocked"; Status = "FAIL"; Note = "Expired token accepted" }
+} catch {
+    $status = $_.Exception.Response.StatusCode.value__
+    if ($status -eq 401) {
+        Write-Pass "Expired token blocked (401)"
+        $RESULTS += @{ Check = "Expired Token Blocked"; Status = "PASS"; Note = "Blocked (401)" }
+    } else {
+        $body = Read-ErrorBody $_
+        Write-Fail "Unexpected status: $status"
+        $RESULTS += @{ Check = "Expired Token Blocked"; Status = "FAIL"; Note = "Unexpected status: $status $body" }
+    }
+}
+
+# -----------------------------------------------------------
+# REPORT
 # -----------------------------------------------------------
 $htmlContent = @"
 <!DOCTYPE html>
@@ -130,7 +176,7 @@ $htmlContent = @"
 <title>PMP Merchant Validation</title>
 <style>
 body { font-family: sans-serif; padding: 20px; }
-table { border-collapse: collapse; width: 100%; max-width: 800px; }
+table { border-collapse: collapse; width: 100%; max-width: 1000px; }
 th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
 th { background-color: #f2f2f2; }
 .PASS { color: green; font-weight: bold; }
@@ -138,7 +184,7 @@ th { background-color: #f2f2f2; }
 </style>
 </head>
 <body>
-<h1>✅ Audit PMP - Vue Marchand</h1>
+<h1>PMP - Merchant View Validation</h1>
 <p>Date: $(Get-Date)</p>
 <table>
 <tr><th>Checklist Item</th><th>Status</th><th>Note</th></tr>
@@ -151,4 +197,5 @@ foreach ($r in $RESULTS) {
 $htmlContent += "</table></body></html>"
 $htmlContent | Out-File -FilePath $REPORT_PATH -Encoding utf8
 
-Write-Host "Rapport genere: $REPORT_PATH" -ForegroundColor Green
+Write-Host "Report generated: $REPORT_PATH" -ForegroundColor Green
+

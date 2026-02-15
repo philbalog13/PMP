@@ -13,6 +13,7 @@ export interface AuthenticatedRequest extends Request {
         iat: number;
         exp: number;
     };
+    vulnProfile?: Record<string, boolean>;
 }
 
 /**
@@ -46,22 +47,57 @@ const isPublicPath = (path: string): boolean => {
     return publicAuthPaths.includes(path);
 };
 
+const extractBearerToken = (authHeader?: string): string | null => {
+    if (!authHeader) {
+        return null;
+    }
+
+    const parts = authHeader.split(' ');
+    if (parts.length !== 2 || parts[0] !== 'Bearer') {
+        return null;
+    }
+
+    return parts[1] || null;
+};
+
+const attachAuthenticatedUser = async (req: AuthenticatedRequest, token: string): Promise<void> => {
+    const decoded = jwt.verify(token, config.jwt.secret) as any;
+
+    const isBlacklisted = await tokenBlacklist.isBlacklisted(token);
+    if (isBlacklisted) {
+        const error = new Error('AUTH_TOKEN_REVOKED');
+        throw error;
+    }
+
+    if (decoded.userId) {
+        const allRevoked = await tokenBlacklist.areAllUserTokensRevoked(decoded.userId);
+        if (allRevoked) {
+            const error = new Error('AUTH_ALL_TOKENS_REVOKED');
+            throw error;
+        }
+    }
+
+    const role = decoded.role as UserRole;
+    const permissions = ROLE_PERMISSIONS[role] || [];
+
+    req.user = {
+        ...decoded,
+        permissions
+    };
+};
+
 /**
  * JWT Authentication Middleware
  * Validates Bearer token and attaches user info to request
  */
 export const authMiddleware = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
-    // Skip auth for health checks and public endpoints
-    console.log(`[AUTH_CHECK] Path: ${req.path}, URL: ${req.url}, OriginalUrl: ${req.originalUrl}`);
-
     if (isPublicPath(req.path)) {
         return next();
     }
 
-    const authHeader = req.headers.authorization;
+    const token = extractBearerToken(req.headers.authorization);
 
-    if (!authHeader) {
-        console.warn(`[AUTH_MISSING] ${req.path}`);
+    if (!req.headers.authorization) {
         res.status(401).json({
             success: false,
             error: 'Authorization header required',
@@ -70,8 +106,7 @@ export const authMiddleware = async (req: AuthenticatedRequest, res: Response, n
         return;
     }
 
-    const parts = authHeader.split(' ');
-    if (parts.length !== 2 || parts[0] !== 'Bearer') {
+    if (!token) {
         logger.warn('Invalid authorization format', { path: req.path });
         res.status(401).json({
             success: false,
@@ -81,47 +116,9 @@ export const authMiddleware = async (req: AuthenticatedRequest, res: Response, n
         return;
     }
 
-    const token = parts[1];
-
     try {
-        const decoded = jwt.verify(token, config.jwt.secret) as any;
-
-        // SECURITY: Check if token is blacklisted (revoked)
-        const isBlacklisted = await tokenBlacklist.isBlacklisted(token);
-        if (isBlacklisted) {
-            logger.warn('Blacklisted token attempted', { userId: decoded?.userId, path: req.path });
-            res.status(401).json({
-                success: false,
-                error: 'Token has been revoked',
-                code: 'AUTH_TOKEN_REVOKED'
-            });
-            return;
-        }
-
-        // SECURITY: Check if all user tokens are revoked (e.g., password change)
-        if (decoded.userId) {
-            const allRevoked = await tokenBlacklist.areAllUserTokensRevoked(decoded.userId);
-            if (allRevoked) {
-                logger.warn('User tokens globally revoked', { userId: decoded.userId });
-                res.status(401).json({
-                    success: false,
-                    error: 'All sessions have been revoked. Please login again.',
-                    code: 'AUTH_ALL_TOKENS_REVOKED'
-                });
-                return;
-            }
-        }
-
-        // Enrich user object with permissions from the matrix if not already in JWT
-        const role = decoded.role as UserRole;
-        const permissions = ROLE_PERMISSIONS[role] || [];
-
-        req.user = {
-            ...decoded,
-            permissions
-        };
-
-        logger.debug('Token validated', { userId: decoded?.userId, role: decoded?.role, path: req.path });
+        await attachAuthenticatedUser(req, token);
+        logger.debug('Token validated', { userId: req.user?.userId, role: req.user?.role, path: req.path });
         next();
     } catch (error) {
         if (error instanceof jwt.TokenExpiredError) {
@@ -134,6 +131,26 @@ export const authMiddleware = async (req: AuthenticatedRequest, res: Response, n
             return;
         }
 
+        if ((error as Error).message === 'AUTH_TOKEN_REVOKED') {
+            logger.warn('Blacklisted token attempted', { path: req.path });
+            res.status(401).json({
+                success: false,
+                error: 'Token has been revoked',
+                code: 'AUTH_TOKEN_REVOKED'
+            });
+            return;
+        }
+
+        if ((error as Error).message === 'AUTH_ALL_TOKENS_REVOKED') {
+            logger.warn('User tokens globally revoked', { path: req.path });
+            res.status(401).json({
+                success: false,
+                error: 'All sessions have been revoked. Please login again.',
+                code: 'AUTH_ALL_TOKENS_REVOKED'
+            });
+            return;
+        }
+
         logger.warn('Invalid token', { path: req.path, error: (error as Error).message });
         res.status(401).json({
             success: false,
@@ -141,6 +158,29 @@ export const authMiddleware = async (req: AuthenticatedRequest, res: Response, n
             code: 'AUTH_INVALID_TOKEN'
         });
     }
+};
+
+/**
+ * Optional auth middleware:
+ * If a valid token exists, attach req.user. Otherwise continue anonymously.
+ */
+export const optionalAuthMiddleware = async (req: AuthenticatedRequest, _res: Response, next: NextFunction): Promise<void> => {
+    const token = extractBearerToken(req.headers.authorization);
+
+    if (!token) {
+        return next();
+    }
+
+    try {
+        await attachAuthenticatedUser(req, token);
+    } catch (error) {
+        logger.debug('Optional auth skipped due to invalid token', {
+            path: req.path,
+            error: (error as Error).message
+        });
+    }
+
+    next();
 };
 
 /**

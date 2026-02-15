@@ -330,7 +330,7 @@ export default function StudentDashboard() {
                                         {workshops.map((w) => (
                                             <div key={w.workshop_id} className="text-center p-4 bg-slate-900/50 rounded-xl">
                                                 <div className={`text-2xl font-bold mb-1 ${w.status === 'COMPLETED' ? 'text-emerald-400' :
-                                                        w.status === 'IN_PROGRESS' ? 'text-amber-400' : 'text-slate-600'
+                                                    w.status === 'IN_PROGRESS' ? 'text-amber-400' : 'text-slate-600'
                                                     }`}>
                                                     {w.progress_percent || 0}%
                                                 </div>
@@ -369,8 +369,8 @@ export default function StudentDashboard() {
                                     <div
                                         key={badge.type}
                                         className={`p-6 rounded-2xl border transition-all ${badge.earned
-                                                ? 'bg-slate-800/50 border-amber-500/20 hover:border-amber-500/40'
-                                                : 'bg-slate-900/30 border-white/5 opacity-50'
+                                            ? 'bg-slate-800/50 border-amber-500/20 hover:border-amber-500/40'
+                                            : 'bg-slate-900/30 border-white/5 opacity-50'
                                             }`}
                                     >
                                         <div className="text-4xl mb-3">{BADGE_ICONS[badge.icon] || '\u{1F396}\uFE0F'}</div>
@@ -431,6 +431,7 @@ export default function StudentDashboard() {
                                 <QuickAction href="/student/progress" icon={<BarChart3 size={18} />} label="Ma Progression" />
                                 <QuickAction href="/student/badges" icon={<Award size={18} />} label="Mes Badges" />
                                 <QuickAction href="/student/transactions" icon={<History size={18} />} label="Transactions" />
+                                <QuickAction href="/student/defense" icon={<Shield size={18} />} label="Sandbox Défense" />
                             </div>
                         </div>
 
@@ -448,9 +449,9 @@ export default function StudentDashboard() {
                                         return (
                                             <div key={entry.id} className={`flex items-center gap-3 p-2 rounded-lg ${isMe ? 'bg-emerald-500/10' : ''}`}>
                                                 <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${entry.rank === 1 ? 'bg-amber-500 text-slate-950' :
-                                                        entry.rank === 2 ? 'bg-slate-400 text-slate-950' :
-                                                            entry.rank === 3 ? 'bg-amber-700 text-white' :
-                                                                'bg-slate-800 text-slate-400'
+                                                    entry.rank === 2 ? 'bg-slate-400 text-slate-950' :
+                                                        entry.rank === 3 ? 'bg-amber-700 text-white' :
+                                                            'bg-slate-800 text-slate-400'
                                                     }`}>
                                                     {entry.rank}
                                                 </div>
@@ -501,8 +502,8 @@ function TabButton({ active, onClick, icon, label }: { active: boolean; onClick:
         <button
             onClick={onClick}
             className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-sm transition-all ${active
-                    ? 'bg-white text-slate-950'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                ? 'bg-white text-slate-950'
+                : 'text-slate-400 hover:text-white hover:bg-white/5'
                 }`}
         >
             {icon}
@@ -538,8 +539,8 @@ function WorkshopCard({ workshop, displayStatus, number }: { workshop: WorkshopP
 
     return (
         <div className={`p-6 rounded-2xl border transition-all ${isLocked
-                ? 'bg-slate-900/30 border-white/5 opacity-60'
-                : 'bg-slate-800/50 border-white/10 hover:border-white/20'
+            ? 'bg-slate-900/30 border-white/5 opacity-60'
+            : 'bg-slate-800/50 border-white/10 hover:border-white/20'
             }`}>
             <div className="flex items-start gap-4">
                 <div className={`p-3 rounded-xl ${colorScheme.bg} ${colorScheme.border} border`}>
@@ -552,9 +553,9 @@ function WorkshopCard({ workshop, displayStatus, number }: { workshop: WorkshopP
                             <div className="flex items-center gap-2 mb-1">
                                 <span className="text-xs text-slate-500 font-mono">#{number}</span>
                                 <span className={`text-xs px-2 py-0.5 rounded-full ${meta.difficulty === 'Débutant' ? 'bg-green-500/10 text-green-400' :
-                                        meta.difficulty === 'Intermédiaire' ? 'bg-blue-500/10 text-blue-400' :
-                                            meta.difficulty === 'Avancé' ? 'bg-amber-500/10 text-amber-400' :
-                                                'bg-purple-500/10 text-purple-400'
+                                    meta.difficulty === 'Intermédiaire' ? 'bg-blue-500/10 text-blue-400' :
+                                        meta.difficulty === 'Avancé' ? 'bg-amber-500/10 text-amber-400' :
+                                            'bg-purple-500/10 text-purple-400'
                                     }`}>
                                     {meta.difficulty}
                                 </span>
@@ -603,8 +604,8 @@ function WorkshopCard({ workshop, displayStatus, number }: { workshop: WorkshopP
                                 <Link
                                     href={`/student/theory/${workshop.workshop_id}`}
                                     className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${displayStatus === 'completed'
-                                            ? 'bg-slate-800 hover:bg-slate-700 text-white'
-                                            : `${colorScheme.bg} ${colorScheme.text} hover:opacity-80`
+                                        ? 'bg-slate-800 hover:bg-slate-700 text-white'
+                                        : `${colorScheme.bg} ${colorScheme.text} hover:opacity-80`
                                         }`}
                                 >
                                     {displayStatus === 'completed' ? 'Revoir' : displayStatus === 'in-progress' ? 'Continuer' : 'Commencer'}
