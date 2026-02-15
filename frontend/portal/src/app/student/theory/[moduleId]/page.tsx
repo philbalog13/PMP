@@ -2,9 +2,10 @@
 
 import { use, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Book, ArrowLeft, CheckCircle, ChevronRight, RefreshCw, AlertCircle } from 'lucide-react';
+import { AlertCircle, BookOpen, CheckCircle2, RefreshCw } from 'lucide-react';
 import { useAuth } from '../../../auth/useAuth';
 import { CourseRichRenderer } from '../../../../components/cursus/CourseRichRenderer';
+import { CourseCard, CoursePageShell, CoursePill } from '@/components/course/CoursePageShell';
 
 interface WorkshopSection {
     id: string;
@@ -69,49 +70,78 @@ export default function TheoryPage({ params }: { params: Promise<{ moduleId: str
 
     useEffect(() => {
         if (authLoading) return;
-        fetchContent();
+        void fetchContent();
     }, [authLoading, fetchContent]);
 
     if (authLoading || loading) {
         return (
-            <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                    <RefreshCw className="w-8 h-8 animate-spin text-emerald-400" />
-                    <span className="text-sm text-slate-500">Chargement du cours...</span>
-                </div>
-            </div>
+            <CoursePageShell
+                title="Chargement du cours…"
+                description="Préparation de votre contenu pédagogique."
+                icon={<BookOpen className="h-8 w-8 text-emerald-300" />}
+                crumbs={[
+                    { label: 'Mon Parcours', href: '/student' },
+                    { label: 'Ateliers', href: '/student' },
+                    { label: 'Cours' },
+                ]}
+                backHref="/student"
+                backLabel="Retour au parcours"
+            >
+                <CourseCard className="p-8">
+                    <div className="flex items-center gap-3 text-slate-300">
+                        <RefreshCw className="h-5 w-5 animate-spin text-emerald-400" />
+                        <span className="text-sm">Chargement…</span>
+                    </div>
+                    <div className="mt-6 space-y-3 animate-pulse">
+                        <div className="h-3 w-2/3 rounded bg-slate-800/70" />
+                        <div className="h-3 w-full rounded bg-slate-800/50" />
+                        <div className="h-3 w-5/6 rounded bg-slate-800/40" />
+                    </div>
+                </CourseCard>
+            </CoursePageShell>
         );
     }
 
     if (!payload) {
         return (
-            <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-6">
-                <div className="w-full max-w-2xl rounded-2xl border border-red-500/30 bg-red-500/10 p-6">
+            <CoursePageShell
+                title="Cours indisponible"
+                description={error || 'Le contenu demandé est introuvable.'}
+                icon={<BookOpen className="h-8 w-8 text-emerald-300" />}
+                crumbs={[
+                    { label: 'Mon Parcours', href: '/student' },
+                    { label: 'Ateliers', href: '/student' },
+                    { label: 'Erreur' },
+                ]}
+                backHref="/student"
+                backLabel="Retour au parcours"
+            >
+                <CourseCard className="border border-red-500/20 bg-red-500/5">
                     <div className="flex items-start gap-3">
-                        <AlertCircle size={20} className="text-red-300 mt-0.5" />
-                        <div>
-                            <h1 className="text-2xl font-bold text-white mb-2">Cours indisponible</h1>
-                            <p className="text-sm text-red-100/90 mb-4">
+                        <AlertCircle className="mt-0.5 h-5 w-5 text-red-300" />
+                        <div className="min-w-0">
+                            <h2 className="text-lg font-semibold text-white">Impossible de charger le cours</h2>
+                            <p className="mt-1 text-sm text-red-100/90">
                                 {error || 'Le contenu demandé est introuvable.'}
                             </p>
-                            <div className="flex flex-wrap items-center gap-3">
+                            <div className="mt-4 flex flex-wrap items-center gap-2">
                                 <button
                                     onClick={fetchContent}
-                                    className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-sm font-medium"
+                                    className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold"
                                 >
                                     Réessayer
                                 </button>
                                 <Link
-                                    href="/student/cursus"
-                                    className="px-4 py-2 rounded-lg border border-white/15 bg-slate-900/60 text-sm hover:bg-slate-800"
+                                    href="/student"
+                                    className="px-4 py-2.5 rounded-xl border border-white/10 bg-slate-900/40 text-sm font-semibold hover:bg-slate-900/60"
                                 >
-                                    Retour aux cursus
+                                    Retour au parcours
                                 </Link>
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
+                </CourseCard>
+            </CoursePageShell>
         );
     }
 
@@ -121,93 +151,115 @@ export default function TheoryPage({ params }: { params: Promise<{ moduleId: str
     const quizAvailable = Boolean(payload.workshop?.quizId);
 
     return (
-        <div className="min-h-screen bg-slate-950 text-white p-6 md:p-12">
-            <div className="max-w-4xl mx-auto space-y-8">
-                <div className="space-y-4">
-                    <div className="text-xs text-slate-500 flex items-center gap-1.5">
-                        <Link href="/student" className="hover:text-emerald-400">Mon Parcours</Link>
-                        <ChevronRight size={12} />
-                        <Link href="/student/cursus" className="hover:text-emerald-400">Cursus</Link>
-                        <ChevronRight size={12} />
-                        <span className="text-emerald-400">{title}</span>
-                    </div>
-
-                    <Link
-                        href="/student/cursus"
-                        className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition"
-                    >
-                        <ArrowLeft className="w-4 h-4" />
-                        Retour aux cursus
-                    </Link>
-
-                    <div className="flex items-center gap-4">
-                        <div className="p-4 bg-blue-500/20 rounded-2xl border border-blue-500/30">
-                            <Book className="w-8 h-8 text-blue-400" />
-                        </div>
-                        <div>
-                            <h1 className="text-3xl md:text-4xl font-black">{title}</h1>
-                            <p className="text-slate-400 mt-2">{description}</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-slate-900/60 border border-white/10 rounded-2xl p-6">
-                    <h2 className="text-xl font-bold mb-4">Sommaire</h2>
-                    {sections.length > 0 ? (
-                        <ul className="space-y-2">
-                            {sections.map((section, index) => (
-                                <li key={section.id || `${index}`}>
-                                    <a
-                                        href={`#section-${index}`}
-                                        className="text-slate-400 hover:text-emerald-400 transition"
-                                    >
-                                        {section.title}
-                                    </a>
-                                </li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <p className="text-slate-500 text-sm">Aucune section disponible pour le moment.</p>
-                    )}
-                </div>
-
-                <div className="space-y-8">
-                    {sections.map((section, index) => (
-                        <div
-                            key={section.id || `${index}`}
-                            id={`section-${index}`}
-                            className="bg-slate-900/60 border border-white/10 rounded-2xl p-8 space-y-4"
-                        >
-                            <h2 className="text-2xl font-black text-emerald-400">
-                                {section.title}
-                            </h2>
-                            <CourseRichRenderer content={section.content} showToc={false} />
-                        </div>
-                    ))}
-                </div>
-
-                <div className="flex gap-4 justify-center pt-8">
+        <CoursePageShell
+            title={title}
+            description={description}
+            icon={<BookOpen className="h-8 w-8 text-emerald-300" />}
+            crumbs={[
+                { label: 'Mon Parcours', href: '/student' },
+                { label: 'Ateliers', href: '/student' },
+                { label: title },
+            ]}
+            backHref="/student"
+            backLabel="Retour au parcours"
+            meta={
+                <>
+                    <CoursePill tone="slate">{sections.length} section{sections.length > 1 ? 's' : ''}</CoursePill>
+                    <CoursePill tone={quizAvailable ? 'emerald' : 'slate'}>
+                        <CheckCircle2 className="h-4 w-4" />
+                        {quizAvailable ? 'Quiz disponible' : 'Quiz indisponible'}
+                    </CoursePill>
+                </>
+            }
+            actions={
+                <>
                     {quizAvailable ? (
                         <Link
                             href={`/student/quiz/${moduleId}`}
-                            className="px-8 py-4 bg-emerald-600 rounded-2xl font-bold hover:bg-emerald-500 transition flex items-center gap-2"
+                            className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold shadow-lg shadow-emerald-500/20"
                         >
-                            <CheckCircle className="w-5 h-5" />
                             Passer le quiz
                         </Link>
                     ) : (
-                        <div className="px-8 py-4 bg-slate-800/70 border border-white/10 rounded-2xl text-slate-400 font-bold">
+                        <span className="px-4 py-2.5 rounded-xl border border-white/10 bg-slate-900/40 text-slate-400 text-sm font-semibold">
                             Quiz indisponible
-                        </div>
+                        </span>
                     )}
                     <Link
-                        href="/student/cursus"
-                        className="px-8 py-4 bg-slate-800 rounded-2xl font-bold hover:bg-slate-700 transition"
+                        href="/student"
+                        className="px-4 py-2.5 rounded-xl border border-white/10 bg-slate-900/40 hover:bg-slate-900/60 text-white/90 text-sm font-semibold"
                     >
-                        Retour au parcours
+                        Retour
                     </Link>
-                </div>
+                </>
+            }
+            aside={
+                <CourseCard className="p-4">
+                    <p className="text-[11px] text-slate-500 font-semibold uppercase tracking-[0.2em] mb-3">
+                        Sommaire
+                    </p>
+                    {sections.length > 0 ? (
+                        <div className="space-y-1">
+                            {sections.map((section, index) => (
+                                <a
+                                    key={section.id || `${index}`}
+                                    href={`#section-${index}`}
+                                    className="block rounded-lg px-2.5 py-2 text-sm text-slate-300 hover:text-emerald-300 hover:bg-white/5 transition-colors"
+                                >
+                                    {section.title}
+                                </a>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-sm text-slate-500">Aucune section pour le moment.</p>
+                    )}
+                </CourseCard>
+            }
+        >
+            <CourseCard className="p-0 overflow-hidden">
+                {sections.length > 0 ? (
+                    <div className="px-6 md:px-8 py-2">
+                        {sections.map((section, index) => (
+                            <section
+                                key={section.id || `${index}`}
+                                id={`section-${index}`}
+                                className="scroll-mt-28 py-8 border-b border-white/5 last:border-0"
+                            >
+                                <h2 className="text-2xl font-black tracking-tight text-emerald-300">
+                                    {section.title}
+                                </h2>
+                                <div className="mt-4">
+                                    <CourseRichRenderer content={section.content} showToc={false} />
+                                </div>
+                            </section>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="p-6 md:p-8">
+                        <p className="text-sm text-slate-400">
+                            Aucune section disponible pour ce cours.
+                        </p>
+                    </div>
+                )}
+            </CourseCard>
+
+            <div className="mt-6 flex flex-wrap items-center justify-end gap-2">
+                {quizAvailable && (
+                    <Link
+                        href={`/student/quiz/${moduleId}`}
+                        className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold shadow-lg shadow-emerald-500/20"
+                    >
+                        Passer le quiz
+                    </Link>
+                )}
+                <Link
+                    href="/student"
+                    className="px-4 py-2.5 rounded-xl border border-white/10 bg-slate-900/40 hover:bg-slate-900/60 text-white/90 text-sm font-semibold"
+                >
+                    Retour au parcours
+                </Link>
             </div>
-        </div>
+        </CoursePageShell>
     );
 }
+
