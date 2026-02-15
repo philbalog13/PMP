@@ -330,9 +330,9 @@ function CodeBlock({ language, code }: { language: string; code: string }) {
             )}
 
             <div className="overflow-x-auto p-4">
-                <code className="block font-mono text-xs text-slate-200 leading-6 min-w-full">
+                <code className="block font-mono text-[13px] md:text-sm text-slate-200 leading-6 md:leading-7 min-w-full">
                     {lines.map((line, lineNumber) => (
-                        <div key={`line-${lineNumber}`} className="grid grid-cols-[2.5rem_1fr] gap-3">
+                        <div key={`line-${lineNumber}`} className="grid grid-cols-[3rem_1fr] gap-3">
                             <span className="select-none text-right text-slate-600">{lineNumber + 1}</span>
                             <span className="whitespace-pre">{line || ' '}</span>
                         </div>
@@ -381,7 +381,7 @@ export function CourseRichRenderer({
                                 <h2
                                     id={block.id}
                                     key={`${block.type}-${block.id}-${blockIndex}`}
-                                    className="scroll-mt-32 text-2xl font-black tracking-tight text-slate-100 pb-2 border-b border-white/10"
+                                    className="scroll-mt-32 text-2xl md:text-3xl font-black tracking-tight text-slate-100 pb-3 border-b border-white/10 leading-tight"
                                 >
                                     <span dangerouslySetInnerHTML={{ __html: toInlineHtml(block.text) }} />
                                 </h2>
@@ -393,7 +393,7 @@ export function CourseRichRenderer({
                                 <h3
                                     id={block.id}
                                     key={`${block.type}-${block.id}-${blockIndex}`}
-                                    className="scroll-mt-32 text-xl font-bold text-slate-100"
+                                    className="scroll-mt-32 text-xl md:text-2xl font-bold text-slate-100 leading-tight"
                                 >
                                     <span dangerouslySetInnerHTML={{ __html: toInlineHtml(block.text) }} />
                                 </h3>
@@ -404,7 +404,7 @@ export function CourseRichRenderer({
                             <h4
                                 id={block.id}
                                 key={`${block.type}-${block.id}-${blockIndex}`}
-                                className="scroll-mt-32 text-lg font-semibold text-slate-200"
+                                className="scroll-mt-32 text-lg md:text-xl font-semibold text-slate-200 leading-tight"
                             >
                                 <span dangerouslySetInnerHTML={{ __html: toInlineHtml(block.text) }} />
                             </h4>
@@ -415,7 +415,7 @@ export function CourseRichRenderer({
                         return (
                             <p
                                 key={`${block.type}-${blockIndex}`}
-                                className="text-[15px] leading-8 text-slate-300"
+                                className="text-base md:text-lg leading-8 md:leading-9 text-slate-300"
                                 dangerouslySetInnerHTML={{ __html: toInlineHtml(block.text) }}
                             />
                         );
@@ -435,7 +435,7 @@ export function CourseRichRenderer({
                                     <div>
                                         <p className={`text-sm font-semibold mb-1 ${tone.iconClass}`}>{tone.title}</p>
                                         <p
-                                            className="text-sm leading-7 text-slate-200"
+                                            className="text-base md:text-lg leading-7 md:leading-8 text-slate-200"
                                             dangerouslySetInnerHTML={{ __html: toInlineHtml(block.text) }}
                                         />
                                     </div>
@@ -451,7 +451,7 @@ export function CourseRichRenderer({
                                     {block.items.map((item, itemIndex) => (
                                         <li
                                             key={`ordered-item-${blockIndex}-${itemIndex}`}
-                                            className="pl-1 text-[15px] leading-7"
+                                            className="pl-1 text-base md:text-lg leading-7 md:leading-8"
                                             dangerouslySetInnerHTML={{ __html: toInlineHtml(item) }}
                                         />
                                     ))}
@@ -465,7 +465,7 @@ export function CourseRichRenderer({
                                     <li key={`unordered-item-${blockIndex}-${itemIndex}`} className="flex items-start gap-2.5">
                                         <span className="mt-2.5 h-1.5 w-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
                                         <span
-                                            className="text-[15px] leading-7 text-slate-300"
+                                            className="text-base md:text-lg leading-7 md:leading-8 text-slate-300"
                                             dangerouslySetInnerHTML={{ __html: toInlineHtml(item) }}
                                         />
                                     </li>
@@ -496,7 +496,7 @@ export function CourseRichRenderer({
                                 className="rounded-2xl border border-slate-700/80 bg-slate-900/50 overflow-hidden"
                             >
                                 <div className="overflow-x-auto">
-                                    <table className="w-full text-sm">
+                                    <table className="w-full text-[15px] md:text-base">
                                         <thead className="bg-slate-800/70">
                                             <tr>
                                                 {headers.map((header, headerIndex) => (
@@ -540,4 +540,3 @@ export function CourseRichRenderer({
         </div>
     );
 }
-

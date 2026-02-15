@@ -1,8 +1,7 @@
 'use client';
 
-import { BookOpen, ArrowRight, CheckCircle, Play, ChevronLeft } from 'lucide-react';
-import Link from 'next/link';
-import { useState } from 'react';
+import { BookOpen } from 'lucide-react';
+import { WorkshopCoursePage } from '@/components/workshops/WorkshopCoursePage';
 
 const sections = [
     {
@@ -121,143 +120,13 @@ Couches de sécurité:
 ];
 
 export default function IntroWorkshopPage() {
-    const [currentSection, setCurrentSection] = useState(0);
-    const [completedSections, setCompletedSections] = useState<number[]>([]);
-
-    const markComplete = () => {
-        if (!completedSections.includes(currentSection)) {
-            setCompletedSections([...completedSections, currentSection]);
-        }
-        if (currentSection < sections.length - 1) {
-            setCurrentSection(currentSection + 1);
-        }
-    };
-
-    const progress = Math.round((completedSections.length / sections.length) * 100);
-
     return (
-        <div className="min-h-screen bg-slate-950 text-white">
-            {/* Header */}
-            <div className="border-b border-white/5 bg-slate-900/50">
-                <div className="max-w-7xl mx-auto px-8 py-6">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <Link href="/workshops" className="p-2 hover:bg-white/5 rounded-lg transition-colors">
-                                <ChevronLeft size={20} />
-                            </Link>
-                            <div className="p-3 bg-blue-500/10 rounded-xl border border-blue-500/20">
-                                <BookOpen className="text-blue-400" size={24} />
-                            </div>
-                            <div>
-                                <div className="text-xs text-slate-500 font-bold uppercase tracking-wider">Atelier 1</div>
-                                <h1 className="text-xl font-bold">Introduction à la Monétique</h1>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <div className="text-right">
-                                <div className="text-xs text-slate-500">Progression</div>
-                                <div className="text-lg font-mono font-bold">{progress}%</div>
-                            </div>
-                            <div className="w-32 h-2 bg-slate-800 rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-blue-500 transition-all duration-500"
-                                    style={{ width: `${progress}%` }}
-                                />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div className="max-w-7xl mx-auto px-8 py-8">
-                <div className="grid lg:grid-cols-4 gap-8">
-                    {/* Sidebar */}
-                    <div className="lg:col-span-1">
-                        <div className="bg-slate-900/50 rounded-2xl border border-white/5 p-4 sticky top-24">
-                            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Sommaire</h3>
-                            <div className="space-y-2">
-                                {sections.map((section, idx) => (
-                                    <button
-                                        key={section.id}
-                                        onClick={() => setCurrentSection(idx)}
-                                        className={`w-full text-left p-3 rounded-xl transition-all flex items-center gap-3 ${
-                                            currentSection === idx
-                                                ? 'bg-blue-500/10 border border-blue-500/20 text-white'
-                                                : 'hover:bg-white/5 text-slate-400'
-                                        }`}
-                                    >
-                                        {completedSections.includes(idx) ? (
-                                            <CheckCircle size={16} className="text-green-400" />
-                                        ) : (
-                                            <div className={`w-4 h-4 rounded-full border-2 ${
-                                                currentSection === idx ? 'border-blue-500' : 'border-slate-600'
-                                            }`} />
-                                        )}
-                                        <span className="text-sm font-medium truncate">{section.title}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Content */}
-                    <div className="lg:col-span-3 space-y-8">
-                        <div className="bg-slate-900/50 rounded-3xl border border-white/5 p-8">
-                            <h2 className="text-3xl font-bold mb-6">{sections[currentSection].title}</h2>
-
-                            <div className="prose prose-invert max-w-none">
-                                {sections[currentSection].content.split('\n\n').map((paragraph, idx) => (
-                                    <p key={idx} className="text-slate-300 leading-relaxed mb-4 whitespace-pre-line">
-                                        {paragraph.split('**').map((part, i) =>
-                                            i % 2 === 1 ? <strong key={i} className="text-white">{part}</strong> : part
-                                        )}
-                                    </p>
-                                ))}
-                            </div>
-
-                            {/* Diagram */}
-                            <div className="mt-8 p-6 bg-slate-950 rounded-2xl border border-white/10">
-                                <div className="flex items-center gap-2 mb-4 text-xs text-slate-500 font-bold uppercase tracking-wider">
-                                    <Play size={12} />
-                                    Schéma
-                                </div>
-                                <pre className="text-sm text-blue-400 font-mono overflow-x-auto">
-                                    {sections[currentSection].diagram}
-                                </pre>
-                            </div>
-                        </div>
-
-                        {/* Navigation */}
-                        <div className="flex items-center justify-between">
-                            <button
-                                onClick={() => setCurrentSection(Math.max(0, currentSection - 1))}
-                                disabled={currentSection === 0}
-                                className="px-6 py-3 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-bold transition-colors"
-                            >
-                                Précédent
-                            </button>
-
-                            {currentSection === sections.length - 1 ? (
-                                <Link
-                                    href="/workshops"
-                                    className="px-6 py-3 bg-green-600 hover:bg-green-500 rounded-xl font-bold flex items-center gap-2 transition-colors"
-                                >
-                                    <CheckCircle size={18} />
-                                    Terminer l&apos;atelier
-                                </Link>
-                            ) : (
-                                <button
-                                    onClick={markComplete}
-                                    className="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-bold flex items-center gap-2 transition-colors"
-                                >
-                                    Continuer
-                                    <ArrowRight size={18} />
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <WorkshopCoursePage
+            workshopLabel="Atelier 1"
+            title="Introduction à la Monétique"
+            description="Comprendre le cycle de vie d'une transaction carte, du client au commerçant."
+            icon={<BookOpen className="h-8 w-8 text-emerald-300" />}
+            sections={sections}
+        />
     );
 }

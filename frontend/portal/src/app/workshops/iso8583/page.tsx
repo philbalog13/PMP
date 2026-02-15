@@ -1,8 +1,7 @@
-'use client';
+﻿'use client';
 
-import { Code, Terminal, ArrowRight, CheckCircle, ChevronLeft, Copy, Check } from 'lucide-react';
-import Link from 'next/link';
-import { useState } from 'react';
+import { Code } from 'lucide-react';
+import { WorkshopCoursePage } from '@/components/workshops/WorkshopCoursePage';
 
 const sections = [
     {
@@ -188,161 +187,14 @@ Terminal: TERM0001
 Marchand: MERCHANT00001`
     }
 ];
-
-export default function ISO8583WorkshopPage() {
-    const [currentSection, setCurrentSection] = useState(0);
-    const [completedSections, setCompletedSections] = useState<number[]>([]);
-    const [copied, setCopied] = useState(false);
-
-    const markComplete = () => {
-        if (!completedSections.includes(currentSection)) {
-            setCompletedSections([...completedSections, currentSection]);
-        }
-        if (currentSection < sections.length - 1) {
-            setCurrentSection(currentSection + 1);
-        }
-    };
-
-    const copyExample = () => {
-        navigator.clipboard.writeText(sections[currentSection].example);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-    };
-
-    const progress = Math.round((completedSections.length / sections.length) * 100);
-
+export default function Iso8583WorkshopPage() {
     return (
-        <div className="min-h-screen bg-slate-950 text-white">
-            {/* Header */}
-            <div className="border-b border-white/5 bg-slate-900/50">
-                <div className="max-w-7xl mx-auto px-8 py-6">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <Link href="/workshops" className="p-2 hover:bg-white/5 rounded-lg transition-colors">
-                                <ChevronLeft size={20} />
-                            </Link>
-                            <div className="p-3 bg-purple-500/10 rounded-xl border border-purple-500/20">
-                                <Code className="text-purple-400" size={24} />
-                            </div>
-                            <div>
-                                <div className="text-xs text-slate-500 font-bold uppercase tracking-wider">Atelier 2</div>
-                                <h1 className="text-xl font-bold">Protocole ISO 8583</h1>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <div className="text-right">
-                                <div className="text-xs text-slate-500">Progression</div>
-                                <div className="text-lg font-mono font-bold">{progress}%</div>
-                            </div>
-                            <div className="w-32 h-2 bg-slate-800 rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-purple-500 transition-all duration-500"
-                                    style={{ width: `${progress}%` }}
-                                />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div className="max-w-7xl mx-auto px-8 py-8">
-                <div className="grid lg:grid-cols-4 gap-8">
-                    {/* Sidebar */}
-                    <div className="lg:col-span-1">
-                        <div className="bg-slate-900/50 rounded-2xl border border-white/5 p-4 sticky top-24">
-                            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Sommaire</h3>
-                            <div className="space-y-2">
-                                {sections.map((section, idx) => (
-                                    <button
-                                        key={section.id}
-                                        onClick={() => setCurrentSection(idx)}
-                                        className={`w-full text-left p-3 rounded-xl transition-all flex items-center gap-3 ${
-                                            currentSection === idx
-                                                ? 'bg-purple-500/10 border border-purple-500/20 text-white'
-                                                : 'hover:bg-white/5 text-slate-400'
-                                        }`}
-                                    >
-                                        {completedSections.includes(idx) ? (
-                                            <CheckCircle size={16} className="text-green-400" />
-                                        ) : (
-                                            <div className={`w-4 h-4 rounded-full border-2 ${
-                                                currentSection === idx ? 'border-purple-500' : 'border-slate-600'
-                                            }`} />
-                                        )}
-                                        <span className="text-sm font-medium truncate">{section.title}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Content */}
-                    <div className="lg:col-span-3 space-y-8">
-                        <div className="bg-slate-900/50 rounded-3xl border border-white/5 p-8">
-                            <h2 className="text-3xl font-bold mb-6">{sections[currentSection].title}</h2>
-
-                            <div className="prose prose-invert max-w-none">
-                                {sections[currentSection].content.split('\n\n').map((paragraph, idx) => (
-                                    <p key={idx} className="text-slate-300 leading-relaxed mb-4 whitespace-pre-line">
-                                        {paragraph.split('**').map((part, i) =>
-                                            i % 2 === 1 ? <strong key={i} className="text-white">{part}</strong> : part
-                                        )}
-                                    </p>
-                                ))}
-                            </div>
-
-                            {/* Example/Diagram */}
-                            <div className="mt-8 p-6 bg-slate-950 rounded-2xl border border-white/10 relative">
-                                <div className="flex items-center justify-between mb-4">
-                                    <div className="flex items-center gap-2 text-xs text-slate-500 font-bold uppercase tracking-wider">
-                                        <Terminal size={12} />
-                                        Exemple
-                                    </div>
-                                    <button
-                                        onClick={copyExample}
-                                        className="flex items-center gap-1 text-xs text-slate-400 hover:text-white transition-colors"
-                                    >
-                                        {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
-                                        {copied ? 'Copié!' : 'Copier'}
-                                    </button>
-                                </div>
-                                <pre className="text-sm text-purple-400 font-mono overflow-x-auto whitespace-pre-wrap">
-                                    {sections[currentSection].example}
-                                </pre>
-                            </div>
-                        </div>
-
-                        {/* Navigation */}
-                        <div className="flex items-center justify-between">
-                            <button
-                                onClick={() => setCurrentSection(Math.max(0, currentSection - 1))}
-                                disabled={currentSection === 0}
-                                className="px-6 py-3 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-bold transition-colors"
-                            >
-                                Précédent
-                            </button>
-
-                            {currentSection === sections.length - 1 ? (
-                                <Link
-                                    href="/workshops"
-                                    className="px-6 py-3 bg-green-600 hover:bg-green-500 rounded-xl font-bold flex items-center gap-2 transition-colors"
-                                >
-                                    <CheckCircle size={18} />
-                                    Terminer l&apos;atelier
-                                </Link>
-                            ) : (
-                                <button
-                                    onClick={markComplete}
-                                    className="px-6 py-3 bg-purple-600 hover:bg-purple-500 rounded-xl font-bold flex items-center gap-2 transition-colors"
-                                >
-                                    Continuer
-                                    <ArrowRight size={18} />
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <WorkshopCoursePage
+            workshopLabel="Atelier 2"
+            title="Protocole ISO 8583"
+            description="Maîtrisez le format standard des messages financiers et décodez les MTI."
+            icon={<Code className="h-8 w-8 text-emerald-300" />}
+            sections={sections}
+        />
     );
 }

@@ -7,12 +7,13 @@ import {
     ArrowRight,
     ArrowLeft,
     Trophy,
-    ChevronRight,
+    Clock,
     RefreshCw,
     AlertCircle
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '../../../auth/useAuth';
+import { CourseCard, CoursePageShell, CoursePill } from '@/components/course/CoursePageShell';
 
 interface QuizQuestion {
     id: string;
@@ -199,41 +200,73 @@ export default function QuizPage({ params }: { params: Promise<{ moduleId: strin
 
     if (authLoading || loading) {
         return (
-            <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-                <RefreshCw className="animate-spin w-8 h-8 text-emerald-500" />
-            </div>
+            <CoursePageShell
+                title="Chargement du quiz…"
+                description="Préparation des questions et de votre session."
+                icon={<Trophy className="h-8 w-8 text-emerald-300" />}
+                crumbs={[
+                    { label: 'Mon Parcours', href: '/student' },
+                    { label: 'Quiz', href: '/student/quizzes' },
+                    { label: 'Chargement' },
+                ]}
+                backHref="/student/quizzes"
+                backLabel="Retour aux quiz"
+            >
+                <CourseCard className="p-8">
+                    <div className="flex items-center gap-3 text-slate-300">
+                        <RefreshCw className="h-5 w-5 animate-spin text-emerald-400" />
+                        <span className="text-sm">Chargement…</span>
+                    </div>
+                    <div className="mt-6 space-y-3 animate-pulse">
+                        <div className="h-3 w-1/2 rounded bg-slate-800/70" />
+                        <div className="h-3 w-full rounded bg-slate-800/50" />
+                        <div className="h-3 w-5/6 rounded bg-slate-800/40" />
+                    </div>
+                </CourseCard>
+            </CoursePageShell>
         );
     }
 
     if (!quizDefinition) {
         return (
-            <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-6">
-                <div className="w-full max-w-2xl rounded-2xl border border-red-500/30 bg-red-500/10 p-6">
+            <CoursePageShell
+                title="Quiz non disponible"
+                description={error || 'Aucun quiz disponible pour ce module.'}
+                icon={<AlertCircle className="h-8 w-8 text-red-200" />}
+                crumbs={[
+                    { label: 'Mon Parcours', href: '/student' },
+                    { label: 'Quiz', href: '/student/quizzes' },
+                    { label: 'Erreur' },
+                ]}
+                backHref="/student/quizzes"
+                backLabel="Retour aux quiz"
+            >
+                <CourseCard className="border border-red-500/20 bg-red-500/5">
                     <div className="flex items-start gap-3">
-                        <AlertCircle size={20} className="text-red-300 mt-0.5" />
-                        <div>
-                            <h1 className="text-2xl font-bold mb-2">Quiz non disponible</h1>
-                            <p className="text-sm text-red-100/90 mb-4">
+                        <AlertCircle className="mt-0.5 h-5 w-5 text-red-300" />
+                        <div className="min-w-0">
+                            <h2 className="text-lg font-semibold text-white">Impossible de charger le quiz</h2>
+                            <p className="mt-1 text-sm text-red-100/90">
                                 {error || 'Aucun quiz disponible pour ce module.'}
                             </p>
-                            <div className="flex flex-wrap gap-3">
+                            <div className="mt-4 flex flex-wrap items-center gap-2">
                                 <button
                                     onClick={loadQuiz}
-                                    className="px-4 py-2 bg-emerald-600 rounded-lg hover:bg-emerald-500 transition text-sm font-medium"
+                                    className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold"
                                 >
                                     Réessayer
                                 </button>
                                 <Link
                                     href="/student/quizzes"
-                                    className="px-4 py-2 bg-slate-900/60 border border-white/15 rounded-lg hover:bg-slate-800 text-sm"
+                                    className="px-4 py-2.5 rounded-xl border border-white/10 bg-slate-900/40 text-sm font-semibold hover:bg-slate-900/60"
                                 >
                                     Retour aux quiz
                                 </Link>
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
+                </CourseCard>
+            </CoursePageShell>
         );
     }
 
@@ -261,8 +294,27 @@ export default function QuizPage({ params }: { params: Promise<{ moduleId: strin
 
     if (showResults && submissionResult) {
         return (
-            <div className="min-h-screen bg-slate-950 text-white p-6 md:p-12">
-                <div className="max-w-3xl mx-auto">
+            <CoursePageShell
+                title={quizDefinition.title}
+                description="Résultats du quiz"
+                icon={<Trophy className="h-8 w-8 text-emerald-300" />}
+                crumbs={[
+                    { label: 'Mon Parcours', href: '/student' },
+                    { label: 'Quiz', href: '/student/quizzes' },
+                    { label: quizDefinition.title },
+                ]}
+                backHref="/student/quizzes"
+                backLabel="Retour aux quiz"
+                meta={
+                    <>
+                        <CoursePill tone={passed ? 'emerald' : 'rose'}>
+                            {passed ? 'Réussi' : 'Non réussi'}
+                        </CoursePill>
+                        <CoursePill tone="slate">{scorePercentage}%</CoursePill>
+                    </>
+                }
+            >
+                <div className="max-w-5xl mx-auto">
                     <div className="text-center space-y-8">
                         {passed ? (
                             <Trophy className="w-24 h-24 text-amber-500 mx-auto animate-bounce" />
@@ -272,17 +324,17 @@ export default function QuizPage({ params }: { params: Promise<{ moduleId: strin
                         <h1 className="text-5xl font-black">
                             {passed ? 'Félicitations !' : 'Presque !'}
                         </h1>
-                        <div className="bg-slate-900 border border-white/10 rounded-3xl p-8 space-y-4">
-                            <div className={`text-6xl font-black ${passed ? 'text-emerald-500' : 'text-red-400'}`}>
+                        <CourseCard className="rounded-3xl p-7 md:p-8 space-y-4">
+                            <div className={`text-6xl font-black ${passed ? 'text-emerald-400' : 'text-rose-300'}`}>
                                 {scorePercentage}%
                             </div>
-                            <p className="text-xl text-slate-400">
+                            <p className="text-lg md:text-xl text-slate-300">
                                 {submissionResult.result.score} / {submissionResult.result.max_score} réponses correctes
                             </p>
                             <p className="text-sm text-slate-500">
                                 Seuil requis: {submissionResult.passPercentage}%
                             </p>
-                        </div>
+                        </CourseCard>
 
                         <div className="space-y-4 text-left">
                             <h2 className="text-2xl font-black">Correction</h2>
@@ -311,19 +363,19 @@ export default function QuizPage({ params }: { params: Promise<{ moduleId: strin
                                             )}
                                             <div className="flex-1 space-y-2">
                                                 <p className="font-bold">{question?.question || review.question || 'Question'}</p>
-                                                <p className="text-sm text-slate-400">
+                                                <p className="text-base text-slate-300">
                                                     Votre réponse:{' '}
                                                     <span className={isCorrect ? 'text-emerald-400' : 'text-red-400'}>
                                                         {userAnswerLabel}
                                                     </span>
                                                 </p>
                                                 {!isCorrect && (
-                                                    <p className="text-sm text-emerald-400">
+                                                    <p className="text-base text-emerald-300">
                                                         Bonne réponse: {correctAnswerLabel}
                                                     </p>
                                                 )}
                                                 {review.explanation && (
-                                                    <p className="text-sm text-slate-500 italic">{review.explanation}</p>
+                                                    <p className="text-base text-slate-400 italic">{review.explanation}</p>
                                                 )}
                                             </div>
                                         </div>
@@ -353,39 +405,66 @@ export default function QuizPage({ params }: { params: Promise<{ moduleId: strin
                         </div>
                     </div>
                 </div>
-            </div>
+            </CoursePageShell>
         );
     }
 
     const question = quizDefinition.questions[currentQuestion];
+    const totalQuestions = quizDefinition.questions.length;
+    const progressPercent = totalQuestions > 0
+        ? Math.round(((currentQuestion + 1) / totalQuestions) * 100)
+        : 0;
 
     return (
-        <div className="min-h-screen bg-slate-950 text-white p-6 md:p-12">
-            <div className="max-w-3xl mx-auto space-y-8">
-                {error && (
-                    <div className="p-4 rounded-xl border border-red-500/30 bg-red-500/10 text-sm text-red-200">
-                        {error}
+        <CoursePageShell
+            title={quizDefinition.title}
+            description="Quiz"
+            icon={<Trophy className="h-8 w-8 text-emerald-300" />}
+            crumbs={[
+                { label: 'Mon Parcours', href: '/student' },
+                { label: 'Quiz', href: '/student/quizzes' },
+                { label: quizDefinition.title },
+            ]}
+            backHref="/student/quizzes"
+            backLabel="Retour aux quiz"
+            meta={
+                <>
+                    <CoursePill tone="violet">Seuil {quizDefinition.passPercentage}%</CoursePill>
+                    <CoursePill tone="slate">{quizDefinition.questionCount} questions</CoursePill>
+                    {quizDefinition.timeLimitMinutes ? (
+                        <CoursePill tone="slate">
+                            <Clock className="h-4 w-4 text-slate-300" />
+                            {quizDefinition.timeLimitMinutes} min
+                        </CoursePill>
+                    ) : null}
+                </>
+            }
+            headerFooter={
+                <div className="flex items-center gap-3">
+                    <div className="h-2 flex-1 bg-slate-800/70 rounded-full overflow-hidden">
+                        <div
+                            className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-cyan-400 transition-all duration-700"
+                            style={{ width: `${progressPercent}%` }}
+                        />
                     </div>
+                    <span className="text-xs font-mono text-emerald-200">{progressPercent}%</span>
+                </div>
+            }
+        >
+            <div className="max-w-5xl mx-auto space-y-6">
+                {error && (
+                    <CourseCard className="border border-red-500/20 bg-red-500/5 p-4 md:p-5">
+                        <div className="flex items-start gap-3">
+                            <AlertCircle className="mt-0.5 h-5 w-5 text-red-300" />
+                            <p className="text-sm text-red-100/90">{error}</p>
+                        </div>
+                    </CourseCard>
                 )}
 
-                <div className="space-y-4">
-                    <div className="text-xs text-slate-500 flex items-center gap-1.5">
-                        <Link href="/student" className="hover:text-emerald-400">Mon Parcours</Link>
-                        <ChevronRight size={12} />
-                        <Link href="/student/quizzes" className="hover:text-emerald-400">Quiz</Link>
-                        <ChevronRight size={12} />
-                        <span className="text-emerald-400">{quizDefinition.title}</span>
-                    </div>
-                    <Link
-                        href="/student/quizzes"
-                        className="text-sm text-slate-400 hover:text-white transition inline-flex items-center gap-1"
-                    >
-                        <ArrowLeft size={14} /> Retour aux quiz
-                    </Link>
-                    <h1 className="text-3xl font-black">{quizDefinition.title}</h1>
-                    <div className="flex items-center justify-between">
-                        <p className="text-slate-400">
-                            Question {currentQuestion + 1} / {quizDefinition.questions.length}
+                <CourseCard className="p-5 md:p-6">
+                    <div className="flex items-center justify-between gap-4">
+                        <p className="text-slate-300 text-base">
+                            Question <span className="text-white font-semibold">{currentQuestion + 1}</span> / {totalQuestions}
                         </p>
                         <div className="flex gap-2">
                             {quizDefinition.questions.map((_, index) => (
@@ -395,50 +474,50 @@ export default function QuizPage({ params }: { params: Promise<{ moduleId: strin
                                         index === currentQuestion
                                             ? 'bg-emerald-500'
                                             : selectedAnswers[index] !== undefined
-                                            ? 'bg-blue-500'
+                                            ? 'bg-cyan-500'
                                             : 'bg-slate-700'
                                     }`}
                                 />
                             ))}
                         </div>
                     </div>
-                </div>
+                </CourseCard>
 
-                <div className="bg-slate-900 border border-white/10 rounded-3xl p-8 space-y-6">
-                    <h2 className="text-2xl font-bold">{question.question}</h2>
-                    <div className="space-y-3">
+                <CourseCard className="p-6 md:p-8">
+                    <h2 className="text-2xl font-black tracking-tight text-white">{question.question}</h2>
+                    <div className="mt-6 space-y-3">
                         {question.options.map((option, index) => (
                             <button
                                 key={index}
                                 onClick={() => handleAnswerSelect(index)}
-                                className={`w-full p-4 rounded-2xl border-2 text-left transition-all ${
+                                className={`w-full p-4 rounded-2xl border-2 text-left transition-colors ${
                                     currentAnswer === index
-                                        ? 'bg-emerald-500/20 border-emerald-500'
-                                        : 'bg-slate-800/50 border-white/10 hover:border-white/30'
+                                        ? 'bg-emerald-500/15 border-emerald-500/60'
+                                        : 'bg-slate-950/30 border-white/10 hover:border-white/25'
                                 }`}
                             >
                                 <div className="flex items-center gap-3">
                                     <div
                                         className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
                                             currentAnswer === index
-                                                ? 'border-emerald-500 bg-emerald-500'
+                                                ? 'border-emerald-400 bg-emerald-500'
                                                 : 'border-slate-600'
                                         }`}
                                     >
                                         {currentAnswer === index && <CheckCircle className="w-4 h-4 text-white" />}
                                     </div>
-                                    <span>{option}</span>
+                                    <span className="text-slate-200">{option}</span>
                                 </div>
                             </button>
                         ))}
                     </div>
-                </div>
+                </CourseCard>
 
                 <div className="flex justify-between">
                     <button
                         onClick={handlePrevious}
                         disabled={currentQuestion === 0 || submitting}
-                        className="px-6 py-3 bg-slate-800 rounded-2xl font-bold hover:bg-slate-700 transition disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2"
+                        className="px-6 py-3 bg-slate-900/40 border border-white/10 rounded-2xl font-bold hover:bg-slate-900/60 transition disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2"
                     >
                         <ArrowLeft className="w-5 h-5" /> Précédent
                     </button>
@@ -447,11 +526,11 @@ export default function QuizPage({ params }: { params: Promise<{ moduleId: strin
                         disabled={currentAnswer === undefined || submitting}
                         className="px-6 py-3 bg-emerald-600 rounded-2xl font-bold hover:bg-emerald-500 transition disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2"
                     >
-                        {submitting ? 'Envoi...' : (currentQuestion === quizDefinition.questions.length - 1 ? 'Terminer' : 'Suivant')}
+                        {submitting ? 'Envoi…' : (currentQuestion === totalQuestions - 1 ? 'Terminer' : 'Suivant')}
                         <ArrowRight className="w-5 h-5" />
                     </button>
                 </div>
             </div>
-        </div>
+        </CoursePageShell>
     );
 }
