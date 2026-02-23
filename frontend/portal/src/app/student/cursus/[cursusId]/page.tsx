@@ -18,6 +18,9 @@ interface Module {
     difficulty: string;
     chapter_count: number;
     quiz: { id: string; title: string } | null;
+    completedChapters?: number;
+    quizBestScore?: number;
+    masteryScore?: number;
 }
 
 interface CursusDetail {
@@ -236,38 +239,79 @@ export default function CursusDetailPage() {
                 <div className="space-y-3">
                     {modules.map((mod, idx) => {
                         const diffColor = DIFF_COLORS[mod.difficulty] || DIFF_COLORS['1'];
+                        const mastery = mod.masteryScore ?? 0;
+                        const hasStarted = (mod.completedChapters ?? 0) > 0;
+                        const masteryColor = mastery >= 80
+                            ? 'bg-emerald-500'
+                            : mastery >= 60
+                            ? 'bg-amber-500'
+                            : 'bg-rose-500';
+                        const masteryLabel = mastery >= 80
+                            ? 'Maîtrisé'
+                            : mastery >= 60
+                            ? 'En cours'
+                            : hasStarted
+                            ? 'Débuté'
+                            : '';
+                        const masteryTextColor = mastery >= 80
+                            ? 'text-emerald-400'
+                            : mastery >= 60
+                            ? 'text-amber-400'
+                            : 'text-rose-400';
                         return (
                             <Link key={mod.id} href={`/student/cursus/${cursusId}/${mod.id}`} className="group block">
-                                <div className="flex items-center gap-4 p-5 rounded-xl bg-slate-900/50 border border-white/5 transition-all duration-200 hover:border-emerald-500/20 hover:bg-slate-800/50 hover:translate-x-1">
-                                    {/* Number badge */}
-                                    <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/15 flex items-center justify-center flex-shrink-0">
-                                        <span className="text-emerald-400 font-bold text-sm">{mod.module_order}</span>
-                                    </div>
-
-                                    {/* Content */}
-                                    <div className="flex-1 min-w-0">
-                                        <h3 className="text-white font-semibold text-sm group-hover:text-emerald-300 transition-colors truncate">
-                                            {mod.title}
-                                        </h3>
-                                        <div className="flex items-center gap-3 mt-1 flex-wrap">
-                                            <span className="text-xs text-slate-500 flex items-center gap-1">
-                                                <BookOpen size={11} /> {mod.chapter_count} chap.
-                                            </span>
-                                            <span className="text-xs text-slate-500 flex items-center gap-1">
-                                                <Clock size={11} /> {mod.estimated_minutes >= 60 ? `${Math.floor(mod.estimated_minutes / 60)}h${mod.estimated_minutes % 60 > 0 ? ` ${mod.estimated_minutes % 60}min` : ''}` : `${mod.estimated_minutes}min`}
-                                            </span>
-                                            <span className={`text-xs ${diffColor.text}`}>
-                                                {getDiffStars(mod.difficulty)}
-                                            </span>
-                                            {mod.quiz && (
-                                                <span className="text-xs text-violet-400 flex items-center gap-1">
-                                                    <FileQuestion size={11} /> Quiz
-                                                </span>
-                                            )}
+                                <div className="p-5 rounded-xl bg-slate-900/50 border border-white/5 transition-all duration-200 hover:border-emerald-500/20 hover:bg-slate-800/50 hover:translate-x-1">
+                                    <div className="flex items-center gap-4">
+                                        {/* Number badge */}
+                                        <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/15 flex items-center justify-center flex-shrink-0">
+                                            <span className="text-emerald-400 font-bold text-sm">{mod.module_order}</span>
                                         </div>
+
+                                        {/* Content */}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <h3 className="text-white font-semibold text-sm group-hover:text-emerald-300 transition-colors truncate">
+                                                    {mod.title}
+                                                </h3>
+                                                {hasStarted && (
+                                                    <span className={`shrink-0 text-[10px] font-semibold ${masteryTextColor}`}>
+                                                        {masteryLabel} {mastery > 0 ? `${mastery}%` : ''}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-3 mt-1 flex-wrap">
+                                                <span className="text-xs text-slate-500 flex items-center gap-1">
+                                                    <BookOpen size={11} /> {mod.completedChapters ?? 0}/{mod.chapter_count} chap.
+                                                </span>
+                                                <span className="text-xs text-slate-500 flex items-center gap-1">
+                                                    <Clock size={11} /> {mod.estimated_minutes >= 60 ? `${Math.floor(mod.estimated_minutes / 60)}h${mod.estimated_minutes % 60 > 0 ? ` ${mod.estimated_minutes % 60}min` : ''}` : `${mod.estimated_minutes}min`}
+                                                </span>
+                                                <span className={`text-xs ${diffColor.text}`}>
+                                                    {getDiffStars(mod.difficulty)}
+                                                </span>
+                                                {mod.quiz && (
+                                                    <span className={`text-xs flex items-center gap-1 ${(mod.quizBestScore ?? -1) >= 0 ? 'text-violet-300' : 'text-slate-500'}`}>
+                                                        <FileQuestion size={11} />
+                                                        {(mod.quizBestScore ?? -1) >= 0 ? `Quiz ${mod.quizBestScore}%` : 'Quiz'}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <ChevronRight size={16} className="text-slate-600 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all flex-shrink-0" />
                                     </div>
 
-                                    <ChevronRight size={16} className="text-slate-600 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all flex-shrink-0" />
+                                    {/* Mastery bar — shown only if started */}
+                                    {hasStarted && (
+                                        <div className="mt-3 ml-16">
+                                            <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
+                                                <div
+                                                    className={`h-full rounded-full transition-all duration-500 ${masteryColor}`}
+                                                    style={{ width: `${mastery}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </Link>
                         );

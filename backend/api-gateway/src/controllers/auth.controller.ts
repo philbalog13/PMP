@@ -247,16 +247,19 @@ export const register = async (req: Request, res: Response) => {
 
         // Create user
         const result = await query(
-            `INSERT INTO users.users (username, email, password_hash, first_name, last_name, role) 
-            VALUES ($1, $2, $3, $4, $5, $6) 
-            RETURNING id, username, email, first_name, last_name, role, created_at`,
+            `INSERT INTO users.users (username, email, password_hash, first_name, last_name, role, status)
+            VALUES ($1, $2, $3, $4, $5, $6, 'ACTIVE')
+            RETURNING id, username, email, first_name, last_name, role, status, created_at`,
             [username, email, passwordHash, firstName, lastName, normalizedRole]
         );
 
         const user = result.rows[0];
 
         try {
-            await provisionFinancialAccountForUser(user.id, user.role);
+            const displayName = (user.first_name && user.last_name)
+                ? `${user.first_name} ${user.last_name}`
+                : user.username;
+            await provisionFinancialAccountForUser(user.id, user.role, displayName);
         } catch (provisionError: any) {
             await query(`DELETE FROM users.users WHERE id = $1`, [user.id]);
             throw provisionError;
@@ -363,5 +366,96 @@ export const refreshAccessToken = async (req: Request, res: Response) => {
             error: 'Token refresh failed',
             code: 'REFRESH_ERROR'
         });
+    }
+};
+
+/**
+ * GET /api/users/me
+ * Retourne le profil de l'utilisateur connecté avec ses préférences pédagogiques.
+ */
+export const getMe = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user?.userId;
+        if (!userId) {
+            res.status(401).json({ success: false, error: 'Unauthorized' });
+            return;
+        }
+
+        const result = await query(
+            `SELECT id, username, email, first_name, last_name, role, status,
+                    COALESCE(preferences, '{}'::jsonb) AS preferences
+             FROM users.users WHERE id = $1`,
+            [userId]
+        );
+
+        if ((result.rowCount ?? 0) === 0) {
+            res.status(404).json({ success: false, error: 'User not found' });
+            return;
+        }
+
+        const user = result.rows[0];
+        const prefs = (user.preferences || {}) as Record<string, unknown>;
+
+        res.json({
+            success: true,
+            user: {
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                firstName: user.first_name,
+                lastName: user.last_name,
+                role: user.role,
+                onboardingDone: Boolean(prefs.onboarding_done),
+                learnerLevel: (prefs.learner_level as string) || null,
+                objective: (prefs.objective as string) || null,
+            },
+        });
+    } catch (error: any) {
+        logger.error('getMe error', { error: error.message });
+        res.status(500).json({ success: false, error: 'Failed to fetch user profile' });
+    }
+};
+
+/**
+ * POST /api/users/me/preferences
+ * Sauvegarde les préférences pédagogiques (niveau, objectif, onboarding_done).
+ */
+export const savePreferences = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user?.userId;
+        if (!userId) {
+            res.status(401).json({ success: false, error: 'Unauthorized' });
+            return;
+        }
+
+        const { learnerLevel, objective, onboardingDone } = req.body as Record<string, unknown>;
+
+        const validLevels = ['NOVICE', 'INTERMEDIATE', 'ADVANCED'];
+        const validObjectives = ['CERTIFICATION_PCI', 'RED_TEAM', 'BUSINESS_UNDERSTANDING', 'FINTECH_CAREER'];
+
+        const patch: Record<string, unknown> = {};
+        if (typeof learnerLevel === 'string' && validLevels.includes(learnerLevel)) {
+            patch.learner_level = learnerLevel;
+        }
+        if (typeof objective === 'string' && validObjectives.includes(objective)) {
+            patch.objective = objective;
+        }
+        if (onboardingDone === true) {
+            patch.onboarding_done = true;
+        }
+
+        if (Object.keys(patch).length > 0) {
+            await query(
+                `UPDATE users.users
+                 SET preferences = COALESCE(preferences, '{}'::jsonb) || $1::jsonb
+                 WHERE id = $2`,
+                [JSON.stringify(patch), userId]
+            );
+        }
+
+        res.json({ success: true, message: 'Preferences saved' });
+    } catch (error: any) {
+        logger.error('savePreferences error', { error: error.message });
+        res.status(500).json({ success: false, error: 'Failed to save preferences' });
     }
 };

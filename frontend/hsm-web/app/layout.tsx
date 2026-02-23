@@ -9,8 +9,8 @@ const outfit = Outfit({ subsets: ["latin"], variable: "--font-heading" });
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "HSM Simulator Admin",
-  description: "Educational HSM Management Interface",
+  title: "HSM Admin — MoneTIC",
+  description: "Interface d'administration du module de sécurité matériel — MoneTIC",
 };
 
 export default function RootLayout({

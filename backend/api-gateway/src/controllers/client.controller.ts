@@ -3,7 +3,7 @@
  * Virtual cards and transactions for clients
  */
 import { Request, Response } from 'express';
-import { query } from '../config/database';
+import { pool, query } from '../config/database';
 import { logger } from '../utils/logger';
 import { v4 as uuidv4 } from 'uuid';
 import { applyMerchantAccountEntry } from '../services/merchantLedger.service';
@@ -29,6 +29,27 @@ type ClientAccountEntryInput = {
     description?: string | null;
     metadata?: Record<string, any> | null;
     allowNegative?: boolean;
+};
+
+const TRANSFER_TYPES = ['SEPA', 'INSTANT'] as const;
+type TransferType = typeof TRANSFER_TYPES[number];
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const TRANSFER_TYPE_CONFIG: Record<TransferType, {
+    label: string;
+    estimatedExecution: string;
+    maxPerTransfer: number;
+}> = {
+    SEPA: {
+        label: 'SEPA standard',
+        estimatedExecution: 'J+1 ouvre',
+        maxPerTransfer: 100000
+    },
+    INSTANT: {
+        label: 'SEPA instantane',
+        estimatedExecution: '< 10 secondes',
+        maxPerTransfer: 15000
+    }
 };
 
 const CLIENT_ACCOUNT_SELECT = `
@@ -78,6 +99,178 @@ const normalizePositiveAmount = (value: any): number | null => {
     return Math.round(parsed * 100) / 100;
 };
 
+const normalizeTransferType = (value: unknown): TransferType => {
+    const normalized = typeof value === 'string' ? value.trim().toUpperCase() : '';
+    return normalized === 'INSTANT' ? 'INSTANT' : 'SEPA';
+};
+
+const normalizeIban = (value: string): string => value.replace(/\s+/g, '').toUpperCase();
+const isUuid = (value: string): boolean => UUID_PATTERN.test(value.trim());
+
+type ResolvedMerchantBeneficiary = {
+    merchantId: string;
+    merchantName: string;
+    iban: string;
+    bic: string | null;
+};
+
+const resolveMerchantBeneficiaryByIban = async (
+    normalizedIban: string
+): Promise<ResolvedMerchantBeneficiary | null> => {
+    const result = await query(
+        `SELECT
+            a.merchant_id,
+            a.iban,
+            a.bic,
+            u.username,
+            u.first_name,
+            u.last_name
+         FROM merchant.accounts a
+         JOIN users.users u ON u.id = a.merchant_id
+         WHERE REPLACE(UPPER(a.iban), ' ', '') = $1
+           AND u.role = 'ROLE_MARCHAND'
+         LIMIT 1`,
+        [normalizedIban]
+    );
+
+    if ((result.rowCount || 0) === 0) {
+        return null;
+    }
+
+    const row = result.rows[0];
+    const firstName = typeof row.first_name === 'string' ? row.first_name.trim() : '';
+    const lastName = typeof row.last_name === 'string' ? row.last_name.trim() : '';
+    const merchantName = [firstName, lastName].filter(Boolean).join(' ')
+        || row.username
+        || 'Merchant';
+
+    return {
+        merchantId: row.merchant_id,
+        merchantName,
+        iban: row.iban,
+        bic: row.bic || null
+    };
+};
+
+const buildTransferProcessingTimeline = (params: {
+    transactionId: string;
+    stan: string;
+    authorizationCode: string;
+    amount: number;
+    transferType: TransferType;
+    merchantName: string;
+    beneficiaryIban: string;
+    merchantBucket: 'AVAILABLE' | 'PENDING';
+}) => {
+    const steps: any[] = [];
+    const baseTime = Date.now();
+    let elapsed = 0;
+
+    const addStep = (
+        name: string,
+        category: string,
+        status: string,
+        durationMs: number,
+        details: Record<string, any>
+    ) => {
+        elapsed += durationMs;
+        steps.push({
+            step: steps.length + 1,
+            name,
+            category,
+            status,
+            timestamp: new Date(baseTime + elapsed).toISOString(),
+            duration_ms: durationMs,
+            details
+        });
+    };
+
+    addStep('Transfer Initiated', 'process', 'success', 0, {
+        amount: params.amount,
+        currency: 'EUR',
+        transferType: params.transferType,
+        merchantName: params.merchantName,
+        beneficiaryIban: params.beneficiaryIban
+    });
+    addStep('Beneficiary Verification', 'security', 'success', 10, {
+        scheme: 'SEPA',
+        beneficiaryIban: params.beneficiaryIban,
+        merchantName: params.merchantName
+    });
+    addStep('Client Limit Verification', 'decision', 'success', 4, {
+        amount: params.amount,
+        transferType: params.transferType
+    });
+    addStep('Client Balance Check', 'decision', 'success', 3, {
+        amount: params.amount
+    });
+    addStep('Compliance Screening', 'security', 'success', 14, {
+        score: 2,
+        riskLevel: 'LOW',
+        outcome: 'ALLOW'
+    });
+    addStep('Authorization Decision', 'decision', 'approved', 5, {
+        responseCode: '00',
+        authorizationCode: params.authorizationCode,
+        transactionId: params.transactionId,
+        stan: params.stan
+    });
+    addStep('Merchant Ledger Booking', 'data', 'success', 12, {
+        merchantName: params.merchantName,
+        bucket: params.merchantBucket,
+        entryType: 'ADJUSTMENT'
+    });
+    addStep('Transfer Confirmation', 'process', 'success', 6, {
+        estimatedExecution: TRANSFER_TYPE_CONFIG[params.transferType].estimatedExecution,
+        executionMode: params.transferType === 'INSTANT' ? 'REAL_TIME' : 'DEFERRED'
+    });
+
+    return steps;
+};
+
+const buildRealTransactionIntegrityClause = (alias?: string): string => {
+    const tx = alias ? `${alias}.` : '';
+    return `
+        ${tx}client_id IS NOT NULL
+        AND EXISTS (
+            SELECT 1
+            FROM users.users u_client
+            WHERE u_client.id = ${tx}client_id
+              AND u_client.role = 'ROLE_CLIENT'
+        )
+        AND EXISTS (
+            SELECT 1
+            FROM client.bank_accounts ba
+            WHERE ba.client_id = ${tx}client_id
+        )
+        AND (
+            ${tx}merchant_id IS NULL
+            OR (
+                EXISTS (
+                    SELECT 1
+                    FROM users.users u_merchant
+                    WHERE u_merchant.id = ${tx}merchant_id
+                      AND u_merchant.role = 'ROLE_MARCHAND'
+                )
+                AND EXISTS (
+                    SELECT 1
+                    FROM merchant.accounts ma
+                    WHERE ma.merchant_id = ${tx}merchant_id
+                )
+            )
+        )
+        AND (
+            ${tx}card_id IS NULL
+            OR EXISTS (
+                SELECT 1
+                FROM client.virtual_cards vc
+                WHERE vc.id = ${tx}card_id
+                  AND vc.client_id = ${tx}client_id
+            )
+        )
+    `;
+};
+
 const mapClientAccountRow = (row: any) => ({
     id: row.id,
     clientId: row.client_id,
@@ -109,6 +302,31 @@ const getClientBankAccount = async (clientId: string) => {
     }
 
     return mapClientAccountRow(result.rows[0]);
+};
+
+const getOutgoingTransferUsage = async (clientId: string) => {
+    const result = await query(
+        `SELECT
+            COALESCE(SUM(amount) FILTER (
+                WHERE direction = 'DEBIT'
+                  AND entry_type = 'WITHDRAWAL'
+                  AND created_at >= DATE_TRUNC('day', NOW())
+            ), 0) AS outgoing_today,
+            COALESCE(SUM(amount) FILTER (
+                WHERE direction = 'DEBIT'
+                  AND entry_type = 'WITHDRAWAL'
+                  AND created_at >= DATE_TRUNC('month', NOW())
+            ), 0) AS outgoing_month
+         FROM client.bank_account_entries
+         WHERE client_id = $1`,
+        [clientId]
+    );
+
+    const row = result.rows[0] || {};
+    return {
+        outgoingToday: toNumber(row.outgoing_today),
+        outgoingMonth: toNumber(row.outgoing_month)
+    };
 };
 
 const applyClientAccountEntry = async (
@@ -509,31 +727,280 @@ export const deposit = async (req: Request, res: Response) => {
 export const withdraw = async (req: Request, res: Response) => {
     try {
         const userId = (req as any).user?.userId;
-        const { amount, reference, description } = req.body || {};
+        const { amount, reference, description, transferType, beneficiaryIban, beneficiaryName } = req.body || {};
         const normalizedAmount = normalizePositiveAmount(amount);
 
         if (normalizedAmount === null) {
             return res.status(400).json({ success: false, error: 'amount must be a positive number' });
         }
 
-        const entry = await applyClientAccountEntry(userId, {
-            entryType: 'WITHDRAWAL',
-            direction: 'DEBIT',
-            amount: normalizedAmount,
-            reference: reference || 'WITHDRAWAL',
-            description: description || 'Manual withdrawal on client account',
-            metadata: { source: 'client-ui' },
-            allowNegative: false
-        });
+        const providedTransferType = typeof transferType === 'string'
+            ? transferType.trim().toUpperCase()
+            : null;
+
+        if (providedTransferType && !TRANSFER_TYPES.includes(providedTransferType as TransferType)) {
+            return res.status(400).json({
+                success: false,
+                error: `transferType must be one of: ${TRANSFER_TYPES.join(', ')}`
+            });
+        }
+
+        const normalizedTransferType = normalizeTransferType(providedTransferType);
+        const transferConfig = TRANSFER_TYPE_CONFIG[normalizedTransferType];
+
+        const normalizedBeneficiaryIban = typeof beneficiaryIban === 'string'
+            ? normalizeIban(beneficiaryIban)
+            : null;
+
+        if (normalizedBeneficiaryIban && !/^[A-Z0-9]{15,34}$/.test(normalizedBeneficiaryIban)) {
+            return res.status(400).json({
+                success: false,
+                error: 'beneficiaryIban must be a valid IBAN format'
+            });
+        }
+
+        if (normalizedAmount > transferConfig.maxPerTransfer) {
+            return res.status(400).json({
+                success: false,
+                error: `${normalizedTransferType} transfer max amount is ${transferConfig.maxPerTransfer.toFixed(2)} EUR`,
+                code: 'TRANSFER_MAX_PER_TXN_EXCEEDED'
+            });
+        }
+
+        const [accountSnapshot, transferUsage] = await Promise.all([
+            getClientBankAccount(userId),
+            getOutgoingTransferUsage(userId)
+        ]);
+
+        if (transferUsage.outgoingToday + normalizedAmount > accountSnapshot.dailyTransferLimit) {
+            return res.status(400).json({
+                success: false,
+                error: 'Daily transfer limit exceeded',
+                code: 'DAILY_TRANSFER_LIMIT_EXCEEDED',
+                details: {
+                    dailyTransferLimit: accountSnapshot.dailyTransferLimit,
+                    alreadyTransferredToday: transferUsage.outgoingToday,
+                    requestedAmount: normalizedAmount
+                }
+            });
+        }
+
+        if (transferUsage.outgoingMonth + normalizedAmount > accountSnapshot.monthlyTransferLimit) {
+            return res.status(400).json({
+                success: false,
+                error: 'Monthly transfer limit exceeded',
+                code: 'MONTHLY_TRANSFER_LIMIT_EXCEEDED',
+                details: {
+                    monthlyTransferLimit: accountSnapshot.monthlyTransferLimit,
+                    alreadyTransferredThisMonth: transferUsage.outgoingMonth,
+                    requestedAmount: normalizedAmount
+                }
+            });
+        }
+
+        const normalizedBeneficiaryName = typeof beneficiaryName === 'string'
+            ? beneficiaryName.trim()
+            : null;
+
+        const resolvedMerchant = normalizedBeneficiaryIban
+            ? await resolveMerchantBeneficiaryByIban(normalizedBeneficiaryIban)
+            : null;
+
+        const transferReference = reference || `${normalizedTransferType}-TRANSFER`;
+        const transferDescription = description || `${transferConfig.label} transfer initiated from client account`;
+        const beneficiaryLabel = normalizedBeneficiaryName || resolvedMerchant?.merchantName || null;
+
+        let entry: any;
+        let transferTransaction: any = null;
+        let merchantCredit: any = null;
+
+        if (resolvedMerchant) {
+            const transactionId = `TRF${Date.now()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+            const stan = String(Math.floor(Math.random() * 1000000)).padStart(6, '0');
+            const authorizationCode = Math.random().toString(36).slice(2, 8).toUpperCase();
+            const merchantBucket: 'AVAILABLE' | 'PENDING' = normalizedTransferType === 'INSTANT'
+                ? 'AVAILABLE'
+                : 'PENDING';
+
+            const processingSteps = buildTransferProcessingTimeline({
+                transactionId,
+                stan,
+                authorizationCode,
+                amount: normalizedAmount,
+                transferType: normalizedTransferType,
+                merchantName: resolvedMerchant.merchantName,
+                beneficiaryIban: normalizedBeneficiaryIban || resolvedMerchant.iban,
+                merchantBucket
+            });
+
+            const dbClient = await pool.connect();
+
+            try {
+                await dbClient.query('BEGIN');
+
+                const accountEntryResult = await dbClient.query(
+                    `SELECT * FROM client.apply_bank_account_entry(
+                        $1, $2, $3, $4, $5, $6, $7::jsonb, $8
+                    )`,
+                    [
+                        userId,
+                        'WITHDRAWAL',
+                        'DEBIT',
+                        normalizedAmount,
+                        transferReference,
+                        transferDescription,
+                        JSON.stringify({
+                            source: 'client-ui',
+                            transferType: normalizedTransferType,
+                            transferLabel: transferConfig.label,
+                            estimatedExecution: transferConfig.estimatedExecution,
+                            beneficiaryIban: normalizedBeneficiaryIban,
+                            beneficiaryName: beneficiaryLabel,
+                            merchantId: resolvedMerchant.merchantId,
+                            transferTransactionId: transactionId
+                        }),
+                        false
+                    ]
+                );
+
+                if ((accountEntryResult.rowCount || 0) === 0) {
+                    throw new Error('Failed to apply client transfer entry');
+                }
+
+                const accountEntry = accountEntryResult.rows[0];
+                entry = {
+                    entryId: accountEntry.entry_id,
+                    accountId: accountEntry.account_id,
+                    balance: toNumber(accountEntry.balance),
+                    availableBalance: toNumber(accountEntry.available_balance),
+                    currency: accountEntry.currency
+                };
+
+                const transactionResult = await dbClient.query(
+                    `INSERT INTO client.transactions
+                     (transaction_id, stan, client_id, merchant_id, amount, currency, type, status,
+                      response_code, authorization_code, merchant_name, merchant_mcc, terminal_id, processing_steps)
+                     VALUES ($1, $2, $3, $4, $5, 'EUR', 'TRANSFER', 'APPROVED', '00', $6, $7, $8, $9, $10::jsonb)
+                     RETURNING *`,
+                    [
+                        transactionId,
+                        stan,
+                        userId,
+                        resolvedMerchant.merchantId,
+                        normalizedAmount,
+                        authorizationCode,
+                        resolvedMerchant.merchantName,
+                        '4829',
+                        'BANK_TRANSFER',
+                        JSON.stringify(processingSteps)
+                    ]
+                );
+
+                transferTransaction = transactionResult.rows[0] || null;
+
+                const merchantCreditResult = await dbClient.query(
+                    `SELECT * FROM merchant.apply_account_entry(
+                        $1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10
+                    )`,
+                    [
+                        resolvedMerchant.merchantId,
+                        'ADJUSTMENT',
+                        'CREDIT',
+                        merchantBucket,
+                        normalizedAmount,
+                        transactionId,
+                        transferReference,
+                        `${transferConfig.label} incoming transfer from client account`,
+                        JSON.stringify({
+                            source: 'client-bank-transfer',
+                            transferType: normalizedTransferType,
+                            clientId: userId,
+                            beneficiaryIban: normalizedBeneficiaryIban,
+                            beneficiaryName: beneficiaryLabel,
+                            transactionId
+                        }),
+                        false
+                    ]
+                );
+
+                if ((merchantCreditResult.rowCount || 0) === 0) {
+                    throw new Error('Failed to apply merchant account credit');
+                }
+
+                const merchantEntry = merchantCreditResult.rows[0];
+                merchantCredit = {
+                    merchantId: resolvedMerchant.merchantId,
+                    merchantName: resolvedMerchant.merchantName,
+                    bucket: merchantBucket,
+                    entryType: 'ADJUSTMENT',
+                    entryId: merchantEntry.entry_id,
+                    availableBalance: toNumber(merchantEntry.available_balance),
+                    pendingBalance: toNumber(merchantEntry.pending_balance),
+                    reserveBalance: toNumber(merchantEntry.reserve_balance)
+                };
+
+                await dbClient.query('COMMIT');
+            } catch (transactionError) {
+                await dbClient.query('ROLLBACK');
+                throw transactionError;
+            } finally {
+                dbClient.release();
+            }
+        } else {
+            entry = await applyClientAccountEntry(userId, {
+                entryType: 'WITHDRAWAL',
+                direction: 'DEBIT',
+                amount: normalizedAmount,
+                reference: transferReference,
+                description: transferDescription,
+                metadata: {
+                    source: 'client-ui',
+                    transferType: normalizedTransferType,
+                    transferLabel: transferConfig.label,
+                    estimatedExecution: transferConfig.estimatedExecution,
+                    beneficiaryIban: normalizedBeneficiaryIban,
+                    beneficiaryName: beneficiaryLabel
+                },
+                allowNegative: false
+            });
+        }
 
         const account = await getClientBankAccount(userId);
         await ensureAutoIssuedClientCard(userId);
 
         res.json({
             success: true,
-            message: 'Withdrawal applied',
+            message: resolvedMerchant
+                ? `${transferConfig.label} transfer applied and merchant credited`
+                : `${transferConfig.label} transfer applied`,
             entry,
-            account
+            account,
+            transaction: transferTransaction,
+            merchantCredit,
+            transfer: {
+                type: normalizedTransferType,
+                label: transferConfig.label,
+                estimatedExecution: transferConfig.estimatedExecution,
+                maxPerTransfer: transferConfig.maxPerTransfer,
+                beneficiary: {
+                    iban: normalizedBeneficiaryIban,
+                    name: beneficiaryLabel,
+                    merchantMatched: Boolean(resolvedMerchant),
+                    merchantId: resolvedMerchant?.merchantId || null
+                },
+                dailyTransferLimit: accountSnapshot.dailyTransferLimit,
+                monthlyTransferLimit: accountSnapshot.monthlyTransferLimit,
+                alreadyTransferredToday: transferUsage.outgoingToday,
+                alreadyTransferredThisMonth: transferUsage.outgoingMonth,
+                remainingDailyLimit: Math.max(
+                    Math.round((accountSnapshot.dailyTransferLimit - transferUsage.outgoingToday - normalizedAmount) * 100) / 100,
+                    0
+                ),
+                remainingMonthlyLimit: Math.max(
+                    Math.round((accountSnapshot.monthlyTransferLimit - transferUsage.outgoingMonth - normalizedAmount) * 100) / 100,
+                    0
+                )
+            }
         });
     } catch (error: any) {
         if (error.code === 'P0001' || error.code === '22003' || error.code === '22023') {
@@ -892,17 +1359,26 @@ export const getMyTransactions = async (req: Request, res: Response) => {
         const limit = parseInt(req.query.limit as string) || 20;
         const offset = (page - 1) * limit;
         const status = req.query.status as string;
+        const type = req.query.type as string;
         const cardId = req.query.cardId as string;
         const fromDate = req.query.fromDate as string;
         const toDate = req.query.toDate as string;
 
-        let whereConditions = ['client_id = $1'];
+        let whereConditions = [
+            'client_id = $1',
+            buildRealTransactionIntegrityClause()
+        ];
         let params: any[] = [userId];
         let paramIndex = 2;
 
         if (status) {
             whereConditions.push(`status = $${paramIndex}`);
             params.push(status);
+            paramIndex++;
+        }
+        if (type) {
+            whereConditions.push(`type = $${paramIndex}`);
+            params.push(type);
             paramIndex++;
         }
         if (cardId) {
@@ -946,8 +1422,8 @@ export const getMyTransactions = async (req: Request, res: Response) => {
             pagination: {
                 page,
                 limit,
-                total: parseInt(countResult.rows[0].count),
-                totalPages: Math.ceil(parseInt(countResult.rows[0].count) / limit)
+                total: parseInt(countResult.rows[0]?.count ?? '0'),
+                totalPages: Math.ceil(parseInt(countResult.rows[0]?.count ?? '0') / limit)
             }
         });
     } catch (error: any) {
@@ -963,9 +1439,15 @@ export const getTransactionById = async (req: Request, res: Response) => {
     try {
         const userId = (req as any).user?.userId;
         const { id } = req.params;
+        if (!isUuid(String(id || ''))) {
+            return res.status(400).json({ success: false, error: 'Invalid transaction ID format' });
+        }
 
         const result = await query(
-            `SELECT * FROM client.transactions WHERE id = $1 AND client_id = $2`,
+            `SELECT * FROM client.transactions
+             WHERE id = $1
+               AND client_id = $2
+               AND ${buildRealTransactionIntegrityClause()}`,
             [id, userId]
         );
 
@@ -1122,6 +1604,21 @@ export const simulatePayment = async (req: Request, res: Response) => {
             addStep('Card Validation', 'security', 'failed', {
                 cardStatus: card.status, reason: 'Card is not active'
             });
+            const declinedTxnId1 = `TXN${Date.now()}${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+            await query(
+                `INSERT INTO client.transactions
+                 (transaction_id, stan, card_id, masked_pan, client_id, merchant_id, amount, currency, type, status,
+                  response_code, merchant_name, merchant_mcc, terminal_id, processing_steps)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, 'EUR', $8, 'DECLINED', '14', $9, $10, $11, $12::jsonb)`,
+                [
+                    declinedTxnId1,
+                    String(Math.floor(Math.random() * 1000000)).padStart(6, '0'),
+                    cardId, card.masked_pan, userId, resolvedMerchantId,
+                    parseFloat(amount), paymentType || 'PURCHASE',
+                    resolvedMerchantName, resolvedMerchantMcc, resolvedTerminalId,
+                    JSON.stringify(processingSteps)
+                ]
+            ).catch(() => {}); // non-blocking, don't fail the response
             return res.status(400).json({
                 success: false, error: 'Card is not active', responseCode: '14',
                 processingSteps
@@ -1140,6 +1637,21 @@ export const simulatePayment = async (req: Request, res: Response) => {
                 singleTxnLimit: parseFloat(card.single_txn_limit), amount: parsedAmount,
                 reason: 'Amount exceeds single transaction limit'
             });
+            const declinedTxnId2 = `TXN${Date.now()}${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+            await query(
+                `INSERT INTO client.transactions
+                 (transaction_id, stan, card_id, masked_pan, client_id, merchant_id, amount, currency, type, status,
+                  response_code, merchant_name, merchant_mcc, terminal_id, processing_steps)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, 'EUR', $8, 'DECLINED', '61', $9, $10, $11, $12::jsonb)`,
+                [
+                    declinedTxnId2,
+                    String(Math.floor(Math.random() * 1000000)).padStart(6, '0'),
+                    cardId, card.masked_pan, userId, resolvedMerchantId,
+                    parsedAmount, paymentType || 'PURCHASE',
+                    resolvedMerchantName, resolvedMerchantMcc, resolvedTerminalId,
+                    JSON.stringify(processingSteps)
+                ]
+            ).catch(() => {});
             return res.status(400).json({
                 success: false, error: 'Amount exceeds single transaction limit', responseCode: '61',
                 processingSteps
@@ -1151,6 +1663,21 @@ export const simulatePayment = async (req: Request, res: Response) => {
                 dailyLimit: parseFloat(card.daily_limit), dailySpent: parseFloat(card.daily_spent),
                 amount: parsedAmount, reason: 'Daily limit exceeded'
             });
+            const declinedTxnId3 = `TXN${Date.now()}${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+            await query(
+                `INSERT INTO client.transactions
+                 (transaction_id, stan, card_id, masked_pan, client_id, merchant_id, amount, currency, type, status,
+                  response_code, merchant_name, merchant_mcc, terminal_id, processing_steps)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, 'EUR', $8, 'DECLINED', '65', $9, $10, $11, $12::jsonb)`,
+                [
+                    declinedTxnId3,
+                    String(Math.floor(Math.random() * 1000000)).padStart(6, '0'),
+                    cardId, card.masked_pan, userId, resolvedMerchantId,
+                    parsedAmount, paymentType || 'PURCHASE',
+                    resolvedMerchantName, resolvedMerchantMcc, resolvedTerminalId,
+                    JSON.stringify(processingSteps)
+                ]
+            ).catch(() => {});
             return res.status(400).json({
                 success: false, error: 'Daily limit exceeded', responseCode: '65',
                 processingSteps
@@ -1179,6 +1706,21 @@ export const simulatePayment = async (req: Request, res: Response) => {
                 fundingSource: isAutoIssuedCard ? 'BANK_ACCOUNT' : 'CARD_ALLOCATION',
                 reason: 'Insufficient funds'
             });
+            const declinedTxnId4 = `TXN${Date.now()}${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+            await query(
+                `INSERT INTO client.transactions
+                 (transaction_id, stan, card_id, masked_pan, client_id, merchant_id, amount, currency, type, status,
+                  response_code, merchant_name, merchant_mcc, terminal_id, processing_steps)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, 'EUR', $8, 'DECLINED', '51', $9, $10, $11, $12::jsonb)`,
+                [
+                    declinedTxnId4,
+                    String(Math.floor(Math.random() * 1000000)).padStart(6, '0'),
+                    cardId, card.masked_pan, userId, resolvedMerchantId,
+                    parsedAmount, paymentType || 'PURCHASE',
+                    resolvedMerchantName, resolvedMerchantMcc, resolvedTerminalId,
+                    JSON.stringify(processingSteps)
+                ]
+            ).catch(() => {});
             return res.status(400).json({
                 success: false, error: 'Insufficient funds', responseCode: '51',
                 processingSteps
@@ -1495,9 +2037,15 @@ export const getTransactionTimeline = async (req: Request, res: Response) => {
     try {
         const userId = (req as any).user?.userId;
         const { id } = req.params;
+        if (!isUuid(String(id || ''))) {
+            return res.status(400).json({ success: false, error: 'Invalid transaction ID format' });
+        }
 
         const result = await query(
-            `SELECT * FROM client.transactions WHERE id = $1 AND client_id = $2`,
+            `SELECT * FROM client.transactions
+             WHERE id = $1
+               AND client_id = $2
+               AND ${buildRealTransactionIntegrityClause()}`,
             [id, userId]
         );
 

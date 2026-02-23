@@ -20,9 +20,9 @@ export function WorkshopCoursePage({
     description,
     icon,
     sections,
-    backHref = '/workshops',
-    backLabel = 'Retour aux ateliers',
-    doneHref = '/workshops',
+    backHref = '/student/cursus',
+    backLabel = 'Retour au cursus',
+    doneHref = '/student/cursus',
     doneLabel = "Terminer l'atelier",
 }: {
     workshopLabel: string;
@@ -122,7 +122,7 @@ export function WorkshopCoursePage({
             description={description}
             icon={icon}
             crumbs={[
-                { label: 'Ateliers', href: '/workshops' },
+                { label: 'Cursus', href: '/student/cursus' },
                 { label: workshopLabel },
             ]}
             backHref={backHref}

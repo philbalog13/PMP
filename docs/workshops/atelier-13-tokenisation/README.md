@@ -132,7 +132,7 @@ Implémentez les cas suivants :
    - [ ] c) Limité à un marchand spécifique
    - [ ] d) Généré par le client
 
-**Réponses**: 1-b, 2-b, 3-b, 4-c, 5-c
+**Correction**: disponible uniquement dans la version formateur.
 
 ---
 
@@ -150,3 +150,5 @@ Implémentez les cas suivants :
 - [ ] Vous savez ce qu'est un Token Vault
 - [ ] Vous connaissez les types de tokens
 - [ ] Vous comprenez l'impact sur la conformité PCI
+
+

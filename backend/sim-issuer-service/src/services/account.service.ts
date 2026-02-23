@@ -72,6 +72,20 @@ export const getAccountByPan = (pan: string): Account | null => {
     return accounts.get(pan) || null;
 };
 
+export const getAccountById = (id: string): Account | null => {
+    const upperId = id.toUpperCase();
+    for (const account of accounts.values()) {
+        if (account.id.toUpperCase() === upperId) {
+            return account;
+        }
+    }
+    return null;
+};
+
+export const resolveAccountRef = (ref: string): Account | null => {
+    return getAccountByPan(ref) || getAccountById(ref);
+};
+
 export const createAccount = (data: Partial<Account> & { pan: string }): Account => {
     const account: Account = {
         id: data.id || `ACC${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
@@ -143,5 +157,13 @@ export const updateAccountBalance = (pan: string, newBalance: number): Account |
     if (!account) return null;
     account.balance = newBalance;
     accounts.set(pan, account);
+    return account;
+};
+
+export const updateAccountBalanceByRef = (ref: string, newBalance: number): Account | null => {
+    const account = resolveAccountRef(ref);
+    if (!account) return null;
+    account.balance = newBalance;
+    accounts.set(account.pan, account);
     return account;
 };

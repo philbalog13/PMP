@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@shared/context/AuthContext';
 import { Wallet, CreditCard, Activity, Building2, RefreshCcw, ArrowRight } from 'lucide-react';
@@ -198,9 +199,14 @@ export default function ClientDashboardHome() {
         <div className="min-h-screen bg-slate-950 py-8 pb-12">
             <div className="max-w-6xl mx-auto px-6 space-y-6">
                 <div className="flex items-center justify-between gap-4">
-                    <div>
-                        <h1 className="text-3xl font-bold text-white mb-1">Bonjour, {welcomeName}</h1>
-                        <p className="text-slate-400">Données bancaires et cartes synchronisées en temps réel.</p>
+                    <div className="flex items-center gap-6">
+                        <div className="shrink-0">
+                            <Image src="/icons/bank_institution_icon.png" alt="Bank" width={64} height={64} className="rounded-2xl drop-shadow-[0_0_15px_rgba(255,180,0,0.4)]" />
+                        </div>
+                        <div>
+                            <h1 className="text-3xl font-bold text-white mb-1">Bonjour, {welcomeName}</h1>
+                            <p className="text-slate-400">Données bancaires et cartes synchronisées en temps réel.</p>
+                        </div>
                     </div>
                     <div className="flex items-center gap-2">
                         <Link
@@ -253,8 +259,8 @@ export default function ClientDashboardHome() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2 rounded-2xl border border-white/10 bg-slate-800/50 p-6">
                         <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-                                <CreditCard size={18} className="text-amber-400" />
+                            <h2 className="text-xl font-semibold text-white flex items-center gap-3">
+                                <Image src="/icons/virtual_card_icon.png" alt="Card" width={24} height={24} className="drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
                                 Cartes actives
                             </h2>
                             <Link href="/cards" className="text-sm text-amber-400 hover:text-amber-300">

@@ -16,8 +16,8 @@ interface AuthContextType extends AuthState {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const ACCESS_TOKEN_COOKIE = 'token';
 const REFRESH_TOKEN_COOKIE = 'refreshToken';
-const ACCESS_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 7;
-const REFRESH_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30;
+const ACCESS_TOKEN_TTL_SECONDS = 60 * 60 * 2;   // 2h — aligned with backend JWT_EXPIRES_IN
+const REFRESH_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days
 
 /**
  * AuthProvider Component
@@ -115,7 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const expirationTime = payload.exp * 1000; // Convert to milliseconds
         const currentTime = Date.now();
 
-        return currentTime >= expirationTime;
+        return currentTime > expirationTime;
     };
 
     /**
@@ -526,8 +526,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             isLoading: false,
         });
 
-        // Optionally redirect to login page
-        // window.location.href = '/login';
+        // Hard redirect to login — destroys React state tree and prevents
+        // revalidation effects from restoring the session before the page
+        // finishes navigating.
+        window.location.href = '/login';
     }, [authState.token]);
 
     /**

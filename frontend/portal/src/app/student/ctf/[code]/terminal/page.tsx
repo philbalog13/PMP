@@ -70,7 +70,7 @@ export default function CtfTerminalPage({ params }: { params: Promise<{ code: st
             <div className="space-y-6">
                 <CourseCard className="p-6 md:p-8">
                     <p className="text-sm text-slate-300 leading-relaxed">
-                        Dans l'AttackBox, utilisez le helper ci-dessous pour afficher les objectifs et commandes utiles.
+                        Dans l&apos;AttackBox, utilisez le helper ci-dessous pour afficher les objectifs et commandes utiles.
                     </p>
                     <div className="mt-4 flex flex-col sm:flex-row gap-2">
                         <pre className="flex-1 rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-emerald-200 overflow-auto">

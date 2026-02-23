@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { ArrowRight, Check, Clipboard, Info, Lightbulb, ShieldAlert } from 'lucide-react';
+import { GLOSSARY, GLOSSARY_REGEX } from '../../lib/glossary';
 
 type HeadingLevel = 1 | 2 | 3 | 4;
 
@@ -40,6 +41,20 @@ function escapeHtml(value: string): string {
         .replace(/>/g, '&gt;');
 }
 
+/** Apply glossary tooltips to text nodes in an HTML string (skips HTML tags). */
+function applyGlossaryToHtml(html: string): string {
+    return html.split(/(<[^>]+>)/).map((part, index) => {
+        if (index % 2 === 1) return part; // HTML tag — leave untouched
+        GLOSSARY_REGEX.lastIndex = 0; // reset global regex
+        return part.replace(GLOSSARY_REGEX, (term) => {
+            const def = GLOSSARY[term] || '';
+            if (!def) return term;
+            const escaped = def.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            return `<abbr title="${escaped}" class="cursor-help border-b border-dotted border-cyan-400/40 text-cyan-200 no-underline">${term}</abbr>`;
+        });
+    }).join('');
+}
+
 function toInlineHtml(text: string): string {
     let safe = escapeHtml(text);
     safe = safe.replace(/`([^`]+)`/g, '<code class="rounded bg-slate-800/70 px-1.5 py-0.5 text-emerald-300">$1</code>');
@@ -49,6 +64,7 @@ function toInlineHtml(text: string): string {
         /\[([^\]]+)\]\(([^)]+)\)/g,
         '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-cyan-300 underline decoration-cyan-400/50 hover:text-cyan-200">$1</a>'
     );
+    safe = applyGlossaryToHtml(safe);
     return safe;
 }
 

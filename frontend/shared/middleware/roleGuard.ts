@@ -41,9 +41,6 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig[]> = {
         // Merchant routes
         { path: '/merchant', allowedRoles: [UserRole.MARCHAND] },
 
-        // Workshops are accessible for pedagogical roles
-        { path: '/workshops', allowedRoles: [UserRole.ETUDIANT, UserRole.FORMATEUR] },
-
         // Lab is for students and trainers
         { path: '/lab', allowedRoles: [UserRole.ETUDIANT, UserRole.FORMATEUR] },
     ],
@@ -70,6 +67,15 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig[]> = {
         },
     ],
 };
+
+function applyNoStoreHeaders(response: NextResponse): NextResponse {
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+    response.headers.set('Vary', 'Cookie, Authorization');
+    response.headers.set('x-middleware-cache', 'no-cache');
+    return response;
+}
 
 /**
  * Decode JWT token without verification
@@ -175,13 +181,7 @@ function hasAnyPermission(userPermissions: Permission[], requiredPermissions: Pe
 export function createRoleGuard(appName: string, customRoutes?: RouteConfig[]) {
     const routes = customRoutes || ROUTE_CONFIGS[appName] || [];
     const portalLoginBase = APP_URLS.portal;
-    const noStoreNext = () => {
-        const response = NextResponse.next();
-        response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-        response.headers.set('Pragma', 'no-cache');
-        response.headers.set('Expires', '0');
-        return response;
-    };
+    const noStoreNext = () => applyNoStoreHeaders(NextResponse.next());
 
     return function middleware(request: NextRequest) {
         const { pathname } = request.nextUrl;
@@ -209,7 +209,7 @@ export function createRoleGuard(appName: string, customRoutes?: RouteConfig[]) {
 
             console.warn(`[RoleGuard] No valid auth data found for ${pathname}. Redirecting to login (${isPortalApp ? 'portal-local' : 'portal-central'}).`);
             loginUrl.searchParams.set('redirect', isPortalApp ? pathname : targetUrl);
-            return NextResponse.redirect(loginUrl);
+            return applyNoStoreHeaders(NextResponse.redirect(loginUrl));
         }
 
         const { user, needsRefresh } = authData;
@@ -273,7 +273,7 @@ function redirectBasedOnRole(request: NextRequest, role: UserRole): NextResponse
     const isAbsolute = /^https?:\/\//i.test(redirectPath);
     const target = isAbsolute ? redirectPath : `${portalBase}${redirectPath}`;
     const url = new URL(target);
-    return NextResponse.redirect(url);
+    return applyNoStoreHeaders(NextResponse.redirect(url));
 }
 
 /**

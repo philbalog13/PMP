@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useAuth } from '../../auth/useAuth';
 import {
     BookOpen, Clock, ChevronRight, ArrowRight,
@@ -130,18 +131,23 @@ export default function CursusListPage() {
                 <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-600/20 via-teal-600/10 to-slate-900/50 border border-emerald-500/10 p-8 md:p-12 mb-10">
                     <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(16,185,129,0.15),_transparent_60%)]" />
                     <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                        <div>
-                            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-xs font-semibold mb-4">
-                                <Sparkles size={14} />
-                                Parcours d&apos;apprentissage
+                        <div className="flex items-center gap-6">
+                            <div className="shrink-0 animate-pulse-slow">
+                                <Image src="/icons/student_hacker_icon.png" alt="Student Profile" width={80} height={80} className="rounded-full shadow-2xl border-2 border-emerald-500/20 drop-shadow-[0_0_15px_rgba(16,185,129,0.4)]" />
                             </div>
-                            <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">
-                                Mes Cursus
-                            </h1>
-                            <p className="text-slate-400 text-sm md:text-base max-w-lg">
-                                Progressez à travers des parcours structurés couvrant tous les aspects de la monétique,
-                                des fondamentaux aux techniques expertes.
-                            </p>
+                            <div>
+                                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-xs font-semibold mb-4">
+                                    <Sparkles size={14} />
+                                    Parcours d&apos;apprentissage
+                                </div>
+                                <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">
+                                    Mes Cursus
+                                </h1>
+                                <p className="text-slate-400 text-sm md:text-base max-w-lg">
+                                    Progressez à travers des parcours structurés couvrant tous les aspects de la monétique,
+                                    des fondamentaux aux techniques expertes.
+                                </p>
+                            </div>
                         </div>
                         <div className="flex items-center gap-6">
                             {/* Overall progress ring */}

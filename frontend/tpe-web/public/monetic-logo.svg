@@ -1,0 +1,43 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="premium-gradient" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0F172A" />
+      <stop offset="50%" stop-color="#1E293B" />
+      <stop offset="100%" stop-color="#0F172A" />
+    </linearGradient>
+    <linearGradient id="accent-gradient" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3B82F6" />
+      <stop offset="50%" stop-color="#06B6D4" />
+      <stop offset="100%" stop-color="#3B82F6" />
+    </linearGradient>
+    <linearGradient id="gold-gradient" x1="100" y1="100" x2="400" y2="400" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FCD34D" />
+      <stop offset="100%" stop-color="#F59E0B" />
+    </linearGradient>
+     <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="10" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+  
+  <!-- Background (Optional, can be transparent) -->
+  <!-- <rect width="512" height="512" rx="128" fill="url(#premium-gradient)" /> -->
+
+  <!-- Main Hexagon Shape -->
+  <path d="M256 64 L448 160 V352 L256 448 L64 352 V160 Z" fill="url(#premium-gradient)" stroke="url(#accent-gradient)" stroke-width="12" />
+  
+  <!-- Inner Circuitry / Chip Design -->
+  <path d="M256 120 V200 M256 312 V392" stroke="url(#accent-gradient)" stroke-width="8" stroke-linecap="round" />
+  <path d="M140 256 H200 M312 256 H372" stroke="url(#accent-gradient)" stroke-width="8" stroke-linecap="round" />
+  
+  <!-- Central Secure Element (Coin/Core) -->
+  <circle cx="256" cy="256" r="56" fill="none" stroke="url(#gold-gradient)" stroke-width="8" filter="url(#glow)" />
+  <circle cx="256" cy="256" r="24" fill="url(#gold-gradient)" />
+
+  <!-- Data Dots -->
+  <circle cx="256" cy="90" r="6" fill="#06B6D4" />
+  <circle cx="256" cy="422" r="6" fill="#06B6D4" />
+  <circle cx="90" cy="256" r="6" fill="#06B6D4" />
+  <circle cx="422" cy="256" r="6" fill="#06B6D4" />
+  
+</svg>

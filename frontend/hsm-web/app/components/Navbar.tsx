@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { Calculator, Home, Key, Shield } from 'lucide-react';
 
@@ -19,10 +20,11 @@ export default function Navbar() {
             <div className="px-4 py-3">
                 <div className="flex items-center justify-between mb-3">
                     <Link href="/" className="flex items-center gap-2">
-                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
-                            <Shield size={18} className="text-white" />
+                        <Image src="/monetic-logo.svg" alt="MoneTIC Logo" width={34} height={34} />
+                        <div>
+                            <span className="text-base font-bold italic text-white font-heading">MoneTIC</span>
+                            <p className="text-[10px] font-semibold uppercase tracking-widest text-green-400 leading-none">HSM Admin</p>
                         </div>
-                        <span className="text-base font-bold text-white font-heading">HSM Master</span>
                     </Link>
                     <a href={`${process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:3000'}/`} className="text-xs text-slate-400">
                         Portail

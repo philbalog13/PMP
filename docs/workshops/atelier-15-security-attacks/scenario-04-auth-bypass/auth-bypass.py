@@ -12,6 +12,7 @@ import socket
 import struct
 import threading
 import time
+import argparse
 from typing import Optional, Tuple
 
 # Configuration de l'attaque
@@ -210,9 +211,13 @@ def simulate_attack():
 
 
 if __name__ == '__main__':
-    # Mode simulation (par défaut)
-    simulate_attack()
-    
-    # Pour lancer le vrai proxy:
-    # proxy = AttackProxy(CONFIG['listen_port'], CONFIG['target_host'], CONFIG['target_port'])
-    # proxy.start()
+    parser = argparse.ArgumentParser(description='Authorization bypass lab proxy')
+    parser.add_argument('--simulate', action='store_true', help='Run simulation mode instead of live proxy')
+    args = parser.parse_args()
+
+    if args.simulate:
+        simulate_attack()
+    else:
+        print('[Proxy] Mode reel active. Utilisez --simulate pour la demonstration hors reseau.')
+        proxy = AttackProxy(CONFIG['listen_port'], CONFIG['target_host'], CONFIG['target_port'])
+        proxy.start()

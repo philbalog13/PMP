@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
     Beaker,
     ChevronRight,
@@ -83,6 +85,9 @@ function resolveChallengeIcon(status: CtfChallenge['status']) {
 }
 
 export default function StudentCtfDashboardPage() {
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
     const { user, isLoading } = useAuth(true);
 
     const [challenges, setChallenges] = useState<CtfChallenge[]>([]);
@@ -94,6 +99,7 @@ export default function StudentCtfDashboardPage() {
     const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
     const [activeCategory, setActiveCategory] = useState<string>('ALL');
     const [difficultyFilter, setDifficultyFilter] = useState<string>('ALL');
+    const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [refreshing, setRefreshing] = useState(false);
@@ -156,6 +162,62 @@ export default function StudentCtfDashboardPage() {
         return ['ALL', ...Array.from(categories)];
     }, [challenges]);
 
+    const difficultyList = useMemo(() => {
+        const difficulties = new Set(challenges.map((challenge) => challenge.difficulty));
+        return ['ALL', ...Array.from(difficulties)];
+    }, [challenges]);
+
+    useEffect(() => {
+        const requestedCategory = searchParams.get('category');
+        const requestedDifficulty = searchParams.get('difficulty');
+
+        if (requestedCategory && categoryList.includes(requestedCategory)) {
+            if (activeCategory !== requestedCategory) {
+                setActiveCategory(requestedCategory);
+            }
+        } else if (activeCategory !== 'ALL') {
+            setActiveCategory('ALL');
+        }
+
+        if (requestedDifficulty && difficultyList.includes(requestedDifficulty)) {
+            if (difficultyFilter !== requestedDifficulty) {
+                setDifficultyFilter(requestedDifficulty);
+            }
+        } else if (difficultyFilter !== 'ALL') {
+            setDifficultyFilter('ALL');
+        }
+    }, [activeCategory, categoryList, difficultyFilter, difficultyList, searchParams]);
+
+    const updateFilterQuery = useCallback((nextCategory: string, nextDifficulty: string) => {
+        const nextQuery = new URLSearchParams(searchParams.toString());
+
+        if (nextCategory === 'ALL') {
+            nextQuery.delete('category');
+        } else {
+            nextQuery.set('category', nextCategory);
+        }
+
+        if (nextDifficulty === 'ALL') {
+            nextQuery.delete('difficulty');
+        } else {
+            nextQuery.set('difficulty', nextDifficulty);
+        }
+
+        const query = nextQuery.toString();
+        const href = query ? `${pathname}?${query}` : pathname;
+        router.replace(href, { scroll: false });
+    }, [pathname, router, searchParams]);
+
+    const handleCategoryChange = useCallback((category: string) => {
+        setActiveCategory(category);
+        updateFilterQuery(category, difficultyFilter);
+    }, [difficultyFilter, updateFilterQuery]);
+
+    const handleDifficultyChange = useCallback((difficulty: string) => {
+        setDifficultyFilter(difficulty);
+        updateFilterQuery(activeCategory, difficulty);
+    }, [activeCategory, updateFilterQuery]);
+
     const filteredChallenges = useMemo(() => {
         return challenges.filter((challenge) => {
             const categoryMatch = activeCategory === 'ALL' || challenge.category === activeCategory;
@@ -191,14 +253,19 @@ export default function StudentCtfDashboardPage() {
                 <div className="mb-8 p-6 rounded-3xl border border-white/10 bg-gradient-to-r from-red-700/30 via-orange-700/20 to-amber-600/20 backdrop-blur-xl relative overflow-hidden">
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,120,80,0.24),transparent_50%),radial-gradient(circle_at_80%_30%,rgba(255,80,80,0.2),transparent_40%)]" />
                     <div className="relative flex flex-wrap items-center justify-between gap-4">
-                        <div>
-                            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/20 px-3 py-1 text-xs text-orange-200 mb-3">
-                                <Swords size={14} /> Mode CTF
+                        <div className="flex items-center gap-6">
+                            <div className="shrink-0 animate-pulse-slow">
+                                <Image src="/icons/ctf_target_icon.png" alt="CTF Labs" width={80} height={80} className="drop-shadow-[0_0_15px_rgba(255,100,0,0.4)]" />
                             </div>
-                            <h1 className="text-3xl font-black tracking-tight">Security Labs</h1>
-                            <p className="text-sm text-slate-200 mt-1">
-                                Entraînez-vous sur des scénarios d&apos;attaque bancaires réalistes.
-                            </p>
+                            <div>
+                                <div className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/20 px-3 py-1 text-xs text-orange-200 mb-3">
+                                    <Swords size={14} /> Mode CTF
+                                </div>
+                                <h1 className="text-3xl font-black tracking-tight">Security Labs</h1>
+                                <p className="text-sm text-slate-200 mt-1">
+                                    Entraînez-vous sur des scénarios d&apos;attaque bancaires réalistes.
+                                </p>
+                            </div>
                         </div>
                         <button
                             onClick={refresh}
@@ -229,7 +296,7 @@ export default function StudentCtfDashboardPage() {
                         return (
                             <button
                                 key={category}
-                                onClick={() => setActiveCategory(category)}
+                                onClick={() => handleCategoryChange(category)}
                                 className={`px-3 py-1.5 rounded-full text-xs border transition ${active
                                     ? 'bg-orange-500/30 border-orange-300/40 text-orange-100'
                                     : 'bg-slate-800/50 border-white/10 text-slate-300 hover:border-orange-300/30'
@@ -240,20 +307,36 @@ export default function StudentCtfDashboardPage() {
                         );
                     })}
 
-                    <select
-                        value={difficultyFilter}
-                        onChange={(event) => setDifficultyFilter(event.target.value)}
-                        className="ml-auto bg-slate-800/70 border border-white/10 rounded-lg px-3 py-2 text-xs"
-                    >
-                        <option value="ALL">Toutes difficultés</option>
-                        <option value="BEGINNER">Beginner</option>
-                        <option value="INTERMEDIATE">Intermediate</option>
-                        <option value="ADVANCED">Advanced</option>
-                        <option value="EXPERT">Expert</option>
-                    </select>
+                    <div className="ml-auto flex items-center gap-2">
+                        <div className="flex rounded-lg border border-white/10 overflow-hidden">
+                            <button onClick={() => setViewMode('grid')} className={`px-3 py-1.5 text-xs font-semibold transition ${viewMode === 'grid' ? 'bg-slate-700 text-white' : 'bg-slate-900/40 text-slate-400 hover:bg-slate-800'}`}>
+                                Grille
+                            </button>
+                            <button onClick={() => setViewMode('map')} className={`px-3 py-1.5 text-xs font-semibold transition ${viewMode === 'map' ? 'bg-slate-700 text-white' : 'bg-slate-900/40 text-slate-400 hover:bg-slate-800'}`}>
+                                Carte
+                            </button>
+                        </div>
+                        <select
+                            value={difficultyFilter}
+                            onChange={(event) => handleDifficultyChange(event.target.value)}
+                            className="bg-slate-800/70 border border-white/10 rounded-lg px-3 py-2 text-xs"
+                        >
+                            <option value="ALL">Toutes difficultés</option>
+                            <option value="BEGINNER">Beginner</option>
+                            <option value="INTERMEDIATE">Intermediate</option>
+                            <option value="ADVANCED">Advanced</option>
+                            <option value="EXPERT">Expert</option>
+                        </select>
+                    </div>
                 </div>
 
-                <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                {/* Map view */}
+                {viewMode === 'map' && (
+                    <ChallengeMapView challenges={filteredChallenges} />
+                )}
+
+                {/* Grid view */}
+                <div className={viewMode === 'grid' ? 'grid sm:grid-cols-2 xl:grid-cols-3 gap-4' : 'hidden'}>
                     {filteredChallenges.map((challenge) => {
                         const isLocked = challenge.status === 'LOCKED';
                         const CardWrapper = isLocked ? 'button' : 'div';
@@ -343,6 +426,78 @@ export default function StudentCtfDashboardPage() {
                     </div>
                 )}
             </div>
+        </div>
+    );
+}
+
+function ChallengeMapView({ challenges }: { challenges: CtfChallenge[] }) {
+    // Group challenges by category
+    const grouped = challenges.reduce<Record<string, CtfChallenge[]>>((acc, c) => {
+        if (!acc[c.category]) acc[c.category] = [];
+        acc[c.category].push(c);
+        return acc;
+    }, {});
+
+    const statusColor = (status: CtfChallenge['status']) => {
+        if (status === 'COMPLETED') return 'bg-emerald-500 border-emerald-400';
+        if (status === 'IN_PROGRESS') return 'bg-amber-500 border-amber-400';
+        if (status === 'LOCKED') return 'bg-slate-800 border-slate-600';
+        return 'bg-cyan-600 border-cyan-400';
+    };
+
+    const statusLabel = (status: CtfChallenge['status']) => {
+        if (status === 'COMPLETED') return '✓';
+        if (status === 'IN_PROGRESS') return '●';
+        if (status === 'LOCKED') return '🔒';
+        return '⚡';
+    };
+
+    if (Object.keys(grouped).length === 0) {
+        return <p className="text-center py-12 text-slate-500">Aucun challenge à afficher.</p>;
+    }
+
+    return (
+        <div className="space-y-8 mb-8">
+            {Object.entries(grouped).map(([category, cats]) => (
+                <div key={category}>
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 mb-4">
+                        {categoryLabels[category] || category}
+                    </p>
+                    <div className="overflow-x-auto pb-2">
+                        <div className="flex items-center gap-0 min-w-max">
+                            {cats.map((challenge, idx) => {
+                                const isLocked = challenge.status === 'LOCKED';
+                                const nodeEl = (
+                                    <div className={`w-36 rounded-2xl border-2 p-4 text-left transition-all ${statusColor(challenge.status)} ${isLocked ? 'opacity-50' : 'hover:scale-105 hover:shadow-lg'}`}>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-[10px] font-mono text-white/70">{challenge.code}</span>
+                                            <span className="text-base">{statusLabel(challenge.status)}</span>
+                                        </div>
+                                        <p className="text-xs font-bold text-white leading-tight line-clamp-2">{challenge.title}</p>
+                                        <p className="text-[11px] text-white/70 mt-1">{challenge.points} pts</p>
+                                    </div>
+                                );
+
+                                return (
+                                    <div key={challenge.code} className="flex items-center">
+                                        {isLocked ? nodeEl : (
+                                            <Link href={`/student/ctf/${challenge.code}`}>{nodeEl}</Link>
+                                        )}
+                                        {idx < cats.length - 1 && (
+                                            <div className="flex items-center mx-2">
+                                                <div className="w-6 h-0.5 bg-slate-700" />
+                                                <svg width="8" height="12" viewBox="0 0 8 12" className="text-slate-600">
+                                                    <path d="M0 0 L8 6 L0 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                                </svg>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            ))}
         </div>
     );
 }

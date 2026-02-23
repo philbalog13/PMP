@@ -40,7 +40,11 @@ const isPublicPath = (path: string): boolean => {
         '/api/auth/marchand/login',
         '/api/auth/etudiant/login',
         '/api/auth/formateur/login',
-        '/api/auth/token' // Dev endpoint
+        '/api/auth/token', // Dev endpoint
+        '/auth/session-token', // CTF legacy endpoint (CRYPTO-001)
+        '/api/ctf/prove-mitm',
+        '/api/ctf/prove-timing-attack',
+        '/api/ctf/internal/ctf/vuln-init' // Internal CTF route guarded by x-internal-secret
     ];
 
     // Exact match only for auth endpoints

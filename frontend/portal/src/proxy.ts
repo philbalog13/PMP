@@ -20,7 +20,6 @@ export const config = {
         '/instructor/:path*',
         '/client/:path*',
         '/merchant/:path*',
-        '/workshops/:path*',
         '/lab/:path*',
     ],
 };

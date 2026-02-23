@@ -143,6 +143,12 @@ export type AccountUpdateBody = {
 };
 export type AccountEntriesResponse = { entries?: GenericObject[] };
 export type DepositWithdrawResponse = GenericObject;
+export type TransferType = 'SEPA' | 'INSTANT';
+export type WithdrawOptions = {
+    transferType?: TransferType;
+    beneficiaryIban?: string;
+    beneficiaryName?: string;
+};
 export type TransactionByIdResponse = { transaction?: GenericObject } & GenericObject;
 export type TransactionTimelineResponse = { transaction?: GenericObject; timeline?: GenericObject[] };
 export type MerchantTerminal = {
@@ -160,12 +166,26 @@ export type Merchant = {
 };
 export type MerchantsResponse = { merchants?: Merchant[] };
 
+export type CardDetailResponse = { card?: GenericObject; recentTransactions?: GenericObject[] };
+export type CardLimitsUpdateBody = {
+    dailyLimit?: number;
+    monthlyLimit?: number;
+    singleTxnLimit?: number;
+};
+
 export const clientApi = {
     getDashboard: () => apiRequest<DashboardResponse>('/api/client/dashboard'),
     getCards: () => apiRequest<CardsResponse>('/api/client/cards'),
+    getCardById: (cardId: string) =>
+        apiRequest<CardDetailResponse>(`/api/client/cards/${cardId}`),
     createCard: (body: { amount: number; cardholderName?: string; cardType?: string; network?: string }) =>
         apiRequest<CreateCardResponse>('/api/client/cards', {
             method: 'POST',
+            body: JSON.stringify(body)
+        }),
+    updateCardLimits: (cardId: string, body: CardLimitsUpdateBody) =>
+        apiRequest<CreateCardResponse>(`/api/client/cards/${cardId}/limits`, {
+            method: 'PATCH',
             body: JSON.stringify(body)
         }),
     getTransactions: (searchParams = '') =>
@@ -194,10 +214,17 @@ export const clientApi = {
             method: 'POST',
             body: JSON.stringify({ amount, reference, description })
         }),
-    withdraw: (amount: number, reference?: string, description?: string) =>
+    withdraw: (amount: number, reference?: string, description?: string, options?: WithdrawOptions) =>
         apiRequest<DepositWithdrawResponse>('/api/client/account/withdraw', {
             method: 'POST',
-            body: JSON.stringify({ amount, reference, description })
+            body: JSON.stringify({
+                amount,
+                reference,
+                description,
+                transferType: options?.transferType,
+                beneficiaryIban: options?.beneficiaryIban,
+                beneficiaryName: options?.beneficiaryName
+            })
         }),
     getAvailableMerchants: () =>
         apiRequest<MerchantsResponse>('/api/client/merchants'),

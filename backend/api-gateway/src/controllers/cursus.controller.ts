@@ -5,6 +5,7 @@
 import { Request, Response } from 'express';
 import { query } from '../config/database';
 import { logger } from '../utils/logger';
+import { awardQuizBadges } from '../services/ctfEvaluation.service';
 
 /* ------------------------------------------------------------------ */
 /*  LIST ALL PUBLISHED CURSUS                                          */
@@ -100,6 +101,7 @@ export const getCursusDetail = async (req: Request, res: Response) => {
         // Student progress – group by module for accurate per-module counts
         let completedChapters: Set<string> = new Set();
         let completedByModule: Record<string, number> = {};
+        let quizScoreByModule: Record<string, number> = {};
         if (userId) {
             const prog = await query(
                 `SELECT chapter_id, module_id FROM learning.cursus_progress
@@ -112,13 +114,37 @@ export const getCursusDetail = async (req: Request, res: Response) => {
                     completedByModule[row.module_id] = (completedByModule[row.module_id] || 0) + 1;
                 }
             }
+            // Best quiz score per module
+            const quizScores = await query(
+                `SELECT q.module_id, MAX(qs.score) AS best_score
+                 FROM learning.cursus_quiz_submissions qs
+                 JOIN learning.cursus_quizzes q ON q.id = qs.quiz_id
+                 WHERE qs.student_id = $1 AND q.cursus_id = $2
+                 GROUP BY q.module_id`,
+                [userId, id]
+            ).catch(() => ({ rows: [] as any[] }));
+            for (const row of quizScores.rows) {
+                if (row.module_id) quizScoreByModule[row.module_id] = Number(row.best_score || 0);
+            }
         }
 
-        const modules = modulesResult.rows.map((mod) => ({
-            ...mod,
-            quiz: quizzesResult.rows.find((q) => q.module_id === mod.id) || null,
-            completedChapters: completedByModule[mod.id] || 0
-        }));
+        const modules = modulesResult.rows.map((mod) => {
+            const completed = completedByModule[mod.id] || 0;
+            const total = mod.chapter_count || 1;
+            const chapterPct = Math.round((completed / total) * 100);
+            const quizScore = quizScoreByModule[mod.id] ?? -1; // -1 = not attempted
+            // Mastery = 60% chapters read + 40% quiz score (if attempted)
+            const mastery = quizScore >= 0
+                ? Math.round(chapterPct * 0.6 + quizScore * 0.4)
+                : Math.round(chapterPct * 0.6);
+            return {
+                ...mod,
+                quiz: quizzesResult.rows.find((q) => q.module_id === mod.id) || null,
+                completedChapters: completed,
+                quizBestScore: quizScore,
+                masteryScore: mastery,
+            };
+        });
 
         const finalQuiz = quizzesResult.rows.find((q) => q.is_final_evaluation) || null;
 
@@ -304,15 +330,177 @@ export const submitCursusQuiz = async (req: Request, res: Response) => {
                 JSON.stringify(results), timeTakenSeconds || null, attemptNumber]
         );
 
+        // Auto-trigger quiz badges (fire & forget – errors are logged internally)
+        let awardedBadges: string[] = [];
+        if (passed) {
+            awardedBadges = await awardQuizBadges(userId, quizId, passed, percentage);
+        }
+
         res.json({
             success: true,
             score, maxScore, percentage, passed,
             passPercentage,
             attemptNumber,
-            results
+            results,
+            awardedBadges
         });
     } catch (error: any) {
         logger.error('Submit cursus quiz error', { error: error.message });
         res.status(500).json({ success: false, error: 'Failed to submit quiz' });
+    }
+};
+
+/**
+ * POST /api/cursus/:id/exercise/:exerciseId/submit
+ * Auto-corrects a free-text exercise answer using keyword matching.
+ */
+export const submitExerciseAnswer = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user?.userId;
+        if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+
+        const { id: cursusId, exerciseId } = req.params;
+        const { answerText } = req.body;
+
+        if (!answerText || typeof answerText !== 'string' || !answerText.trim()) {
+            return res.status(400).json({ success: false, error: 'answerText is required' });
+        }
+
+        // Load exercise with keywords
+        const exResult = await query(
+            `SELECT e.id, e.title, e.expected_keywords
+             FROM learning.cursus_exercises e
+             JOIN learning.cursus_modules m ON m.id = e.module_id
+             WHERE e.id = $1 AND m.cursus_id = $2 AND e.is_active = true`,
+            [exerciseId, cursusId]
+        );
+
+        if ((exResult.rowCount ?? 0) === 0) {
+            return res.status(404).json({ success: false, error: 'Exercise not found' });
+        }
+
+        const exercise = exResult.rows[0];
+        const expectedKeywords: string[] = Array.isArray(exercise.expected_keywords)
+            ? exercise.expected_keywords
+            : [];
+
+        const lower = answerText.toLowerCase();
+        const matchedKeywords: string[] = [];
+        const missingKeywords: string[] = [];
+
+        for (const kw of expectedKeywords) {
+            if (lower.includes(kw.toLowerCase())) {
+                matchedKeywords.push(kw);
+            } else {
+                missingKeywords.push(kw);
+            }
+        }
+
+        const score = expectedKeywords.length > 0
+            ? Math.round((matchedKeywords.length / expectedKeywords.length) * 100)
+            : 50; // No keywords defined → give partial credit
+
+        await query(
+            `INSERT INTO learning.cursus_exercise_attempts
+                (student_id, exercise_id, answer_text, score, matched_keywords, missing_keywords)
+             VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb)`,
+            [userId, exerciseId, answerText.trim(), score,
+                JSON.stringify(matchedKeywords), JSON.stringify(missingKeywords)]
+        );
+
+        // Count total attempts for this exercise
+        const countResult = await query(
+            `SELECT COUNT(*)::INTEGER AS attempt_count,
+                    MIN(created_at) AS first_attempt_at
+             FROM learning.cursus_exercise_attempts
+             WHERE student_id = $1 AND exercise_id = $2`,
+            [userId, exerciseId]
+        );
+        const attemptCount = countResult.rows[0]?.attempt_count || 1;
+        const firstAttemptAt: Date | null = countResult.rows[0]?.first_attempt_at || null;
+        const minutesElapsed = firstAttemptAt
+            ? Math.floor((Date.now() - new Date(firstAttemptAt).getTime()) / 60000)
+            : 0;
+        const solutionEligible = attemptCount >= 2 || minutesElapsed >= 30;
+
+        let feedback = '';
+        if (score >= 80) {
+            feedback = 'Excellente réponse ! Vous avez bien identifié les concepts clés.';
+        } else if (score >= 50) {
+            feedback = `Bonne base. Il manque encore ${missingKeywords.slice(0, 3).join(', ')}.`;
+        } else {
+            feedback = `Réponse incomplète. Pensez à couvrir : ${missingKeywords.slice(0, 4).join(', ')}.`;
+        }
+
+        return res.json({
+            success: true,
+            score,
+            feedback,
+            matchedConcepts: matchedKeywords,
+            missingConcepts: missingKeywords,
+            attemptCount,
+            solutionEligible,
+        });
+    } catch (error: any) {
+        logger.error('Submit exercise answer error', { error: error.message });
+        res.status(500).json({ success: false, error: 'Failed to submit exercise answer' });
+    }
+};
+
+/**
+ * GET /api/cursus/:id/exercise/:exerciseId/solution
+ * Returns sample solution if student has >= 2 attempts or >= 30 min elapsed.
+ */
+export const getExerciseSolution = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user?.userId;
+        if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+
+        const { id: cursusId, exerciseId } = req.params;
+
+        const exResult = await query(
+            `SELECT e.id, e.title, e.sample_solution
+             FROM learning.cursus_exercises e
+             JOIN learning.cursus_modules m ON m.id = e.module_id
+             WHERE e.id = $1 AND m.cursus_id = $2 AND e.is_active = true`,
+            [exerciseId, cursusId]
+        );
+
+        if ((exResult.rowCount ?? 0) === 0) {
+            return res.status(404).json({ success: false, error: 'Exercise not found' });
+        }
+
+        const attemptsResult = await query(
+            `SELECT COUNT(*)::INTEGER AS attempt_count,
+                    MIN(created_at) AS first_attempt_at
+             FROM learning.cursus_exercise_attempts
+             WHERE student_id = $1 AND exercise_id = $2`,
+            [userId, exerciseId]
+        );
+
+        const attemptCount = attemptsResult.rows[0]?.attempt_count || 0;
+        const firstAttemptAt: Date | null = attemptsResult.rows[0]?.first_attempt_at || null;
+        const minutesElapsed = firstAttemptAt
+            ? Math.floor((Date.now() - new Date(firstAttemptAt).getTime()) / 60000)
+            : 0;
+
+        if (attemptCount < 2 && minutesElapsed < 30) {
+            return res.status(403).json({
+                success: false,
+                error: 'Solution not yet available. Complete at least 2 attempts or wait 30 minutes.',
+                attemptCount,
+                minutesElapsed,
+            });
+        }
+
+        const exercise = exResult.rows[0];
+        return res.json({
+            success: true,
+            solution: exercise.sample_solution || 'Aucun corrigé disponible pour cet exercice.',
+            attemptCount,
+        });
+    } catch (error: any) {
+        logger.error('Get exercise solution error', { error: error.message });
+        res.status(500).json({ success: false, error: 'Failed to fetch exercise solution' });
     }
 };

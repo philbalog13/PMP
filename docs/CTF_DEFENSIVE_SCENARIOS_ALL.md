@@ -1,4 +1,4 @@
-# CTF PMP - Scenarios defensifs complets (20 challenges)
+# CTF PMP - Scenarios defensifs prioritaires (20 challenges sur 50)
 
 Ce document transforme chaque challenge offensif en scenario Blue Team realiste, avec un workflow de gestion d'incident inspire des pratiques SOC/IR en production.
 

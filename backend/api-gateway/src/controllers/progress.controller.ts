@@ -27,6 +27,24 @@ import {
 const defaultWorkshopMap = new Map(DEFAULT_WORKSHOP_CATALOG.map((w) => [w.id, w]));
 let inMemoryLabConditions: LabConditions = { ...DEFAULT_LAB_CONDITIONS };
 
+const QUIZ_TARGET_QUESTION_COUNTS: Record<string, number> = {
+    'quiz-intro': 10,
+    'quiz-iso8583': 16,
+    'quiz-hsm': 12,
+    'quiz-3ds': 14,
+    'quiz-fraud': 10,
+    'quiz-emv': 12
+};
+
+const QUIZ_CURSUS_SOURCE_POOLS: Record<string, string[]> = {
+    'quiz-intro': ['quiz-2.3-iso8583', 'quiz-3.2-switch'],
+    'quiz-iso8583': ['quiz-2.3-iso8583', 'quiz-3.4-messaging', 'quiz-3.2-switch', 'quiz-3.1-archi'],
+    'quiz-hsm': ['quiz-3.3-hsm', 'quiz-5.3-crypto', 'quiz-3.5-token'],
+    'quiz-3ds': ['quiz-2.6-3dsecure', 'quiz-2.4-emv', 'quiz-4.2-antifraude'],
+    'quiz-fraud': ['quiz-4.2-antifraude', 'quiz-4.5-risques'],
+    'quiz-emv': ['quiz-2.4-emv', 'quiz-5.1-contact', 'quiz-2.1-iso7816']
+};
+
 function safeParseInt(value: unknown, fallback: number): number {
     const parsed = Number(value);
     if (!Number.isFinite(parsed)) {
@@ -57,6 +75,175 @@ function parseOptions(optionsValue: unknown): string[] {
     }
 
     return [];
+}
+
+function cloneQuizQuestion(question: QuizQuestion): QuizQuestion {
+    const options = Array.isArray(question.options)
+        ? question.options.map((option) => String(option))
+        : [];
+    const boundedIndex = options.length > 0
+        ? Math.min(Math.max(Number(question.correctOptionIndex) || 0, 0), options.length - 1)
+        : 0;
+
+    return {
+        id: String(question.id || '').trim(),
+        question: String(question.question || '').trim(),
+        options,
+        correctOptionIndex: boundedIndex,
+        explanation: String(question.explanation || '')
+    };
+}
+
+function cloneQuizDefinition(quiz: QuizDefinition): QuizDefinition {
+    return {
+        ...quiz,
+        questions: (quiz.questions || []).map(cloneQuizQuestion)
+    };
+}
+
+function normalizeQuestionFragment(value: string): string {
+    return value
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, ' ');
+}
+
+function buildQuestionFingerprint(question: QuizQuestion): string {
+    const normalizedQuestion = normalizeQuestionFragment(String(question.question || ''));
+    const normalizedOptions = (question.options || [])
+        .map((option) => normalizeQuestionFragment(String(option)))
+        .join('|');
+    const normalizedIndex = Math.max(Number(question.correctOptionIndex) || 0, 0);
+    return `${normalizedQuestion}|${normalizedOptions}|${normalizedIndex}`;
+}
+
+function withUniqueQuestions(
+    baseQuestions: QuizQuestion[],
+    newQuestions: QuizQuestion[],
+    maxCount: number = Number.MAX_SAFE_INTEGER
+): QuizQuestion[] {
+    const merged: QuizQuestion[] = [];
+    const fingerprints = new Set<string>();
+
+    const pushQuestion = (question: QuizQuestion) => {
+        if (merged.length >= maxCount) {
+            return;
+        }
+
+        const normalized = cloneQuizQuestion(question);
+        const fingerprint = buildQuestionFingerprint(normalized);
+        if (!normalized.question || normalized.options.length === 0 || fingerprints.has(fingerprint)) {
+            return;
+        }
+
+        fingerprints.add(fingerprint);
+        merged.push(normalized);
+    };
+
+    baseQuestions.forEach(pushQuestion);
+    newQuestions.forEach(pushQuestion);
+
+    return merged;
+}
+
+async function loadCursusQuestionPool(
+    quizId: string,
+    limit: number,
+    existingFingerprints: Set<string>
+): Promise<QuizQuestion[]> {
+    const sourceQuizIds = QUIZ_CURSUS_SOURCE_POOLS[quizId] || [];
+    if (sourceQuizIds.length === 0 || limit <= 0) {
+        return [];
+    }
+
+    try {
+        const result = await query(
+            `SELECT
+                qq.id AS question_id,
+                qq.question AS question_text,
+                qq.options,
+                qq.correct_option_index,
+                qq.explanation,
+                qq.question_order,
+                src.source_priority
+             FROM UNNEST($1::text[]) WITH ORDINALITY AS src(source_quiz_id, source_priority)
+             JOIN learning.cursus_quiz_questions qq
+               ON qq.quiz_id = src.source_quiz_id
+             ORDER BY src.source_priority ASC, qq.question_order ASC, qq.id ASC`,
+            [sourceQuizIds]
+        );
+
+        const collected: QuizQuestion[] = [];
+        for (const row of result.rows) {
+            if (collected.length >= limit) {
+                break;
+            }
+
+            const candidate = cloneQuizQuestion({
+                id: row.question_id,
+                question: row.question_text,
+                options: parseOptions(row.options),
+                correctOptionIndex: Math.max(parseInt(row.correct_option_index, 10) || 0, 0),
+                explanation: row.explanation || ''
+            });
+
+            const fingerprint = buildQuestionFingerprint(candidate);
+            if (!candidate.question || candidate.options.length === 0 || existingFingerprints.has(fingerprint)) {
+                continue;
+            }
+
+            existingFingerprints.add(fingerprint);
+            collected.push(candidate);
+        }
+
+        return collected;
+    } catch (error: any) {
+        logger.warn('Unable to enrich quiz from cursus question pool', {
+            quizId,
+            error: error.message
+        });
+        return [];
+    }
+}
+
+async function enrichQuizDefinition(quiz: QuizDefinition): Promise<QuizDefinition> {
+    const targetCount = QUIZ_TARGET_QUESTION_COUNTS[quiz.id];
+    const fallbackQuiz = DEFAULT_QUIZZES[quiz.id];
+
+    let questions = withUniqueQuestions(quiz.questions || [], []);
+
+    if (fallbackQuiz && questions.length < fallbackQuiz.questions.length) {
+        questions = withUniqueQuestions(questions, fallbackQuiz.questions, fallbackQuiz.questions.length);
+    }
+
+    if (targetCount && questions.length < targetCount) {
+        const extraQuestions = await loadCursusQuestionPool(
+            quiz.id,
+            targetCount - questions.length,
+            new Set(questions.map(buildQuestionFingerprint))
+        );
+        questions = withUniqueQuestions(questions, extraQuestions, targetCount);
+    } else if (targetCount) {
+        questions = questions.slice(0, targetCount);
+    }
+
+    if (targetCount && questions.length < targetCount) {
+        logger.warn('Quiz question bank is below configured target', {
+            quizId: quiz.id,
+            expected: targetCount,
+            actual: questions.length
+        });
+    }
+
+    const normalizedQuestions = questions.map((question, index) => ({
+        ...question,
+        id: question.id || `${quiz.id}-q${String(index + 1).padStart(2, '0')}`
+    }));
+
+    return {
+        ...quiz,
+        questions: normalizedQuestions
+    };
 }
 
 function normalizeLabConditionsPayload(
@@ -171,7 +358,7 @@ async function getQuizDefinitionById(quizId: string): Promise<QuizDefinition | n
                 explanation: row.explanation || ''
             }));
 
-            return {
+            return enrichQuizDefinition({
                 id: header.quiz_id,
                 title: header.quiz_title || header.quiz_id,
                 workshopId: header.workshop_id,
@@ -180,7 +367,7 @@ async function getQuizDefinitionById(quizId: string): Promise<QuizDefinition | n
                     ? Math.max(parseInt(header.time_limit_minutes, 10) || 0, 0)
                     : null,
                 questions
-            };
+            });
         }
     } catch (error: any) {
         logger.warn('Quiz question bank table unavailable, using fallback quiz definitions', {
@@ -189,7 +376,12 @@ async function getQuizDefinitionById(quizId: string): Promise<QuizDefinition | n
         });
     }
 
-    return DEFAULT_QUIZZES[quizId] || null;
+    const fallbackQuiz = DEFAULT_QUIZZES[quizId];
+    if (!fallbackQuiz) {
+        return null;
+    }
+
+    return enrichQuizDefinition(cloneQuizDefinition(fallbackQuiz));
 }
 
 async function loadQuizDefinition(quizId: string, workshopId?: string): Promise<QuizDefinition | null> {
@@ -798,7 +990,7 @@ export const submitQuiz = async (req: Request, res: Response) => {
         const attemptResult = await query(
             `SELECT COALESCE(MAX(attempt_number), 0) + 1 as attempt
              FROM learning.quiz_results
-             WHERE student_id = $1 AND quiz_id = $2`,
+             WHERE student_id = $1::uuid AND quiz_id = $2::text`,
             [userId, quiz.id]
         );
         const attemptNumber = attemptResult.rows[0].attempt;
@@ -808,7 +1000,7 @@ export const submitQuiz = async (req: Request, res: Response) => {
         const result = await query(
             `INSERT INTO learning.quiz_results
              (student_id, quiz_id, workshop_id, score, max_score, percentage, passed, answers, time_taken_seconds, attempt_number)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+             VALUES ($1::uuid, $2::text, $3::text, $4::integer, $5::integer, $6::integer, $7::boolean, $8::jsonb, $9::integer, $10::integer)
              RETURNING id, quiz_id, workshop_id, score, max_score, percentage, passed, submitted_at, attempt_number`,
             [
                 userId,
@@ -827,68 +1019,78 @@ export const submitQuiz = async (req: Request, res: Response) => {
             ]
         );
 
-        const isFirstQuiz = attemptNumber === 1;
-        if (isFirstQuiz) {
-            await awardBadge(userId, 'FIRST_QUIZ');
-        }
+        try {
+            const isFirstQuiz = attemptNumber === 1;
+            if (isFirstQuiz) {
+                await awardBadge(userId, 'FIRST_QUIZ');
+            }
 
-        if (evaluation.percentage === 100) {
-            await awardBadge(userId, 'PERFECT_SCORE');
-        }
+            if (evaluation.percentage === 100) {
+                await awardBadge(userId, 'PERFECT_SCORE');
+            }
 
-        if (timeTakenSecondsValue && timeTakenSecondsValue < 300) {
-            await awardBadge(userId, 'FAST_LEARNER');
-        }
+            if (timeTakenSecondsValue && timeTakenSecondsValue < 300) {
+                await awardBadge(userId, 'FAST_LEARNER');
+            }
 
-        const passedQuizzes = await query(
-            `SELECT COUNT(DISTINCT quiz_id) as count
-             FROM learning.quiz_results
-             WHERE student_id = $1 AND passed = true`,
-            [userId]
-        );
-        if (parseInt(passedQuizzes.rows[0].count, 10) >= 5) {
-            await awardBadge(userId, 'QUIZ_MASTER');
-        }
+            const passedQuizzes = await query(
+                `SELECT COUNT(DISTINCT quiz_id) as count
+                 FROM learning.quiz_results
+                 WHERE student_id = $1 AND passed = true`,
+                [userId]
+            );
+            if (parseInt(passedQuizzes.rows[0].count, 10) >= 5) {
+                await awardBadge(userId, 'QUIZ_MASTER');
+            }
 
-        if (passed && resolvedWorkshopId) {
-            const completedWorkshop = await getWorkshopById(resolvedWorkshopId);
-            if (completedWorkshop) {
-                await query(
-                    `INSERT INTO learning.student_progress
-                     (student_id, workshop_id, status, progress_percent, current_section, total_sections, completed_at, started_at, last_accessed_at)
-                     VALUES ($1, $2, 'COMPLETED', 100, $3, $3, NOW(), COALESCE((
-                        SELECT started_at
-                        FROM learning.student_progress
-                        WHERE student_id = $1 AND workshop_id = $2
-                     ), NOW()), NOW())
-                     ON CONFLICT (student_id, workshop_id) DO UPDATE SET
-                        status = 'COMPLETED',
-                        progress_percent = 100,
-                        current_section = $3,
-                        total_sections = $3,
-                        completed_at = NOW(),
-                        last_accessed_at = NOW(),
-                        updated_at = NOW()`,
-                    [userId, resolvedWorkshopId, completedWorkshop.sections]
-                );
+            if (passed && resolvedWorkshopId) {
+                const completedWorkshop = await getWorkshopById(resolvedWorkshopId);
+                if (completedWorkshop) {
+                    await query(
+                        `INSERT INTO learning.student_progress
+                         (student_id, workshop_id, status, progress_percent, current_section, total_sections, completed_at, started_at, last_accessed_at)
+                         VALUES ($1::uuid, $2::text, 'COMPLETED', 100, $3::integer, $3::integer, NOW(), COALESCE((
+                            SELECT started_at
+                            FROM learning.student_progress
+                            WHERE student_id = $1::uuid AND workshop_id = $2::text
+                         ), NOW()), NOW())
+                         ON CONFLICT (student_id, workshop_id) DO UPDATE SET
+                            status = 'COMPLETED',
+                            progress_percent = 100,
+                            current_section = $3::integer,
+                            total_sections = $3::integer,
+                            completed_at = NOW(),
+                            last_accessed_at = NOW(),
+                            updated_at = NOW()`,
+                        [userId, resolvedWorkshopId, completedWorkshop.sections]
+                    );
 
-                await awardBadge(userId, 'WORKSHOP_COMPLETE');
+                    await awardBadge(userId, 'WORKSHOP_COMPLETE');
 
-                const completedCount = await query(
-                    `SELECT COUNT(*)::integer AS count
-                     FROM learning.student_progress
-                     WHERE student_id = $1 AND status = 'COMPLETED'`,
-                    [userId]
-                );
+                    const completedCount = await query(
+                        `SELECT COUNT(*)::integer AS count
+                         FROM learning.student_progress
+                         WHERE student_id = $1 AND status = 'COMPLETED'`,
+                        [userId]
+                    );
 
-                const workshops = await getActiveWorkshops();
-                if (parseInt(completedCount.rows[0].count, 10) >= workshops.length) {
-                    await awardBadge(userId, 'ALL_WORKSHOPS');
+                    const workshops = await getActiveWorkshops();
+                    if (parseInt(completedCount.rows[0].count, 10) >= workshops.length) {
+                        await awardBadge(userId, 'ALL_WORKSHOPS');
+                    }
                 }
             }
-        }
 
-        await issueCertificateIfEligible(userId);
+            await issueCertificateIfEligible(userId);
+        } catch (sideEffectError: any) {
+            logger.warn('Quiz submitted but post-submit actions failed', {
+                userId,
+                quizId: quiz.id,
+                passed,
+                workshopId: resolvedWorkshopId,
+                error: sideEffectError.message
+            });
+        }
 
         res.json({
             success: true,
@@ -1299,3 +1501,128 @@ async function awardBadge(studentId: string, badgeType: keyof typeof BADGES): Pr
         return false;
     }
 }
+
+/**
+ * GET /api/progress/next-step
+ * Returns the recommended next action for a student.
+ */
+export const getNextStep = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user?.userId;
+        if (!userId) {
+            return res.status(401).json({ success: false, error: 'Unauthorized' });
+        }
+
+        // 1. Check for in-progress cursus module
+        let inProgressModule: any = null;
+        try {
+            const moduleResult = await query(
+                `SELECT
+                    cm.id AS module_id,
+                    cm.title AS module_title,
+                    cm.module_order,
+                    c.id AS cursus_id,
+                    c.title AS cursus_title,
+                    (
+                        SELECT COUNT(DISTINCT cp.chapter_id)::integer
+                        FROM learning.cursus_progress cp
+                        WHERE cp.student_id = $1
+                          AND cp.cursus_id = c.id
+                          AND cp.module_id = cm.id
+                          AND cp.status = 'COMPLETED'
+                          AND cp.chapter_id IS NOT NULL
+                    ) AS completed_chapters,
+                    (
+                        SELECT COUNT(*)::integer
+                        FROM learning.cursus_chapters ch
+                        WHERE ch.module_id = cm.id
+                    ) AS total_chapters
+                 FROM learning.cursus_modules cm
+                 JOIN learning.cursus c ON c.id = cm.cursus_id
+                 WHERE c.is_published = true
+                 ORDER BY c.id ASC, cm.module_order ASC`,
+                [userId]
+            );
+
+            const moduleRows = moduleResult.rows.map((row) => ({
+                ...row,
+                completed_chapters: parseInt(row.completed_chapters, 10) || 0,
+                total_chapters: parseInt(row.total_chapters, 10) || 0
+            }));
+
+            for (const row of moduleRows) {
+                if (
+                    row.total_chapters > 0 &&
+                    row.completed_chapters > 0 &&
+                    row.completed_chapters < row.total_chapters
+                ) {
+                    inProgressModule = row;
+                    break;
+                }
+            }
+
+            if (!inProgressModule) {
+                for (const row of moduleRows) {
+                    if (row.completed_chapters === 0) {
+                        inProgressModule = row;
+                        break;
+                    }
+                }
+            }
+        } catch (e: any) {
+            logger.warn('getNextStep: cursus query failed', { error: e.message });
+        }
+
+        // 2. Check for in-progress CTF
+        let inProgressCtf: any = null;
+        try {
+            const ctfResult = await query(
+                `SELECT
+                    cc.challenge_code AS code,
+                    cc.title,
+                    cc.category,
+                    cc.points,
+                    cs.status,
+                    cs.started_at
+                 FROM learning.ctf_challenges cc
+                 JOIN learning.ctf_student_progress cs ON cs.challenge_id = cc.id
+                 WHERE cs.student_id = $1
+                   AND cs.status = 'IN_PROGRESS'
+                   AND cc.is_active = true
+                 ORDER BY cs.started_at DESC
+                 LIMIT 1`,
+                [userId]
+            );
+            if ((ctfResult.rowCount ?? 0) > 0) {
+                inProgressCtf = ctfResult.rows[0];
+            }
+        } catch (e: any) {
+            logger.warn('getNextStep: CTF query failed', { error: e.message });
+        }
+
+        // 3. Build recommendation
+        let action: string, label: string, href: string;
+        if (inProgressModule && inProgressModule.completed_chapters > 0) {
+            action = 'RESUME_MODULE';
+            label = `Reprendre ${inProgressModule.cursus_title} — ${inProgressModule.module_title}`;
+            href = `/student/cursus/${inProgressModule.cursus_id}/${inProgressModule.module_id}`;
+        } else if (inProgressCtf) {
+            action = 'RESUME_CTF';
+            label = `Continuer ${inProgressCtf.code} — ${inProgressCtf.title}`;
+            href = `/student/ctf/${inProgressCtf.code}`;
+        } else if (inProgressModule) {
+            action = 'START_MODULE';
+            label = `Commencer ${inProgressModule.cursus_title} — ${inProgressModule.module_title}`;
+            href = `/student/cursus/${inProgressModule.cursus_id}/${inProgressModule.module_id}`;
+        } else {
+            action = 'ALL_DONE';
+            label = 'Tout est complété ! Explorez les challenges avancés.';
+            href = '/student/ctf';
+        }
+
+        res.json({ success: true, nextStep: { action, label, href } });
+    } catch (error: any) {
+        logger.error('getNextStep error', { error: error.message });
+        res.status(500).json({ success: false, error: 'Failed to compute next step' });
+    }
+};

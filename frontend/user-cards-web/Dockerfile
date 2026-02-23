@@ -16,7 +16,13 @@ WORKDIR /app/user-cards-web
 
 # Build arguments for Next.js public env vars (needed at build time)
 ARG NEXT_PUBLIC_API_URL=http://localhost:8000
+ARG NEXT_PUBLIC_PORTAL_URL=http://localhost:3000
+ARG NEXT_PUBLIC_TPE_URL=http://localhost:3001
+ARG NEXT_PUBLIC_USER_CARDS_URL=http://localhost:3004
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_PORTAL_URL=$NEXT_PUBLIC_PORTAL_URL
+ENV NEXT_PUBLIC_TPE_URL=$NEXT_PUBLIC_TPE_URL
+ENV NEXT_PUBLIC_USER_CARDS_URL=$NEXT_PUBLIC_USER_CARDS_URL
 
 # Copy dependencies from deps stage
 COPY --from=deps /app/user-cards-web/node_modules ./node_modules

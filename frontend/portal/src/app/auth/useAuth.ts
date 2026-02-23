@@ -37,6 +37,14 @@ export function useAuth(requireAuth: boolean = false) {
         }
 
         if (requireAuth && !auth.isAuthenticated) {
+            // Before redirecting, check if a raw token exists in localStorage.
+            // This handles the race condition where auth.login() has already
+            // persisted the token in storage but the React context state hasn't
+            // propagated to this component yet (e.g., during the page transition
+            // immediately after login). The context will update shortly after.
+            if (typeof window !== 'undefined' && localStorage.getItem('token')) {
+                return;
+            }
             const currentPath = typeof window !== 'undefined'
                 ? `${window.location.pathname}${window.location.search}`
                 : (pathname || '/');

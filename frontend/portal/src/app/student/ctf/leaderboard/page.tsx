@@ -123,7 +123,8 @@ export default function StudentCtfLeaderboardPage() {
                                 : 'from-orange-700/30 to-amber-700/20 border-orange-400/30';
 
                         return (
-                            <div key={entry.student_id} className={`rounded-2xl border bg-gradient-to-br ${style} p-5 backdrop-blur`}>
+                            <div key={entry.student_id} className={`rounded-2xl border bg-gradient-to-br ${style} p-5 backdrop-blur`}
+                                style={{ animation: `fadeSlideUp 0.5s ease-out ${index * 0.15}s both` }}>
                                 <div className="flex items-center justify-between mb-3">
                                     <span className="text-xs font-mono text-white/80">#{entry.rank}</span>
                                     {index === 0 ? <Crown size={18} className="text-amber-200" /> : <Medal size={18} className="text-white/80" />}
@@ -148,12 +149,15 @@ export default function StudentCtfLeaderboardPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {entries.map((entry) => {
+                            {entries.map((entry, idx) => {
                                 const isMe = entry.student_id === user?.id;
                                 const name = [entry.first_name, entry.last_name].filter(Boolean).join(' ') || entry.username;
 
                                 return (
-                                    <tr key={entry.student_id} className={`${isMe ? 'bg-orange-500/15' : 'hover:bg-white/5'} border-t border-white/5`}>
+                                    <tr key={entry.student_id}
+                                        className={`${isMe ? 'bg-orange-500/15' : 'hover:bg-white/5'} border-t border-white/5`}
+                                        style={{ animation: `fadeSlideUp 0.4s ease-out ${Math.min(idx * 0.06, 1.5)}s both` }}
+                                    >
                                         <td className="px-4 py-3 font-mono text-slate-300">#{entry.rank}</td>
                                         <td className={`px-4 py-3 ${isMe ? 'text-orange-200 font-bold' : 'text-white'}`}>{isMe ? `Vous (${name})` : name}</td>
                                         <td className="px-4 py-3 text-slate-300">{entry.challenges_solved}</td>
@@ -166,7 +170,14 @@ export default function StudentCtfLeaderboardPage() {
                     </table>
                 </div>
             </div>
+
+            {/* Animation keyframes */}
+            <style>{`
+                @keyframes fadeSlideUp {
+                    from { opacity: 0; transform: translateY(12px); }
+                    to   { opacity: 1; transform: translateY(0); }
+                }
+            `}</style>
         </div>
     );
 }
-

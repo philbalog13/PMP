@@ -7,6 +7,7 @@ import {
     AlertCircle,
     ArrowLeft,
     Beaker,
+    BookOpen,
     CheckCircle2,
     Flame,
     Lightbulb,
@@ -32,6 +33,12 @@ type GuidedStep = {
     commandTemplate: string | null;
     expectedOutput: string | null;
     hintText: string | null;
+    adaptiveGuidance?: {
+        learnerProfile: 'NOVICE' | 'INTERMEDIATE' | 'ADVANCED';
+        focus: string;
+        checklist: string[];
+        successSignal: string;
+    };
 };
 
 type HintInfo = {
@@ -39,6 +46,55 @@ type HintInfo = {
     hintText: string | null;
     costPoints: number;
     unlocked: boolean;
+    eligible?: boolean;
+    lockedReason?: string | null;
+    unlockPolicy?: {
+        minMinutes: number;
+        minFailedAttempts: number;
+        requiredPreviousHint: number | null;
+        elapsedMinutes: number;
+        failedAttempts: number;
+    };
+};
+
+type MissionBrief = {
+    role: string;
+    businessContext: string;
+    incidentTrigger: string;
+    objective: string;
+    successCriteria: string;
+};
+
+type IncidentArtifact = {
+    artifactId: string;
+    artifactType: 'LOG' | 'TRACE' | 'TICKET' | 'SIEM';
+    title: string;
+    description: string;
+    sample: string;
+};
+
+type RubricCriteria = {
+    criterion: string;
+    weight: number;
+    description: string;
+};
+
+type ProofRubric = {
+    technical: RubricCriteria[];
+    communication: RubricCriteria[];
+    passingScore: number;
+};
+
+type DebriefPayload = {
+    rootCause: string;
+    impactSummary: string;
+    mitigationPriorities: string[];
+    evidenceSummary: string;
+    technicalScore?: number;
+    communicationScore?: number;
+    patchScore?: number;
+    completed?: boolean;
+    updatedAt?: string | null;
 };
 
 type ChallengeDetail = {
@@ -65,6 +121,22 @@ type ChallengeDetail = {
     freeModeDescription?: string;
     hints?: HintInfo[];
     hintsUnlocked?: number[];
+    relatedWorkshopPath?: string;
+    learnerProfile?: 'NOVICE' | 'INTERMEDIATE' | 'ADVANCED';
+    adaptiveProfiles?: Array<'NOVICE' | 'INTERMEDIATE' | 'ADVANCED'>;
+    adaptivePathNotes?: Partial<Record<'NOVICE' | 'INTERMEDIATE' | 'ADVANCED', string>>;
+    failedAttempts?: number;
+    missionBrief?: MissionBrief;
+    incidentArtifacts?: IncidentArtifact[];
+    proofRubric?: ProofRubric;
+    debriefTemplate?: {
+        rootCausePrompt?: string;
+        impactPrompt?: string;
+        mitigationPrompt?: string;
+        evidencePrompt?: string;
+        checklist?: string[];
+    };
+    debrief?: DebriefPayload | null;
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -86,6 +158,16 @@ const DIFFICULTY_PILL: Record<string, { label: string; tone: Parameters<typeof C
     EXPERT: { label: 'Expert', tone: 'violet' },
 };
 
+const LEGACY_WORKSHOP_REDIRECTS: Record<string, string> = {
+    '/workshops/intro': '/student/theory/intro',
+    '/workshops/iso8583': '/student/theory/iso8583',
+    '/workshops/hsm-keys': '/student/theory/hsm-keys',
+    '/workshops/3ds-flow': '/student/theory/3ds-flow',
+    '/workshops/fraud-detection': '/student/theory/fraud-detection',
+    '/workshops/emv': '/student/theory/emv',
+    '/workshops/session-security': '/student/cursus'
+};
+
 function statusMeta(status: CtfStatus): { label: string; tone: Parameters<typeof CoursePill>[0]['tone']; icon: React.ReactNode } {
     if (status === 'COMPLETED') {
         return { label: 'Résolu', tone: 'emerald', icon: <CheckCircle2 className="h-4 w-4" /> };
@@ -99,6 +181,27 @@ function statusMeta(status: CtfStatus): { label: string; tone: Parameters<typeof
     return { label: 'Disponible', tone: 'cyan', icon: <Trophy className="h-4 w-4" /> };
 }
 
+function normalizeRelatedTheoryPath(path?: string | null): string | null {
+    if (!path) {
+        return null;
+    }
+
+    const trimmed = path.trim();
+    if (!trimmed) {
+        return null;
+    }
+
+    if (LEGACY_WORKSHOP_REDIRECTS[trimmed]) {
+        return LEGACY_WORKSHOP_REDIRECTS[trimmed];
+    }
+
+    if (trimmed.startsWith('/workshops/')) {
+        return '/student/cursus';
+    }
+
+    return trimmed;
+}
+
 export default function CtfChallengeDetailPage({ params }: { params: Promise<{ code: string }> }) {
     const { code } = use(params);
     const router = useRouter();
@@ -108,6 +211,7 @@ export default function CtfChallengeDetailPage({ params }: { params: Promise<{ c
     const normalizedCode = useMemo(() => challengeCode.toUpperCase(), [challengeCode]);
 
     const [mode, setMode] = useState<CtfMode>('GUIDED');
+    const [learnerProfile, setLearnerProfile] = useState<'NOVICE' | 'INTERMEDIATE' | 'ADVANCED'>('INTERMEDIATE');
     const [challenge, setChallenge] = useState<ChallengeDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -115,14 +219,35 @@ export default function CtfChallengeDetailPage({ params }: { params: Promise<{ c
 
     const [flagInput, setFlagInput] = useState('');
     const [submitting, setSubmitting] = useState(false);
-    const [submitResult, setSubmitResult] = useState<{ ok: boolean; message: string; pointsAwarded?: number } | null>(null);
+    const [showLearningModal, setShowLearningModal] = useState(false);
+    const [learningAnswers, setLearningAnswers] = useState<{ vulnerabilityType: string; businessImpact: string; fixPriority: string }>({ vulnerabilityType: '', businessImpact: '', fixPriority: '' });
+    const [submitResult, setSubmitResult] = useState<{
+        ok: boolean;
+        message: string;
+        pointsAwarded?: number;
+        axisScores?: { time: number; proof: number; patch: number; total: number };
+        feedback?: Array<{ code: string; severity: string; message: string }>;
+        debriefRequired?: boolean;
+    } | null>(null);
+    const [debriefDraft, setDebriefDraft] = useState<DebriefPayload>({
+        rootCause: '',
+        impactSummary: '',
+        mitigationPriorities: [],
+        evidenceSummary: '',
+    });
+    const [debriefInput, setDebriefInput] = useState('');
+    const [debriefSaving, setDebriefSaving] = useState(false);
+    const [debriefMessage, setDebriefMessage] = useState<string | null>(null);
 
     const getHeaders = useCallback(() => {
         const token = localStorage.getItem('token');
         return token ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } : null;
     }, []);
 
-    const fetchChallenge = useCallback(async (requestedMode?: CtfMode) => {
+    const fetchChallenge = useCallback(async (
+        requestedMode?: CtfMode,
+        requestedProfile?: 'NOVICE' | 'INTERMEDIATE' | 'ADVANCED'
+    ) => {
         if (!normalizedCode) return;
 
         const headers = getHeaders();
@@ -133,28 +258,49 @@ export default function CtfChallengeDetailPage({ params }: { params: Promise<{ c
         }
 
         const activeMode = requestedMode || mode;
+        const activeProfile = requestedProfile || learnerProfile;
 
         try {
             setError(null);
             setRefreshing(true);
             setLoading((prev) => prev || !challenge);
 
-            const res = await fetch(`/api/ctf/challenges/${encodeURIComponent(normalizedCode)}?mode=${activeMode}`, {
+            const params = new URLSearchParams({
+                mode: activeMode,
+                profile: activeProfile,
+            });
+
+            const res = await fetch(`/api/ctf/challenges/${encodeURIComponent(normalizedCode)}?${params.toString()}`, {
                 headers,
             });
 
             const data = await res.json().catch(() => ({}));
 
             if (res.ok && data?.success && data?.challenge) {
-                setChallenge(data.challenge);
-                if (data.challenge.mode === 'GUIDED' || data.challenge.mode === 'FREE') {
-                    setMode(data.challenge.mode);
+                const normalizedChallenge: ChallengeDetail = {
+                    ...data.challenge,
+                    relatedWorkshopPath: normalizeRelatedTheoryPath(data.challenge.relatedWorkshopPath)
+                };
+                setChallenge(normalizedChallenge);
+                if (normalizedChallenge.mode === 'GUIDED' || normalizedChallenge.mode === 'FREE') {
+                    setMode(normalizedChallenge.mode);
+                }
+                if (normalizedChallenge.learnerProfile === 'NOVICE' || normalizedChallenge.learnerProfile === 'INTERMEDIATE' || normalizedChallenge.learnerProfile === 'ADVANCED') {
+                    setLearnerProfile(normalizedChallenge.learnerProfile);
+                }
+                if (normalizedChallenge.debrief) {
+                    setDebriefDraft(normalizedChallenge.debrief);
+                    setDebriefInput((normalizedChallenge.debrief.mitigationPriorities || []).join('\n'));
                 }
                 return;
             }
 
             if (data?.challenge) {
-                setChallenge(data.challenge);
+                const normalizedChallenge: ChallengeDetail = {
+                    ...data.challenge,
+                    relatedWorkshopPath: normalizeRelatedTheoryPath(data.challenge.relatedWorkshopPath)
+                };
+                setChallenge(normalizedChallenge);
             }
 
             throw new Error(data?.error || 'Impossible de charger ce challenge.');
@@ -164,7 +310,7 @@ export default function CtfChallengeDetailPage({ params }: { params: Promise<{ c
             setLoading(false);
             setRefreshing(false);
         }
-    }, [challenge, getHeaders, mode, normalizedCode]);
+    }, [challenge, getHeaders, learnerProfile, mode, normalizedCode]);
 
     useEffect(() => {
         if (authLoading) return;
@@ -183,7 +329,7 @@ export default function CtfChallengeDetailPage({ params }: { params: Promise<{ c
             const res = await fetch(`/api/ctf/challenges/${encodeURIComponent(normalizedCode)}/start`, {
                 method: 'POST',
                 headers,
-                body: JSON.stringify({ mode }),
+                body: JSON.stringify({ mode, learnerProfile }),
             });
 
             const data = await res.json().catch(() => ({}));
@@ -191,13 +337,13 @@ export default function CtfChallengeDetailPage({ params }: { params: Promise<{ c
                 throw new Error(data?.error || 'Impossible de démarrer ce challenge.');
             }
 
-            await fetchChallenge(mode);
+            await fetchChallenge(mode, learnerProfile);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Erreur lors du démarrage.');
         } finally {
             setSubmitting(false);
         }
-    }, [fetchChallenge, getHeaders, mode, normalizedCode]);
+    }, [fetchChallenge, getHeaders, learnerProfile, mode, normalizedCode]);
 
     const advanceGuidedStep = useCallback(async () => {
         const headers = getHeaders();
@@ -264,7 +410,7 @@ export default function CtfChallengeDetailPage({ params }: { params: Promise<{ c
             const res = await fetch(`/api/ctf/challenges/${encodeURIComponent(normalizedCode)}/submit`, {
                 method: 'POST',
                 headers,
-                body: JSON.stringify({ submittedFlag: flagInput.trim(), mode }),
+                body: JSON.stringify({ submittedFlag: flagInput.trim(), mode, learnerProfile }),
             });
 
             const data = await res.json().catch(() => ({}));
@@ -277,13 +423,22 @@ export default function CtfChallengeDetailPage({ params }: { params: Promise<{ c
                     ok: true,
                     message: data.result.alreadySolved ? 'Déjà résolu. Bravo.' : 'Flag correct. Challenge résolu.',
                     pointsAwarded: data.result.pointsAwarded,
+                    axisScores: data.result.axisScores,
+                    feedback: data.result.feedback || [],
+                    debriefRequired: Boolean(data.result.debriefRequired),
                 });
                 await fetchChallenge();
-                router.push(`${APP_URLS.studentCtf}/${encodeURIComponent(normalizedCode)}/remediation`);
+                if (!data.result.debriefRequired && !data.result.alreadySolved) {
+                    setShowLearningModal(true);
+                } else if (!data.result.debriefRequired) {
+                    router.push(`${APP_URLS.studentCtf}/${encodeURIComponent(normalizedCode)}/remediation`);
+                }
             } else {
                 setSubmitResult({
                     ok: false,
                     message: data.result.message || 'Flag incorrect. Réessayez.',
+                    axisScores: data.result.axisScores,
+                    feedback: data.result.feedback || [],
                 });
             }
         } catch (err) {
@@ -291,7 +446,63 @@ export default function CtfChallengeDetailPage({ params }: { params: Promise<{ c
         } finally {
             setSubmitting(false);
         }
-    }, [fetchChallenge, flagInput, getHeaders, mode, normalizedCode, router]);
+    }, [fetchChallenge, flagInput, getHeaders, learnerProfile, mode, normalizedCode, router]);
+
+    const submitLearningCheck = useCallback(async () => {
+        const headers = getHeaders();
+        if (headers && normalizedCode) {
+            try {
+                await fetch(`/api/ctf/challenges/${encodeURIComponent(normalizedCode)}/learning-check`, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify(learningAnswers),
+                });
+            } catch { /* ignore — redirect anyway */ }
+        }
+        setShowLearningModal(false);
+        router.push(`${APP_URLS.studentCtf}/${encodeURIComponent(normalizedCode)}/remediation`);
+    }, [getHeaders, learningAnswers, normalizedCode, router]);
+
+    const submitDebrief = useCallback(async () => {
+        const headers = getHeaders();
+        if (!headers || !normalizedCode) return;
+
+        const mitigationPriorities = debriefInput
+            .split('\n')
+            .map((line) => line.trim())
+            .filter(Boolean);
+
+        const payload = {
+            rootCause: debriefDraft.rootCause || '',
+            impactSummary: debriefDraft.impactSummary || '',
+            mitigationPriorities,
+            evidenceSummary: debriefDraft.evidenceSummary || '',
+        };
+
+        try {
+            setDebriefSaving(true);
+            setDebriefMessage(null);
+            setError(null);
+
+            const res = await fetch(`/api/ctf/challenges/${encodeURIComponent(normalizedCode)}/debrief`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(payload),
+            });
+
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data?.success) {
+                throw new Error(data?.error || 'Debrief submission failed.');
+            }
+
+            setDebriefMessage('Debrief enregistre. Le scoring multi-axe est mis a jour.');
+            await fetchChallenge();
+        } catch (err) {
+            setDebriefMessage(err instanceof Error ? err.message : 'Erreur lors de la soumission du debrief.');
+        } finally {
+            setDebriefSaving(false);
+        }
+    }, [debriefDraft.evidenceSummary, debriefDraft.impactSummary, debriefDraft.rootCause, debriefInput, fetchChallenge, getHeaders, normalizedCode]);
 
     const viewModel = useMemo(() => {
         const status: CtfStatus = challenge?.status || 'UNLOCKED';
@@ -408,24 +619,56 @@ export default function CtfChallengeDetailPage({ params }: { params: Promise<{ c
                                 key={m}
                                 onClick={() => {
                                     setMode(m);
-                                    void fetchChallenge(m);
+                                    void fetchChallenge(m, learnerProfile);
                                 }}
-                                className={`px-3 py-2 rounded-xl text-sm font-semibold border transition ${
-                                    active
+                                className={`px-3 py-2 rounded-xl text-sm font-semibold border transition ${active
                                         ? 'bg-white text-slate-950 border-white/10'
                                         : 'bg-slate-950/40 border-white/10 text-slate-200 hover:bg-white/5'
-                                }`}
+                                    }`}
                             >
                                 {m === 'GUIDED' ? 'Guide' : 'Libre'}
                             </button>
                         );
                     })}
                 </div>
+                <div className="mt-4">
+                    <p className="text-[11px] text-slate-500 font-semibold uppercase tracking-[0.2em] mb-2">
+                        Profil
+                    </p>
+                    <div className="grid grid-cols-3 gap-2">
+                        {(challenge?.adaptiveProfiles || ['NOVICE', 'INTERMEDIATE', 'ADVANCED']).map((profile) => {
+                            const active = learnerProfile === profile;
+                            return (
+                                <button
+                                    key={profile}
+                                    onClick={() => {
+                                        setLearnerProfile(profile);
+                                        void fetchChallenge(mode, profile);
+                                    }}
+                                    className={`px-2 py-2 rounded-xl text-xs font-semibold border transition ${active
+                                        ? 'bg-cyan-400 text-slate-950 border-cyan-300/60'
+                                        : 'bg-slate-950/40 border-white/10 text-slate-200 hover:bg-white/5'
+                                        }`}
+                                >
+                                    {profile === 'INTERMEDIATE' ? 'INTER' : profile}
+                                </button>
+                            );
+                        })}
+                    </div>
+                    {challenge?.adaptivePathNotes?.[learnerProfile] && (
+                        <p className="mt-2 text-xs text-slate-400 leading-relaxed">
+                            {challenge.adaptivePathNotes[learnerProfile]}
+                        </p>
+                    )}
+                </div>
                 {challenge.prerequisiteChallengeCode && (
                     <div className="mt-4 text-sm text-slate-400">
                         Prerequis: <span className="font-mono text-slate-200">{challenge.prerequisiteChallengeCode}</span>
                     </div>
                 )}
+                <div className="mt-3 text-xs text-slate-500">
+                    Essais rates: <span className="font-mono text-slate-300">{challenge.failedAttempts || 0}</span>
+                </div>
             </CourseCard>
 
             <CourseCard className="p-4">
@@ -454,12 +697,88 @@ export default function CtfChallengeDetailPage({ params }: { params: Promise<{ c
                         <ArrowLeft className="h-4 w-4" />
                         Retour
                     </Link>
+                    {challenge?.relatedWorkshopPath && (
+                        <Link
+                            href={challenge.relatedWorkshopPath}
+                            className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-sm font-semibold text-indigo-200 hover:bg-indigo-500/15 hover:border-indigo-500/30 transition"
+                        >
+                            <BookOpen className="h-4 w-4 text-indigo-300" />
+                            Revoir la théorie
+                        </Link>
+                    )}
                 </div>
             </CourseCard>
         </div>
     );
 
+    const learningModal = showLearningModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-sm p-4">
+            <div className="w-full max-w-lg rounded-2xl border border-emerald-500/20 bg-slate-900 p-8 shadow-2xl">
+                <div className="flex items-center gap-3 mb-1">
+                    <CheckCircle2 className="h-8 w-8 text-emerald-400 flex-shrink-0" />
+                    <h2 className="text-xl font-black text-white">Qu&apos;as-tu appris ?</h2>
+                </div>
+                <p className="text-sm text-slate-400 mb-6 ml-11">3 questions rapides pour consolider ton apprentissage.</p>
+
+                <div className="space-y-5">
+                    <div>
+                        <p className="text-sm font-semibold text-slate-200 mb-2">1. Type de vulnérabilité exploitée ?</p>
+                        <div className="grid grid-cols-2 gap-2">
+                            {["Contrôle d'accès brisé", 'Faiblesse cryptographique', 'Injection / manipulation', 'Mauvaise configuration'].map((opt) => (
+                                <button key={opt} onClick={() => setLearningAnswers((prev) => ({ ...prev, vulnerabilityType: opt }))}
+                                    className={`px-3 py-2 rounded-xl text-xs font-semibold border transition text-left ${learningAnswers.vulnerabilityType === opt ? 'bg-cyan-500 text-slate-950 border-cyan-400' : 'bg-slate-800 border-white/10 text-slate-300 hover:bg-slate-700'}`}>
+                                    {opt}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div>
+                        <p className="text-sm font-semibold text-slate-200 mb-2">2. Impact réel si en production ?</p>
+                        <div className="grid grid-cols-3 gap-2">
+                            {['Fraude financière directe', 'Fuite de données sensibles', 'Perturbation de service'].map((opt) => (
+                                <button key={opt} onClick={() => setLearningAnswers((prev) => ({ ...prev, businessImpact: opt }))}
+                                    className={`px-3 py-2 rounded-xl text-xs font-semibold border transition text-center ${learningAnswers.businessImpact === opt ? 'bg-amber-500 text-slate-950 border-amber-400' : 'bg-slate-800 border-white/10 text-slate-300 hover:bg-slate-700'}`}>
+                                    {opt}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div>
+                        <p className="text-sm font-semibold text-slate-200 mb-2">3. Fix le plus urgent ?</p>
+                        <div className="grid grid-cols-3 gap-2">
+                            {['Rotation des clés', 'Validation stricte des inputs', 'Audit et monitoring'].map((opt) => (
+                                <button key={opt} onClick={() => setLearningAnswers((prev) => ({ ...prev, fixPriority: opt }))}
+                                    className={`px-3 py-2 rounded-xl text-xs font-semibold border transition text-center ${learningAnswers.fixPriority === opt ? 'bg-emerald-500 text-slate-950 border-emerald-400' : 'bg-slate-800 border-white/10 text-slate-300 hover:bg-slate-700'}`}>
+                                    {opt}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="mt-6 flex gap-3">
+                    <button
+                        onClick={() => void submitLearningCheck()}
+                        className="flex-1 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm"
+                    >
+                        Valider et voir la remédiation →
+                    </button>
+                    <button
+                        onClick={() => void submitLearningCheck()}
+                        className="px-4 py-3 rounded-xl border border-white/10 text-slate-400 hover:text-white text-sm"
+                    >
+                        Passer
+                    </button>
+                </div>
+            </div>
+        </div>
+    ) : null;
+
     return (
+        <>
+        {learningModal}
         <CoursePageShell
             title={challenge.title}
             description={challenge.description}
@@ -504,9 +823,8 @@ export default function CtfChallengeDetailPage({ params }: { params: Promise<{ c
             actions={
                 <button
                     onClick={() => void fetchChallenge()}
-                    className={`px-4 py-2.5 rounded-xl border border-white/10 bg-slate-900/40 hover:bg-slate-900/60 text-sm font-semibold inline-flex items-center gap-2 ${
-                        refreshing ? 'opacity-70' : ''
-                    }`}
+                    className={`px-4 py-2.5 rounded-xl border border-white/10 bg-slate-900/40 hover:bg-slate-900/60 text-sm font-semibold inline-flex items-center gap-2 ${refreshing ? 'opacity-70' : ''
+                        }`}
                 >
                     <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
                     Actualiser
@@ -520,6 +838,91 @@ export default function CtfChallengeDetailPage({ params }: { params: Promise<{ c
                         <div className="flex items-start gap-3">
                             <AlertCircle className="mt-0.5 h-5 w-5 text-red-300" />
                             <p className="text-sm text-red-100/90">{error}</p>
+                        </div>
+                    </CourseCard>
+                )}
+
+                {(challenge.missionBrief || (challenge.incidentArtifacts || []).length > 0) && (
+                    <CourseCard className="p-6 md:p-8">
+                        <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                            <BookOpen className="h-5 w-5 text-cyan-300" />
+                            Mission brief & incident artifacts
+                        </h2>
+                        {challenge.missionBrief && (
+                            <div className="mt-4 grid gap-3 md:grid-cols-2">
+                                <div className="rounded-xl border border-white/10 bg-slate-950/40 p-4">
+                                    <p className="text-xs text-slate-500 uppercase tracking-wider">Role</p>
+                                    <p className="mt-1 text-sm text-slate-200">{challenge.missionBrief.role}</p>
+                                </div>
+                                <div className="rounded-xl border border-white/10 bg-slate-950/40 p-4">
+                                    <p className="text-xs text-slate-500 uppercase tracking-wider">Business context</p>
+                                    <p className="mt-1 text-sm text-slate-200">{challenge.missionBrief.businessContext}</p>
+                                </div>
+                                <div className="rounded-xl border border-white/10 bg-slate-950/40 p-4 md:col-span-2">
+                                    <p className="text-xs text-slate-500 uppercase tracking-wider">Incident trigger</p>
+                                    <p className="mt-1 text-sm text-slate-200">{challenge.missionBrief.incidentTrigger}</p>
+                                </div>
+                                <div className="rounded-xl border border-white/10 bg-slate-950/40 p-4">
+                                    <p className="text-xs text-slate-500 uppercase tracking-wider">Objective</p>
+                                    <p className="mt-1 text-sm text-slate-200">{challenge.missionBrief.objective}</p>
+                                </div>
+                                <div className="rounded-xl border border-white/10 bg-slate-950/40 p-4">
+                                    <p className="text-xs text-slate-500 uppercase tracking-wider">Success criteria</p>
+                                    <p className="mt-1 text-sm text-slate-200">{challenge.missionBrief.successCriteria}</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {(challenge.incidentArtifacts || []).length > 0 && (
+                            <div className="mt-5 space-y-3">
+                                {(challenge.incidentArtifacts || []).slice(0, 3).map((artifact) => (
+                                    <div key={artifact.artifactId} className="rounded-xl border border-white/10 bg-slate-950/40 p-4">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <p className="text-sm font-semibold text-white">{artifact.title}</p>
+                                            <span className="text-[11px] font-semibold text-cyan-200 bg-cyan-500/10 border border-cyan-500/20 px-2 py-1 rounded-full">
+                                                {artifact.artifactType}
+                                            </span>
+                                        </div>
+                                        <p className="mt-1 text-sm text-slate-300">{artifact.description}</p>
+                                        <pre className="mt-3 rounded-lg border border-white/10 bg-slate-950/70 p-3 text-[11px] text-cyan-100 overflow-auto whitespace-pre-wrap">
+                                            {artifact.sample}
+                                        </pre>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </CourseCard>
+                )}
+
+                {challenge.proofRubric && (
+                    <CourseCard className="p-6 md:p-8">
+                        <h2 className="text-lg font-bold text-white">Proof rubric (technique + communication)</h2>
+                        <p className="mt-1 text-xs text-slate-400">
+                            Score minimum attendu: {challenge.proofRubric.passingScore}/100
+                        </p>
+                        <div className="mt-4 grid gap-4 md:grid-cols-2">
+                            <div className="rounded-xl border border-white/10 bg-slate-950/40 p-4">
+                                <p className="text-xs uppercase tracking-wider text-slate-500">Technique</p>
+                                <ul className="mt-2 space-y-2 text-sm text-slate-300">
+                                    {(challenge.proofRubric.technical || []).map((item) => (
+                                        <li key={`${item.criterion}-${item.weight}`} className="flex items-start justify-between gap-2">
+                                            <span>{item.criterion}</span>
+                                            <span className="font-mono text-cyan-200">{item.weight}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                            <div className="rounded-xl border border-white/10 bg-slate-950/40 p-4">
+                                <p className="text-xs uppercase tracking-wider text-slate-500">Communication</p>
+                                <ul className="mt-2 space-y-2 text-sm text-slate-300">
+                                    {(challenge.proofRubric.communication || []).map((item) => (
+                                        <li key={`${item.criterion}-${item.weight}`} className="flex items-start justify-between gap-2">
+                                            <span>{item.criterion}</span>
+                                            <span className="font-mono text-cyan-200">{item.weight}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
                         </div>
                     </CourseCard>
                 )}
@@ -601,6 +1004,42 @@ export default function CtfChallengeDetailPage({ params }: { params: Promise<{ c
                             )}
                         </div>
 
+                        {/* Horizontal step timeline */}
+                        {viewModel.guidedSteps.length > 0 && (
+                            <div className="mt-5 overflow-x-auto">
+                                <div className="flex items-center gap-0 min-w-max pb-1">
+                                    {viewModel.guidedSteps.map((step, idx) => {
+                                        const isDone = isCompleted || step.stepNumber < viewModel.activeStepNumber;
+                                        const isActive = !isCompleted && step.stepNumber === viewModel.activeStepNumber;
+                                        return (
+                                            <div key={step.stepNumber} className="flex items-center">
+                                                <div className={`flex flex-col items-center gap-1`}>
+                                                    <div className={`h-8 w-8 rounded-xl flex items-center justify-center text-xs font-black transition-all ${isDone ? 'bg-emerald-500 text-slate-950' : isActive ? 'bg-cyan-500 text-slate-950 ring-2 ring-cyan-300/40' : 'bg-slate-800 text-slate-500'}`}>
+                                                        {isDone ? <CheckCircle2 className="h-4 w-4" /> : step.stepNumber}
+                                                    </div>
+                                                    <span className={`text-[10px] font-semibold max-w-[60px] text-center leading-tight ${isDone ? 'text-emerald-300' : isActive ? 'text-cyan-300' : 'text-slate-600'}`}>
+                                                        {step.stepTitle.split(' ').slice(0, 2).join(' ')}
+                                                    </span>
+                                                </div>
+                                                {idx < viewModel.guidedSteps.length - 1 && (
+                                                    <div className={`h-0.5 w-8 mx-1 rounded-full transition-all ${isDone ? 'bg-emerald-500' : 'bg-slate-700'}`} />
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                    <div className="flex items-center ml-0">
+                                        <div className={`h-0.5 w-8 mx-1 rounded-full ${isCompleted ? 'bg-emerald-500' : 'bg-slate-700'}`} />
+                                        <div className={`flex flex-col items-center gap-1`}>
+                                            <div className={`h-8 w-14 rounded-xl flex items-center justify-center text-xs font-black ${isCompleted ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 border border-dashed border-slate-600 text-slate-500'}`}>
+                                                {isCompleted ? <Trophy className="h-4 w-4" /> : 'Flag'}
+                                            </div>
+                                            <span className={`text-[10px] font-semibold ${isCompleted ? 'text-amber-300' : 'text-slate-600'}`}>Flag</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="mt-6 space-y-3">
                             {viewModel.guidedSteps.length > 0 ? (
                                 viewModel.guidedSteps.map((step) => {
@@ -609,19 +1048,17 @@ export default function CtfChallengeDetailPage({ params }: { params: Promise<{ c
                                     return (
                                         <div
                                             key={step.stepNumber}
-                                            className={`rounded-2xl border p-5 transition ${
-                                                isDone
+                                            className={`rounded-2xl border p-5 transition ${isDone
                                                     ? 'bg-emerald-500/5 border-emerald-500/15'
                                                     : isActive
                                                         ? 'bg-cyan-500/5 border-cyan-500/20'
                                                         : 'bg-slate-950/40 border-white/10'
-                                            }`}
+                                                }`}
                                         >
                                             <div className="flex items-start gap-3">
                                                 <div
-                                                    className={`h-9 w-9 rounded-xl flex items-center justify-center text-sm font-black ${
-                                                        isDone ? 'bg-emerald-500 text-slate-950' : isActive ? 'bg-cyan-500 text-slate-950' : 'bg-slate-800 text-slate-200'
-                                                    }`}
+                                                    className={`h-9 w-9 rounded-xl flex items-center justify-center text-sm font-black ${isDone ? 'bg-emerald-500 text-slate-950' : isActive ? 'bg-cyan-500 text-slate-950' : 'bg-slate-800 text-slate-200'
+                                                        }`}
                                                 >
                                                     {isDone ? <CheckCircle2 className="h-5 w-5" /> : step.stepNumber}
                                                 </div>
@@ -633,6 +1070,24 @@ export default function CtfChallengeDetailPage({ params }: { params: Promise<{ c
                                                         <pre className="mt-3 rounded-xl border border-white/10 bg-slate-950/60 p-3 text-xs text-emerald-200 overflow-auto whitespace-pre-wrap">
                                                             {step.commandTemplate}
                                                         </pre>
+                                                    )}
+
+                                                    {step.adaptiveGuidance && (
+                                                        <div className="mt-3 rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-3">
+                                                            <p className="text-xs font-semibold text-cyan-200 uppercase tracking-wider">
+                                                                Guidance {step.adaptiveGuidance.learnerProfile}
+                                                            </p>
+                                                            <p className="mt-1 text-xs text-slate-200">{step.adaptiveGuidance.focus}</p>
+                                                            <ul className="mt-2 space-y-1 text-xs text-slate-300">
+                                                                {step.adaptiveGuidance.checklist.map((item) => (
+                                                                    <li key={item} className="flex items-start gap-2">
+                                                                        <span className="mt-1 h-1.5 w-1.5 rounded-full bg-cyan-300 flex-shrink-0" />
+                                                                        <span>{item}</span>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                            <p className="mt-2 text-[11px] text-cyan-100">Success signal: {step.adaptiveGuidance.successSignal}</p>
+                                                        </div>
                                                     )}
 
                                                     {isActive && step.hintText && (
@@ -686,13 +1141,23 @@ export default function CtfChallengeDetailPage({ params }: { params: Promise<{ c
                                         ) : (
                                             <button
                                                 onClick={() => void unlockHint(hint.hintNumber)}
-                                                disabled={submitting}
-                                                className="px-3 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-200 text-xs font-semibold hover:bg-amber-500/20 disabled:opacity-60"
+                                                disabled={submitting || hint.eligible === false}
+                                                className="px-3 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-200 text-xs font-semibold hover:bg-amber-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
                                                 Debloquer (-{hint.costPoints} pts)
                                             </button>
                                         )}
                                     </div>
+                                    {!hint.unlocked && hint.lockedReason && (
+                                        <p className="mt-2 text-xs text-amber-100/80">{hint.lockedReason}</p>
+                                    )}
+                                    {!hint.unlocked && hint.unlockPolicy && (
+                                        <p className="mt-1 text-[11px] text-slate-500">
+                                            Seuil: {hint.unlockPolicy.minMinutes} min ou {hint.unlockPolicy.minFailedAttempts} essais rates
+                                            {typeof hint.unlockPolicy.requiredPreviousHint === 'number' ? `, apres indice ${hint.unlockPolicy.requiredPreviousHint}` : ''}
+                                            . Actuel: {hint.unlockPolicy.elapsedMinutes} min / {hint.unlockPolicy.failedAttempts} essais.
+                                        </p>
+                                    )}
                                     {hint.unlocked && hint.hintText && (
                                         <p className="mt-2 text-sm text-slate-300 leading-relaxed">{hint.hintText}</p>
                                     )}
@@ -711,11 +1176,10 @@ export default function CtfChallengeDetailPage({ params }: { params: Promise<{ c
 
                         {submitResult && (
                             <div
-                                className={`mt-4 rounded-2xl border p-4 text-sm ${
-                                    submitResult.ok
+                                className={`mt-4 rounded-2xl border p-4 text-sm ${submitResult.ok
                                         ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-100'
                                         : 'bg-rose-500/10 border-rose-500/20 text-rose-100'
-                                }`}
+                                    }`}
                             >
                                 <p className="font-semibold">
                                     {submitResult.ok ? 'Succes' : 'Erreur'}: {submitResult.message}
@@ -723,6 +1187,26 @@ export default function CtfChallengeDetailPage({ params }: { params: Promise<{ c
                                         <span className="ml-2 font-mono text-emerald-200">+{submitResult.pointsAwarded} pts</span>
                                     )}
                                 </p>
+                                {submitResult.axisScores && (
+                                    <p className="mt-2 text-xs text-slate-200/90">
+                                        Score multi-axe - Temps: {submitResult.axisScores.time}, Preuves: {submitResult.axisScores.proof},
+                                        Patch: {submitResult.axisScores.patch}, Total: {submitResult.axisScores.total}
+                                    </p>
+                                )}
+                                {(submitResult.feedback || []).length > 0 && (
+                                    <ul className="mt-2 space-y-1 text-xs">
+                                        {(submitResult.feedback || []).map((item) => (
+                                            <li key={`${item.code}-${item.message}`} className="text-slate-200/90">
+                                                [{item.code}] {item.message}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                                {submitResult.debriefRequired && (
+                                    <p className="mt-2 text-xs text-cyan-100">
+                                        Debrief obligatoire: completez le formulaire ci-dessous pour finaliser le score.
+                                    </p>
+                                )}
                             </div>
                         )}
 
@@ -771,7 +1255,81 @@ export default function CtfChallengeDetailPage({ params }: { params: Promise<{ c
                         )}
                     </CourseCard>
                 )}
+
+                {isCompleted && (
+                    <CourseCard className="p-6 md:p-8">
+                        <h2 className="text-lg font-bold text-white">Debrief obligatoire</h2>
+                        <p className="mt-1 text-sm text-slate-400">
+                            Completez le debrief (cause racine, impact, mitigation priorisee, preuves) pour finaliser votre score multi-axe.
+                        </p>
+
+                        <div className="mt-4 grid gap-3">
+                            <label className="text-sm text-slate-300">
+                                Cause racine
+                                <textarea
+                                    value={debriefDraft.rootCause || ''}
+                                    onChange={(event) => setDebriefDraft((prev) => ({ ...prev, rootCause: event.target.value }))}
+                                    className="mt-1 w-full min-h-[110px] px-3 py-2 rounded-xl bg-slate-950/40 border border-white/10 text-sm text-slate-100"
+                                    placeholder={challenge.debriefTemplate?.rootCausePrompt || 'Expliquez le controle qui a echoue.'}
+                                />
+                            </label>
+                            <label className="text-sm text-slate-300">
+                                Impact
+                                <textarea
+                                    value={debriefDraft.impactSummary || ''}
+                                    onChange={(event) => setDebriefDraft((prev) => ({ ...prev, impactSummary: event.target.value }))}
+                                    className="mt-1 w-full min-h-[110px] px-3 py-2 rounded-xl bg-slate-950/40 border border-white/10 text-sm text-slate-100"
+                                    placeholder={challenge.debriefTemplate?.impactPrompt || 'Impact business et securite.'}
+                                />
+                            </label>
+                            <label className="text-sm text-slate-300">
+                                Mitigations priorisees (une ligne par action)
+                                <textarea
+                                    value={debriefInput}
+                                    onChange={(event) => setDebriefInput(event.target.value)}
+                                    className="mt-1 w-full min-h-[100px] px-3 py-2 rounded-xl bg-slate-950/40 border border-white/10 text-sm text-slate-100"
+                                    placeholder={challenge.debriefTemplate?.mitigationPrompt || 'Action 1 ...\\nAction 2 ...'}
+                                />
+                            </label>
+                            <label className="text-sm text-slate-300">
+                                Preuves
+                                <textarea
+                                    value={debriefDraft.evidenceSummary || ''}
+                                    onChange={(event) => setDebriefDraft((prev) => ({ ...prev, evidenceSummary: event.target.value }))}
+                                    className="mt-1 w-full min-h-[110px] px-3 py-2 rounded-xl bg-slate-950/40 border border-white/10 text-sm text-slate-100"
+                                    placeholder={challenge.debriefTemplate?.evidencePrompt || 'Referencez commandes, logs et verification avant/apres.'}
+                                />
+                            </label>
+                        </div>
+
+                        {(challenge.debriefTemplate?.checklist || []).length > 0 && (
+                            <ul className="mt-3 space-y-1 text-xs text-slate-400">
+                                {(challenge.debriefTemplate?.checklist || []).map((item) => (
+                                    <li key={item}>- {item}</li>
+                                ))}
+                            </ul>
+                        )}
+
+                        {debriefMessage && (
+                            <div className="mt-4 rounded-xl border border-cyan-500/20 bg-cyan-500/5 px-4 py-3 text-sm text-cyan-100">
+                                {debriefMessage}
+                            </div>
+                        )}
+
+                        <div className="mt-4">
+                            <button
+                                onClick={() => void submitDebrief()}
+                                disabled={debriefSaving}
+                                className="px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-60 text-white text-sm font-semibold inline-flex items-center gap-2"
+                            >
+                                {debriefSaving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                                {debriefSaving ? 'Enregistrement...' : 'Soumettre le debrief'}
+                            </button>
+                        </div>
+                    </CourseCard>
+                )}
             </div>
         </CoursePageShell>
+        </>
     );
 }

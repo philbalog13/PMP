@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
     Calculator,
@@ -30,12 +31,11 @@ export default function Sidebar() {
         <aside className="hidden lg:flex w-64 bg-slate-900 border-r border-white/5 flex-col h-screen fixed left-0 top-0 z-50">
             <div className="h-16 flex items-center px-6 border-b border-white/5">
                 <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center">
-                        <Zap size={18} className="text-green-500" />
+                    <Image src="/monetic-logo.svg" alt="MoneTIC Logo" width={34} height={34} />
+                    <div>
+                        <span className="font-heading font-bold text-base italic tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">MoneTIC</span>
+                        <p className="text-[10px] font-semibold uppercase tracking-widest text-green-400 leading-none mt-0.5">HSM Admin</p>
                     </div>
-                    <span className="font-heading font-bold text-lg tracking-wide text-white">
-                        HSM<span className="text-green-500">Master</span>
-                    </span>
                 </div>
             </div>
 

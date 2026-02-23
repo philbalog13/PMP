@@ -25,6 +25,12 @@ interface ChallengeStat {
     unique_solvers: number;
     resolution_rate: number;
     avg_completion_minutes: number;
+    avg_time_score: number;
+    avg_proof_score: number;
+    avg_patch_score: number;
+    avg_axis_score: number;
+    dropoff_rate: number;
+    debrief_coverage_rate: number;
 }
 
 interface SubmissionFeedItem {
@@ -35,6 +41,11 @@ interface SubmissionFeedItem {
     points_awarded: number;
     hints_used: number;
     is_first_blood: boolean;
+    axis_time_score: number;
+    axis_proof_score: number;
+    axis_patch_score: number;
+    axis_total_score: number;
+    feedback_codes: string[] | null;
     submitted_at: string;
     challenge_code: string;
     title: string;
@@ -51,8 +62,50 @@ interface BlockedStudent {
     last_name: string;
     challenge_code: string;
     title: string;
+    current_guided_step: number;
+    failed_attempts: number;
+    learner_profile: string;
     started_at: string;
     hours_in_progress: number;
+}
+
+interface DropoffRow {
+    challenge_code: string;
+    title: string;
+    started_count: number;
+    completed_count: number;
+    in_progress_count: number;
+    dropoff_rate: number;
+}
+
+interface DebriefCoverageRow {
+    challenge_code: string;
+    title: string;
+    completed_count: number;
+    debrief_count: number;
+    debrief_coverage_rate: number;
+}
+
+interface FeedbackHotspotRow {
+    feedback_code: string;
+    occurrences: number;
+}
+
+interface LearnerProfileDistributionRow {
+    learner_profile: string;
+    learners: number;
+}
+
+interface StepBlockageRow {
+    challenge_code: string;
+    title: string;
+    current_guided_step: number;
+    blocked_learners: number;
+}
+
+interface TelemetryVolumeRow {
+    event_name: string;
+    events_24h: number;
 }
 
 export default function InstructorCtfDashboardPage() {
@@ -61,6 +114,12 @@ export default function InstructorCtfDashboardPage() {
     const [challengeStats, setChallengeStats] = useState<ChallengeStat[]>([]);
     const [submissions, setSubmissions] = useState<SubmissionFeedItem[]>([]);
     const [blockedStudents, setBlockedStudents] = useState<BlockedStudent[]>([]);
+    const [dropoffRows, setDropoffRows] = useState<DropoffRow[]>([]);
+    const [debriefRows, setDebriefRows] = useState<DebriefCoverageRow[]>([]);
+    const [feedbackHotspots, setFeedbackHotspots] = useState<FeedbackHotspotRow[]>([]);
+    const [learnerProfiles, setLearnerProfiles] = useState<LearnerProfileDistributionRow[]>([]);
+    const [stepBlockage, setStepBlockage] = useState<StepBlockageRow[]>([]);
+    const [telemetryVolume, setTelemetryVolume] = useState<TelemetryVolumeRow[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -82,6 +141,12 @@ export default function InstructorCtfDashboardPage() {
             const payload = await analyticsRes.json();
             setChallengeStats(payload.analytics?.challengeStats || []);
             setBlockedStudents(payload.analytics?.blockedStudents || []);
+            setDropoffRows(payload.analytics?.dropoffByChallenge || []);
+            setDebriefRows(payload.analytics?.debriefCoverage || []);
+            setFeedbackHotspots(payload.analytics?.feedbackHotspots || []);
+            setLearnerProfiles(payload.analytics?.learnerProfileDistribution || []);
+            setStepBlockage(payload.analytics?.stepBlockage || []);
+            setTelemetryVolume(payload.analytics?.telemetryVolume || []);
         }
 
         if (submissionsRes?.ok) {
@@ -95,8 +160,8 @@ export default function InstructorCtfDashboardPage() {
             setRefreshing(true);
             setError(null);
             await fetchData();
-        } catch (fetchError: any) {
-            setError(fetchError.message || 'Impossible de charger le dashboard CTF formateur');
+        } catch (fetchError: unknown) {
+            setError(fetchError instanceof Error ? fetchError.message : 'Impossible de charger le dashboard CTF formateur');
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -137,8 +202,8 @@ export default function InstructorCtfDashboardPage() {
             }
 
             await refresh();
-        } catch (resetError: any) {
-            setError(resetError.message || 'Erreur reset progression');
+        } catch (resetError: unknown) {
+            setError(resetError instanceof Error ? resetError.message : 'Erreur reset progression');
         }
     }, [refresh]);
 
@@ -191,7 +256,9 @@ export default function InstructorCtfDashboardPage() {
                                     <div key={stat.challenge_code}>
                                         <div className="flex items-center justify-between text-xs mb-1">
                                             <span className="text-slate-200">{stat.challenge_code} - {stat.title}</span>
-                                            <span className="text-slate-400">{rate}% ({stat.unique_solvers} solveurs)</span>
+                                            <span className="text-slate-400">
+                                                {rate}% ({stat.unique_solvers} solveurs) - Axis {stat.avg_axis_score} - Drop-off {stat.dropoff_rate}%
+                                            </span>
                                         </div>
                                         <div className="h-2 rounded-full bg-slate-700 overflow-hidden">
                                             <div
@@ -213,6 +280,7 @@ export default function InstructorCtfDashboardPage() {
                                     <p className="font-semibold">{stat.challenge_code}</p>
                                     <p className="text-xs text-slate-400 mt-1">Taux: {stat.resolution_rate}%</p>
                                     <p className="text-xs text-slate-400">Temps moyen: {stat.avg_completion_minutes} min</p>
+                                    <p className="text-xs text-slate-400">Debrief: {stat.debrief_coverage_rate}%</p>
                                 </div>
                             ))}
                         </div>
@@ -234,8 +302,13 @@ export default function InstructorCtfDashboardPage() {
                                             </span>
                                         </div>
                                         <div className="mt-1 text-slate-400">
-                                            {new Date(item.submitted_at).toLocaleString('fr-FR')} - {item.mode} - {item.points_awarded} pts
+                                            {new Date(item.submitted_at).toLocaleString('fr-FR')} - {item.mode} - {item.points_awarded} pts - Axis {item.axis_total_score}
                                         </div>
+                                        {Array.isArray(item.feedback_codes) && item.feedback_codes.length > 0 && (
+                                            <div className="mt-1 text-[11px] text-slate-500">
+                                                Feedback: {item.feedback_codes.slice(0, 3).join(', ')}
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })}
@@ -258,6 +331,9 @@ export default function InstructorCtfDashboardPage() {
                                         <p className="text-sm font-semibold">{name}</p>
                                         <p className="text-xs text-slate-400 mt-1">{student.challenge_code} - {student.title}</p>
                                         <p className="text-xs text-amber-300 mt-1">{student.hours_in_progress} h en cours</p>
+                                        <p className="text-xs text-slate-500 mt-1">
+                                            Step {student.current_guided_step} - essais rates {student.failed_attempts} - profil {student.learner_profile}
+                                        </p>
                                         <button
                                             onClick={() => handleResetStudent(student.student_id)}
                                             className="mt-2 px-2 py-1 rounded bg-red-600 hover:bg-red-500 text-xs flex items-center gap-1"
@@ -270,8 +346,85 @@ export default function InstructorCtfDashboardPage() {
                         </div>
                     </div>
                 </div>
+
+                <div className="mt-6 grid lg:grid-cols-3 gap-6">
+                    <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-5">
+                        <h2 className="font-bold mb-4">Drop-off challenge</h2>
+                        <div className="space-y-2 max-h-[320px] overflow-auto">
+                            {dropoffRows.slice(0, 12).map((row) => (
+                                <div key={`${row.challenge_code}-${row.dropoff_rate}`} className="rounded-lg border border-white/10 bg-slate-900/70 p-3 text-xs">
+                                    <p className="text-slate-200">{row.challenge_code} - {row.title}</p>
+                                    <p className="text-slate-400 mt-1">Started {row.started_count} / Completed {row.completed_count}</p>
+                                    <p className="text-amber-300 mt-1">Drop-off {row.dropoff_rate}%</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-5">
+                        <h2 className="font-bold mb-4">Debrief coverage</h2>
+                        <div className="space-y-2 max-h-[320px] overflow-auto">
+                            {debriefRows.slice(0, 12).map((row) => (
+                                <div key={`${row.challenge_code}-${row.debrief_coverage_rate}`} className="rounded-lg border border-white/10 bg-slate-900/70 p-3 text-xs">
+                                    <p className="text-slate-200">{row.challenge_code} - {row.title}</p>
+                                    <p className="text-slate-400 mt-1">Debriefs {row.debrief_count}/{row.completed_count}</p>
+                                    <p className="text-cyan-300 mt-1">Coverage {row.debrief_coverage_rate}%</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-5">
+                        <h2 className="font-bold mb-4">Feedback hotspots</h2>
+                        <div className="space-y-2 max-h-[320px] overflow-auto">
+                            {feedbackHotspots.slice(0, 12).map((item) => (
+                                <div key={item.feedback_code} className="rounded-lg border border-white/10 bg-slate-900/70 p-3 text-xs">
+                                    <p className="text-slate-200">{item.feedback_code}</p>
+                                    <p className="text-slate-400 mt-1">{item.occurrences} occurrences</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="mt-6 grid lg:grid-cols-3 gap-6">
+                    <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-5">
+                        <h2 className="font-bold mb-4">Learner profiles</h2>
+                        <div className="space-y-2 text-xs">
+                            {learnerProfiles.map((item) => (
+                                <div key={item.learner_profile} className="rounded-lg border border-white/10 bg-slate-900/70 px-3 py-2 flex items-center justify-between">
+                                    <span>{item.learner_profile}</span>
+                                    <span className="font-mono text-cyan-200">{item.learners}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-5">
+                        <h2 className="font-bold mb-4">Blockage by step</h2>
+                        <div className="space-y-2 max-h-[260px] overflow-auto text-xs">
+                            {stepBlockage.slice(0, 12).map((item) => (
+                                <div key={`${item.challenge_code}-${item.current_guided_step}`} className="rounded-lg border border-white/10 bg-slate-900/70 p-3">
+                                    <p className="text-slate-200">{item.challenge_code} step {item.current_guided_step}</p>
+                                    <p className="text-slate-400 mt-1">{item.blocked_learners} etudiants bloques</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-5">
+                        <h2 className="font-bold mb-4">Telemetry 24h</h2>
+                        <div className="space-y-2 max-h-[260px] overflow-auto text-xs">
+                            {telemetryVolume.map((item) => (
+                                <div key={item.event_name} className="rounded-lg border border-white/10 bg-slate-900/70 px-3 py-2 flex items-center justify-between">
+                                    <span className="text-slate-200">{item.event_name}</span>
+                                    <span className="font-mono text-emerald-300">{item.events_24h}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );
 }
-

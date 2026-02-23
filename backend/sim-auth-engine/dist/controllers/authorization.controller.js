@@ -3,9 +3,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.simulate = exports.getTransactions = exports.authorize = void 0;
+exports.generateCode = exports.simulate = exports.getTransactions = exports.authorize = void 0;
 const joi_1 = __importDefault(require("joi"));
 const services_1 = require("../services");
+let weakCodeCounter = 100000;
 // Validation schemas
 const transactionSchema = joi_1.default.object({
     stan: joi_1.default.string().pattern(/^\d{1,12}$/).required(),
@@ -124,9 +125,23 @@ const simulate = async (req, res, next) => {
     }
 };
 exports.simulate = simulate;
+/**
+ * POST /auth/generate-code - Legacy CTF weak auth code endpoint
+ */
+const generateCode = async (_req, res) => {
+    weakCodeCounter += 7;
+    const code = `${weakCodeCounter}`.slice(-6);
+    res.status(200).json({
+        success: true,
+        authCode: code,
+        code
+    });
+};
+exports.generateCode = generateCode;
 exports.default = {
     authorize: exports.authorize,
     getTransactions: exports.getTransactions,
-    simulate: exports.simulate
+    simulate: exports.simulate,
+    generateCode: exports.generateCode
 };
 //# sourceMappingURL=authorization.controller.js.map

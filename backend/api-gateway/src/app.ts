@@ -15,6 +15,7 @@ import merchantRoutes from './routes/merchant.routes';
 import platformRoutes from './routes/platform.routes';
 import ctfRoutes from './routes/ctf.routes';
 import cursusRoutes from './routes/cursus.routes';
+import adminRoutes from './routes/admin.routes';
 import { logger } from './utils/logger';
 
 const app: Application = express();
@@ -118,6 +119,7 @@ app.use('/api/merchant', merchantRoutes);
 app.use('/api/platform', platformRoutes);
 app.use('/api/ctf', ctfRoutes);
 app.use('/api/cursus', cursusRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Gateway routes (health, auth, proxy)
 app.use(gatewayRoutes);

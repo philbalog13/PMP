@@ -1,0 +1,51 @@
+name: CTF Solvability Gate
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+
+jobs:
+  ctf-solvability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Check solvability matrix
+        run: node scripts/ctf/check-solvability-matrix.js
+
+      - name: Install api-gateway deps
+        run: npm ci
+        working-directory: backend/api-gateway
+
+      - name: Install sim-network-switch deps
+        run: npm ci
+        working-directory: backend/sim-network-switch
+
+      - name: Install sim-fraud-detection deps
+        run: npm ci
+        working-directory: backend/sim-fraud-detection
+
+      - name: Build api-gateway
+        run: npm run build
+        working-directory: backend/api-gateway
+
+      - name: Build sim-network-switch
+        run: npm run build
+        working-directory: backend/sim-network-switch
+
+      - name: Build sim-fraud-detection
+        run: npm run build
+        working-directory: backend/sim-fraud-detection
+
+      - name: Run critical CTF flag suite
+        run: node scripts/ctf/run-critical-flag-suite.js

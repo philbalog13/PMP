@@ -11,6 +11,7 @@ router.post('/authorize', controller.authorize);
 router.get('/accounts', controller.getAllAccounts);
 router.get('/accounts/:pan', controller.getAccount);
 router.patch('/accounts/:pan/balance', controller.updateBalance);
+router.put('/accounts/:pan/balance', controller.updateBalance);
 router.post('/accounts', controller.createAccount);
 
 export default router;

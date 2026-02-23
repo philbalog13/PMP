@@ -75,6 +75,45 @@ const normalizePositiveAmount = (value: any): number | null => {
 
 const roundCurrency = (value: number): number => Math.round(value * 100) / 100;
 
+const buildRealTransactionIntegrityClause = (alias?: string): string => {
+    const tx = alias ? `${alias}.` : '';
+    return `
+        ${tx}client_id IS NOT NULL
+        AND ${tx}merchant_id IS NOT NULL
+        AND EXISTS (
+            SELECT 1
+            FROM users.users u_client
+            WHERE u_client.id = ${tx}client_id
+              AND u_client.role = 'ROLE_CLIENT'
+        )
+        AND EXISTS (
+            SELECT 1
+            FROM users.users u_merchant
+            WHERE u_merchant.id = ${tx}merchant_id
+              AND u_merchant.role = 'ROLE_MARCHAND'
+        )
+        AND EXISTS (
+            SELECT 1
+            FROM client.bank_accounts ba
+            WHERE ba.client_id = ${tx}client_id
+        )
+        AND EXISTS (
+            SELECT 1
+            FROM merchant.accounts ma
+            WHERE ma.merchant_id = ${tx}merchant_id
+        )
+        AND (
+            ${tx}card_id IS NULL
+            OR EXISTS (
+                SELECT 1
+                FROM client.virtual_cards vc
+                WHERE vc.id = ${tx}card_id
+                  AND vc.client_id = ${tx}client_id
+            )
+        )
+    `;
+};
+
 type ClientAccountDirection = 'CREDIT' | 'DEBIT';
 type ClientAccountEntryType = 'OPENING' | 'DEPOSIT' | 'WITHDRAWAL' | 'ADJUSTMENT' | 'CARD_TOPUP';
 
@@ -238,7 +277,9 @@ export const getDashboard = async (req: Request, res: Response) => {
                     COUNT(CASE WHEN status = 'APPROVED' THEN 1 END) as approved_count,
                     COUNT(CASE WHEN status = 'DECLINED' THEN 1 END) as declined_count
                  FROM client.transactions
-                 WHERE merchant_id = $1 AND DATE(timestamp) = CURRENT_DATE`,
+                 WHERE merchant_id = $1
+                   AND DATE(timestamp) = CURRENT_DATE
+                   AND ${buildRealTransactionIntegrityClause()}`,
                 [userId]
             ),
             query(
@@ -254,6 +295,7 @@ export const getDashboard = async (req: Request, res: Response) => {
                         response_code, authorization_code, terminal_id, timestamp
                  FROM client.transactions
                  WHERE merchant_id = $1
+                   AND ${buildRealTransactionIntegrityClause()}
                  ORDER BY timestamp DESC LIMIT 10`,
                 [userId]
             ),
@@ -263,7 +305,9 @@ export const getDashboard = async (req: Request, res: Response) => {
                     COUNT(*) as count,
                     COALESCE(SUM(CASE WHEN status = 'APPROVED' THEN amount ELSE 0 END), 0) as revenue
                  FROM client.transactions
-                 WHERE merchant_id = $1 AND timestamp >= NOW() - INTERVAL '7 days'
+                 WHERE merchant_id = $1
+                   AND timestamp >= NOW() - INTERVAL '7 days'
+                   AND ${buildRealTransactionIntegrityClause()}
                  GROUP BY DATE(timestamp)
                  ORDER BY date DESC`,
                 [userId]
@@ -527,6 +571,7 @@ export const settleAccount = async (req: Request, res: Response) => {
                   AND status = 'APPROVED'
                   AND type = 'PURCHASE'
                   AND settled_at IS NULL
+                  AND ${buildRealTransactionIntegrityClause()}
              ),
              to_settle AS (
                 SELECT id
@@ -1116,7 +1161,10 @@ export const getTransactions = async (req: Request, res: Response) => {
         const toDate = req.query.toDate as string;
         const search = req.query.search as string;
 
-        let whereConditions = ['merchant_id = $1'];
+        let whereConditions = [
+            'merchant_id = $1',
+            buildRealTransactionIntegrityClause()
+        ];
         let params: any[] = [userId];
         let paramIndex = 2;
 
@@ -1189,7 +1237,10 @@ export const getTransactionById = async (req: Request, res: Response) => {
         const { id } = req.params;
 
         const result = await query(
-            `SELECT * FROM client.transactions WHERE id = $1 AND merchant_id = $2`,
+            `SELECT * FROM client.transactions
+             WHERE id = $1
+               AND merchant_id = $2
+               AND ${buildRealTransactionIntegrityClause()}`,
             [id, userId]
         );
 
@@ -1215,7 +1266,9 @@ export const getTransactionTimeline = async (req: Request, res: Response) => {
         const result = await query(
             `SELECT t.*, m.merchant_name FROM client.transactions t
              LEFT JOIN merchant.pos_terminals m ON m.merchant_id = t.merchant_id
-             WHERE t.id = $1 AND t.merchant_id = $2
+             WHERE t.id = $1
+               AND t.merchant_id = $2
+               AND ${buildRealTransactionIntegrityClause('t')}
              LIMIT 1`,
             [id, userId]
         );
@@ -1289,7 +1342,10 @@ export const refundTransaction = async (req: Request, res: Response) => {
 
         // Get original transaction
         const txnResult = await query(
-            `SELECT * FROM client.transactions WHERE id = $1 AND merchant_id = $2`,
+            `SELECT * FROM client.transactions
+             WHERE id = $1
+               AND merchant_id = $2
+               AND ${buildRealTransactionIntegrityClause()}`,
             [id, userId]
         );
 
@@ -1429,7 +1485,10 @@ export const voidTransaction = async (req: Request, res: Response) => {
 
         // Get transaction
         const txnResult = await query(
-            `SELECT * FROM client.transactions WHERE id = $1 AND merchant_id = $2`,
+            `SELECT * FROM client.transactions
+             WHERE id = $1
+               AND merchant_id = $2
+               AND ${buildRealTransactionIntegrityClause()}`,
             [id, userId]
         );
 
@@ -1597,8 +1656,10 @@ export const getPOSById = async (req: Request, res: Response) => {
             `SELECT id, transaction_id, amount, currency, type, status, timestamp
              FROM client.transactions
              WHERE terminal_id = $1
+               AND merchant_id = $2
+               AND ${buildRealTransactionIntegrityClause()}
              ORDER BY timestamp DESC LIMIT 10`,
-            [result.rows[0].terminal_id]
+            [result.rows[0].terminal_id, userId]
         );
 
         res.json({
@@ -1784,7 +1845,9 @@ export const getDailyReport = async (req: Request, res: Response) => {
                 COALESCE(SUM(CASE WHEN masked_pan LIKE '4%' THEN amount ELSE 0 END), 0) as visa_amount,
                 COALESCE(SUM(CASE WHEN masked_pan LIKE '5%' THEN amount ELSE 0 END), 0) as mastercard_amount
              FROM client.transactions
-             WHERE merchant_id = $1 AND DATE(timestamp) = $2`,
+             WHERE merchant_id = $1
+               AND DATE(timestamp) = $2
+               AND ${buildRealTransactionIntegrityClause()}`,
             [userId, date]
         );
 
@@ -1798,7 +1861,9 @@ export const getDailyReport = async (req: Request, res: Response) => {
                 COUNT(*) as count,
                 SUM(CASE WHEN status = 'APPROVED' THEN amount ELSE 0 END) as amount
              FROM client.transactions
-             WHERE merchant_id = $1 AND DATE(timestamp) = $2
+             WHERE merchant_id = $1
+               AND DATE(timestamp) = $2
+               AND ${buildRealTransactionIntegrityClause()}
              GROUP BY EXTRACT(HOUR FROM timestamp)
              ORDER BY hour`,
             [userId, date]
@@ -1851,7 +1916,9 @@ export const getReconciliationReport = async (req: Request, res: Response) => {
                 transaction_id, stan, masked_pan, amount, currency, type, status,
                 response_code, authorization_code, terminal_id, timestamp
              FROM client.transactions
-             WHERE merchant_id = $1 ${dateFilter}
+             WHERE merchant_id = $1
+               ${dateFilter}
+               AND ${buildRealTransactionIntegrityClause()}
              ORDER BY timestamp`,
             params
         );
@@ -1906,7 +1973,9 @@ export const exportReport = async (req: Request, res: Response) => {
         // Generate report data
         const result = await query(
             `SELECT * FROM client.transactions
-             WHERE merchant_id = $1 AND DATE(timestamp) BETWEEN $2 AND $3
+             WHERE merchant_id = $1
+               AND DATE(timestamp) BETWEEN $2 AND $3
+               AND ${buildRealTransactionIntegrityClause()}
              ORDER BY timestamp`,
             [userId, fromDate, toDate]
         );

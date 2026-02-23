@@ -32,8 +32,7 @@ export class VerifyMAC implements ICommand {
 
         const computed = generated.mac.toUpperCase();
         const received = mac.toUpperCase();
-        const verified = computed.length === received.length
-            && Buffer.from(computed, 'hex').equals(Buffer.from(received, 'hex'));
+        const verified = await this.timingVulnerableVerifyMac(received, computed);
 
         return {
             command_code: 'C2',
@@ -48,5 +47,20 @@ export class VerifyMAC implements ICommand {
                 `Verification result: ${verified ? 'MATCH' : 'MISMATCH'}`,
             ],
         };
+    }
+
+    private async timingVulnerableVerifyMac(submitted: string, actual: string): Promise<boolean> {
+        const normalizedSubmitted = submitted.padEnd(actual.length, '0').slice(0, actual.length);
+        const submittedBytes = Buffer.from(normalizedSubmitted, 'hex');
+        const actualBytes = Buffer.from(actual, 'hex');
+
+        for (let i = 0; i < actualBytes.length; i += 1) {
+            if (submittedBytes[i] !== actualBytes[i]) {
+                return false;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 5));
+        }
+
+        return true;
     }
 }

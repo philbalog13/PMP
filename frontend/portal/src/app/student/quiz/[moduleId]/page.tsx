@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, use, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
     CheckCircle,
     XCircle,
@@ -12,6 +12,7 @@ import {
     AlertCircle
 } from 'lucide-react';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { useAuth } from '../../../auth/useAuth';
 import { CourseCard, CoursePageShell, CoursePill } from '@/components/course/CoursePageShell';
 
@@ -65,8 +66,9 @@ interface WorkshopCatalogEntry {
     quizId?: string | null;
 }
 
-export default function QuizPage({ params }: { params: Promise<{ moduleId: string }> }) {
-    const { moduleId } = use(params);
+export default function QuizPage() {
+    const params = useParams<{ moduleId: string }>();
+    const moduleId = decodeURIComponent(String(params?.moduleId || '')).trim();
     const { isLoading: authLoading } = useAuth(true);
 
     const [quizDefinition, setQuizDefinition] = useState<QuizDefinition | null>(null);
@@ -81,6 +83,10 @@ export default function QuizPage({ params }: { params: Promise<{ moduleId: strin
     const [submissionResult, setSubmissionResult] = useState<QuizSubmissionResult | null>(null);
 
     const resolveQuizId = useCallback(async (token: string): Promise<string> => {
+        if (!moduleId) {
+            throw new Error('Identifiant de module manquant.');
+        }
+
         if (moduleId.startsWith('quiz-')) {
             return moduleId;
         }
@@ -139,7 +145,16 @@ export default function QuizPage({ params }: { params: Promise<{ moduleId: strin
                 throw new Error(body.error || 'Quiz indisponible.');
             }
 
-            setQuizDefinition(body.quiz);
+            const normalizedQuiz: QuizDefinition = {
+                ...body.quiz,
+                questions: Array.isArray(body.quiz.questions) ? body.quiz.questions : [],
+                questionCount: Number.isFinite(body.quiz.questionCount)
+                    ? body.quiz.questionCount
+                    : (Array.isArray(body.quiz.questions) ? body.quiz.questions.length : 0),
+                attempts: Number.isFinite(body.quiz.attempts) ? body.quiz.attempts : 0
+            };
+
+            setQuizDefinition(normalizedQuiz);
             setCurrentQuestion(0);
             setSelectedAnswers([]);
             setShowResults(false);
@@ -409,11 +424,57 @@ export default function QuizPage({ params }: { params: Promise<{ moduleId: strin
         );
     }
 
-    const question = quizDefinition.questions[currentQuestion];
-    const totalQuestions = quizDefinition.questions.length;
+    const questions = Array.isArray(quizDefinition.questions) ? quizDefinition.questions : [];
+    const totalQuestions = questions.length;
     const progressPercent = totalQuestions > 0
         ? Math.round(((currentQuestion + 1) / totalQuestions) * 100)
         : 0;
+
+    if (totalQuestions === 0) {
+        return (
+            <CoursePageShell
+                title={quizDefinition.title}
+                description="Quiz indisponible"
+                icon={<AlertCircle className="h-8 w-8 text-red-200" />}
+                crumbs={[
+                    { label: 'Mon Parcours', href: '/student' },
+                    { label: 'Quiz', href: '/student/quizzes' },
+                    { label: quizDefinition.title },
+                ]}
+                backHref="/student/quizzes"
+                backLabel="Retour aux quiz"
+            >
+                <CourseCard className="border border-red-500/20 bg-red-500/5 p-6 md:p-8">
+                    <div className="flex items-start gap-3">
+                        <AlertCircle className="mt-0.5 h-5 w-5 text-red-300" />
+                        <div className="min-w-0">
+                            <h2 className="text-lg font-semibold text-white">Aucune question disponible</h2>
+                            <p className="mt-1 text-sm text-red-100/90">
+                                Ce quiz est actuellement vide. Merci de réessayer plus tard.
+                            </p>
+                            <div className="mt-4 flex flex-wrap items-center gap-2">
+                                <button
+                                    onClick={loadQuiz}
+                                    className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold"
+                                >
+                                    Recharger
+                                </button>
+                                <Link
+                                    href="/student/quizzes"
+                                    className="px-4 py-2.5 rounded-xl border border-white/10 bg-slate-900/40 text-sm font-semibold hover:bg-slate-900/60"
+                                >
+                                    Retour aux quiz
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
+                </CourseCard>
+            </CoursePageShell>
+        );
+    }
+
+    const boundedQuestionIndex = Math.min(Math.max(currentQuestion, 0), totalQuestions - 1);
+    const question = questions[boundedQuestionIndex];
 
     return (
         <CoursePageShell
@@ -467,7 +528,7 @@ export default function QuizPage({ params }: { params: Promise<{ moduleId: strin
                             Question <span className="text-white font-semibold">{currentQuestion + 1}</span> / {totalQuestions}
                         </p>
                         <div className="flex gap-2">
-                            {quizDefinition.questions.map((_, index) => (
+                            {questions.map((_, index) => (
                                 <div
                                     key={index}
                                     className={`w-2 h-2 rounded-full ${

@@ -17,10 +17,8 @@ export function Footer() {
                     {/* Brand */}
                     <div className="col-span-1 md:col-span-2 space-y-6">
                         <Link href="/" className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                                <CreditCard className="w-5 h-5 text-white" />
-                            </div>
-                            <span className="text-xl font-bold text-white tracking-tight">FINED-SIM</span>
+                            <img src="/monetic-logo.svg" alt="MoneTIC Logo" className="w-10 h-10 hover:scale-110 transition-transform duration-300" />
+                            <span className="text-xl font-bold text-white tracking-tight">MoneTIC</span>
                         </Link>
                         <p className="text-slate-400 max-w-sm leading-relaxed">
                             La première plateforme open-source dédiée à l&apos;apprentissage pratique de la monétique,
@@ -38,8 +36,8 @@ export function Footer() {
                         <h4 className="text-white font-bold uppercase tracking-widest text-xs mb-6">Plateforme</h4>
                         <ul className="space-y-4">
                             <FooterLink href="/documentation" label="Documentation" />
-                            <FooterLink href="/lab" label="Laboratoire" />
-                            <FooterLink href="/workshops" label="Ateliers" />
+                            <FooterLink href="/student/ctf" label="Laboratoire" />
+                            <FooterLink href="/student/cursus" label="Ateliers" />
                             <FooterLink href="/demo" label="Démo Interactive" />
                         </ul>
                     </div>
@@ -58,7 +56,7 @@ export function Footer() {
 
                 <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
                     <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">
-                        © 2026 FINED-SIM. TOUS DROITS RÉSERVÉS.
+                        © 2026 MoneTIC. TOUS DROITS RÉSERVÉS.
                     </p>
                     <div className="flex gap-8">
                         <Link href="#" className="text-slate-500 hover:text-white text-[10px] font-bold uppercase tracking-widest transition">Confidentialité</Link>

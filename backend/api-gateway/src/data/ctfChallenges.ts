@@ -7,7 +7,14 @@ export type CtfCategory =
     | 'HSM_ATTACK'
     | '3DS_BYPASS'
     | 'CRYPTO_WEAKNESS'
-    | 'PRIVILEGE_ESCALATION';
+    | 'PRIVILEGE_ESCALATION'
+    | 'EMV_CLONING'
+    | 'TOKEN_VAULT'
+    | 'NETWORK_ATTACK'
+    | 'KEY_MANAGEMENT'
+    | 'ADVANCED_FRAUD'
+    | 'SUPPLY_CHAIN'
+    | 'BOSS';
 
 export type CtfDifficulty = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT';
 
@@ -17,7 +24,8 @@ export type CtfStepType =
     | 'CODE_SNIPPET'
     | 'OBSERVATION'
     | 'ANALYSIS'
-    | 'EXPLOITATION';
+    | 'EXPLOITATION'
+    | 'HINT';
 
 export interface CtfGuidedStepSeed {
     stepNumber: number;
@@ -33,6 +41,42 @@ export interface CtfHintSeed {
     hintNumber: number;
     hintText: string;
     costPoints: number;
+}
+
+export interface CtfMissionBriefSeed {
+    role: string;
+    businessContext: string;
+    incidentTrigger: string;
+    objective: string;
+    successCriteria: string;
+}
+
+export interface CtfIncidentArtifactSeed {
+    artifactId: string;
+    artifactType: 'LOG' | 'TRACE' | 'TICKET' | 'SIEM';
+    title: string;
+    description: string;
+    sample: string;
+}
+
+export interface CtfRubricCriterionSeed {
+    criterion: string;
+    weight: number;
+    description: string;
+}
+
+export interface CtfProofRubricSeed {
+    technical: CtfRubricCriterionSeed[];
+    communication: CtfRubricCriterionSeed[];
+    passingScore: number;
+}
+
+export interface CtfDebriefTemplateSeed {
+    rootCausePrompt: string;
+    impactPrompt: string;
+    mitigationPrompt: string;
+    evidencePrompt: string;
+    checklist: string[];
 }
 
 export interface CtfChallengeSeed {
@@ -55,461 +99,486 @@ export interface CtfChallengeSeed {
     relatedWorkshopPath?: string;
     guidedSteps: CtfGuidedStepSeed[];
     hints: CtfHintSeed[];
+    missionBrief?: CtfMissionBriefSeed;
+    incidentArtifacts?: CtfIncidentArtifactSeed[];
+    proofRubric?: CtfProofRubricSeed;
+    debriefTemplate?: CtfDebriefTemplateSeed;
+    /**
+     * Initial vulnerability configuration applied to each student when they start this challenge.
+     * Set by the gateway via the HSM internal admin endpoint — never toggled by students.
+     * Keys match VulnerabilityConfig fields in VulnEngine.ts.
+     */
+    initialVulnConfig?: Record<string, boolean>;
 }
 
-const steps = (cmd?: string): CtfGuidedStepSeed[] => [
-    {
-        stepNumber: 1,
-        stepTitle: 'Recon',
-        stepDescription: 'Identifier la surface d attaque.',
+import { HSM_CHALLENGES } from './ctf/hsmChallenges';
+import { REPLAY_CHALLENGES } from './ctf/replayChallenges';
+import { THREEDS_CHALLENGES } from './ctf/threedsChallenges';
+import { FRAUD_CHALLENGES } from './ctf/fraudChallenges';
+import { ISO_CHALLENGES, PIN_CHALLENGES, MITM_CHALLENGES, PRIVESC_CHALLENGES, CRYPTO_CHALLENGES, INFRA_CHALLENGES } from './ctf/otherChallenges';
+import { PHASE2_CHALLENGES } from './ctf/phase2Challenges';
+
+const RAW_CTF_CHALLENGES: CtfChallengeSeed[] = [
+    ...HSM_CHALLENGES,
+    ...REPLAY_CHALLENGES,
+    ...THREEDS_CHALLENGES,
+    ...FRAUD_CHALLENGES,
+    ...ISO_CHALLENGES,
+    ...PIN_CHALLENGES,
+    ...MITM_CHALLENGES,
+    ...PRIVESC_CHALLENGES,
+    ...CRYPTO_CHALLENGES,
+    ...INFRA_CHALLENGES,
+    ...PHASE2_CHALLENGES,
+];
+
+const HINT_LEVEL_1_COST = 5;
+const HINT_LEVEL_2_COST = 12;
+const HINT_LEVEL_3_COST = 25;
+const LEVEL_1_FALLBACK = 'Analysez la surface exposee puis confirmez un comportement anormal.';
+
+const CATEGORY_ATTACK_CLASS: Record<CtfCategory, string> = {
+    PIN_CRACKING: 'Weak authentication / credential handling',
+    REPLAY_ATTACK: 'Broken anti-replay controls',
+    MITM: 'Insecure transport / cleartext exposure',
+    FRAUD_CNP: 'Business logic abuse (fraud decisioning)',
+    ISO8583_MANIPULATION: 'Protocol message tampering',
+    HSM_ATTACK: 'Broken access control / cryptographic misuse',
+    '3DS_BYPASS': 'Authentication workflow bypass',
+    CRYPTO_WEAKNESS: 'Weak cryptography / weak randomness',
+    PRIVILEGE_ESCALATION: 'Broken authorization',
+    EMV_CLONING: 'EMV trust boundary bypass',
+    TOKEN_VAULT: 'Sensitive data exposure',
+    NETWORK_ATTACK: 'Insecure network trust model',
+    KEY_MANAGEMENT: 'Key lifecycle and segregation failure',
+    ADVANCED_FRAUD: 'Adaptive fraud evasion',
+    SUPPLY_CHAIN: 'Supply chain compromise',
+    BOSS: 'Multi-stage chained exploitation',
+};
+
+const CATEGORY_TOOL_HINT: Record<CtfCategory, string> = {
+    PIN_CRACKING: 'nmap, curl',
+    REPLAY_ATTACK: 'curl, burp repeater',
+    MITM: 'nmap, tshark',
+    FRAUD_CNP: 'curl, jq',
+    ISO8583_MANIPULATION: 'nmap, pyiso8583',
+    HSM_ATTACK: 'nmap, ffuf',
+    '3DS_BYPASS': 'curl, jq',
+    CRYPTO_WEAKNESS: 'curl, python',
+    PRIVILEGE_ESCALATION: 'ffuf, curl',
+    EMV_CLONING: 'tshark, curl',
+    TOKEN_VAULT: 'curl, jq',
+    NETWORK_ATTACK: 'nmap, tshark',
+    KEY_MANAGEMENT: 'curl, jq',
+    ADVANCED_FRAUD: 'curl, jq',
+    SUPPLY_CHAIN: 'curl, grep',
+    BOSS: 'nmap, tshark, ffuf',
+};
+
+const CATEGORY_EVIDENCE_AREA: Record<CtfCategory, string> = {
+    PIN_CRACKING: 'Comparez la decision avant/apres indisponibilite du composant critique.',
+    REPLAY_ATTACK: 'Comparez les reponses de deux requetes strictement identiques.',
+    MITM: 'Inspectez la charge utile capturee sur le reseau, pas seulement la reponse applicative.',
+    FRAUD_CNP: 'Observez le champ de score/decision et ses variations selon les attributs.',
+    ISO8583_MANIPULATION: 'Visez les champs protocole sensibles et la logique de validation serveur.',
+    HSM_ATTACK: 'Cherchez une fuite dans les metadonnees, les erreurs ou les logs.',
+    '3DS_BYPASS': 'Surveillez la transition des statuts d authentification et les identifiants de session.',
+    CRYPTO_WEAKNESS: 'Cherchez la preuve dans la structure du token ou la prevision de sequence.',
+    PRIVILEGE_ESCALATION: 'Verifiez si la meme action est possible sans role attendu.',
+    EMV_CLONING: 'Inspectez les metadonnees terminales et l absence de controles contextuels.',
+    TOKEN_VAULT: 'Regardez la difference entre erreurs, format de token et donnees renvoyees.',
+    NETWORK_ATTACK: 'Priorite aux paquets et aux traces de transport plutot qu au front-end.',
+    KEY_MANAGEMENT: 'Concentrez-vous sur les metadonnees de cycle de vie et les operations d export.',
+    ADVANCED_FRAUD: 'Mesurez les seuils et les effets de cumul manquants.',
+    SUPPLY_CHAIN: 'Recherchez les artefacts tiers et les surfaces d administration exposees.',
+    BOSS: 'Reliez les preuves de chaque etape de la chaine dans un ordre defensible.',
+};
+
+const CATEGORY_ROLE: Record<CtfCategory, string> = {
+    PIN_CRACKING: 'payment security engineer',
+    REPLAY_ATTACK: 'incident responder',
+    MITM: 'network security engineer',
+    FRAUD_CNP: 'fraud analyst',
+    ISO8583_MANIPULATION: 'payment switch engineer',
+    HSM_ATTACK: 'crypto security engineer',
+    '3DS_BYPASS': '3DS security specialist',
+    CRYPTO_WEAKNESS: 'application security engineer',
+    PRIVILEGE_ESCALATION: 'backend security engineer',
+    EMV_CLONING: 'card issuing security engineer',
+    TOKEN_VAULT: 'tokenization engineer',
+    NETWORK_ATTACK: 'network defense engineer',
+    KEY_MANAGEMENT: 'key management specialist',
+    ADVANCED_FRAUD: 'senior fraud hunter',
+    SUPPLY_CHAIN: 'platform security lead',
+    BOSS: 'red team lead',
+};
+
+const CATEGORY_CONTEXT: Record<CtfCategory, string> = {
+    PIN_CRACKING: 'Issuer authorization flow with PIN verification under PCI constraints.',
+    REPLAY_ATTACK: 'Card payment API where transaction replay can create duplicate financial impact.',
+    MITM: 'Inter-service payment traffic where cleartext or weak integrity can be intercepted.',
+    FRAUD_CNP: 'Card-not-present fraud monitoring under high transaction velocity.',
+    ISO8583_MANIPULATION: 'Switch and issuer message validation for ISO 8583 fields and business rules.',
+    HSM_ATTACK: 'Cryptographic operations delegated to HSM services with strict access boundaries.',
+    '3DS_BYPASS': 'Strong Customer Authentication path in 3DS challenge and verification flow.',
+    CRYPTO_WEAKNESS: 'Critical token and authorization code generation path.',
+    PRIVILEGE_ESCALATION: 'Access control checks on high-impact financial operations.',
+    EMV_CLONING: 'EMV terminal and issuer interactions under anti-cloning controls.',
+    TOKEN_VAULT: 'Token vault and detokenization controls for PAN protection.',
+    NETWORK_ATTACK: 'Segmentation and trust boundaries in payment network topology.',
+    KEY_MANAGEMENT: 'Cryptographic key lifecycle and separation of duties.',
+    ADVANCED_FRAUD: 'Cross-signal fraud decisioning with adaptive defense requirements.',
+    SUPPLY_CHAIN: 'Operational dependencies and third-party trust in payment infrastructure.',
+    BOSS: 'Multi-stage incident combining exploitation, containment, and strategic remediation.',
+};
+
+const DEFAULT_PROOF_RUBRIC: CtfProofRubricSeed = {
+    technical: [
+        { criterion: 'Reproducible exploitation evidence', weight: 40, description: 'Commands, payloads, and outputs are replayable.' },
+        { criterion: 'Root cause accuracy', weight: 30, description: 'Explains the exact control failure that enabled exploitation.' },
+        { criterion: 'Patch validation before/after', weight: 30, description: 'Shows exploit works before and fails after mitigation.' },
+    ],
+    communication: [
+        { criterion: 'Incident summary clarity', weight: 40, description: 'Executive-level summary is concise and accurate.' },
+        { criterion: 'Prioritized mitigation plan', weight: 35, description: 'Actions are ordered by risk and delivery feasibility.' },
+        { criterion: 'Evidence traceability', weight: 25, description: 'Each claim is linked to a concrete artifact.' },
+    ],
+    passingScore: 70,
+};
+
+function normalizeWhitespace(value: string): string {
+    return value.replace(/\s+/g, ' ').trim();
+}
+
+function containsExplicitCommand(value: string): boolean {
+    return /(\bcurl\b|\bwget\b|http:\/\/|https:\/\/|\bPOST\b|\bGET\b|\/[a-z0-9\-_]+\/[a-z0-9\-_]+)/i.test(value);
+}
+
+function sanitizeLevel1Hint(value: string): string {
+    const compact = normalizeWhitespace(value)
+        .replace(/PMP\{[^}]*\}/gi, 'PMP{...}')
+        .replace(/\bflag\b/gi, 'preuve');
+
+    if (!compact) {
+        return LEVEL_1_FALLBACK;
+    }
+
+    if (containsExplicitCommand(compact)) {
+        return LEVEL_1_FALLBACK;
+    }
+
+    return compact;
+}
+
+function sanitizeHint(value: string, fallback: string): string {
+    const compact = normalizeWhitespace(value)
+        .replace(/PMP\{[^}]*\}/gi, 'PMP{...}');
+
+    return compact || fallback;
+}
+
+function sanitizeLevel2Cost(rawCost: number): number {
+    if (Number.isFinite(rawCost) && rawCost >= 10 && rawCost <= 15) {
+        return Math.floor(rawCost);
+    }
+
+    return HINT_LEVEL_2_COST;
+}
+
+function buildMissionBrief(challenge: CtfChallengeSeed): CtfMissionBriefSeed {
+    return {
+        role: CATEGORY_ROLE[challenge.category],
+        businessContext: CATEGORY_CONTEXT[challenge.category],
+        incidentTrigger: normalizeWhitespace(challenge.description),
+        objective: `Exploit ${challenge.vulnerabilityType} on ${challenge.targetService} then produce a defensible remediation.`,
+        successCriteria: `Recover a valid flag for ${challenge.code} and deliver root cause + prioritized mitigation with before/after proof.`,
+    };
+}
+
+function buildIncidentArtifacts(challenge: CtfChallengeSeed): CtfIncidentArtifactSeed[] {
+    const challengeSlug = challenge.code.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
+    return [
+        {
+            artifactId: `${challenge.code}-log`,
+            artifactType: 'LOG',
+            title: 'Application log extract',
+            description: `Raw service logs captured during ${challenge.code} exploitation window.`,
+            sample: `[${challengeSlug}] service=${challenge.targetService} endpoint="redacted-until-complete" signal="unexpected behavior"`,
+        },
+        {
+            artifactId: `${challenge.code}-siem`,
+            artifactType: 'SIEM',
+            title: 'SIEM alert card',
+            description: 'Synthetic SIEM card with anomaly context and impacted asset.',
+            sample: `rule=ctf_${challengeSlug}_anomaly severity=high asset=${challenge.targetService} vector="${challenge.attackVector}"`,
+        },
+        {
+            artifactId: `${challenge.code}-ticket`,
+            artifactType: 'TICKET',
+            title: 'Incident response ticket',
+            description: 'Ops ticket to capture timeline, owner, and mitigation decisions.',
+            sample: `INC-${challenge.code} status=open owner=SOC summary="${challenge.vulnerabilityType}"`,
+        },
+    ];
+}
+
+function buildDebriefTemplate(challenge: CtfChallengeSeed): CtfDebriefTemplateSeed {
+    return {
+        rootCausePrompt: `Explain why ${challenge.vulnerabilityType} was reachable and which control failed first.`,
+        impactPrompt: 'Quantify business impact (fraud, compliance exposure, operational risk) with scope and severity.',
+        mitigationPrompt: 'List prioritized mitigations with owner and timeline (immediate, short-term, structural).',
+        evidencePrompt: 'Reference concrete artifacts (commands, logs, traces) proving exploit and post-patch protection.',
+        checklist: [
+            'Root cause explained with technical mechanism.',
+            'Impact statement includes scope and severity.',
+            'At least two prioritized mitigations are defined.',
+            'Before/after validation evidence is attached.',
+        ],
+    };
+}
+
+function normalizeMissionBrief(challenge: CtfChallengeSeed): CtfMissionBriefSeed {
+    const fallback = buildMissionBrief(challenge);
+    const source = challenge.missionBrief || fallback;
+
+    return {
+        role: normalizeWhitespace(source.role || fallback.role),
+        businessContext: normalizeWhitespace(source.businessContext || fallback.businessContext),
+        incidentTrigger: normalizeWhitespace(source.incidentTrigger || fallback.incidentTrigger),
+        objective: normalizeWhitespace(source.objective || fallback.objective),
+        successCriteria: normalizeWhitespace(source.successCriteria || fallback.successCriteria),
+    };
+}
+
+function normalizeIncidentArtifacts(challenge: CtfChallengeSeed): CtfIncidentArtifactSeed[] {
+    const fallbackArtifacts = buildIncidentArtifacts(challenge);
+    const sourceArtifacts = Array.isArray(challenge.incidentArtifacts) && challenge.incidentArtifacts.length > 0
+        ? challenge.incidentArtifacts
+        : fallbackArtifacts;
+
+    return sourceArtifacts
+        .map((artifact, index) => ({
+            artifactId: normalizeWhitespace(artifact.artifactId || `${challenge.code}-artifact-${index + 1}`),
+            artifactType: artifact.artifactType || 'LOG',
+            title: normalizeWhitespace(artifact.title || `Artifact ${index + 1}`),
+            description: normalizeWhitespace(artifact.description || 'Incident artifact'),
+            sample: normalizeWhitespace(artifact.sample || 'n/a'),
+        }))
+        .slice(0, Math.max(2, sourceArtifacts.length));
+}
+
+function normalizeProofRubric(challenge: CtfChallengeSeed): CtfProofRubricSeed {
+    const source = challenge.proofRubric || DEFAULT_PROOF_RUBRIC;
+
+    const normalizeCriteria = (entries: CtfRubricCriterionSeed[]): CtfRubricCriterionSeed[] => entries.map((entry) => ({
+        criterion: normalizeWhitespace(entry.criterion),
+        weight: Math.max(0, Math.min(100, Math.round(entry.weight))),
+        description: normalizeWhitespace(entry.description),
+    }));
+
+    return {
+        technical: normalizeCriteria(source.technical && source.technical.length > 0 ? source.technical : DEFAULT_PROOF_RUBRIC.technical),
+        communication: normalizeCriteria(source.communication && source.communication.length > 0 ? source.communication : DEFAULT_PROOF_RUBRIC.communication),
+        passingScore: Math.max(50, Math.min(100, Math.round(source.passingScore || DEFAULT_PROOF_RUBRIC.passingScore))),
+    };
+}
+
+function normalizeDebriefTemplate(challenge: CtfChallengeSeed): CtfDebriefTemplateSeed {
+    const fallback = buildDebriefTemplate(challenge);
+    const source = challenge.debriefTemplate || fallback;
+
+    const checklist = Array.isArray(source.checklist) && source.checklist.length > 0
+        ? source.checklist
+        : fallback.checklist;
+
+    return {
+        rootCausePrompt: normalizeWhitespace(source.rootCausePrompt || fallback.rootCausePrompt),
+        impactPrompt: normalizeWhitespace(source.impactPrompt || fallback.impactPrompt),
+        mitigationPrompt: normalizeWhitespace(source.mitigationPrompt || fallback.mitigationPrompt),
+        evidencePrompt: normalizeWhitespace(source.evidencePrompt || fallback.evidencePrompt),
+        checklist: checklist.map((item) => normalizeWhitespace(item)).filter(Boolean),
+    };
+}
+
+function normalizeHints(challenge: CtfChallengeSeed): CtfHintSeed[] {
+    const attackClass = CATEGORY_ATTACK_CLASS[challenge.category];
+    const tools = CATEGORY_TOOL_HINT[challenge.category];
+    const evidenceArea = CATEGORY_EVIDENCE_AREA[challenge.category];
+
+    return [
+        {
+            hintNumber: 1,
+            hintText: `L1 Orientation: Classe d attaque: ${attackClass}. Cartographiez d abord la surface exposee.`,
+            costPoints: HINT_LEVEL_1_COST,
+        },
+        {
+            hintNumber: 2,
+            hintText: `L2 Technique: Outils suggérés: ${tools}. Utilisez-les pour énumérer et tester, sans payload prêt-à-l-emploi.`,
+            costPoints: HINT_LEVEL_2_COST,
+        },
+        {
+            hintNumber: 3,
+            hintText: `L3 Preuve: ${evidenceArea}`,
+            costPoints: HINT_LEVEL_3_COST,
+        },
+    ];
+}
+
+function normalizeGuidedStep(step: CtfGuidedStepSeed): CtfGuidedStepSeed {
+    return {
+        ...step,
+        stepTitle: normalizeWhitespace(step.stepTitle),
+        stepDescription: normalizeWhitespace(step.stepDescription),
+        commandTemplate: step.commandTemplate ? normalizeWhitespace(step.commandTemplate) : undefined,
+        expectedOutput: step.expectedOutput ? normalizeWhitespace(step.expectedOutput) : undefined,
+        hintText: step.hintText ? normalizeWhitespace(step.hintText) : undefined,
+    };
+}
+
+function buildRealisticGuidedSteps(challenge: CtfChallengeSeed): CtfGuidedStepSeed[] {
+    return [
+        {
+            stepNumber: 1,
+            stepTitle: 'Reconnaissance reseau',
+            stepDescription: 'Identifiez d abord les hôtes actifs et les ports exposés dans la zone cible sans supposer les noms DNS.',
+            stepType: 'HINT',
+            hintText: 'Commencez par une découverte réseau puis restreignez la cible.',
+        },
+        {
+            stepNumber: 2,
+            stepTitle: 'Enumeration services et endpoints',
+            stepDescription: 'Dressez l inventaire des services accessibles puis des routes utiles sans dépendre d un chemin prédéfini.',
+            stepType: 'HINT',
+            hintText: 'Confirmez la méthode HTTP, le code de réponse et le comportement anormal.',
+        },
+        {
+            stepNumber: 3,
+            stepTitle: 'Identification de la vulnerabilite',
+            stepDescription: `Validez techniquement la faiblesse (${challenge.vulnerabilityType}) avec un test reproductible et minimal.`,
+            stepType: 'ANALYSIS',
+            hintText: 'Documentez exactement quel contrôle manque ou se comporte mal.',
+        },
+        {
+            stepNumber: 4,
+            stepTitle: 'Exploitation controlee',
+            stepDescription: 'Exploitez la faiblesse de manière contrôlée pour obtenir une preuve d impact sans dégrader le service.',
+            stepType: 'EXPLOITATION',
+        },
+        {
+            stepNumber: 5,
+            stepTitle: 'Collecte de preuve',
+            stepDescription: 'Capturez la preuve exploitable (requête, réponse, métrique, trace réseau ou log) et liez-la à votre identifiant étudiant.',
+            stepType: 'OBSERVATION',
+            hintText: 'La preuve doit être vérifiable et horodatée.',
+        },
+        {
+            stepNumber: 6,
+            stepTitle: 'Analyse post-exploitation',
+            stepDescription: 'Expliquez l impact métier, la cause racine et les priorités de remédiation défensive.',
+            stepType: 'EXPLANATION',
+        },
+    ];
+}
+
+function isRemediationStep(step: CtfGuidedStepSeed): boolean {
+    return step.stepTitle.toLowerCase() === 'remediation defensive';
+}
+
+function isPostPatchVerificationStep(step: CtfGuidedStepSeed): boolean {
+    return step.stepTitle.toLowerCase() === 'verification post-patch avant/apres';
+}
+
+function findLastExploitationIndex(steps: CtfGuidedStepSeed[]): number {
+    for (let index = steps.length - 1; index >= 0; index -= 1) {
+        if (steps[index].stepType === 'EXPLOITATION') {
+            return index;
+        }
+    }
+
+    return steps.length - 1;
+}
+
+function buildRemediationStep(challenge: CtfChallengeSeed): CtfGuidedStepSeed {
+    return {
+        stepNumber: 0,
+        stepTitle: 'Remediation defensive',
+        stepDescription: normalizeWhitespace(
+            `Appliquez un correctif defensif pour neutraliser ${challenge.vulnerabilityType}. ` +
+            'Traitez la cause racine, ajoutez un controle preventif et documentez le changement.'
+        ),
         stepType: 'EXPLANATION',
-    },
-    {
-        stepNumber: 2,
-        stepTitle: cmd ? 'Commande' : 'Action',
-        stepDescription: cmd ? 'Executer la requete.' : 'Executer la manipulation.',
-        stepType: cmd ? 'CURL_COMMAND' : 'EXPLOITATION',
-        commandTemplate: cmd,
-    },
-    {
-        stepNumber: 3,
-        stepTitle: 'Observation',
-        stepDescription: 'Observer la preuve de vuln.',
-        stepType: 'OBSERVATION',
-    },
-    {
-        stepNumber: 4,
-        stepTitle: 'Analyse',
-        stepDescription: 'Expliquer l impact securite.',
+        hintText: 'Priorisez un correctif qui bloque l attaque sans casser le flux legitime.',
+    };
+}
+
+function buildPostPatchVerificationStep(challenge: CtfChallengeSeed): CtfGuidedStepSeed {
+    return {
+        stepNumber: 0,
+        stepTitle: 'Verification post-patch avant/apres',
+        stepDescription: normalizeWhitespace(
+            `Executez le meme test d attaque sur ${challenge.targetEndpoint} avant puis apres patch. ` +
+            'Avant patch, la faille doit etre exploitable. Apres patch, l exploitation doit echouer et le flux legitime doit rester valide.'
+        ),
         stepType: 'ANALYSIS',
-    },
-    {
-        stepNumber: 5,
-        stepTitle: 'Flag',
-        stepDescription: 'Soumettre PMP{...}.',
-        stepType: 'EXPLOITATION',
-    },
-];
+        commandTemplate: 'echo "Before patch: exploit should succeed"; echo "After patch: exploit should fail with 4xx/blocked response";',
+        expectedOutput: 'Avant patch: exploitation validee. Apres patch: exploitation bloquee + fonctionnement legitime confirme.',
+        hintText: 'Conservez une preuve comparative avant/apres pour valider la correction.',
+    };
+}
 
-const hints = (h1: string, h2: string): CtfHintSeed[] => [
-    { hintNumber: 1, hintText: h1, costPoints: 10 },
-    { hintNumber: 2, hintText: h2, costPoints: 15 },
-];
+function reindexSteps(steps: CtfGuidedStepSeed[]): CtfGuidedStepSeed[] {
+    return steps.map((step, index) => ({
+        ...step,
+        stepNumber: index + 1,
+    }));
+}
 
-export const CTF_CHALLENGES: CtfChallengeSeed[] = [
-    {
-        code: 'HSM-001',
-        title: 'Le Coffre Ouvert',
-        description: 'GET /hsm/keys expose des cles sans auth.',
-        freeModeDescription: 'Explorez les endpoints admin HSM.',
-        category: 'HSM_ATTACK',
-        difficulty: 'BEGINNER',
-        points: 100,
-        flagValue: 'PMP{HSM_KEYS_NO_AUTH}',
-        targetService: 'hsm-simulator',
-        targetEndpoint: 'GET http://localhost:8011/hsm/keys',
-        vulnerabilityType: 'Broken access control',
-        attackVector: 'Endpoint enumeration',
-        learningObjectives: ['Trouver un endpoint non protege', 'Mesurer la fuite de cles'],
-        estimatedMinutes: 15,
-        isActive: true,
-        relatedWorkshopPath: '/workshops/hsm-keys',
-        guidedSteps: steps('curl -s http://localhost:8011/hsm/keys'),
-        hints: hints('Explorez les endpoints GET HSM.', 'Essayez /hsm/keys.'),
-    },
-    {
-        code: 'HSM-002',
-        title: 'Cles Previsibles',
-        description: 'Une ZPK de test est triviale.',
-        freeModeDescription: 'Cherchez une cle par defaut faible.',
-        category: 'HSM_ATTACK',
-        difficulty: 'INTERMEDIATE',
-        points: 150,
-        flagValue: 'PMP{ZPK_11111111111111111111111111111111}',
-        prerequisiteChallengeCode: 'HSM-001',
-        targetService: 'hsm-simulator',
-        targetEndpoint: 'backend/hsm-simulator/src/core/KeyStorage.ts',
-        vulnerabilityType: 'Weak keys',
-        attackVector: 'Default seed inspection',
-        learningObjectives: ['Identifier un pattern de cle faible', 'Relier a risque PIN'],
-        estimatedMinutes: 20,
-        isActive: true,
-        relatedWorkshopPath: '/workshops/hsm-keys',
-        guidedSteps: steps('curl -s http://localhost:8011/hsm/keys'),
-        hints: hints('Inspectez ZPK_TEST.', 'La valeur est un motif repete.'),
-    },
-    {
-        code: 'HSM-003',
-        title: 'Fuite dans les Logs',
-        description: 'keyLeakInLogs logge du materiel sensible.',
-        freeModeDescription: 'Activez le mode debug vuln et observez.',
-        category: 'HSM_ATTACK',
-        difficulty: 'INTERMEDIATE',
-        points: 200,
-        flagValue: 'PMP{KEY_LEAK_IN_LOGS}',
-        prerequisiteChallengeCode: 'HSM-002',
-        targetService: 'hsm-simulator',
-        targetEndpoint: 'POST /hsm/config + operations HSM',
-        vulnerabilityType: 'Sensitive logging',
-        attackVector: 'Debug misconfiguration',
-        learningObjectives: ['Activer config vuln', 'Detecter fuite logs'],
-        estimatedMinutes: 25,
-        isActive: true,
-        relatedWorkshopPath: '/workshops/hsm-keys',
-        guidedSteps: steps('curl -s -X POST http://localhost:8011/hsm/config -H "Content-Type: application/json" -d "{\"vulnerabilities\":{\"keyLeakInLogs\":true}}"'),
-        hints: hints('Le body attend vulnerabilities.keyLeakInLogs.', 'Cherchez [VULN:LEAK] dans les logs.'),
-    },
-    {
-        code: 'HSM-004',
-        title: 'Le Pingouin ECB',
-        description: 'Le mode ECB fuit les patterns.',
-        freeModeDescription: 'Testez le chiffrement avec donnees repetitives.',
-        category: 'HSM_ATTACK',
-        difficulty: 'ADVANCED',
-        points: 250,
-        flagValue: 'PMP{ECB_LEAKS_PATTERNS}',
-        prerequisiteChallengeCode: 'HSM-003',
-        targetService: 'hsm-simulator',
-        targetEndpoint: 'POST /hsm/encrypt-data',
-        vulnerabilityType: 'Insecure cipher mode',
-        attackVector: 'Block pattern analysis',
-        learningObjectives: ['Comparer ECB/CBC', 'Prouver fuite structurelle'],
-        estimatedMinutes: 30,
-        isActive: true,
-        relatedWorkshopPath: '/workshops/hsm-keys',
-        guidedSteps: steps('curl -s -X POST http://localhost:8011/hsm/encrypt-data -H "Content-Type: application/json" -d "{\"data\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"keyLabel\":\"DEK_AES_001\",\"mode\":\"ECB\"}"'),
-        hints: hints('Passez mode=ECB.', 'Utilisez une donnee repetee.'),
-    },
-    {
-        code: 'HSM-005',
-        title: 'Course contre la Montre',
-        description: 'Verification MAC exposable via timing.',
-        freeModeDescription: 'Mesurez les temps de verify-mac.',
-        category: 'HSM_ATTACK',
-        difficulty: 'EXPERT',
-        points: 350,
-        flagValue: 'PMP{TIMING_ATTACK_MAC}',
-        prerequisiteChallengeCode: 'HSM-004',
-        targetService: 'hsm-simulator',
-        targetEndpoint: 'POST /hsm/verify-mac',
-        vulnerabilityType: 'Timing side-channel',
-        attackVector: 'Latency correlation',
-        learningObjectives: ['Mesurer timings', 'Conclure non constant-time'],
-        estimatedMinutes: 40,
-        isActive: true,
-        relatedWorkshopPath: '/workshops/hsm-keys',
-        guidedSteps: steps('curl -s -X POST http://localhost:8011/hsm/verify-mac -H "Content-Type: application/json" -d "{\"data\":\"PAYLOAD\",\"keyLabel\":\"ZAK_002\",\"mac\":\"0011223344556677\"}"'),
-        hints: hints('Multipliez les mesures.', 'Comparez des prefixes de MAC.'),
-    },
-    {
-        code: 'REPLAY-001',
-        title: 'Deja Vu',
-        description: 'Rejeu possible sans nonce robuste.',
-        freeModeDescription: 'Rejouez exactement la meme requete.',
-        category: 'REPLAY_ATTACK',
-        difficulty: 'BEGINNER',
-        points: 100,
-        flagValue: 'PMP{REPLAY_NO_NONCE}',
-        targetService: 'hsm-simulator',
-        targetEndpoint: 'POST /hsm/config (allowReplay)',
-        vulnerabilityType: 'Replay protection missing',
-        attackVector: 'Identical payload replay',
-        learningObjectives: ['Comprendre anti-rejeu', 'Prouver double execution'],
-        estimatedMinutes: 20,
-        isActive: true,
-        relatedWorkshopPath: '/workshops/iso8583',
-        guidedSteps: steps('curl -s -X POST http://localhost:8011/hsm/config -H "Content-Type: application/json" -d "{\"vulnerabilities\":{\"allowReplay\":true}}"'),
-        hints: hints('Activez allowReplay.', 'Conservez transactionId/STAN identiques.'),
-    },
-    {
-        code: 'REPLAY-002',
-        title: 'Reset et Recommence',
-        description: 'Compteurs velocity en memoire non persistants.',
-        freeModeDescription: 'Testez avant/apres restart du service fraude.',
-        category: 'REPLAY_ATTACK',
-        difficulty: 'INTERMEDIATE',
-        points: 150,
-        flagValue: 'PMP{VELOCITY_MEMORY_ONLY}',
-        prerequisiteChallengeCode: 'REPLAY-001',
-        targetService: 'sim-fraud-detection',
-        targetEndpoint: 'POST http://localhost:8007/check',
-        vulnerabilityType: 'Volatile state',
-        attackVector: 'Service restart bypass',
-        learningObjectives: ['Prouver perte des compteurs', 'Relier a contournement velocity'],
-        estimatedMinutes: 25,
-        isActive: true,
-        relatedWorkshopPath: '/workshops/fraud-detection',
-        guidedSteps: steps('curl -s -X POST http://localhost:8007/check -H "Content-Type: application/json" -d "{\"pan\":\"4111111111111111\",\"amount\":50,\"merchantId\":\"M1\",\"mcc\":\"5411\"}"'),
-        hints: hints('transactionHistory est en memoire.', 'Redemarrer reset la map.'),
-    },
-    {
-        code: '3DS-001',
-        title: 'Le Numero Magique',
-        description: 'OTP 123456 accepte systematiquement.',
-        freeModeDescription: 'Testez un OTP universel.',
-        category: '3DS_BYPASS',
-        difficulty: 'BEGINNER',
-        points: 100,
-        flagValue: 'PMP{OTP_123456_HARDCODED}',
-        targetService: 'acs-simulator',
-        targetEndpoint: 'POST http://localhost:8013/challenge/verify',
-        vulnerabilityType: 'Hardcoded OTP',
-        attackVector: 'Static code abuse',
-        learningObjectives: ['Detecter OTP hardcode', 'Evaluer bypass 3DS'],
-        estimatedMinutes: 15,
-        isActive: true,
-        relatedWorkshopPath: '/workshops/3ds-flow',
-        guidedSteps: steps('curl -s -X POST http://localhost:8013/challenge/verify -H "Content-Type: application/json" -d "{\"acsTransId\":\"ACS_TEST\",\"otp\":\"123456\"}"'),
-        hints: hints('Regardez verifyChallenge.', 'Essayez 123456.'),
-    },
-    {
-        code: '3DS-002',
-        title: 'Le Mot de Passe',
-        description: 'cardholderName=SUCCESS force transStatus Y.',
-        freeModeDescription: 'Cherchez une valeur magique business.',
-        category: '3DS_BYPASS',
-        difficulty: 'INTERMEDIATE',
-        points: 150,
-        flagValue: 'PMP{CARDHOLDER_NAME_BYPASS}',
-        prerequisiteChallengeCode: '3DS-001',
-        targetService: 'acs-simulator',
-        targetEndpoint: 'POST http://localhost:8013/authenticate',
-        vulnerabilityType: 'Logic backdoor',
-        attackVector: 'Magic string injection',
-        learningObjectives: ['Trouver une backdoor logique', 'Bypass frictionless/challenge'],
-        estimatedMinutes: 20,
-        isActive: true,
-        relatedWorkshopPath: '/workshops/3ds-flow',
-        guidedSteps: steps('curl -s -X POST http://localhost:8013/authenticate -H "Content-Type: application/json" -d "{\"pan\":\"4111111111111111\",\"amount\":600,\"currency\":\"EUR\",\"merchantId\":\"M123\",\"transactionId\":\"TX-3DS-2\",\"cardholderName\":\"SUCCESS\"}"'),
-        hints: hints('Condition sur cardholderName.', 'Valeur magique SUCCESS.'),
-    },
-    {
-        code: '3DS-003',
-        title: 'Juste en Dessous',
-        description: 'Bypass SCA via montant sous seuil.',
-        freeModeDescription: 'Comparez 500 vs 499.99.',
-        category: '3DS_BYPASS',
-        difficulty: 'INTERMEDIATE',
-        points: 200,
-        flagValue: 'PMP{THRESHOLD_499_NO_SCA}',
-        prerequisiteChallengeCode: '3DS-002',
-        targetService: 'api-gateway orchestrator',
-        targetEndpoint: 'POST /api/transaction/process',
-        vulnerabilityType: 'Static threshold bypass',
-        attackVector: 'Sub-threshold amount crafting',
-        learningObjectives: ['Tester seuil SCA', 'Prouver contournement metier'],
-        estimatedMinutes: 20,
-        isActive: true,
-        relatedWorkshopPath: '/workshops/3ds-flow',
-        guidedSteps: steps('curl -s -X POST http://localhost:8000/api/transaction/process -H "Content-Type: application/json" -d "{\"pan\":\"4111111111111111\",\"amount\":499.99,\"currency\":\"EUR\",\"merchantId\":\"M123\",\"terminalId\":\"WEB001\",\"isEcommerce\":true}"'),
-        hints: hints('Le seuil default est 500.', 'Testez 499.99 en ecommerce.'),
-    },
-    {
-        code: 'FRAUD-001',
-        title: 'Quand la Fraude Dort',
-        description: 'Fraud service down => fallback LOW risk.',
-        freeModeDescription: 'Que se passe-t-il quand le service fraude est indisponible ?',
-        category: 'FRAUD_CNP',
-        difficulty: 'INTERMEDIATE',
-        points: 200,
-        flagValue: 'PMP{FRAUD_SERVICE_FAIL_OPEN}',
-        targetService: 'api-gateway orchestrator',
-        targetEndpoint: 'POST /api/transaction/process',
-        vulnerabilityType: 'Fail-open decisioning',
-        attackVector: 'Dependency outage',
-        learningObjectives: ['Comparer fail-open/fail-closed', 'Mesurer impact du fallback'],
-        estimatedMinutes: 30,
-        isActive: true,
-        relatedWorkshopPath: '/workshops/fraud-detection',
-        guidedSteps: steps('curl -s -X POST http://localhost:8000/api/transaction/process -H "Content-Type: application/json" -d "{\"pan\":\"4111111111111111\",\"amount\":1500,\"currency\":\"EUR\",\"merchantId\":\"M999\",\"terminalId\":\"WEB001\",\"isEcommerce\":true}"'),
-        hints: hints('Inspectez checkFraud dans orchestrator.', 'Le fallback retourne riskScore=0.'),
-    },
-    {
-        code: 'FRAUD-002',
-        title: 'Score Optimise',
-        description: 'Contourner les seuils en restant juste sous 70.',
-        freeModeDescription: 'Fabriquez une transaction qui ne passe pas en DECLINE.',
-        category: 'FRAUD_CNP',
-        difficulty: 'ADVANCED',
-        points: 250,
-        flagValue: 'PMP{FRAUD_SCORE_GAMING}',
-        prerequisiteChallengeCode: 'FRAUD-001',
-        targetService: 'sim-fraud-detection',
-        targetEndpoint: 'POST http://localhost:8007/check',
-        vulnerabilityType: 'Threshold gaming',
-        attackVector: 'Rule combination abuse',
-        learningObjectives: ['Comprendre le score', 'Construire un cas evasif'],
-        estimatedMinutes: 35,
-        isActive: true,
-        relatedWorkshopPath: '/workshops/fraud-detection',
-        guidedSteps: steps('curl -s -X POST http://localhost:8007/check -H "Content-Type: application/json" -d "{\"pan\":\"5555555555554444\",\"amount\":999,\"merchantId\":\"M900\",\"mcc\":\"5411\",\"country\":\"FR\"}"'),
-        hints: hints('Seuil HIGH=70.', 'Evitez MCC suspects et pays bloques.'),
-    },
-    {
-        code: 'ISO-001',
-        title: 'Table de Routage Exposee',
-        description: 'BIN table lisible sans auth.',
-        freeModeDescription: 'Interrogez les endpoints debug du switch.',
-        category: 'ISO8583_MANIPULATION',
-        difficulty: 'BEGINNER',
-        points: 100,
-        flagValue: 'PMP{BIN_TABLE_NO_AUTH}',
-        targetService: 'sim-network-switch',
-        targetEndpoint: 'GET http://localhost:8004/transaction/bin-table',
-        vulnerabilityType: 'Information disclosure',
-        attackVector: 'Unauthenticated debug endpoint',
-        learningObjectives: ['Voir la topologie BIN', 'Mesurer fuite architecture'],
-        estimatedMinutes: 15,
-        isActive: true,
-        relatedWorkshopPath: '/workshops/iso8583',
-        guidedSteps: steps('curl -s http://localhost:8004/transaction/bin-table'),
-        hints: hints('Cherchez le endpoint bin-table.', 'Aucune auth sur la route.'),
-    },
-    {
-        code: 'ISO-002',
-        title: 'Montant Maximum',
-        description: 'Le schema accepte 999,999,999.99.',
-        freeModeDescription: 'Testez la limite haute amount.',
-        category: 'ISO8583_MANIPULATION',
-        difficulty: 'INTERMEDIATE',
-        points: 150,
-        flagValue: 'PMP{MAX_AMOUNT_999M}',
-        prerequisiteChallengeCode: 'ISO-001',
-        targetService: 'sim-network-switch',
-        targetEndpoint: 'POST http://localhost:8004/transaction',
-        vulnerabilityType: 'Weak business validation',
-        attackVector: 'Boundary abuse',
-        learningObjectives: ['Tester bornes', 'Comparer limites techniques vs metier'],
-        estimatedMinutes: 20,
-        isActive: true,
-        relatedWorkshopPath: '/workshops/iso8583',
-        guidedSteps: steps('curl -s -X POST http://localhost:8004/transaction -H "Content-Type: application/json" -d "{\"mti\":\"0100\",\"pan\":\"4111111111111111\",\"processingCode\":\"000000\",\"amount\":999999999.99,\"currency\":\"EUR\",\"transmissionDateTime\":\"0101120000\",\"localTransactionTime\":\"120000\",\"localTransactionDate\":\"0101\",\"stan\":\"123456\",\"terminalId\":\"TERM0001\",\"merchantId\":\"M123\",\"merchantCategoryCode\":\"5411\",\"expiryDate\":\"2612\",\"posEntryMode\":\"010\",\"acquirerReferenceNumber\":\"ARN1234567890123456789\"}"'),
-        hints: hints('Inspectez validation.ts.', 'La borne max est tres elevee.'),
-    },
-    {
-        code: 'PIN-001',
-        title: 'Le Fallback Silencieux',
-        description: 'Erreur HSM => PIN accepte en simulation.',
-        freeModeDescription: 'Testez authorize quand le HSM est indisponible.',
-        category: 'PIN_CRACKING',
-        difficulty: 'ADVANCED',
-        points: 250,
-        flagValue: 'PMP{HSM_DOWN_PIN_BYPASS}',
-        targetService: 'sim-issuer-service',
-        targetEndpoint: 'POST http://localhost:8005/authorize',
-        vulnerabilityType: 'Auth bypass on dependency failure',
-        attackVector: 'Fail-open PIN validation',
-        learningObjectives: ['Voir fallback dangereux', 'Exiger fail-closed PIN'],
-        estimatedMinutes: 35,
-        isActive: true,
-        relatedWorkshopPath: '/workshops/hsm-keys',
-        guidedSteps: steps('curl -s -X POST http://localhost:8005/authorize -H "Content-Type: application/json" -d "{\"transactionId\":\"PIN1\",\"pan\":\"4111111111111111\",\"amount\":10,\"currency\":\"EUR\",\"merchantId\":\"M123\",\"mcc\":\"5411\",\"transactionType\":\"PURCHASE\",\"pinBlock\":\"FFFFFFFFFFFFFFFF\"}"'),
-        hints: hints('Cherchez decryptPinBlock.', 'En catch, success=true est force.'),
-    },
-    {
-        code: 'PIN-002',
-        title: 'Random Previsible',
-        description: 'Math.random utilise pour padding PIN block.',
-        freeModeDescription: 'Auditez la generation des blocs PIN.',
-        category: 'PIN_CRACKING',
-        difficulty: 'EXPERT',
-        points: 300,
-        flagValue: 'PMP{MATH_RANDOM_NOT_CRYPTO}',
-        prerequisiteChallengeCode: 'PIN-001',
-        targetService: 'crypto-edu',
-        targetEndpoint: 'backend/crypto-edu/src/algorithms/pin/PINBlockGenerator.ts',
-        vulnerabilityType: 'Insecure random',
-        attackVector: 'PRNG inspection',
-        learningObjectives: ['Differencier PRNG/CSPRNG', 'Proposer randomBytes'],
-        estimatedMinutes: 40,
-        isActive: true,
-        relatedWorkshopPath: '/workshops/hsm-keys',
-        guidedSteps: steps(),
-        hints: hints('Regardez les formats 1/3/4.', 'Math.random est present dans le padding.'),
-    },
-    {
-        code: 'MITM-001',
-        title: 'Le CVV Voyageur',
-        description: 'Le CVV circule en clair dans des payloads applicatifs.',
-        freeModeDescription: 'Suivez le champ CVV dans le flux POS->acquirer.',
-        category: 'MITM',
-        difficulty: 'INTERMEDIATE',
-        points: 200,
-        flagValue: 'PMP{CVV_TRANSMITTED_PLAINTEXT}',
-        targetService: 'sim-pos-service/sim-acquirer-service',
-        targetEndpoint: 'POST http://localhost:8002/transaction',
-        vulnerabilityType: 'Sensitive data in transit',
-        attackVector: 'Payload interception',
-        learningObjectives: ['Identifier champ PCI sensible', 'Limiter la propagation du CVV'],
-        estimatedMinutes: 30,
-        isActive: true,
-        relatedWorkshopPath: '/workshops/iso8583',
-        guidedSteps: steps('curl -s -X POST http://localhost:8002/transaction -H "Content-Type: application/json" -d "{\"pan\":\"4111111111111111\",\"amount\":50,\"currency\":\"EUR\",\"merchantId\":\"M123\",\"transactionType\":\"PURCHASE\",\"cvv\":\"123\",\"expiryMonth\":12,\"expiryYear\":2026}"'),
-        hints: hints('Le champ cvv est dans le payload acquirer.', 'PCI-DSS interdit retention/transit inutile du CVV.'),
-    },
-    {
-        code: 'PRIV-001',
-        title: 'Le Compte en Banque Infini',
-        description: 'PATCH balance issuer sans auth.',
-        freeModeDescription: 'Modifiez un solde sans credentials.',
-        category: 'PRIVILEGE_ESCALATION',
-        difficulty: 'ADVANCED',
-        points: 300,
-        flagValue: 'PMP{BALANCE_UPDATE_NO_AUTH}',
-        targetService: 'sim-issuer-service',
-        targetEndpoint: 'PATCH http://localhost:8005/accounts/:pan/balance',
-        vulnerabilityType: 'Missing authorization',
-        attackVector: 'Direct admin endpoint call',
-        learningObjectives: ['Verifier absence RBAC', 'Mesurer impact integrite financiere'],
-        estimatedMinutes: 30,
-        isActive: true,
-        relatedWorkshopPath: '/workshops/intro',
-        guidedSteps: steps('curl -s -X PATCH http://localhost:8005/accounts/4111111111111111/balance -H "Content-Type: application/json" -d "{\"balance\":999999}"'),
-        hints: hints('Route PATCH /accounts/:pan/balance.', 'Aucune auth middleware sur issuer.'),
-    },
-    {
-        code: 'CRYPTO-001',
-        title: 'Token Predictible',
-        description: 'Generation token basee sur Math.random.',
-        freeModeDescription: 'Audit du tokenVault.',
-        category: 'CRYPTO_WEAKNESS',
-        difficulty: 'BEGINNER',
-        points: 120,
-        flagValue: 'PMP{TOKEN_MATH_RANDOM}',
-        targetService: 'tokenization-service',
-        targetEndpoint: 'backend/tokenization-service/src/services/tokenVault.ts',
-        vulnerabilityType: 'Weak random source',
-        attackVector: 'Code audit',
-        learningObjectives: ['Detecter source random faible', 'Proposer CSPRNG'],
-        estimatedMinutes: 20,
-        isActive: true,
-        relatedWorkshopPath: '/workshops/session-security',
-        guidedSteps: steps(),
-        hints: hints('Inspectez variable middle.', 'Le generateur utilise Math.random.'),
-    },
-    {
-        code: 'CRYPTO-002',
-        title: 'Auth Code Guessable',
-        description: 'Auth code issuer derive de Math.random.',
-        freeModeDescription: 'Auditez generateAuthCode.',
-        category: 'CRYPTO_WEAKNESS',
-        difficulty: 'ADVANCED',
-        points: 220,
-        flagValue: 'PMP{AUTH_CODE_WEAK_PRNG}',
-        prerequisiteChallengeCode: 'CRYPTO-001',
-        targetService: 'sim-issuer-service',
-        targetEndpoint: 'backend/sim-issuer-service/src/services/issuer.service.ts',
-        vulnerabilityType: 'Predictable auth code generation',
-        attackVector: 'Code audit',
-        learningObjectives: ['Trouver PRNG faible', 'Proposer generation robuste'],
-        estimatedMinutes: 25,
-        isActive: true,
-        relatedWorkshopPath: '/workshops/intro',
-        guidedSteps: steps(),
-        hints: hints('Cherchez generateAuthCode.', 'Math.random + substring(2,8).'),
-    },
-];
+function normalizeGuidedSteps(challenge: CtfChallengeSeed): CtfGuidedStepSeed[] {
+    const normalized = buildRealisticGuidedSteps(challenge)
+        .map(normalizeGuidedStep);
 
-export const CTF_CHALLENGES_BY_CODE = new Map(CTF_CHALLENGES.map((challenge) => [challenge.code, challenge]));
+    const hasRemediation = normalized.some(isRemediationStep);
+    const hasPostPatchVerification = normalized.some(isPostPatchVerificationStep);
+    const insertionIndex = Math.max(0, findLastExploitationIndex(normalized));
 
-export const CTF_TOTAL_ACTIVE_CHALLENGES = CTF_CHALLENGES.filter((challenge) => challenge.isActive).length;
+    if (!hasRemediation) {
+        normalized.splice(insertionIndex + 1, 0, buildRemediationStep(challenge));
+    }
+
+    if (!hasPostPatchVerification) {
+        const remediationIndex = normalized.findIndex(isRemediationStep);
+        const verificationInsertionIndex = remediationIndex >= 0 ? remediationIndex + 1 : normalized.length;
+        normalized.splice(verificationInsertionIndex, 0, buildPostPatchVerificationStep(challenge));
+    }
+
+    return reindexSteps(normalized);
+}
+
+function normalizeChallenge(challenge: CtfChallengeSeed): CtfChallengeSeed {
+    const initialDefaults: Record<string, Record<string, boolean>> = {
+        'HSM-003': { keyLeakInLogs: true },
+        'HSM-005': { timingAttackEnabled: true },
+        'PIN-001': { simulateDown: false },
+        'REPLAY-001': { allowReplay: true },
+    };
+
+    return {
+        ...challenge,
+        hints: normalizeHints(challenge),
+        guidedSteps: normalizeGuidedSteps(challenge),
+        missionBrief: normalizeMissionBrief(challenge),
+        incidentArtifacts: normalizeIncidentArtifacts(challenge),
+        proofRubric: normalizeProofRubric(challenge),
+        debriefTemplate: normalizeDebriefTemplate(challenge),
+        initialVulnConfig: {
+            ...(initialDefaults[challenge.code] || {}),
+            ...(challenge.initialVulnConfig || {}),
+        },
+    };
+}
+
+export const CTF_CHALLENGES: CtfChallengeSeed[] = RAW_CTF_CHALLENGES.map(normalizeChallenge);
+export const CTF_CHALLENGE_BY_CODE = new Map(CTF_CHALLENGES.map((challenge) => [challenge.code, challenge]));
+
+export const CTF_TOTAL_ACTIVE_CHALLENGES = CTF_CHALLENGES.length;

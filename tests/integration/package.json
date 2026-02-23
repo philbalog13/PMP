@@ -1,0 +1,17 @@
+{
+  "name": "pmp-integration-tests",
+  "version": "1.0.0",
+  "description": "Integration tests for PMP transaction and service flows",
+  "scripts": {
+    "test": "jest",
+    "test:transaction-flow": "jest transaction-flow/end-to-end.test.ts --runInBand"
+  },
+  "devDependencies": {
+    "@jest/globals": "^29.7.0",
+    "@types/jest": "^29.5.0",
+    "@types/node": "^18.15.11",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.0",
+    "typescript": "^5.0.4"
+  }
+}

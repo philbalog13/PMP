@@ -2,14 +2,12 @@
 
 import Link from 'next/link';
 import { Suspense, useEffect, useMemo, useState, type ReactNode } from 'react';
+import Image from 'next/image';
 import {
     ArrowRight,
-    BookOpenCheck,
     CheckCircle2,
-    CreditCard,
     Eye,
     EyeOff,
-    Fingerprint,
     GraduationCap,
     Loader2,
     Lock,
@@ -93,37 +91,17 @@ const ROLE_OPTIONS: RoleOption[] = [
     }
 ];
 
-const FLOW_STEPS = [
-    {
-        title: 'Vérification identité',
-        description: 'Validation des identifiants et contrôles anti brute force.',
-        icon: Fingerprint
-    },
-    {
-        title: 'Session intelligente',
-        description: 'Access token court + rotation refresh automatique.',
-        icon: Shield
-    },
-    {
-        title: 'Redirection rôle',
-        description: 'Navigation directe vers le bon espace métier.',
-        icon: ArrowRight
-    }
-];
-
 function isExternalUrl(url: string): boolean {
     return /^https?:\/\//i.test(url);
 }
 
 function getPasswordStrength(password: string): number {
     if (!password) return 0;
-
     let score = 0;
     if (password.length >= 8) score += 1;
     if (/[A-Z]/.test(password)) score += 1;
     if (/[0-9]/.test(password)) score += 1;
     if (/[^A-Za-z0-9]/.test(password)) score += 1;
-
     return score;
 }
 
@@ -195,7 +173,6 @@ function UnifiedLoginContent() {
             params.set('mode', 'register');
         }
 
-        // Keep URLs clean: student is default.
         if (nextRole === UserRole.ETUDIANT) {
             params.delete('role');
         } else {
@@ -207,9 +184,7 @@ function UnifiedLoginContent() {
     };
 
     const switchMode = (nextIsLogin: boolean) => {
-        if (nextIsLogin === isLogin) {
-            return;
-        }
+        if (nextIsLogin === isLogin) return;
 
         setIsLogin(nextIsLogin);
         setErrorMessage(null);
@@ -217,17 +192,13 @@ function UnifiedLoginContent() {
         setUse2fa(false);
         setCode2fa('');
         setConfirmPassword('');
-        if (nextIsLogin) {
-            setFullName('');
-        }
+        if (nextIsLogin) setFullName('');
         syncAuthStateInUrl(nextIsLogin, role);
     };
 
     const applyRolePreset = (selectedRole: UserRole) => {
         const selected = ROLE_OPTIONS.find((item) => item.role === selectedRole);
-        if (!selected) {
-            return;
-        }
+        if (!selected) return;
         setEmail(selected.sampleEmail);
         setPassword(selected.samplePassword);
         setCode2fa('');
@@ -239,12 +210,8 @@ function UnifiedLoginContent() {
     const handleRoleChange = (nextRole: UserRole) => {
         setRole(nextRole);
         syncAuthStateInUrl(isLogin, nextRole);
-        if (isLogin) {
-            applyRolePreset(nextRole);
-        } else {
-            setErrorMessage(null);
-            setInfoMessage(null);
-        }
+        setErrorMessage(null);
+        setInfoMessage(null);
     };
 
     const handleLogin = async () => {
@@ -258,10 +225,9 @@ function UnifiedLoginContent() {
         if (!result.ok) {
             if (result.code === 'AUTH_2FA_REQUIRED') {
                 setUse2fa(true);
-                setInfoMessage('Code 2FA requis pour ce compte.');
+                setInfoMessage('Un code d\'authentification à deux facteurs est requis.');
                 return;
             }
-
             setErrorMessage(result.error);
             return;
         }
@@ -322,7 +288,7 @@ function UnifiedLoginContent() {
         setConfirmPassword('');
         setFullName('');
         setPassword('');
-        setInfoMessage('Compte créé. Vous pouvez vous connecter.');
+        setInfoMessage('Compte créé avec succès. Vous pouvez maintenant vous connecter.');
     };
 
     const handleSubmit = async (event: React.FormEvent) => {
@@ -339,7 +305,7 @@ function UnifiedLoginContent() {
             }
         } catch (error) {
             console.error('Auth error:', error);
-            setErrorMessage('Connexion serveur impossible.');
+            setErrorMessage('Impossible de joindre le serveur. Veuillez réessayer.');
         } finally {
             setIsLoading(false);
         }
@@ -348,10 +314,10 @@ function UnifiedLoginContent() {
     if (isAuthCheckLoading) {
         return (
             <div className="min-h-screen bg-[#061220] flex items-center justify-center text-white">
-                <div className="flex flex-col items-center gap-5 rounded-3xl border border-cyan-500/25 bg-slate-950/70 px-10 py-8">
-                    <Loader2 className="animate-spin w-10 h-10 text-cyan-400" />
-                    <span className="text-[11px] font-black uppercase tracking-[0.35em] text-slate-400">
-                        Checking Session
+                <div className="flex flex-col items-center gap-4 rounded-2xl border border-slate-700/60 bg-slate-950/80 px-10 py-8">
+                    <Loader2 className="animate-spin w-8 h-8 text-cyan-400" />
+                    <span className="text-xs font-medium uppercase tracking-widest text-slate-400">
+                        Vérification de la session…
                     </span>
                 </div>
             </div>
@@ -360,297 +326,275 @@ function UnifiedLoginContent() {
 
     return (
         <div className="relative min-h-screen overflow-hidden bg-[#061220] text-white">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_20%,rgba(20,184,166,0.23),transparent_38%),radial-gradient(circle_at_85%_10%,rgba(59,130,246,0.24),transparent_42%),linear-gradient(180deg,#020617_0%,#0f172a_100%)]" />
-            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.08)_1px,transparent_1px)] bg-[size:44px_44px] opacity-20" />
+            {/* Background */}
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(20,184,166,0.12),transparent_50%),radial-gradient(ellipse_at_bottom_right,rgba(59,130,246,0.10),transparent_50%),linear-gradient(180deg,#020617_0%,#0f172a_100%)]" />
+            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.05)_1px,transparent_1px)] bg-[size:56px_56px]" />
 
-            <div className="relative z-10 mx-auto grid min-h-screen max-w-7xl gap-6 px-4 py-6 md:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:py-10">
-                <section className="flex flex-col rounded-[28px] border border-cyan-500/20 bg-slate-950/75 p-6 shadow-[0_30px_80px_rgba(2,6,23,0.68)] backdrop-blur-xl md:p-8">
-                    <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
+            <div className="relative z-10 mx-auto grid min-h-screen max-w-6xl gap-8 px-4 py-10 md:px-8 lg:grid-cols-[1fr_0.9fr] lg:py-16 lg:items-center">
+
+                {/* ── Formulaire ── */}
+                <section className="flex flex-col rounded-2xl border border-slate-700/50 bg-slate-950/80 p-8 shadow-2xl backdrop-blur-xl">
+
+                    {/* Logo / Header */}
+                    <header className="mb-8 flex items-center gap-4">
                         <Link href="/" className="flex items-center gap-3 group">
-                            <div className={`h-12 w-12 rounded-2xl bg-gradient-to-br ${activeRole.accentClass} flex items-center justify-center shadow-2xl shadow-cyan-500/20 group-hover:rotate-6 transition-transform`}>
-                                <CreditCard className="h-6 w-6 text-white" />
-                            </div>
+                            <Image
+                                src="/monetic-logo.svg"
+                                alt="MoneTIC Logo"
+                                width={44}
+                                height={44}
+                                className="group-hover:scale-105 transition-transform duration-200"
+                            />
                             <div>
-                                <div className="text-xs font-black uppercase tracking-[0.24em] text-cyan-300">PMP AUTH</div>
-                                <div className="text-xl font-black tracking-tight">Control Center</div>
+                                <div className="text-[10px] font-semibold uppercase tracking-widest text-cyan-400">Plateforme Monétique Pédagogique</div>
+                                <div className="text-lg font-bold italic tracking-tight leading-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
+                                    MoneTIC
+                                </div>
                             </div>
                         </Link>
-
-                        {isLogin ? (
-                            <button
-                                type="button"
-                                onClick={() => applyRolePreset(role)}
-                                className="rounded-xl border border-cyan-400/30 bg-cyan-500/10 px-4 py-2 text-[11px] font-black uppercase tracking-[0.18em] text-cyan-200 hover:bg-cyan-500/20 transition-colors"
-                            >
-                                Auto Fill Demo
-                            </button>
-                        ) : (
-                            <div className="rounded-xl border border-slate-600/60 bg-slate-900/70 px-4 py-2 text-[11px] font-black uppercase tracking-[0.18em] text-slate-300">
-                                Role: {activeRole.label}
-                            </div>
-                        )}
                     </header>
 
-                    <div className="mb-6 grid grid-cols-2 gap-2 rounded-2xl border border-slate-700/60 bg-slate-900/70 p-1">
+                    {/* Tabs Connexion / Inscription */}
+                    <div className="mb-7 grid grid-cols-2 gap-1 rounded-xl border border-slate-700/50 bg-slate-900/60 p-1">
                         <button
                             type="button"
                             onClick={() => switchMode(true)}
-                            className={`rounded-xl px-4 py-3 text-xs font-black uppercase tracking-[0.16em] transition ${isLogin ? 'bg-white text-slate-950 shadow-xl' : 'text-slate-400 hover:text-white'}`}
+                            className={`rounded-lg px-4 py-2.5 text-xs font-semibold uppercase tracking-wider transition ${
+                                isLogin
+                                    ? 'bg-white text-slate-900 shadow-md'
+                                    : 'text-slate-400 hover:text-slate-200'
+                            }`}
                         >
                             Connexion
                         </button>
                         <button
                             type="button"
                             onClick={() => switchMode(false)}
-                            className={`rounded-xl px-4 py-3 text-xs font-black uppercase tracking-[0.16em] transition ${!isLogin ? 'bg-white text-slate-950 shadow-xl' : 'text-slate-400 hover:text-white'}`}
+                            className={`rounded-lg px-4 py-2.5 text-xs font-semibold uppercase tracking-wider transition ${
+                                !isLogin
+                                    ? 'bg-white text-slate-900 shadow-md'
+                                    : 'text-slate-400 hover:text-slate-200'
+                            }`}
                         >
                             Inscription
                         </button>
                     </div>
 
+                    {/* Titre */}
                     <div className="mb-7">
-                        <h1 className="text-3xl md:text-4xl font-black tracking-tight">
-                            {isLogin ? 'Accès sécurisé au portail' : 'Création de compte guidée'}
+                        <h1 className="text-2xl font-bold tracking-tight text-white">
+                            {isLogin ? 'Connexion à votre espace' : 'Créer un compte'}
                         </h1>
-                        <p className="mt-3 max-w-xl text-slate-400">
-                            Sélectionnez un profil. Le flux adapte les contrôles et la redirection automatiquement.
+                        <p className="mt-2 text-sm text-slate-400">
+                            {isLogin
+                                ? 'Renseignez vos identifiants pour accéder à la plateforme.'
+                                : 'Choisissez votre profil et renseignez vos informations.'}
                         </p>
                     </div>
 
-                    <div className="mb-7 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                        {ROLE_OPTIONS.map((option) => {
-                            const Icon = option.icon;
-                            const isActive = option.role === role;
-
-                            return (
-                                <button
-                                    key={option.role}
-                                    type="button"
-                                    onClick={() => handleRoleChange(option.role)}
-                                    className={`group rounded-2xl border p-3 text-left transition-all ${isActive
-                                        ? 'border-cyan-400/70 bg-cyan-500/15 shadow-[0_16px_40px_rgba(6,182,212,0.2)]'
-                                        : 'border-slate-700/70 bg-slate-900/70 hover:border-slate-500/70 hover:bg-slate-900'}`}
-                                >
-                                    <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${option.accentClass} text-white`}>
-                                        <Icon size={18} />
-                                    </div>
-                                    <div className="text-sm font-bold">{option.label}</div>
-                                    <div className="mt-1 text-[11px] text-slate-400">{option.audience}</div>
-                                </button>
-                            );
-                        })}
-                    </div>
-
-                    <div className="mb-6 rounded-2xl border border-slate-700/70 bg-slate-900/60 p-4">
-                        <div className="flex items-start gap-3">
-                            <BookOpenCheck className="mt-0.5 h-5 w-5 text-cyan-300" />
-                            <div>
-                                <div className="text-sm font-semibold text-white">{activeRole.label}</div>
-                                <p className="mt-1 text-sm text-slate-400">{activeRole.description}</p>
+                    {/* Sélecteur de rôle — uniquement en mode Inscription */}
+                    {!isLogin && (
+                        <div className="mb-6">
+                            <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-400">Profil</div>
+                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                                {ROLE_OPTIONS.map((option) => {
+                                    const Icon = option.icon;
+                                    const isActive = option.role === role;
+                                    return (
+                                        <button
+                                            key={option.role}
+                                            type="button"
+                                            onClick={() => handleRoleChange(option.role)}
+                                            className={`rounded-xl border p-3 text-left transition-all ${
+                                                isActive
+                                                    ? 'border-cyan-500/60 bg-cyan-500/10'
+                                                    : 'border-slate-700/60 bg-slate-900/60 hover:border-slate-500/60'
+                                            }`}
+                                        >
+                                            <div className={`mb-2 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br ${option.accentClass}`}>
+                                                <Icon size={15} className="text-white" />
+                                            </div>
+                                            <div className="text-xs font-semibold text-white">{option.label}</div>
+                                            <div className="text-[11px] text-slate-400 mt-0.5">{option.audience}</div>
+                                        </button>
+                                    );
+                                })}
                             </div>
-                        </div>
-                    </div>
-
-                    {errorMessage && (
-                        <div className="mb-4 rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200 flex items-start gap-2">
-                            <ShieldAlert size={16} className="mt-0.5 shrink-0" />
-                            <span>{errorMessage}</span>
                         </div>
                     )}
 
+                    {/* Messages d'erreur / info */}
+                    {errorMessage && (
+                        <div className="mb-5 rounded-xl border border-red-500/30 bg-red-500/8 px-4 py-3 text-sm text-red-300 flex items-start gap-2">
+                            <ShieldAlert size={15} className="mt-0.5 shrink-0" />
+                            <span>{errorMessage}</span>
+                        </div>
+                    )}
                     {infoMessage && (
-                        <div className="mb-4 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200 flex items-start gap-2">
-                            <CheckCircle2 size={16} className="mt-0.5 shrink-0" />
+                        <div className="mb-5 rounded-xl border border-emerald-500/30 bg-emerald-500/8 px-4 py-3 text-sm text-emerald-300 flex items-start gap-2">
+                            <CheckCircle2 size={15} className="mt-0.5 shrink-0" />
                             <span>{infoMessage}</span>
                         </div>
                     )}
 
-                    <form onSubmit={handleSubmit} className="space-y-5">
+                    {/* Formulaire */}
+                    <form onSubmit={handleSubmit} className="space-y-4">
                         {!isLogin && (
                             <AuthInput
                                 id="fullName"
                                 label="Nom complet"
                                 value={fullName}
-                                onChange={(value) => {
-                                    setFullName(value);
-                                    setErrorMessage(null);
-                                }}
-                                icon={<UserIcon size={18} />}
-                                placeholder="Ex: Georges Dupont"
+                                onChange={(value) => { setFullName(value); setErrorMessage(null); }}
+                                icon={<UserIcon size={16} />}
+                                placeholder="Prénom Nom"
                                 autoComplete="name"
                             />
                         )}
 
                         <AuthInput
                             id="email"
-                            label="Email"
+                            label="Adresse e-mail"
                             value={email}
-                            onChange={(value) => {
-                                setEmail(value);
-                                setErrorMessage(null);
-                            }}
-                            icon={<Mail size={18} />}
-                            placeholder="name@pmp.edu"
+                            onChange={(value) => { setEmail(value); setErrorMessage(null); }}
+                            icon={<Mail size={16} />}
+                            placeholder="votre@email.com"
                             autoComplete="email"
                         />
 
-                        <div className="space-y-2">
-                            <label className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Mot de passe</label>
+                        {/* Mot de passe */}
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+                                Mot de passe
+                            </label>
                             <div className="relative group">
-                                <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-cyan-300 transition-colors" />
+                                <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-cyan-400 transition-colors" />
                                 <input
                                     type={showPassword ? 'text' : 'password'}
                                     value={password}
-                                    onChange={(event) => {
-                                        setPassword(event.target.value);
-                                        setErrorMessage(null);
-                                    }}
-                                    className="w-full rounded-2xl border border-slate-700/70 bg-slate-900/75 py-3.5 pl-12 pr-12 text-sm font-medium placeholder:text-slate-500 focus:border-cyan-400/70 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition"
-                                    placeholder="********"
+                                    onChange={(event) => { setPassword(event.target.value); setErrorMessage(null); }}
+                                    className="w-full rounded-xl border border-slate-700/60 bg-slate-900/70 py-3 pl-11 pr-11 text-sm placeholder:text-slate-500 focus:border-cyan-500/60 focus:outline-none focus:ring-2 focus:ring-cyan-500/15 transition"
+                                    placeholder="••••••••"
                                     autoComplete={isLogin ? 'current-password' : 'new-password'}
                                     required
                                 />
                                 <button
                                     type="button"
-                                    onClick={() => setShowPassword((current) => !current)}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
+                                    onClick={() => setShowPassword((v) => !v)}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                    tabIndex={-1}
                                 >
-                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                                 </button>
                             </div>
                         </div>
 
+                        {/* Confirmation mot de passe (inscription) */}
                         {!isLogin && (
-                            <div className="space-y-2">
+                            <div className="space-y-1.5">
                                 <AuthInput
                                     id="confirm"
-                                    label="Confirmation mot de passe"
+                                    label="Confirmer le mot de passe"
                                     value={confirmPassword}
-                                    onChange={(value) => {
-                                        setConfirmPassword(value);
-                                        setErrorMessage(null);
-                                    }}
-                                    icon={<Shield size={18} />}
-                                    placeholder="********"
+                                    onChange={(value) => { setConfirmPassword(value); setErrorMessage(null); }}
+                                    icon={<Lock size={16} />}
+                                    placeholder="••••••••"
                                     type="password"
                                     autoComplete="new-password"
                                 />
                                 {confirmPassword.trim().length > 0 && (
-                                    <div className={`text-xs ${isPasswordMismatch ? 'text-red-300' : 'text-emerald-300'}`}>
-                                        {isPasswordMismatch ? 'Les mots de passe ne correspondent pas.' : 'Confirmation mot de passe valide.'}
-                                    </div>
+                                    <p className={`text-xs ${isPasswordMismatch ? 'text-red-400' : 'text-emerald-400'}`}>
+                                        {isPasswordMismatch ? 'Les mots de passe ne correspondent pas.' : 'Les mots de passe correspondent.'}
+                                    </p>
                                 )}
-                                <div className="rounded-xl border border-slate-700/60 bg-slate-900/70 px-3 py-2">
-                                    <div className="mb-2 flex items-center justify-between text-[11px] uppercase tracking-[0.16em] text-slate-400">
-                                        <span>Force du mot de passe</span>
-                                        <span>{['Faible', 'Basique', 'Moyen', 'Fort', 'Solide'][passwordStrength]}</span>
-                                    </div>
-                                    <div className="h-2 rounded-full bg-slate-800">
-                                        <div
-                                            className={`h-2 rounded-full transition-all ${passwordStrength <= 1 ? 'bg-red-400' : passwordStrength <= 3 ? 'bg-amber-400' : 'bg-emerald-400'}`}
-                                            style={{ width: `${Math.max(6, (passwordStrength / 4) * 100)}%` }}
-                                        />
-                                    </div>
+                                {/* Indicateur de robustesse */}
+                                <div className="h-1.5 w-full rounded-full bg-slate-800 overflow-hidden">
+                                    <div
+                                        className={`h-full rounded-full transition-all ${
+                                            passwordStrength <= 1 ? 'bg-red-500' : passwordStrength <= 2 ? 'bg-amber-400' : passwordStrength <= 3 ? 'bg-yellow-300' : 'bg-emerald-400'
+                                        }`}
+                                        style={{ width: `${Math.max(5, (passwordStrength / 4) * 100)}%` }}
+                                    />
                                 </div>
                             </div>
                         )}
 
+                        {/* Code 2FA */}
                         {isLogin && use2fa && (
                             <AuthInput
                                 id="code2fa"
-                                label="Code 2FA"
+                                label="Code d'authentification (2FA)"
                                 value={code2fa}
-                                onChange={(value) => {
-                                    setCode2fa(value);
-                                    setErrorMessage(null);
-                                }}
-                                icon={<Shield size={18} />}
+                                onChange={(value) => { setCode2fa(value); setErrorMessage(null); }}
+                                icon={<Shield size={16} />}
                                 placeholder="123456"
                                 autoComplete="one-time-code"
                             />
-                        )}
-                        {isLogin && role === UserRole.FORMATEUR && !use2fa && (
-                            <div className="rounded-xl border border-blue-400/25 bg-blue-500/10 px-3 py-2 text-xs text-blue-100">
-                                Le profil formateur peut demander un code 2FA selon les règles du compte.
-                            </div>
                         )}
 
                         <button
                             type="submit"
                             disabled={!canSubmit}
-                            className="group flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-500 px-4 py-4 text-sm font-black uppercase tracking-[0.16em] text-slate-950 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-45"
+                            className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-3.5 text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
                         >
-                            {isLoading ? <Loader2 className="animate-spin" size={18} /> : <>{isLogin ? 'Se connecter' : 'Créer un compte'} <ArrowRight size={18} className="group-hover:translate-x-0.5 transition-transform" /></>}
+                            {isLoading
+                                ? <Loader2 className="animate-spin" size={17} />
+                                : <>{isLogin ? 'Se connecter' : 'Créer le compte'} <ArrowRight size={16} /></>
+                            }
                         </button>
                     </form>
 
-                    <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-xs uppercase tracking-[0.16em] text-slate-400">
-                        <span>Sécurité: {activeRole.strongAuthHint}</span>
+                    <p className="mt-6 text-center text-xs text-slate-500">
+                        {isLogin ? 'Pas encore de compte ?' : 'Déjà inscrit ?'}{' '}
                         <button
                             type="button"
                             onClick={() => switchMode(!isLogin)}
-                            className="font-black text-cyan-300 hover:text-cyan-200 transition-colors"
+                            className="font-semibold text-cyan-400 hover:text-cyan-300 transition-colors"
                         >
-                            {isLogin ? 'Pas encore inscrit' : 'Déjà membre'}
+                            {isLogin ? 'S\'inscrire' : 'Se connecter'}
                         </button>
-                    </div>
+                    </p>
                 </section>
 
-                <aside className="hidden lg:flex flex-col rounded-[28px] border border-slate-700/70 bg-slate-950/55 p-8 backdrop-blur-xl">
-                    <div className="mb-8">
-                        <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] text-cyan-200">
-                            Intelligent Auth Flow
+                {/* ── Panneau latéral ── */}
+                <aside className="hidden lg:flex flex-col gap-6 rounded-2xl border border-slate-700/40 bg-slate-950/50 p-8 backdrop-blur-xl">
+                    <div>
+                        <div className="inline-flex items-center gap-2 rounded-full border border-slate-600/50 bg-slate-800/60 px-3 py-1 text-[11px] font-medium uppercase tracking-widest text-slate-400">
+                            Accès sécurisé
                         </div>
-                        <h2 className="mt-4 text-3xl font-black tracking-tight">
-                            Session logique et fluide
+                        <h2 className="mt-4 text-2xl font-bold tracking-tight text-white">
+                            Un accès adapté à chaque profil
                         </h2>
-                        <p className="mt-3 text-sm text-slate-400">
-                            Le portail orchestre vérification, rotation token et routage par rôle sans friction.
+                        <p className="mt-2 text-sm leading-relaxed text-slate-400">
+                            La plateforme oriente automatiquement chaque utilisateur vers son espace métier après authentification.
                         </p>
                     </div>
 
-                    <div className="space-y-4">
-                        {FLOW_STEPS.map((step, index) => {
-                            const StepIcon = step.icon;
+                    {/* Profils */}
+                    <div className="space-y-3">
+                        {ROLE_OPTIONS.map((option) => {
+                            const Icon = option.icon;
                             return (
-                                <div key={step.title} className="rounded-2xl border border-slate-700/70 bg-slate-900/65 p-4">
-                                    <div className="mb-2 flex items-center gap-3">
-                                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-cyan-500/15 text-cyan-300">
-                                            {index + 1}
-                                        </div>
-                                        <StepIcon size={17} className="text-cyan-300" />
-                                        <span className="font-bold text-white">{step.title}</span>
+                                <div
+                                    key={option.role}
+                                    className="flex items-start gap-3 rounded-xl border border-slate-700/50 bg-slate-900/50 p-4"
+                                >
+                                    <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${option.accentClass}`}>
+                                        <Icon size={15} className="text-white" />
                                     </div>
-                                    <p className="text-sm text-slate-400">{step.description}</p>
+                                    <div>
+                                        <div className="text-sm font-semibold text-white">{option.label}</div>
+                                        <p className="mt-0.5 text-xs text-slate-400">{option.description}</p>
+                                    </div>
                                 </div>
                             );
                         })}
                     </div>
 
-                    <div className="mt-6 rounded-2xl border border-cyan-500/25 bg-cyan-500/10 p-4">
-                        <div className="text-xs font-black uppercase tracking-[0.2em] text-cyan-200">Rôle actif</div>
-                        <div className="mt-3 flex items-center gap-3">
-                            <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${activeRole.accentClass} flex items-center justify-center`}>
-                                <activeRole.icon size={18} className="text-white" />
-                            </div>
-                            <div>
-                                <div className="font-semibold text-white">{activeRole.label}</div>
-                                <div className="text-sm text-cyan-100/80">{activeRole.audience}</div>
-                            </div>
-                        </div>
-
-                        <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                            <div className="rounded-xl border border-cyan-500/20 bg-slate-950/40 p-3">
-                                <div className="text-[11px] uppercase tracking-[0.16em] text-cyan-200/80">Destination</div>
-                                <div className="mt-1 font-semibold text-white">{activeRole.destinationHint}</div>
-                            </div>
-                            <div className="rounded-xl border border-cyan-500/20 bg-slate-950/40 p-3">
-                                <div className="text-[11px] uppercase tracking-[0.16em] text-cyan-200/80">Contrôle</div>
-                                <div className="mt-1 font-semibold text-white">{activeRole.strongAuthHint}</div>
-                            </div>
-                        </div>
+                    <div className="mt-auto rounded-xl border border-slate-700/40 bg-slate-900/40 px-4 py-3 text-xs text-slate-500">
+                        Les connexions sont protégées par JWT à courte durée de vie avec rotation automatique du jeton de rafraîchissement.
                     </div>
                 </aside>
+
             </div>
         </div>
     );
@@ -660,10 +604,10 @@ export default function UnifiedLoginPage() {
     return (
         <Suspense fallback={
             <div className="min-h-screen bg-[#061220] flex items-center justify-center text-white">
-                <div className="flex flex-col items-center gap-5 rounded-3xl border border-cyan-500/25 bg-slate-950/70 px-10 py-8">
-                    <Loader2 className="animate-spin w-10 h-10 text-cyan-400" />
-                    <span className="text-[11px] font-black uppercase tracking-[0.35em] text-slate-400">
-                        Loading Auth
+                <div className="flex flex-col items-center gap-4 rounded-2xl border border-slate-700/60 bg-slate-950/80 px-10 py-8">
+                    <Loader2 className="animate-spin w-8 h-8 text-cyan-400" />
+                    <span className="text-xs font-medium uppercase tracking-widest text-slate-400">
+                        Chargement…
                     </span>
                 </div>
             </div>
@@ -693,10 +637,12 @@ function AuthInput({
     autoComplete?: string;
 }) {
     return (
-        <div className="space-y-2">
-            <label htmlFor={id} className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">{label}</label>
+        <div className="space-y-1.5">
+            <label htmlFor={id} className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+                {label}
+            </label>
             <div className="relative group">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-cyan-300 transition-colors">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-cyan-400 transition-colors">
                     {icon}
                 </div>
                 <input
@@ -704,7 +650,7 @@ function AuthInput({
                     type={type}
                     value={value}
                     onChange={(event) => onChange(event.target.value)}
-                    className="w-full rounded-2xl border border-slate-700/70 bg-slate-900/75 py-3.5 pl-12 pr-4 text-sm font-medium placeholder:text-slate-500 focus:border-cyan-400/70 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition"
+                    className="w-full rounded-xl border border-slate-700/60 bg-slate-900/70 py-3 pl-11 pr-4 text-sm placeholder:text-slate-500 focus:border-cyan-500/60 focus:outline-none focus:ring-2 focus:ring-cyan-500/15 transition"
                     placeholder={placeholder}
                     autoComplete={autoComplete}
                     required

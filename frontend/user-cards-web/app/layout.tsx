@@ -8,8 +8,8 @@ const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit' });
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-  title: 'PMP Bank | Premium Banking',
-  description: 'Experience the future of banking simulation.',
+  title: 'Espace Client — MoneTIC',
+  description: 'Gestion de vos cartes et transactions — Plateforme Monétique Pédagogique MoneTIC',
 };
 
 export default function RootLayout({

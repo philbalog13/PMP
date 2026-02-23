@@ -12,7 +12,6 @@ import {
     Globe,
     Users,
     Server,
-    Activity,
     FileText,
     Zap,
     Menu,
@@ -155,8 +154,8 @@ function App() {
                 <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
                     <div className="sidebar-header">
                         <span className="sidebar-logo">
-                            <Activity size={18} />
-                            PMP Monitor
+                            <img src="/monetic-logo.svg" alt="MoneTIC" style={{width: 22, height: 22}} />
+                            MoneTIC
                         </span>
                     </div>
 

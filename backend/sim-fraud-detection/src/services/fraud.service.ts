@@ -26,14 +26,43 @@ export interface FraudAlert {
     resolved: boolean;
 }
 
+export interface RuntimeFraudConfig {
+    failMode: 'open' | 'closed';
+    fallbackDecision: 'APPROVE' | 'REVIEW' | 'DECLINE';
+    simulateFailure: boolean;
+}
+
 // In-memory transaction history for velocity checks
 const transactionHistory: Map<string, Date[]> = new Map();
 const fraudAlerts: FraudAlert[] = [];
+const runtimeConfig: RuntimeFraudConfig = {
+    failMode: 'open',
+    fallbackDecision: 'APPROVE',
+    simulateFailure: false
+};
 
 /**
  * Check transaction for fraud indicators
  */
 export const checkFraud = (request: FraudCheckRequest): FraudCheckResult => {
+    if (runtimeConfig.simulateFailure) {
+        const failOpenRecommendation = runtimeConfig.failMode === 'open'
+            ? runtimeConfig.fallbackDecision
+            : 'DECLINE';
+
+        return {
+            riskScore: runtimeConfig.failMode === 'open' ? 0 : 100,
+            riskLevel: runtimeConfig.failMode === 'open' ? 'LOW' : 'CRITICAL',
+            flagged: runtimeConfig.failMode !== 'open',
+            reasons: [
+                'Fraud engine degraded',
+                `Fail mode: ${runtimeConfig.failMode}`,
+                `Fallback decision: ${failOpenRecommendation}`
+            ],
+            recommendation: failOpenRecommendation
+        };
+    }
+
     const reasons: string[] = [];
     let score = 0;
 
@@ -150,4 +179,26 @@ export const getStats = (): { totalChecks: number; totalAlerts: number; unresolv
         totalAlerts: fraudAlerts.length,
         unresolvedAlerts: fraudAlerts.filter(a => !a.resolved).length
     };
+};
+
+export const getRuntimeConfig = (): RuntimeFraudConfig => ({ ...runtimeConfig });
+
+export const updateRuntimeConfig = (updates: Partial<RuntimeFraudConfig>): RuntimeFraudConfig => {
+    if (updates.failMode) {
+        runtimeConfig.failMode = updates.failMode;
+    }
+    if (updates.fallbackDecision) {
+        runtimeConfig.fallbackDecision = updates.fallbackDecision;
+    }
+    if (typeof updates.simulateFailure === 'boolean') {
+        runtimeConfig.simulateFailure = updates.simulateFailure;
+    }
+
+    return { ...runtimeConfig };
+};
+
+export const resetRuntimeState = (): void => {
+    transactionHistory.clear();
+    fraudAlerts.length = 0;
+    runtimeConfig.simulateFailure = false;
 };

@@ -20,7 +20,8 @@ const isMissingBankingSchemaError = (error: any): boolean => {
  */
 export const provisionFinancialAccountForUser = async (
     userId: string,
-    role: string
+    role: string,
+    merchantName?: string
 ): Promise<void> => {
     if (!BANKED_ROLES.has(role)) {
         return;
@@ -35,6 +36,17 @@ export const provisionFinancialAccountForUser = async (
 
         if (role === UserRole.MARCHAND) {
             await query(`SELECT merchant.ensure_account_iban($1)`, [userId]);
+
+            // Auto-create a default POS terminal so the merchant appears in client listings
+            const terminalId = `TERM${String(Math.floor(Math.random() * 100000)).padStart(5, '0')}`;
+            const resolvedMerchantName = merchantName || 'Demo Merchant';
+            await query(
+                `INSERT INTO merchant.pos_terminals
+                 (merchant_id, terminal_id, terminal_name, terminal_type, mcc, merchant_name, location_name, status)
+                 VALUES ($1, $2, 'Terminal Principal', 'STANDARD', '5411', $3, 'Magasin Principal', 'ACTIVE')
+                 ON CONFLICT DO NOTHING`,
+                [userId, terminalId, resolvedMerchantName]
+            );
         }
     } catch (error: any) {
         if (isMissingBankingSchemaError(error)) {

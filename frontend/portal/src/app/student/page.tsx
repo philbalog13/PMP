@@ -4,10 +4,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     Book, CheckCircle, Zap, Target, Award, Play, History, Shield,
     GraduationCap, ChevronRight, BookOpen, Code, Terminal, Beaker, Lock,
-    Clock, TrendingUp, Star, Trophy, BarChart3, RefreshCw
+    Clock, TrendingUp, Star, Trophy, BarChart3, RefreshCw, ArrowRight, Sparkles
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '../auth/useAuth';
+import { isOnboardingDoneLocally, markOnboardingDoneLocally } from '../../lib/onboarding';
 
 /* ── Types ──────────────────────────────────────────────────────── */
 
@@ -75,6 +77,7 @@ const WORKSHOP_ORDER = ['intro', 'iso8583', 'hsm-keys', '3ds-flow', 'fraud-detec
 
 export default function StudentDashboard() {
     const { user, isLoading } = useAuth(true);
+    const router = useRouter();
     const [activeTab, setActiveTab] = useState<'ateliers' | 'progression' | 'badges'>('ateliers');
 
     const [workshops, setWorkshops] = useState<WorkshopProgress[]>([]);
@@ -163,8 +166,49 @@ export default function StudentDashboard() {
 
     useEffect(() => {
         if (isLoading) return;
-        refreshData();
-    }, [isLoading, refreshData]);
+
+        let cancelled = false;
+
+        const bootstrapStudentDashboard = async () => {
+            if (isOnboardingDoneLocally(user)) {
+                await refreshData();
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('token');
+                if (token) {
+                    const response = await fetch('/api/users/me', {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+
+                    if (response.ok) {
+                        const payload = await response.json().catch(() => null);
+                        const onboardingDone = payload?.user?.onboardingDone === true;
+                        if (onboardingDone) {
+                            markOnboardingDoneLocally(user);
+                            if (!cancelled) {
+                                await refreshData();
+                            }
+                            return;
+                        }
+                    }
+                }
+            } catch {
+                // Best-effort check; fallback below redirects to onboarding.
+            }
+
+            if (!cancelled) {
+                router.push('/student/onboarding');
+            }
+        };
+
+        void bootstrapStudentDashboard();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [isLoading, refreshData, router, user]);
 
     /* ── Computed values ──────────────────────────────────────────── */
 
@@ -278,6 +322,13 @@ export default function StudentDashboard() {
                     <StatCard icon={<Award className="text-purple-400" />} label="Badges" value={`${computed.badgesEarned}/${badges.length || 8}`} color="purple" />
                     <StatCard icon={<Shield className="text-orange-400" />} label="CTF Points" value={`${ctfPoints} (${ctfSolved})`} color="amber" />
                 </div>
+
+                {/* Next Step Banner */}
+                <NextStepBanner
+                    inProgressWorkshop={computed.inProgressWorkshop}
+                    workshops={workshops}
+                    ctfSolved={ctfSolved}
+                />
 
                 {/* Main Content */}
                 <div className="grid lg:grid-cols-3 gap-8">
@@ -631,6 +682,76 @@ function QuickAction({ href, icon, label }: { href: string; icon: React.ReactNod
             <div className="text-slate-400 group-hover:text-white transition-colors">{icon}</div>
             <span className="text-sm">{label}</span>
             <ChevronRight size={14} className="ml-auto text-slate-600 group-hover:text-slate-400 transition-colors" />
+        </Link>
+    );
+}
+
+function NextStepBanner({
+    inProgressWorkshop,
+    workshops,
+    ctfSolved,
+}: {
+    inProgressWorkshop?: WorkshopProgress;
+    workshops: WorkshopProgress[];
+    ctfSolved: number;
+}) {
+    let href = '/student/cursus';
+    let label = 'Commencer le Cursus';
+    let sublabel = 'Démarrez votre parcours monétique';
+    let tone: 'emerald' | 'amber' | 'cyan' = 'emerald';
+
+    if (inProgressWorkshop) {
+        href = `/student/theory/${inProgressWorkshop.workshop_id}`;
+        label = `Continuer — ${inProgressWorkshop.title}`;
+        sublabel = `${inProgressWorkshop.progress_percent || 0}% complété`;
+        tone = 'amber';
+    } else if (ctfSolved === 0) {
+        href = '/student/ctf';
+        label = 'Lancer ton premier challenge CTF';
+        sublabel = 'HSM-001 — Le Coffre Ouvert · BEGINNER · 100 pts';
+        tone = 'cyan';
+    } else {
+        const nextWorkshop = workshops.find(w => w.status === 'NOT_STARTED');
+        if (nextWorkshop) {
+            href = `/student/theory/${nextWorkshop.workshop_id}`;
+            label = `Commencer — ${nextWorkshop.title}`;
+            sublabel = 'Prochain atelier du parcours';
+            tone = 'emerald';
+        } else {
+            href = '/student/ctf';
+            label = 'Explorer les challenges avancés';
+            sublabel = `${ctfSolved} challenge${ctfSolved > 1 ? 's' : ''} résolu${ctfSolved > 1 ? 's' : ''} — continue !`;
+            tone = 'cyan';
+        }
+    }
+
+    const gradients = {
+        emerald: 'from-emerald-500/10 via-emerald-600/5 to-transparent border-emerald-500/20',
+        amber: 'from-amber-500/10 via-amber-600/5 to-transparent border-amber-500/20',
+        cyan: 'from-cyan-500/10 via-cyan-600/5 to-transparent border-cyan-500/20',
+    };
+    const textColors = {
+        emerald: 'text-emerald-400',
+        amber: 'text-amber-400',
+        cyan: 'text-cyan-400',
+    };
+
+    return (
+        <Link
+            href={href}
+            className={`flex items-center justify-between gap-4 mb-8 px-6 py-4 rounded-2xl bg-gradient-to-r ${gradients[tone]} border hover:brightness-110 transition-all group`}
+        >
+            <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-xl bg-slate-900/60 ${textColors[tone]}`}>
+                    <Sparkles size={20} />
+                </div>
+                <div>
+                    <p className="text-[11px] text-slate-500 uppercase tracking-widest font-medium mb-0.5">Prochaine étape recommandée</p>
+                    <p className={`font-bold text-sm md:text-base ${textColors[tone]}`}>{label}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{sublabel}</p>
+                </div>
+            </div>
+            <ArrowRight size={20} className={`shrink-0 ${textColors[tone]} opacity-60 group-hover:opacity-100 group-hover:translate-x-1 transition-all`} />
         </Link>
     );
 }

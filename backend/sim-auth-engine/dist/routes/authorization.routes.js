@@ -12,6 +12,7 @@ router.post('/authorize', authorization_controller_1.authorize);
 router.get('/transactions/:pan', authorization_controller_1.getTransactions);
 // Simulation
 router.post('/simulate/:scenario', authorization_controller_1.simulate);
+router.post('/auth/generate-code', authorization_controller_1.generateCode);
 // Rules management handled in rules.routes.ts
 exports.default = router;
 //# sourceMappingURL=authorization.routes.js.map

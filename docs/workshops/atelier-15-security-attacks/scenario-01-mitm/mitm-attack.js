@@ -1,10 +1,10 @@
-/**
+﻿/**
  * Scénario 1 : Man-in-the-Middle Attack
  * EXPLOIT : Modification du montant dans un message ISO 8583
  * 
  * ⚠️ USAGE PÉDAGOGIQUE UNIQUEMENT
  * 
- * Usage: node mitm-attack.js
+ * Usage: node mitm-attack.js [--simulate]
  */
 
 const crypto = require('crypto');
@@ -179,9 +179,11 @@ function startRealProxy() {
 }
 
 // Exécution
-simulateAttack();
-
-// Pour activer le vrai proxy (DANGEREUX - environnement contrôlé uniquement):
-// startRealProxy();
+if (process.argv.includes('--simulate')) {
+    simulateAttack();
+} else {
+    console.log('Mode reel active (proxy MitM). Utilisez --simulate pour la demo hors reseau.');
+    startRealProxy();
+}
 
 module.exports = { parseISO8583, modifyAmount, buildISO8583 };

@@ -7,8 +7,8 @@ const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit' });
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-    title: 'TPE Web Pédagogique - PMP',
-    description: 'Terminal de Paiement Électronique - Plateforme Monétique Pédagogique',
+    title: 'Terminal POS — MoneTIC',
+    description: 'Terminal de Paiement Électronique — Plateforme Monétique Pédagogique MoneTIC',
 };
 
 export default function RootLayout({

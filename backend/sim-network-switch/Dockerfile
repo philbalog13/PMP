@@ -41,6 +41,7 @@ ENV HOST=0.0.0.0
 
 # Expose port
 EXPOSE 8004
+EXPOSE 8583
 
 # Health check
 HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \

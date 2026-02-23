@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '../auth/useAuth';
+import { APP_URLS } from '@shared/lib/app-urls';
 import {
     toRecord, toNumber, toText, formatMoney, formatDateTimeString, getCardBrand, getLastFour
 } from '@shared/lib/formatting';
@@ -421,11 +422,21 @@ export default function MerchantDashboard() {
                         <div>
                             <h2 className="text-xl font-semibold text-white mb-4">Actions rapides</h2>
                             <div className="space-y-3">
-                                <Link href="/merchant/pos" className="flex items-center gap-4 p-4 bg-gradient-to-r from-purple-500/20 to-violet-500/10 border border-purple-500/30 rounded-xl hover:scale-[1.02] transition-transform">
+                                <button
+                                    onClick={() => {
+                                        const token = localStorage.getItem('token');
+                                        const base = APP_URLS.tpe;
+                                        const tpeUrl = token
+                                            ? `${base}/?token=${encodeURIComponent(token)}`
+                                            : base;
+                                        window.open(tpeUrl, '_blank');
+                                    }}
+                                    className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-purple-500/20 to-violet-500/10 border border-purple-500/30 rounded-xl hover:scale-[1.02] transition-transform"
+                                >
                                     <div className="p-3 bg-purple-500/20 rounded-xl"><Tablet className="w-6 h-6 text-purple-400" /></div>
-                                    <div><p className="font-medium text-white">Terminal POS</p><p className="text-sm text-slate-400">Créer des transactions réelles</p></div>
+                                    <div className="text-left"><p className="font-medium text-white">Terminal POS</p><p className="text-sm text-slate-400">Ouvrir le TPE-Web</p></div>
                                     <ChevronRight size={20} className="text-slate-400 ml-auto" />
-                                </Link>
+                                </button>
 
                                 <Link href="/merchant/reports" className="flex items-center gap-4 p-4 bg-slate-800/50 border border-white/10 rounded-xl hover:scale-[1.02] transition-transform">
                                     <div className="p-3 bg-blue-500/20 rounded-xl"><Wallet className="w-6 h-6 text-blue-400" /></div>

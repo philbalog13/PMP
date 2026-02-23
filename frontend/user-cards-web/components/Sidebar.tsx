@@ -9,16 +9,43 @@ import {
     Settings,
     Home,
     PieChart,
-    GraduationCap,
     Menu,
-    X
+    X,
+    ShieldCheck,
+    LogOut
 } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import { useAuth } from '@shared/context/AuthContext';
 
 export default function Sidebar() {
     const pathname = usePathname();
     const [mobileOpen, setMobileOpen] = useState(false);
+    const { user } = useAuth();
+
+    const handleLogout = () => {
+        setMobileOpen(false);
+        const token = localStorage.getItem('token');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('role');
+        localStorage.removeItem('refreshToken');
+        document.cookie = 'token=; Max-Age=0; path=/';
+        document.cookie = 'refreshToken=; Max-Age=0; path=/';
+        if (token) {
+            fetch('/api/auth/logout', {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+            }).catch(() => {});
+        }
+        const portalLogin = `${process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:3000'}/login`;
+        window.location.replace(portalLogin);
+    };
+
+    // Detect admin role (FORMATEUR has FULL_ACCESS)
+    const userRole = (user as any)?.role || '';
+    const isAdmin = userRole === 'ROLE_FORMATEUR' || userRole.includes('FORMATEUR');
 
     // Prevent body scroll when mobile menu is open
     useEffect(() => {
@@ -37,7 +64,6 @@ export default function Sidebar() {
         { icon: CreditCard, label: 'Mes Cartes', href: '/cards' },
         { icon: History, label: 'Transactions', href: '/transactions' },
         { icon: PieChart, label: 'Statistiques', href: '/stats' },
-        { icon: GraduationCap, label: 'Formation', href: '/learn' },
     ];
 
     const portalUrl = process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:3000';
@@ -46,12 +72,10 @@ export default function Sidebar() {
         <>
             <div className="p-8">
                 <div className="flex items-center gap-3 mb-10">
-                    <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-xl shadow-lg shadow-blue-500/30">
-                        P
-                    </div>
+                    <Image src="/monetic-logo.svg" alt="MoneTIC Logo" width={40} height={40} />
                     <div>
-                        <h1 className="font-bold text-xl tracking-tight">PMP Bank</h1>
-                        <p className="text-xs text-slate-400">Premium Banking</p>
+                        <h1 className="font-bold text-xl italic tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">MoneTIC</h1>
+                        <p className="text-[10px] font-semibold uppercase tracking-widest text-cyan-400">Espace Client</p>
                     </div>
                 </div>
 
@@ -76,25 +100,71 @@ export default function Sidebar() {
                             </Link>
                         );
                     })}
+
+                    {/* Admin link — visible only for FORMATEUR (admin) */}
+                    {isAdmin && (
+                        <div className="pt-3 mt-3 border-t border-white/5">
+                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-600 px-4 mb-2">Administration</p>
+                            <Link
+                                href="/admin"
+                                onClick={() => setMobileOpen(false)}
+                                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group relative overflow-hidden ${
+                                    pathname === '/admin'
+                                        ? 'bg-red-600/80 text-white shadow-lg shadow-red-500/20'
+                                        : 'text-red-400/70 hover:text-red-300 hover:bg-red-500/10'
+                                }`}
+                            >
+                                <ShieldCheck size={20} className={pathname === '/admin' ? 'text-white' : 'text-red-500/70 group-hover:text-red-400 transition-colors'} />
+                                <span className="font-medium relative z-10">Gestion Clients</span>
+                                {pathname !== '/admin' && (
+                                    <span className="ml-auto text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 bg-red-500/15 text-red-400 rounded-full border border-red-500/20">
+                                        Admin
+                                    </span>
+                                )}
+                            </Link>
+                        </div>
+                    )}
                 </nav>
             </div>
 
-            <div className="mt-auto p-8 border-t border-slate-800">
+            <div className="mt-auto p-6 border-t border-slate-800 space-y-1">
+                {/* User info */}
+                {user && (
+                    <div className="flex items-center gap-3 px-4 py-3 mb-2">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                            {((user as any).firstName?.[0] || (user as any).name?.[0] || (user as any).email?.[0] || '?').toUpperCase()}
+                        </div>
+                        <div className="overflow-hidden">
+                            <p className="text-white text-sm font-semibold truncate">
+                                {(user as any).firstName || (user as any).name || 'Utilisateur'}
+                            </p>
+                            <p className="text-slate-500 text-xs truncate">{(user as any).email || ''}</p>
+                        </div>
+                    </div>
+                )}
+
                 <a
                     href={`${portalUrl}/`}
-                    className="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white transition-colors mb-2"
+                    className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
                 >
-                    <Home size={20} />
-                    <span className="font-medium">Retour Portail</span>
+                    <Home size={18} />
+                    <span className="font-medium text-sm">Retour Portail</span>
                 </a>
                 <Link
                     href="/settings"
                     onClick={() => setMobileOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white transition-colors"
+                    className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
                 >
-                    <Settings size={20} />
-                    <span className="font-medium">Parametres</span>
+                    <Settings size={18} />
+                    <span className="font-medium text-sm">Paramètres</span>
                 </Link>
+                <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-red-400/80 hover:text-red-300 hover:bg-red-500/10 transition-colors"
+                >
+                    <LogOut size={18} />
+                    <span className="font-medium text-sm">Se déconnecter</span>
+                </button>
             </div>
         </>
     );

@@ -15,12 +15,14 @@ import { createApp, getAppInfo } from './app';
 import { logger } from './utils/logger';
 import { activeConnections } from './utils/metrics';
 import { initializeHealthCheckDependencies } from './services/health.service';
+import { Iso8583TcpServer } from './iso8583/Iso8583Server';
 
 // ===========================================
 // Application Setup
 // ===========================================
 
 const app = createApp();
+const iso8583Server = new Iso8583TcpServer();
 
 // ===========================================
 // Server Lifecycle
@@ -57,6 +59,9 @@ const startServer = async (): Promise<void> => {
                 transaction: `http://${config.server.host}:${config.server.port}/transaction`,
             });
         });
+
+        // Start ISO8583 binary TCP server (length-prefixed framing)
+        iso8583Server.start(8583);
 
         // Track connections for graceful shutdown
         server.on('connection', (socket) => {
@@ -122,6 +127,7 @@ const gracefulShutdown = async (signal: string): Promise<void> => {
 
         // Cleanup resources (Redis, etc.)
         logger.info('Cleaning up resources...');
+        await iso8583Server.stop();
 
         // Clear the hard shutdown timeout
         clearTimeout(hardShutdownTimeout);

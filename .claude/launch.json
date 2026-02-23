@@ -1,0 +1,53 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Portal (Étudiant)",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["compose", "up", "portal", "--no-deps"],
+      "port": 3000
+    },
+    {
+      "name": "API Gateway",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["compose", "up", "api-gateway", "--no-deps"],
+      "port": 8000
+    },
+    {
+      "name": "HSM Simulator",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["compose", "up", "hsm-simulator", "--no-deps"],
+      "port": 8011
+    },
+    {
+      "name": "User Cards Web",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["compose", "up", "user-cards-web", "--no-deps"],
+      "port": 3004
+    },
+    {
+      "name": "TPE Web",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["compose", "up", "tpe-web", "--no-deps"],
+      "port": 3002
+    },
+    {
+      "name": "HSM Web",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["compose", "up", "hsm-web", "--no-deps"],
+      "port": 3006
+    },
+    {
+      "name": "ACS Simulator",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["compose", "up", "acs-simulator", "--no-deps"],
+      "port": 8013
+    },
+    {
+      "name": "Fraud Detection",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["compose", "up", "sim-fraud-detection", "--no-deps"],
+      "port": 8007
+    }
+  ]
+}

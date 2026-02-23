@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
-import { AlertCircle, ArrowRight, CheckCircle2, HelpCircle, Info, Lock, ShieldCheck, Smartphone } from 'lucide-react';
+import { AlertCircle, ArrowRight, CheckCircle2, HelpCircle, Info, Lock, Smartphone } from 'lucide-react';
 
 type ChallengeStatus = 'pending' | 'success' | 'failed';
 
@@ -143,11 +143,11 @@ export function ChallengeUI() {
                 <div className="challenge-panel">
                     <header className="challenge-header">
                         <div className="challenge-logo" aria-hidden="true">
-                            <ShieldCheck size={28} />
+                            <img src="/monetic-logo.svg" alt="MoneTIC" style={{width: 40, height: 40}} />
                         </div>
                         <div>
-                            <p className="challenge-kicker">3DS challenge</p>
-                            <h1>Banque PMP</h1>
+                            <p className="challenge-kicker">3DS Challenge</p>
+                            <h1>MoneTIC</h1>
                             <p className="challenge-subtitle">Vérification forte du porteur</p>
                         </div>
                     </header>

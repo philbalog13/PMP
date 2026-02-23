@@ -2,6 +2,7 @@
 
 import { LogOut, Settings, ChevronDown, User, Shield, Store, GraduationCap } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState, useRef, useEffect } from 'react';
 import { UserRole } from '@shared/types/user';
 import { normalizeRole } from '@shared/utils/roleUtils';
@@ -54,8 +55,12 @@ export function UserMenu({ user, role, colors, roleLabels, onLogout }: UserMenuP
                 onClick={() => setIsOpen(!isOpen)}
                 className={`flex items-center gap-3 px-4 py-2 rounded-xl bg-slate-800/50 border ${colors.border} hover:bg-slate-800 transition-all`}
             >
-                <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${colors.bg} flex items-center justify-center`}>
-                    <RoleIcon size={16} className="text-white" />
+                <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${colors.bg} flex items-center justify-center overflow-hidden border border-white/20 shadow-md shadow-emerald-500/10`}>
+                    {normalizedRole === UserRole.ETUDIANT ? (
+                        <Image src="/icons/student_hacker_icon.png" alt="Avatar" width={32} height={32} className="object-cover" />
+                    ) : (
+                        <RoleIcon size={16} className="text-white" />
+                    )}
                 </div>
                 <div className="text-left hidden lg:block">
                     <div className="text-sm font-medium text-white">
@@ -70,8 +75,12 @@ export function UserMenu({ user, role, colors, roleLabels, onLogout }: UserMenuP
                 <div className="absolute right-0 top-full mt-2 w-64 bg-slate-800 border border-white/10 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50">
                     <div className="p-4 border-b border-white/10">
                         <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${colors.bg} flex items-center justify-center`}>
-                                <RoleIcon size={20} className="text-white" />
+                            <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${colors.bg} flex items-center justify-center overflow-hidden border border-white/20 shadow-md shadow-emerald-500/10`}>
+                                {normalizedRole === UserRole.ETUDIANT ? (
+                                    <Image src="/icons/student_hacker_icon.png" alt="Avatar" width={40} height={40} className="object-cover" />
+                                ) : (
+                                    <RoleIcon size={20} className="text-white" />
+                                )}
                             </div>
                             <div className="overflow-hidden">
                                 <div className="text-sm font-medium text-white truncate">
@@ -79,10 +88,10 @@ export function UserMenu({ user, role, colors, roleLabels, onLogout }: UserMenuP
                                 </div>
                                 <div className="text-xs text-slate-400 truncate">{user.email}</div>
                             </div>
-                        </div>
-                        <div className={`mt-3 px-2 py-1 rounded-md ${colors.badge} text-xs font-medium inline-flex items-center gap-1`}>
-                            <RoleIcon size={12} />
-                            {roleLabels[role]}
+                            <div className={`mt-3 px-2 py-1 rounded-md ${colors.badge} text-xs font-medium inline-flex items-center gap-1`}>
+                                <RoleIcon size={12} />
+                                {roleLabels[role]}
+                            </div>
                         </div>
                     </div>
 

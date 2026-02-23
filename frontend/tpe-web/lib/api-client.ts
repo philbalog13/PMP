@@ -120,12 +120,24 @@ function getStoredToken(): string | null {
     return null;
 }
 
+function isClientCheckoutUrl(): boolean {
+    if (typeof window === 'undefined') return false;
+    const params = new URLSearchParams(window.location.search);
+    return params.get('from') === 'client' || params.has('merchantId');
+}
+
 async function ensureAuthToken(): Promise<string | null> {
     const existingToken = getStoredToken();
     if (existingToken) return existingToken;
 
     // Never auto-generate token outside browser/simulation contexts.
     if (typeof window === 'undefined' || process.env.NODE_ENV === 'production') {
+        return null;
+    }
+
+    // In client checkout flow, never create a dev marchand token —
+    // the client token must come from the URL parameter instead.
+    if (isClientCheckoutUrl()) {
         return null;
     }
 
@@ -407,6 +419,14 @@ export async function simulateClientPayment(data: {
         // Accept 400 (business decline) and 404 (card/merchant not found) as valid responses
         validateStatus: (status) => (status >= 200 && status < 300) || status === 400 || status === 404,
     });
+    if (!asRecord(response.data) || Object.keys(asRecord(response.data)).length === 0) {
+        return {
+            success: false,
+            error: 'Le service paiement a renvoye une reponse vide ou invalide.',
+            responseCode: '96',
+        };
+    }
+
     const payload = asRecord(response.data);
     const rawTransaction = asRecord(payload.transaction);
     const transaction = Object.keys(rawTransaction).length > 0
@@ -421,11 +441,20 @@ export async function simulateClientPayment(data: {
             response_code: typeof rawTransaction.response_code === 'string' ? rawTransaction.response_code : undefined,
         }
         : undefined;
+    const normalizedError = typeof payload.error === 'string'
+        ? payload.error
+        : (typeof payload.message === 'string' && !Boolean(payload.success) ? payload.message : undefined);
+    const normalizedResponseCode = typeof payload.responseCode === 'string'
+        ? payload.responseCode
+        : (typeof payload.response_code === 'string'
+            ? payload.response_code
+            : (!Boolean(payload.success) ? '96' : undefined));
+
     return {
-        success: Boolean(payload.success),
         ...payload,
-        error: typeof payload.error === 'string' ? payload.error : undefined,
-        responseCode: typeof payload.responseCode === 'string' ? payload.responseCode : undefined,
+        success: Boolean(payload.success),
+        error: normalizedError,
+        responseCode: normalizedResponseCode,
         response_code: typeof payload.response_code === 'string' ? payload.response_code : undefined,
         transaction,
         ledgerBooked: typeof payload.ledgerBooked === 'boolean' ? payload.ledgerBooked : undefined

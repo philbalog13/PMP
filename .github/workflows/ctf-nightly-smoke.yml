@@ -1,0 +1,55 @@
+name: CTF Nightly Smoke
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  nightly-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install api-gateway deps
+        run: npm ci
+        working-directory: backend/api-gateway
+
+      - name: Install sim-network-switch deps
+        run: npm ci
+        working-directory: backend/sim-network-switch
+
+      - name: Install sim-fraud-detection deps
+        run: npm ci
+        working-directory: backend/sim-fraud-detection
+
+      - name: Build api-gateway
+        run: npm run build
+        working-directory: backend/api-gateway
+
+      - name: Build sim-network-switch
+        run: npm run build
+        working-directory: backend/sim-network-switch
+
+      - name: Build sim-fraud-detection
+        run: npm run build
+        working-directory: backend/sim-fraud-detection
+
+      - name: Run nightly smoke suite
+        run: node scripts/ctf/run-nightly-smoke.js
+
+      - name: Upload nightly report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ctf-nightly-smoke-report
+          path: test-results/ctf/*.json
+          if-no-files-found: warn

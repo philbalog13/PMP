@@ -131,7 +131,7 @@ Répondez aux questions suivantes :
    - [ ] c) ZMK
    - [ ] d) MAC
 
-**Réponses**: 1-b, 2-b, 3-d, 4-c, 5-b
+**Correction**: disponible uniquement dans la version formateur.
 
 ---
 
@@ -149,3 +149,5 @@ Répondez aux questions suivantes :
 - [ ] Vous comprenez pourquoi CVV1 ≠ CVV2
 - [ ] Vous savez où chaque CVV est utilisé
 - [ ] Vous pouvez expliquer l'avantage du dCVV
+
+

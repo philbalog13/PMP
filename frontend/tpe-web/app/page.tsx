@@ -2,24 +2,27 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { useTerminalStore } from '@/lib/store';
-import { getAvailableMerchants, simulateClientPayment } from '@/lib/api-client';
+import { getAvailableMerchants, simulateClientPayment, processTransaction } from '@/lib/api-client';
 import type { MerchantApi } from '@/lib/api-client';
 import type { SelectedMerchant } from '@/lib/store';
+import type { CardData } from '@/types/transaction';
 import { useAuth } from '@shared/context/AuthContext';
-import { UserRole } from '@shared/types/user';
+import { Permission, UserRole } from '@shared/types/user';
 import { APP_URLS } from '@shared/lib/app-urls';
 import { normalizeRole } from '@shared/utils/roleUtils';
 import {
-    Bug, FileText, Settings, Wifi, Activity,
+    AlertTriangle, Bug, FileText, Settings, Wifi, Activity,
     CreditCard, Store, ArrowRight, CheckCircle2, XCircle,
-    ExternalLink
+    ExternalLink, Home as HomeIcon
 } from 'lucide-react';
 
 import TerminalScreen from '@/components/terminal/TerminalScreen';
 import Keypad from '@/components/terminal/Keypad';
 import CardSelector from '@/components/terminal/CardSelector';
+import CardReaderSim from '@/components/terminal/CardReaderSim';
 import MerchantSelector from '@/components/terminal/MerchantSelector';
 import ConfigPanel from '@/components/config/ConfigPanel';
 import DebugView from '@/components/pedagogy/DebugView';
@@ -69,6 +72,37 @@ const getErrorMessage = (error: unknown, fallback: string): string => {
     return fallback;
 };
 
+const decodeJwtPayload = (token: string): Record<string, unknown> | null => {
+    try {
+        const parts = token.split('.');
+        if (parts.length !== 3) {
+            return null;
+        }
+
+        const base64Url = parts[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
+
+        try {
+            const utf8Payload = decodeURIComponent(
+                atob(padded)
+                    .split('')
+                    .map((char) => `%${char.charCodeAt(0).toString(16).padStart(2, '0')}`)
+                    .join('')
+            );
+            const parsed = JSON.parse(utf8Payload);
+            return isRecord(parsed) ? parsed : null;
+        } catch {
+            const parsed = JSON.parse(atob(padded));
+            return isRecord(parsed) ? parsed : null;
+        }
+    } catch {
+        return null;
+    }
+};
+
+const permissionValues = new Set<string>(Object.values(Permission));
+
 const toSelectedMerchant = (merchant: MerchantApi): SelectedMerchant => {
     const terminal = merchant.terminals?.[0];
     return {
@@ -84,15 +118,17 @@ const toSelectedMerchant = (merchant: MerchantApi): SelectedMerchant => {
 
 function HomeContent() {
     const searchParams = useSearchParams();
-    const { isLoading: isAuthLoading, isAuthenticated, user } = useAuth();
+    const { isLoading: isAuthLoading, isAuthenticated, token: authToken, user, login } = useAuth();
     const {
         amount,
         selectedType,
         selectedCard,
         selectedMerchant,
+        cardData,
         setState,
         setSelectedCard,
         setSelectedMerchant,
+        setCardData,
         setLastTransactionId,
         setCurrentTransaction,
         addToHistory,
@@ -103,6 +139,7 @@ function HomeContent() {
 
     const requestedMerchantId = searchParams.get('merchantId')?.trim() || null;
     const fromParam = (searchParams.get('from') || '').toLowerCase();
+    const urlToken = searchParams.get('token')?.trim() || null;
     const isClientCheckoutFlow = fromParam === 'client' || Boolean(requestedMerchantId);
     const isMerchantLocked = Boolean(requestedMerchantId);
     const isMerchantUser = normalizeRole(user?.role) === UserRole.MARCHAND;
@@ -116,6 +153,57 @@ function HomeContent() {
     const [use3DS, setUse3DS] = useState(true);
     const [merchantPrefillLoading, setMerchantPrefillLoading] = useState(false);
     const [merchantPrefillError, setMerchantPrefillError] = useState<string | null>(null);
+    const [tokenRestored, setTokenRestored] = useState(false);
+
+    // Restore client auth token passed via URL (cross-origin checkout flow)
+    useEffect(() => {
+        if (!urlToken || tokenRestored) return;
+
+        if (authToken && authToken === urlToken) {
+            setTokenRestored(true);
+            const cleanUrl = new URL(window.location.href);
+            cleanUrl.searchParams.delete('token');
+            window.history.replaceState({}, '', cleanUrl.toString());
+            return;
+        }
+
+        setTokenRestored(true);
+
+        try {
+            const payload = decodeJwtPayload(urlToken);
+            const role = normalizeRole(payload?.role) || UserRole.CLIENT;
+            const payloadPermissions = Array.isArray(payload?.permissions)
+                ? payload.permissions.filter(
+                    (permission): permission is Permission =>
+                        typeof permission === 'string' && permissionValues.has(permission)
+                )
+                : [];
+
+            const tokenUser = {
+                id: (typeof payload?.userId === 'string' && payload.userId)
+                    || (typeof payload?.sub === 'string' && payload.sub)
+                    || (typeof payload?.id === 'string' && payload.id)
+                    || '',
+                email: (typeof payload?.email === 'string' && payload.email)
+                    || '',
+                role,
+                permissions: payloadPermissions,
+                firstName: (typeof payload?.firstName === 'string' && payload.firstName)
+                    || 'Client',
+                lastName: (typeof payload?.lastName === 'string' && payload.lastName)
+                    || '',
+            };
+
+            login(urlToken, tokenUser, null);
+        } catch {
+            console.error('Failed to restore token from URL');
+        } finally {
+            // Clean token from URL to avoid leaking it in browser history
+            const cleanUrl = new URL(window.location.href);
+            cleanUrl.searchParams.delete('token');
+            window.history.replaceState({}, '', cleanUrl.toString());
+        }
+    }, [urlToken, tokenRestored, authToken, login]);
 
     useEffect(() => {
         const bootSequence = async () => {
@@ -195,22 +283,77 @@ function HomeContent() {
         setPaymentStep('amount');
     }, [isClientCheckoutFlow, paymentStep, selectedMerchant, setPaymentStep]);
 
+    // Auto-select the merchant's own profile when a merchant accesses TPE directly
     useEffect(() => {
-        if (isAuthLoading || !isAuthenticated) {
+        if (isAuthLoading || !isAuthenticated || isClientCheckoutFlow) {
             return;
         }
 
-        if (isMerchantUser && !isClientCheckoutFlow) {
-            window.location.replace(`${APP_URLS.portal}/merchant`);
+        if (isMerchantUser && !selectedMerchant && user?.id) {
+            // Merchant accessing their own TPE — resolve their own merchant profile
+            let active = true;
+            const resolveSelf = async () => {
+                try {
+                    const payload = await getAvailableMerchants();
+                    const merchantList = Array.isArray(payload?.merchants) ? payload.merchants : [];
+                    // Try to find the merchant matching the authenticated user
+                    const self = merchantList.find((m): m is MerchantApi =>
+                        typeof m?.id === 'string' && m.id === user.id
+                    ) || (merchantList.length > 0 ? merchantList[0] as MerchantApi : null);
+
+                    if (self && active) {
+                        setSelectedMerchant(toSelectedMerchant(self));
+                    }
+                } catch {
+                    // Ignore — merchant selector will handle errors
+                }
+            };
+            void resolveSelf();
+            return () => { active = false; };
         }
-    }, [isAuthLoading, isAuthenticated, isMerchantUser, isClientCheckoutFlow]);
+    }, [isAuthLoading, isAuthenticated, isMerchantUser, isClientCheckoutFlow, selectedMerchant, user?.id, setSelectedMerchant]);
 
     const handleAmountComplete = () => {
-        setPaymentStep('confirm');
+        if (isClientCheckoutFlow) {
+            // Client flow: card → merchant → amount → confirm
+            if (!selectedCard) {
+                setPaymentStep('card');
+                return;
+            }
+            if (!selectedMerchant) {
+                setPaymentStep('merchant');
+                return;
+            }
+            setPaymentStep('confirm');
+        } else {
+            // Merchant standalone flow: amount entered on keypad → go straight to confirm
+            // (card will be read via CardReaderSim, merchant is self)
+            setPaymentStep('confirm');
+        }
     };
 
+    const canPay = isClientCheckoutFlow
+        ? Boolean(selectedCard && selectedMerchant && amount > 0 && !isProcessing)
+        : Boolean(cardData && amount > 0 && !isProcessing);
+
+    // Handle card read from CardReaderSim (merchant standalone mode)
+    const handleCardRead = (data: CardData) => {
+        setCardData(data);
+        setState('amount-input');
+    };
+
+    // Client checkout payment handler
     const handleProcessPayment = async () => {
-        if (!selectedCard || !selectedMerchant || amount <= 0 || isProcessing) return;
+        if (!selectedCard || !selectedMerchant || amount <= 0) {
+            setPaymentResult({
+                success: false,
+                error: !selectedCard ? 'Carte non sélectionnée' : !selectedMerchant ? 'Marchand non sélectionné' : 'Montant invalide',
+                responseCode: '99',
+            });
+            return;
+        }
+
+        if (isProcessing) return;
 
         setIsProcessing(true);
         setPaymentResult(null);
@@ -224,10 +367,26 @@ function HomeContent() {
                 paymentType: selectedType,
             });
 
-            setPaymentResult(response);
+            const normalizedError = typeof response.error === 'string'
+                ? response.error
+                : (typeof response.message === 'string' ? response.message : undefined);
+            const normalizedResponseCode = typeof response.responseCode === 'string'
+                ? response.responseCode
+                : (typeof response.response_code === 'string' ? response.response_code : '96');
 
-            if (response.success) {
-                const txn = response.transaction;
+            const normalizedResponse: PaymentResultPayload = response.success
+                ? response
+                : {
+                    ...response,
+                    success: false,
+                    error: normalizedError || 'Aucune reponse exploitable du service paiement.',
+                    responseCode: normalizedResponseCode,
+                };
+
+            setPaymentResult(normalizedResponse);
+
+            if (normalizedResponse.success) {
+                const txn = normalizedResponse.transaction;
                 setLastTransactionId(txn?.id || null);
 
                 const authCode = txn?.authorization_code || txn?.authorizationCode || '';
@@ -255,20 +414,18 @@ function HomeContent() {
                     matchedRules: [],
                 });
 
-                // Update selected card balance locally after successful payment
                 setSelectedCard({
                     ...selectedCard,
                     balance: selectedCard.balance - amount,
                 });
             } else {
-                // Extract error info from 400 responses (backend returns success:false with details)
-                const errorCode = typeof response.responseCode === 'string'
-                    ? response.responseCode
-                    : (typeof response.response_code === 'string' ? response.response_code : '05');
-                const errorMsg = typeof response.error === 'string'
-                    ? response.error
-                    : (typeof response.message === 'string' ? response.message : 'Declined');
-                const failedTxn = response.transaction;
+                const errorCode = typeof normalizedResponse.responseCode === 'string'
+                    ? normalizedResponse.responseCode
+                    : (typeof normalizedResponse.response_code === 'string' ? normalizedResponse.response_code : '05');
+                const errorMsg = typeof normalizedResponse.error === 'string'
+                    ? normalizedResponse.error
+                    : (typeof normalizedResponse.message === 'string' ? normalizedResponse.message : 'Declined');
+                const failedTxn = normalizedResponse.transaction;
                 const failedTxnId = failedTxn?.transaction_id || failedTxn?.id || '';
 
                 setCurrentTransaction({
@@ -294,7 +451,6 @@ function HomeContent() {
             }
         } catch (error: unknown) {
             console.error('Payment error:', error);
-            // Extract structured error from axios 400/500 responses
             const responseData = isRecord(error) && isRecord(error.response) && isRecord(error.response.data)
                 ? error.response.data
                 : null;
@@ -330,6 +486,114 @@ function HomeContent() {
         }
     };
 
+    // Merchant standalone payment handler (uses processTransaction with raw card data)
+    const handleMerchantProcessPayment = async () => {
+        if (!cardData || amount <= 0) {
+            setPaymentResult({
+                success: false,
+                error: !cardData ? 'Carte non présentée' : 'Montant invalide',
+                responseCode: '99',
+            });
+            return;
+        }
+
+        if (isProcessing) return;
+
+        setIsProcessing(true);
+        setPaymentResult(null);
+
+        try {
+            const result = await processTransaction({
+                pan: cardData.pan,
+                amount,
+                type: selectedType,
+                merchantId: selectedMerchant?.id,
+                mcc: selectedMerchant?.mcc,
+            });
+
+            const maskedPan = `**** **** **** ${cardData.pan.slice(-4)}`;
+
+            if (result.approved) {
+                setPaymentResult({
+                    success: true,
+                    responseCode: result.responseCode,
+                    transaction: {
+                        authorization_code: result.authorizationCode || result.authCode,
+                        response_code: result.responseCode,
+                    },
+                });
+
+                setCurrentTransaction({
+                    approved: true,
+                    responseCode: result.responseCode,
+                    responseMessage: result.responseMessage,
+                    authorizationCode: result.authorizationCode || result.authCode || '',
+                    processingTime: result.processingTime,
+                    matchedRules: [],
+                    timestamp: new Date(),
+                });
+
+                addToHistory({
+                    id: String(Date.now()),
+                    amount,
+                    type: selectedType,
+                    status: 'APPROVED',
+                    responseCode: result.responseCode,
+                    authorizationCode: result.authorizationCode || result.authCode || '',
+                    maskedPan,
+                    timestamp: new Date(),
+                    matchedRules: [],
+                });
+
+                setState('approved');
+            } else {
+                setPaymentResult({
+                    success: false,
+                    error: result.responseMessage,
+                    responseCode: result.responseCode,
+                });
+
+                setCurrentTransaction({
+                    approved: false,
+                    responseCode: result.responseCode,
+                    responseMessage: result.responseMessage,
+                    matchedRules: [],
+                    processingTime: result.processingTime,
+                    timestamp: new Date(),
+                });
+
+                addToHistory({
+                    id: `DECLINED-${Date.now()}`,
+                    amount,
+                    type: selectedType,
+                    status: 'DECLINED',
+                    responseCode: result.responseCode,
+                    authorizationCode: '',
+                    maskedPan,
+                    timestamp: new Date(),
+                    matchedRules: [],
+                });
+
+                setState('declined');
+            }
+        } catch (error: unknown) {
+            console.error('Merchant payment error:', error);
+            const errMsg = error instanceof Error ? error.message : 'Erreur système';
+            setPaymentResult({ success: false, error: errMsg, responseCode: '96' });
+            setCurrentTransaction({
+                approved: false,
+                responseCode: '96',
+                responseMessage: errMsg,
+                matchedRules: [],
+                processingTime: 0,
+                timestamp: new Date(),
+            });
+            setState('declined');
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
     const handleNewTransaction = () => {
         const lockedMerchant = isClientCheckoutFlow ? selectedMerchant : null;
         setPaymentResult(null);
@@ -342,15 +606,14 @@ function HomeContent() {
         setState('amount-input');
     };
 
-    if (isAuthLoading || (isAuthenticated && isMerchantUser && !isClientCheckoutFlow)) {
+    // Wait for token restoration before rendering
+    if (isAuthLoading || (urlToken && !tokenRestored)) {
         return (
             <main className="min-h-screen p-4 md:p-8 font-sans flex items-center justify-center">
                 <GlassCard className="w-full max-w-xl p-8 border border-white/10 bg-slate-900/60 text-center">
                     <div className="mx-auto mb-5 h-12 w-12 rounded-full border-2 border-blue-400/30 border-t-blue-400 animate-spin" />
-                    <h1 className="text-white text-2xl font-bold mb-2">Redirection en cours</h1>
-                    <p className="text-slate-300 text-sm">
-                        Chargement du dashboard marchand...
-                    </p>
+                    <h1 className="text-white text-2xl font-bold mb-2">Chargement de la session</h1>
+                    <p className="text-slate-300 text-sm">Vérification de l&apos;authentification...</p>
                 </GlassCard>
             </main>
         );
@@ -370,14 +633,68 @@ function HomeContent() {
         );
     }
 
+    // Client checkout flow without authentication → redirect user to login via user-cards-web
+    if (isClientCheckoutFlow && !isAuthenticated) {
+        const userCardsUrl = APP_URLS.userCards;
+        return (
+            <main className="min-h-screen p-4 md:p-8 font-sans flex items-center justify-center">
+                <GlassCard className="w-full max-w-xl p-8 border border-white/10 bg-slate-900/60 text-center space-y-5">
+                    <AlertTriangle size={48} className="mx-auto text-amber-400" />
+                    <h1 className="text-white text-2xl font-bold">Session non authentifiée</h1>
+                    <p className="text-slate-300 text-sm">
+                        Pour effectuer un paiement client, vous devez être connecté.
+                        Accédez à votre espace client pour sélectionner un marchand et payer.
+                    </p>
+                    <a
+                        href={userCardsUrl}
+                        className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-amber-500 text-slate-950 font-semibold hover:bg-amber-400 transition-colors"
+                    >
+                        Aller à l&apos;espace client
+                        <ArrowRight size={18} />
+                    </a>
+                </GlassCard>
+            </main>
+        );
+    }
+
     return (
         <main className="min-h-screen p-4 md:p-8 font-sans">
             {/* Status Bar */}
             {(bootError || lastBootCheckAt) && (
-                <div className="max-w-7xl mx-auto mb-6">
-                    <div className={`rounded-xl border px-4 py-3 text-sm flex items-center justify-between gap-4 ${bootError
-                            ? 'bg-amber-500/10 border-amber-500/30 text-amber-200'
-                            : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-200'
+                <div className="max-w-7xl mx-auto mb-4 space-y-2">
+                    {/* Bandeau marchand actif */}
+                    {selectedMerchant && (
+                        <div className="rounded-xl border border-blue-500/30 bg-blue-500/8 px-4 py-3 flex flex-wrap items-center gap-4 text-sm">
+                            <div className="flex items-center gap-2 text-blue-200 font-semibold">
+                                <Store size={16} className="text-blue-400" />
+                                {selectedMerchant.merchantName}
+                            </div>
+                            <div className="flex items-center gap-4 text-xs text-slate-400 flex-wrap">
+                                {selectedMerchant.terminalId && (
+                                    <span className="flex items-center gap-1">
+                                        <span className="text-slate-500 uppercase tracking-wider">TID</span>
+                                        <span className="font-mono text-slate-300">{selectedMerchant.terminalId}</span>
+                                    </span>
+                                )}
+                                <span className="flex items-center gap-1">
+                                    <span className="text-slate-500 uppercase tracking-wider">MID</span>
+                                    <span className="font-mono text-slate-300">{selectedMerchant.id.slice(0, 14)}…</span>
+                                </span>
+                                <span className="flex items-center gap-1">
+                                    <span className="text-slate-500 uppercase tracking-wider">MCC</span>
+                                    <span className="font-mono text-slate-300">{selectedMerchant.mcc}</span>
+                                </span>
+                                {selectedMerchant.locationName && (
+                                    <span className="text-slate-400">{selectedMerchant.locationName}</span>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Status système */}
+                    <div className={`rounded-xl border px-4 py-2.5 text-sm flex items-center justify-between gap-4 ${bootError
+                        ? 'bg-amber-500/10 border-amber-500/30 text-amber-200'
+                        : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-200'
                         }`}>
                         <span className="flex items-center gap-2">
                             <div className={`w-2 h-2 rounded-full ${bootError ? 'bg-amber-400' : 'bg-emerald-400 animate-pulse'}`} />
@@ -391,12 +708,21 @@ function HomeContent() {
                                     {lastBootCheckAt.toLocaleTimeString('fr-FR')}
                                 </span>
                             )}
-                            <Link
-                                href={process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:3000'}
-                                className="text-xs text-slate-400 hover:text-white transition flex items-center gap-1"
-                            >
-                                Portail <ExternalLink size={10} />
-                            </Link>
+                            {isClientCheckoutFlow ? (
+                                <a
+                                    href={APP_URLS.userCards}
+                                    className="text-xs text-slate-400 hover:text-white transition flex items-center gap-1"
+                                >
+                                    Dashboard client <ExternalLink size={10} />
+                                </a>
+                            ) : (
+                                <Link
+                                    href={process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:3000'}
+                                    className="text-xs text-slate-400 hover:text-white transition flex items-center gap-1"
+                                >
+                                    Portail <ExternalLink size={10} />
+                                </Link>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -415,7 +741,7 @@ function HomeContent() {
 
                         <div className="flex justify-between items-center mb-8 px-2 text-blue-200/60">
                             <span className="font-bold tracking-[0.2em] text-xs uppercase flex items-center gap-2">
-                                <Activity size={14} className="text-blue-500" />
+                                <Image src="/icons/pos_terminal_icon.png" alt="POS" width={16} height={16} className="drop-shadow-[0_0_5px_rgba(59,130,246,0.6)]" />
                                 Ingenico PMP  <span className="text-blue-400">NEO</span>
                             </span>
                             <div className="flex items-center gap-3">
@@ -474,17 +800,20 @@ function HomeContent() {
                                     const stepIdx = steps.indexOf(s.key);
                                     const isActive = stepIdx === currentIdx;
                                     const isDone = stepIdx < currentIdx;
-                                    const canNavigateBack = isDone && !(isMerchantLocked && s.key === 'merchant');
+                                    // Only allow going BACK to completed steps, never forward.
+                                    // Even in locked-merchant checkout, allow opening "Marchand" step to inspect it.
+                                    const canNavigateBack = isDone;
 
                                     return (
                                         <div key={s.key} className="flex items-center gap-2">
                                             {i > 0 && <div className={`w-6 h-0.5 ${isDone ? 'bg-blue-500' : 'bg-slate-700'}`} />}
                                             <button
                                                 onClick={() => { if (canNavigateBack) setPaymentStep(s.key); }}
+                                                disabled={!canNavigateBack && !isActive}
                                                 className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition
                                                     ${isActive ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
-                                                    canNavigateBack ? 'bg-emerald-500/10 text-emerald-400 cursor-pointer hover:bg-emerald-500/20' :
-                                                    'bg-slate-800/50 text-slate-500'}
+                                                        isDone ? 'bg-emerald-500/10 text-emerald-400 cursor-pointer hover:bg-emerald-500/20' :
+                                                            'bg-slate-800/50 text-slate-500 cursor-not-allowed'}
                                                 `}
                                             >
                                                 <s.icon size={14} />
@@ -555,42 +884,82 @@ function HomeContent() {
                                     <Activity size={32} className="mx-auto mb-3 text-blue-400" />
                                     <h3 className="text-lg font-bold text-white mb-2">Saisir le montant</h3>
                                     <p className="text-sm text-slate-400 mb-4">
-                                        Utilisez le clavier du terminal pour entrer le montant puis validez avec OK
+                                        Utilisez le clavier du terminal pour entrer le montant puis appuyez sur VALIDER
                                     </p>
-                                    <div className="flex items-center justify-center gap-3 text-sm">
+                                    <div className="flex items-center justify-center gap-3 text-sm flex-wrap">
                                         <span className="text-slate-400">Carte:</span>
-                                        <span className="font-mono text-white">{selectedCard?.maskedPan}</span>
+                                        <span className="font-mono text-white">{selectedCard?.maskedPan || '—'}</span>
                                         <ArrowRight size={14} className="text-slate-600" />
                                         <span className="text-slate-400">Marchand:</span>
-                                        <span className="font-medium text-white">{selectedMerchant?.merchantName}</span>
+                                        <span className="font-medium text-white">{selectedMerchant?.merchantName || '—'}</span>
                                     </div>
                                     {amount > 0 && (
-                                        <div className="mt-4">
-                                            <span className="text-3xl font-bold text-white">{amount.toFixed(2)}</span>
-                                            <span className="text-lg text-slate-400 ml-2">EUR</span>
+                                        <div className="mt-4 space-y-4">
+                                            <div>
+                                                <span className="text-3xl font-bold text-white">{amount.toFixed(2)}</span>
+                                                <span className="text-lg text-slate-400 ml-2">EUR</span>
+                                            </div>
+                                            <button
+                                                onClick={handleAmountComplete}
+                                                className="px-8 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold hover:from-blue-500 hover:to-purple-500 transition-all shadow-lg"
+                                            >
+                                                Continuer vers la confirmation
+                                            </button>
                                         </div>
                                     )}
                                 </div>
                             )}
 
-                            {paymentStep === 'confirm' && (
+                            {paymentStep === 'confirm' && !selectedCard && (
+                                <div className="text-center py-6">
+                                    <AlertTriangle size={32} className="mx-auto mb-3 text-amber-400" />
+                                    <h3 className="text-lg font-bold text-white mb-2">Carte non sélectionnée</h3>
+                                    <p className="text-sm text-slate-400 mb-4">
+                                        Veuillez d&apos;abord sélectionner une carte pour continuer.
+                                    </p>
+                                    <button
+                                        onClick={() => setPaymentStep('card')}
+                                        className="px-6 py-3 rounded-xl bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 transition font-medium"
+                                    >
+                                        Sélectionner une carte
+                                    </button>
+                                </div>
+                            )}
+
+                            {paymentStep === 'confirm' && selectedCard && !selectedMerchant && (
+                                <div className="text-center py-6">
+                                    <AlertTriangle size={32} className="mx-auto mb-3 text-amber-400" />
+                                    <h3 className="text-lg font-bold text-white mb-2">Marchand non sélectionné</h3>
+                                    <p className="text-sm text-slate-400 mb-4">
+                                        Veuillez d&apos;abord sélectionner un marchand pour continuer.
+                                    </p>
+                                    <button
+                                        onClick={() => setPaymentStep('merchant')}
+                                        className="px-6 py-3 rounded-xl bg-purple-500/20 border border-purple-500/30 text-purple-400 hover:bg-purple-500/30 transition font-medium"
+                                    >
+                                        Sélectionner un marchand
+                                    </button>
+                                </div>
+                            )}
+
+                            {paymentStep === 'confirm' && selectedCard && selectedMerchant && (
                                 <div className="space-y-4">
                                     <h3 className="text-lg font-bold text-white text-center mb-4">Confirmer le paiement</h3>
                                     <div className="bg-black/30 rounded-xl p-4 space-y-3 border border-white/5">
                                         <div className="flex justify-between items-center">
                                             <span className="text-sm text-slate-400">Carte</span>
-                                            <span className="font-mono text-sm text-white">{selectedCard?.maskedPan} ({selectedCard?.network})</span>
+                                            <span className="font-mono text-sm text-white">{selectedCard.maskedPan} ({selectedCard.network})</span>
                                         </div>
                                         <div className="flex justify-between items-center">
                                             <span className="text-sm text-slate-400">Solde disponible</span>
-                                            <span className="text-sm text-emerald-400">{selectedCard?.balance.toFixed(2)} EUR</span>
+                                            <span className="text-sm text-emerald-400">{selectedCard.balance.toFixed(2)} EUR</span>
                                         </div>
                                         <div className="h-px bg-white/10" />
                                         <div className="flex justify-between items-center">
                                             <span className="text-sm text-slate-400">Marchand</span>
-                                            <span className="text-sm text-white">{selectedMerchant?.merchantName}</span>
+                                            <span className="text-sm text-white">{selectedMerchant.merchantName}</span>
                                         </div>
-                                        {selectedMerchant?.locationName && (
+                                        {selectedMerchant.locationName && (
                                             <div className="flex justify-between items-center">
                                                 <span className="text-sm text-slate-400">Localisation</span>
                                                 <span className="text-sm text-slate-300">{selectedMerchant.locationName}</span>
@@ -607,9 +976,8 @@ function HomeContent() {
                                         <span className="text-sm text-slate-400">3D Secure</span>
                                         <button
                                             onClick={() => setUse3DS(!use3DS)}
-                                            className={`px-3 py-1 rounded-full text-xs font-bold transition ${
-                                                use3DS ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-slate-700/50 text-slate-500 border border-slate-600'
-                                            }`}
+                                            className={`px-3 py-1 rounded-full text-xs font-bold transition ${use3DS ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-slate-700/50 text-slate-500 border border-slate-600'
+                                                }`}
                                         >
                                             {use3DS ? 'ACTIF' : 'INACTIF'}
                                         </button>
@@ -621,7 +989,7 @@ function HomeContent() {
                                         className={`w-full py-4 rounded-xl font-bold text-lg transition-all duration-300 ${isProcessing
                                             ? 'bg-slate-700 text-slate-400 cursor-wait'
                                             : 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-500 hover:to-purple-500 shadow-lg shadow-blue-900/30 hover:shadow-blue-800/50 active:scale-[0.98]'
-                                        }`}
+                                            }`}
                                     >
                                         {isProcessing ? (
                                             <span className="flex items-center justify-center gap-3">
@@ -694,21 +1062,32 @@ function HomeContent() {
                                     </div>
                                 )}
 
-                                <div className="flex gap-3">
-                                    <button
-                                        onClick={handleNewTransaction}
-                                        className="flex-1 py-3 rounded-xl font-medium text-sm bg-white/5 border border-white/10 text-white hover:bg-white/10 transition"
-                                    >
-                                        Nouvelle transaction
-                                    </button>
-                                    {paymentResult.success && paymentResult.transaction?.id && (
-                                        <a
-                                            href={`${process.env.NEXT_PUBLIC_USER_CARDS_URL || 'http://localhost:3004'}/transactions/${paymentResult.transaction.id}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex-1 py-3 rounded-xl font-medium text-sm bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 transition flex items-center justify-center gap-2"
+                                <div className="flex flex-col gap-2">
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={handleNewTransaction}
+                                            className="flex-1 py-3 rounded-xl font-medium text-sm bg-white/5 border border-white/10 text-white hover:bg-white/10 transition"
                                         >
-                                            Voir détails <ExternalLink size={14} />
+                                            Nouvelle transaction
+                                        </button>
+                                        {paymentResult.success && paymentResult.transaction?.id && (
+                                            <a
+                                                href={`${process.env.NEXT_PUBLIC_USER_CARDS_URL || 'http://localhost:3004'}/transactions/${paymentResult.transaction.id}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex-1 py-3 rounded-xl font-medium text-sm bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 transition flex items-center justify-center gap-2"
+                                            >
+                                                Voir détails <ExternalLink size={14} />
+                                            </a>
+                                        )}
+                                    </div>
+                                    {isClientCheckoutFlow && (
+                                        <a
+                                            href={APP_URLS.userCards}
+                                            className="w-full py-3 rounded-xl font-medium text-sm bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25 transition flex items-center justify-center gap-2"
+                                        >
+                                            <HomeIcon size={15} />
+                                            Retour au tableau de bord
                                         </a>
                                     )}
                                 </div>

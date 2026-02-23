@@ -126,4 +126,10 @@ router.get('/student/:studentId', RequireRole(UserRole.FORMATEUR), progressContr
  */
 router.get('/cohort', RequireRole(UserRole.FORMATEUR), progressController.getCohortAnalytics);
 
+/**
+ * GET /api/progress/next-step
+ * Get recommended next learning action (Student only)
+ */
+router.get('/next-step', RequireRole(UserRole.ETUDIANT), progressController.getNextStep);
+
 export default router;

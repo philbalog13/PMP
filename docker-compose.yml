@@ -7,6 +7,13 @@ networks:
     ipam:
       config:
         - subnet: 172.20.0.0/16
+  ctf-target-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.10.10.0/24
+    driver_opts:
+      com.docker.network.bridge.name: ctf0
 
 # Persistent volumes
 volumes:
@@ -187,6 +194,11 @@ services:
       args:
         - NEXT_PUBLIC_API_URL=http://localhost:8000
         - INTERNAL_API_URL=http://api-gateway:8000
+        - NEXT_PUBLIC_PORTAL_URL=http://localhost:3000
+        - NEXT_PUBLIC_TPE_URL=http://localhost:3001
+        - NEXT_PUBLIC_USER_CARDS_URL=http://localhost:3004
+        - NEXT_PUBLIC_HSM_URL=http://localhost:3006
+        - NEXT_PUBLIC_MONITORING_URL=http://localhost:3082
         - NEXT_PUBLIC_CTF_ATTACKBOX_URL=${NEXT_PUBLIC_CTF_ATTACKBOX_URL:-http://localhost:7681}
     container_name: pmp-portal
     restart: unless-stopped
@@ -196,6 +208,11 @@ services:
       - PORT=3000
       - NEXT_PUBLIC_API_URL=http://localhost:8000
       - INTERNAL_API_URL=http://api-gateway:8000
+      - NEXT_PUBLIC_PORTAL_URL=http://localhost:3000
+      - NEXT_PUBLIC_TPE_URL=http://localhost:3001
+      - NEXT_PUBLIC_USER_CARDS_URL=http://localhost:3004
+      - NEXT_PUBLIC_HSM_URL=http://localhost:3006
+      - NEXT_PUBLIC_MONITORING_URL=http://localhost:3082
       - NEXT_PUBLIC_CTF_ATTACKBOX_URL=${NEXT_PUBLIC_CTF_ATTACKBOX_URL:-http://localhost:7681}
     ports:
       - "3000:3000"
@@ -228,18 +245,23 @@ services:
       - WETTY_HOST=0.0.0.0
       - WETTY_PORT=7681
       - PMP_GATEWAY_URL=http://api-gateway:8000
-      - PMP_HSM_URL=http://hsm-simulator:8011
-      - PMP_SWITCH_URL=http://sim-network-switch:8004
-      - PMP_ISSUER_URL=http://sim-issuer-service:8005
-      - PMP_POS_URL=http://sim-pos-service:8002
-      - PMP_ACS_URL=http://acs-simulator:8013
-      - PMP_FRAUD_URL=http://sim-fraud-detection:8007
+      - CTF_FLAG_SECRET=${CTF_FLAG_SECRET:-pmp_ctf_default_secret_change_in_prod}
     ports:
       - "7681:7681"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
-      - monetic-network
+      monetic-network: {}
+      ctf-target-net:
+        ipv4_address: 10.10.10.20
+    dns:
+      - 127.0.0.1
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - NET_BROADCAST
+    sysctls:
+      - net.ipv4.conf.all.promiscuous=1
     depends_on:
       - api-gateway
       - hsm-simulator
@@ -273,13 +295,17 @@ services:
       context: ./frontend
       dockerfile: tpe-web/Dockerfile
       args:
-        - NEXT_PUBLIC_API_URL=http://api-gateway:8000
+        - NEXT_PUBLIC_API_URL=http://localhost:8000
+        - NEXT_PUBLIC_PORTAL_URL=http://localhost:3000
+        - NEXT_PUBLIC_USER_CARDS_URL=http://localhost:3004
     container_name: pmp-client-interface
     restart: unless-stopped
     user: "node:node"
     environment:
       - NODE_ENV=${NODE_ENV}
-      - NEXT_PUBLIC_API_URL=http://api-gateway:8000
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_PORTAL_URL=http://localhost:3000
+      - NEXT_PUBLIC_USER_CARDS_URL=http://localhost:3004
     ports:
       - "3001:3000"
     networks:
@@ -356,14 +382,19 @@ services:
       context: ./frontend
       dockerfile: user-cards-web/Dockerfile
       args:
-        - NEXT_PUBLIC_API_URL=http://api-gateway:8000
+        - NEXT_PUBLIC_API_URL=http://localhost:8000
+        - NEXT_PUBLIC_PORTAL_URL=http://localhost:3000
+        - NEXT_PUBLIC_TPE_URL=http://localhost:3001
+        - NEXT_PUBLIC_USER_CARDS_URL=http://localhost:3004
     container_name: pmp-user-cards-web
     restart: unless-stopped
     environment:
       - NODE_ENV=${NODE_ENV}
       - PORT=3000
-      - NEXT_PUBLIC_API_URL=http://api-gateway:8000
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
       - NEXT_PUBLIC_PORTAL_URL=http://localhost:3000
+      - NEXT_PUBLIC_TPE_URL=http://localhost:3001
+      - NEXT_PUBLIC_USER_CARDS_URL=http://localhost:3004
     ports:
       - "3004:3000"
     networks:
@@ -397,14 +428,15 @@ services:
       context: ./frontend
       dockerfile: hsm-web/Dockerfile
       args:
-        - NEXT_PUBLIC_API_URL=http://api-gateway:8000
+        - NEXT_PUBLIC_API_URL=http://localhost:8000
+        - NEXT_PUBLIC_PORTAL_URL=http://localhost:3000
     container_name: pmp-hsm-web
     restart: unless-stopped
     user: "node:node"
     environment:
       - NODE_ENV=${NODE_ENV}
       - PORT=3000
-      - NEXT_PUBLIC_API_URL=http://api-gateway:8000
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
       - NEXT_PUBLIC_PORTAL_URL=http://localhost:3000
     ports:
       - "3006:3000"
@@ -530,10 +562,13 @@ services:
       - TOKENIZATION_URL=http://tokenization-service:8014
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
       - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - CTF_FLAG_SECRET=${CTF_FLAG_SECRET:-pmp_ctf_default_secret_change_in_prod}
     ports:
       - "8000:8000"
     networks:
-      - monetic-network
+      monetic-network: {}
+      ctf-target-net:
+        ipv4_address: 10.10.10.10
     depends_on:
       postgres:
         condition: service_healthy
@@ -723,10 +758,14 @@ services:
       - PORT=8004
       - ISSUER_SERVICE_URL=http://sim-issuer-service:8005
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+      - CTF_FLAG_SECRET=${CTF_FLAG_SECRET:-pmp_ctf_default_secret_change_in_prod}
     ports:
       - "8004:8004"
+      - "8583:8583"
     networks:
-      - monetic-network
+      monetic-network: {}
+      ctf-target-net:
+        ipv4_address: 10.10.10.12
     depends_on:
       redis:
         condition: service_healthy
@@ -767,10 +806,13 @@ services:
       - PORT=8005
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - AUTH_ENGINE_URL=http://sim-auth-engine:8006
+      - CTF_FLAG_SECRET=${CTF_FLAG_SECRET:-pmp_ctf_default_secret_change_in_prod}
     ports:
       - "8005:8005"
     networks:
-      - monetic-network
+      monetic-network: {}
+      ctf-target-net:
+        ipv4_address: 10.10.10.14
     depends_on:
       postgres:
         condition: service_healthy
@@ -813,10 +855,13 @@ services:
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
       - CRYPTO_SERVICE_URL=http://crypto-service:8010
       - FRAUD_DETECTION_URL=http://sim-fraud-detection:8007
+      - CTF_FLAG_SECRET=${CTF_FLAG_SECRET:-pmp_ctf_default_secret_change_in_prod}
     ports:
       - "8006:8006"
     networks:
-      - monetic-network
+      monetic-network: {}
+      ctf-target-net:
+        ipv4_address: 10.10.10.16
     depends_on:
       postgres:
         condition: service_healthy
@@ -863,10 +908,13 @@ services:
       - FRAUD_THRESHOLD_LOW=${FRAUD_THRESHOLD_LOW}
       - FRAUD_THRESHOLD_MEDIUM=${FRAUD_THRESHOLD_MEDIUM}
       - FRAUD_THRESHOLD_HIGH=${FRAUD_THRESHOLD_HIGH}
+      - CTF_FLAG_SECRET=${CTF_FLAG_SECRET:-pmp_ctf_default_secret_change_in_prod}
     ports:
       - "8007:8007"
     networks:
-      - monetic-network
+      monetic-network: {}
+      ctf-target-net:
+        ipv4_address: 10.10.10.15
     depends_on:
       redis:
         condition: service_healthy
@@ -958,10 +1006,15 @@ services:
       - NODE_ENV=${NODE_ENV}
       - PORT=8011
       - LMK_KEY_FILE=${LMK_KEY_FILE}
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+      - CTF_FLAG_SECRET=${CTF_FLAG_SECRET:-pmp_ctf_default_secret_change_in_prod}
     ports:
       - "8011:8011"
+      - "5959:5959"
     networks:
-      - monetic-network
+      monetic-network: {}
+      ctf-target-net:
+        ipv4_address: 10.10.10.11
     volumes:
       - ./keys:/app/keys:ro
     healthcheck:
@@ -1050,10 +1103,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV}
       - PORT=8013
+      - CTF_FLAG_SECRET=${CTF_FLAG_SECRET:-pmp_ctf_default_secret_change_in_prod}
     ports:
       - "8013:8013"
     networks:
-      - monetic-network
+      monetic-network: {}
+      ctf-target-net:
+        ipv4_address: 10.10.10.13
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8013/health"]
       interval: 15s

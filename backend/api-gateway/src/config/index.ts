@@ -76,8 +76,22 @@ export const config = {
         // SECURITY: Strict origin whitelist (no wildcard)
         // Set CORS_ORIGIN in .env as comma-separated list: http://localhost:3000,http://localhost:5173
         origin: process.env.CORS_ORIGIN?.split(',').map(o => o.trim()) || [
-            'http://localhost:3000',
-            'http://localhost:5173'
+            'http://localhost:3000', // portal
+            'http://localhost:3001',
+            'http://localhost:3002', // tpe-web
+            'http://localhost:3004', // user-cards-web
+            'http://localhost:3006',
+            'http://localhost:3082',
+            'http://localhost:3088',
+            'http://localhost:5173',  // vite dev server
+            // Network access (192.168.1.14)
+            'http://192.168.1.14:3000',
+            'http://192.168.1.14:3001',
+            'http://192.168.1.14:3002',
+            'http://192.168.1.14:3004',
+            'http://192.168.1.14:3006',
+            'http://192.168.1.14:3082',
+            'http://192.168.1.14:3088',
         ],
         credentials: true,
         maxAge: 600 // Cache preflight for 10 minutes

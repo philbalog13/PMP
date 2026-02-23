@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { useAuth } from '@shared/context/AuthContext';
 import { UserRole } from '@shared/types/user';
 import { ArrowDownLeft, ArrowUpRight, Building2, RefreshCcw, Save, Wallet } from 'lucide-react';
-import { clientApi } from '@/lib/api-client';
+import { clientApi, type TransferType } from '@/lib/api-client';
 
 type Account = {
     iban: string;
@@ -29,6 +29,7 @@ type Entry = {
     description: string;
     createdAt: string;
     balanceAfter: number;
+    metadata: Record<string, unknown>;
 };
 
 const asObject = (value: unknown): Record<string, unknown> =>
@@ -79,7 +80,8 @@ const normalizeEntry = (raw: unknown): Entry => {
         reference: String(source.reference || ''),
         description: String(source.description || ''),
         createdAt: String(source.createdAt || source.created_at || ''),
-        balanceAfter: toNumber(source.balanceAfter || source.balance_after)
+        balanceAfter: toNumber(source.balanceAfter || source.balance_after),
+        metadata: asObject(source.metadata)
     };
 };
 
@@ -97,6 +99,9 @@ export default function AccountManagementPage() {
     const [monthlyTransferLimit, setMonthlyTransferLimit] = useState('');
 
     const [operationType, setOperationType] = useState<'deposit' | 'withdraw'>('deposit');
+    const [transferType, setTransferType] = useState<TransferType>('SEPA');
+    const [beneficiaryIban, setBeneficiaryIban] = useState('');
+    const [beneficiaryName, setBeneficiaryName] = useState('');
     const [operationAmount, setOperationAmount] = useState('');
     const [operationReference, setOperationReference] = useState('');
 
@@ -164,11 +169,22 @@ export default function AccountManagementPage() {
             if (operationType === 'deposit') {
                 await clientApi.deposit(amount, operationReference || 'DEPOSIT', 'Client deposit');
             } else {
-                await clientApi.withdraw(amount, operationReference || 'WITHDRAWAL', 'Client withdrawal');
+                await clientApi.withdraw(
+                    amount,
+                    operationReference || `${transferType}-TRANSFER`,
+                    transferType === 'INSTANT' ? 'Client instant transfer' : 'Client SEPA transfer',
+                    {
+                        transferType,
+                        beneficiaryIban: beneficiaryIban.trim() || undefined,
+                        beneficiaryName: beneficiaryName.trim() || undefined
+                    }
+                );
             }
 
             setOperationAmount('');
             setOperationReference('');
+            setBeneficiaryIban('');
+            setBeneficiaryName('');
             await loadAccountData();
         } catch (operationError: unknown) {
             setError(getErrorMessage(operationError, 'Opération bancaire impossible'));
@@ -326,9 +342,42 @@ export default function AccountManagementPage() {
                                 className="mt-1 w-full px-3 py-2 rounded-xl bg-slate-900 border border-white/10 text-white focus:outline-none"
                             >
                                 <option value="deposit">Dépôt</option>
-                                <option value="withdraw">Retrait</option>
+                                <option value="withdraw">Virement sortant</option>
                             </select>
                         </label>
+                        {operationType === 'withdraw' && (
+                            <>
+                                <label className="block text-sm text-slate-300">
+                                    Type de virement
+                                    <select
+                                        value={transferType}
+                                        onChange={(event) => setTransferType(event.target.value as TransferType)}
+                                        className="mt-1 w-full px-3 py-2 rounded-xl bg-slate-900 border border-white/10 text-white focus:outline-none"
+                                    >
+                                        <option value="SEPA">SEPA standard (J+1 ouvre)</option>
+                                        <option value="INSTANT">SEPA instantane (&lt; 10 secondes)</option>
+                                    </select>
+                                </label>
+                                <label className="block text-sm text-slate-300">
+                                    IBAN beneficiaire (optionnel)
+                                    <input
+                                        value={beneficiaryIban}
+                                        onChange={(event) => setBeneficiaryIban(event.target.value)}
+                                        placeholder="FR76..."
+                                        className="mt-1 w-full px-3 py-2 rounded-xl bg-slate-900 border border-white/10 text-white focus:outline-none"
+                                    />
+                                </label>
+                                <label className="block text-sm text-slate-300">
+                                    Nom beneficiaire (optionnel)
+                                    <input
+                                        value={beneficiaryName}
+                                        onChange={(event) => setBeneficiaryName(event.target.value)}
+                                        placeholder="Nom du beneficiaire"
+                                        className="mt-1 w-full px-3 py-2 rounded-xl bg-slate-900 border border-white/10 text-white focus:outline-none"
+                                    />
+                                </label>
+                            </>
+                        )}
                         <label className="block text-sm text-slate-300">
                             Montant
                             <input
@@ -355,7 +404,7 @@ export default function AccountManagementPage() {
                             className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-white disabled:opacity-60 ${operationType === 'deposit' ? 'bg-emerald-500 hover:bg-emerald-400' : 'bg-amber-500 hover:bg-amber-400'}`}
                         >
                             {operationType === 'deposit' ? <ArrowDownLeft size={16} /> : <ArrowUpRight size={16} />}
-                            {operationType === 'deposit' ? 'Valider dépôt' : 'Valider retrait'}
+                            {operationType === 'deposit' ? 'Valider dépôt' : 'Valider virement'}
                         </button>
                     </form>
                 </div>
@@ -367,6 +416,9 @@ export default function AccountManagementPage() {
                             <div>
                                 <p className="text-white font-medium">{entry.type}</p>
                                 <p className="text-xs text-slate-400">{entry.reference || '-'} - {entry.description || '-'}</p>
+                                {typeof entry.metadata.transferType === 'string' && (
+                                    <p className="text-xs text-blue-300">Type virement: {String(entry.metadata.transferType)}</p>
+                                )}
                                 <p className="text-xs text-slate-500">{entry.createdAt ? new Date(entry.createdAt).toLocaleString('fr-FR') : '-'}</p>
                             </div>
                             <div className="text-right">

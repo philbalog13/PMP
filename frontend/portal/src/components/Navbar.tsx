@@ -8,6 +8,7 @@ import {
     Menu,
     X,
     ChevronRight,
+    ChevronDown,
     GraduationCap,
     BookOpen,
     Beaker,
@@ -22,7 +23,9 @@ import {
     Tablet,
     BarChart,
     User,
-    Shield
+    Shield,
+    Zap,
+    ShieldCheck
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { UserMenu } from './UserMenu';
@@ -31,10 +34,17 @@ import { UserRole } from '@shared/types/user';
 import { normalizeRole } from '@shared/utils/roleUtils';
 import { APP_URLS, getRoleRedirectUrl } from '@shared/lib/app-urls';
 
+interface NavDropdownItem {
+    name: string;
+    href: string;
+    icon: React.ComponentType<{ className?: string; size?: number }>;
+}
+
 interface NavLink {
     name: string;
     href: string;
     icon: React.ComponentType<{ className?: string; size?: number }>;
+    dropdown?: NavDropdownItem[];
 }
 
 // Navigation par role
@@ -42,7 +52,13 @@ const roleNavLinks: Record<string, NavLink[]> = {
     [UserRole.ETUDIANT]: [
         { name: 'Mon Parcours', href: '/student', icon: GraduationCap },
         { name: 'Cursus', href: '/student/cursus', icon: BookOpen },
-        { name: 'Security Labs', href: '/student/ctf', icon: Beaker },
+        {
+            name: 'Laboratoires', href: '#', icon: Beaker,
+            dropdown: [
+                { name: 'Attaques', href: '/student/ctf', icon: Zap },
+                { name: 'Défense', href: '/student/defense', icon: ShieldCheck },
+            ]
+        },
         { name: 'Quiz', href: '/student/quizzes', icon: ClipboardList },
         { name: 'Badges', href: '/student/badges', icon: Shield },
         { name: 'Transactions', href: '/student/transactions', icon: Receipt },
@@ -122,6 +138,8 @@ export function Navbar() {
     const pathname = usePathname();
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+    const [mobileOpenDropdown, setMobileOpenDropdown] = useState<string | null>(null);
     const { user, isAuthenticated, isLoading, logout } = useAuth();
 
     const normalizedRole = user?.role ? normalizeRole(user.role) : null;
@@ -145,8 +163,8 @@ export function Navbar() {
     // Liens de navigation selon le role
     const navLinks = isAuthenticated && normalizedRole && roleNavLinks[normalizedRole] ? roleNavLinks[normalizedRole] : [
         { name: 'Documentation', href: '/documentation', icon: FileText },
-        { name: 'Lab', href: '/lab', icon: Beaker },
-        { name: 'Workshops', href: '/workshops', icon: BookOpen },
+        { name: 'Security Labs', href: '/student/ctf', icon: Beaker },
+        { name: 'Cursus', href: '/student/cursus', icon: BookOpen },
     ];
 
     const currentColors = normalizedRole && roleColors[normalizedRole] ? roleColors[normalizedRole] : roleColors[UserRole.ETUDIANT];
@@ -157,11 +175,9 @@ export function Navbar() {
             <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
                 {/* Logo */}
                 <Link href={getRoleHomePath(normalizedRole)} className="flex items-center gap-3 group">
-                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${currentColors.bg} flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform`}>
-                        <CreditCard className="w-5 h-5 text-white" />
-                    </div>
+                    <img src="/monetic-logo.svg" alt="MoneTIC Logo" className="w-10 h-10 group-hover:scale-110 transition-transform duration-300" />
                     <span className="text-xl font-bold bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent italic tracking-tight">
-                        PMP
+                        MoneTIC
                     </span>
                 </Link>
 
@@ -169,11 +185,58 @@ export function Navbar() {
                 <div className="hidden md:flex items-center gap-1">
                     {navLinks.map((link) => {
                         const Icon = link.icon;
-                        // Exact match for dashboard-level links, prefix match for sub-pages
                         const isExactDashboard = link.href === '/student' || link.href === '/instructor';
-                        const isActive = isExactDashboard
-                            ? pathname === link.href
-                            : (pathname === link.href || pathname.startsWith(link.href + '/'));
+                        const isActive = link.dropdown
+                            ? link.dropdown.some(d => pathname === d.href || pathname.startsWith(d.href + '/'))
+                            : isExactDashboard
+                                ? pathname === link.href
+                                : (pathname === link.href || pathname.startsWith(link.href + '/'));
+
+                        if (link.dropdown) {
+                            return (
+                                <div
+                                    key={link.name}
+                                    className="relative"
+                                    onMouseEnter={() => setOpenDropdown(link.name)}
+                                    onMouseLeave={() => setOpenDropdown(null)}
+                                >
+                                    <button
+                                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${isActive
+                                            ? `${currentColors.badge}`
+                                            : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                            }`}
+                                    >
+                                        <Icon size={16} />
+                                        {link.name}
+                                        <ChevronDown size={13} className={`transition-transform duration-200 ${openDropdown === link.name ? 'rotate-180' : ''}`} />
+                                    </button>
+                                    {openDropdown === link.name && (
+                                        <div className="absolute top-full left-0 z-50 pt-1">
+                                            <div className="w-44 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-xl overflow-hidden">
+                                                {link.dropdown.map((item) => {
+                                                    const ItemIcon = item.icon;
+                                                    const itemActive = pathname === item.href || pathname.startsWith(item.href + '/');
+                                                    return (
+                                                        <Link
+                                                            key={item.href}
+                                                            href={item.href}
+                                                            className={`flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium transition-colors ${itemActive
+                                                                ? `${currentColors.badge}`
+                                                                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                                                }`}
+                                                        >
+                                                            <ItemIcon size={15} />
+                                                            {item.name}
+                                                        </Link>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        }
+
                         return (
                             <Link
                                 key={link.href}
@@ -245,9 +308,53 @@ export function Navbar() {
                         {navLinks.map((link) => {
                             const Icon = link.icon;
                             const isExactDashboard = link.href === '/student' || link.href === '/instructor';
-                            const isActive = isExactDashboard
-                                ? pathname === link.href
-                                : (pathname === link.href || pathname.startsWith(link.href + '/'));
+                            const isActive = link.dropdown
+                                ? link.dropdown.some(d => pathname === d.href || pathname.startsWith(d.href + '/'))
+                                : isExactDashboard
+                                    ? pathname === link.href
+                                    : (pathname === link.href || pathname.startsWith(link.href + '/'));
+
+                            if (link.dropdown) {
+                                const isOpen = mobileOpenDropdown === link.name;
+                                return (
+                                    <div key={link.name}>
+                                        <button
+                                            onClick={() => setMobileOpenDropdown(isOpen ? null : link.name)}
+                                            className={`w-full flex items-center gap-3 p-3 rounded-xl transition-colors ${isActive
+                                                ? `${currentColors.badge}`
+                                                : 'text-slate-300 hover:bg-white/5'
+                                                }`}
+                                        >
+                                            <Icon size={20} />
+                                            <span className="font-medium flex-1 text-left">{link.name}</span>
+                                            <ChevronDown size={16} className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+                                        </button>
+                                        {isOpen && (
+                                            <div className="ml-4 mt-1 flex flex-col gap-1 border-l border-white/10 pl-3">
+                                                {link.dropdown.map((item) => {
+                                                    const ItemIcon = item.icon;
+                                                    const itemActive = pathname === item.href || pathname.startsWith(item.href + '/');
+                                                    return (
+                                                        <Link
+                                                            key={item.href}
+                                                            href={item.href}
+                                                            onClick={() => { setIsMobileMenuOpen(false); setMobileOpenDropdown(null); }}
+                                                            className={`flex items-center gap-3 p-2.5 rounded-lg transition-colors ${itemActive
+                                                                ? `${currentColors.badge}`
+                                                                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                                                }`}
+                                                        >
+                                                            <ItemIcon size={17} />
+                                                            <span className="font-medium text-sm">{item.name}</span>
+                                                        </Link>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            }
+
                             return (
                                 <Link
                                     key={link.href}

@@ -42,4 +42,16 @@ router.post('/:id/progress', RequireRole(UserRole.ETUDIANT), cursusController.sa
  */
 router.post('/:id/quiz/:quizId', RequireRole(UserRole.ETUDIANT), cursusController.submitCursusQuiz);
 
+/**
+ * POST /api/cursus/:id/exercise/:exerciseId/submit
+ * Auto-corrected free-text answer submission (keyword matching)
+ */
+router.post('/:id/exercise/:exerciseId/submit', RequireRole(UserRole.ETUDIANT), cursusController.submitExerciseAnswer as any);
+
+/**
+ * GET /api/cursus/:id/exercise/:exerciseId/solution
+ * Unlock sample solution after 2+ attempts or 30+ minutes
+ */
+router.get('/:id/exercise/:exerciseId/solution', RequireRole(UserRole.ETUDIANT), cursusController.getExerciseSolution as any);
+
 export default router;

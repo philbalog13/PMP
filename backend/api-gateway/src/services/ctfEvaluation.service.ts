@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { query } from '../config/database';
 import { logger } from '../utils/logger';
+import { generateFlag, isDynamicFlagChallenge } from './ctfFlag.service';
 
 interface BadgeDefinition {
     badge_name: string;
@@ -42,20 +43,137 @@ const FALLBACK_BADGE_DEFINITIONS: Record<string, BadgeDefinition> = {
         badge_icon: 'layers',
         xp_awarded: 100,
     },
+    QUIZ_FIRST_PASS: {
+        badge_name: 'Premier Quiz Réussi',
+        badge_description: 'Réussir votre premier quiz de cursus',
+        badge_icon: 'check-circle',
+        xp_awarded: 30,
+    },
+    QUIZ_PERFECT: {
+        badge_name: 'Score Parfait',
+        badge_description: 'Obtenir 100% à un quiz de cursus',
+        badge_icon: 'star',
+        xp_awarded: 75,
+    },
+    QUIZ_ALL_PASSED: {
+        badge_name: 'Cursus Complet',
+        badge_description: 'Réussir tous les quiz d\'un cursus',
+        badge_icon: 'award',
+        xp_awarded: 200,
+    },
+    SPEED_DEMON: {
+        badge_name: 'Speed Demon',
+        badge_description: 'Résoudre un challenge en moins de 5 minutes',
+        badge_icon: 'zap',
+        xp_awarded: 100,
+    },
+    NO_HINTS: {
+        badge_name: 'Sans Filet',
+        badge_description: 'Résoudre 5 challenges sans utiliser d\'indice',
+        badge_icon: 'eye-off',
+        xp_awarded: 150,
+    },
+    CHAIN_BREAKER: {
+        badge_name: 'Chain Breaker',
+        badge_description: 'Compléter une chaîne de challenges complète',
+        badge_icon: 'link-2',
+        xp_awarded: 200,
+    },
+    BOSS_SLAYER: {
+        badge_name: 'Boss Slayer',
+        badge_description: 'Résoudre un challenge BOSS multi-stage',
+        badge_icon: 'skull',
+        xp_awarded: 300,
+    },
+    FULL_STACK_HACKER: {
+        badge_name: 'Full Stack Hacker',
+        badge_description: 'Résoudre au moins un challenge par catégorie',
+        badge_icon: 'layers',
+        xp_awarded: 250,
+    },
+    STREAK_7: {
+        badge_name: 'Streak 7',
+        badge_description: '7 jours consécutifs d\'activité CTF',
+        badge_icon: 'flame',
+        xp_awarded: 100,
+    },
+    WRITEUP_AUTHOR: {
+        badge_name: 'Writeup Author',
+        badge_description: 'Soumettre un writeup community approuvé',
+        badge_icon: 'book-open',
+        xp_awarded: 150,
+    },
 };
+
+export interface StudentRank {
+    rank: string;
+    icon: string;
+    minPoints: number;
+    maxPoints: number | null;
+}
+
+const RANK_TIERS: StudentRank[] = [
+    { rank: 'Script Kiddy', icon: '🔰', minPoints: 0, maxPoints: 499 },
+    { rank: 'Padawan', icon: '⚔️', minPoints: 500, maxPoints: 1499 },
+    { rank: 'Hunter', icon: '🎯', minPoints: 1500, maxPoints: 2999 },
+    { rank: 'Elite Hacker', icon: '💀', minPoints: 3000, maxPoints: 4999 },
+    { rank: 'Maître Monétique', icon: '👑', minPoints: 5000, maxPoints: 7999 },
+    { rank: 'Légende', icon: '🏆', minPoints: 8000, maxPoints: null },
+];
+
+export function getRank(totalPoints: number): StudentRank {
+    const safePoints = Math.max(0, Math.floor(totalPoints || 0));
+    for (let i = RANK_TIERS.length - 1; i >= 0; i--) {
+        if (safePoints >= RANK_TIERS[i].minPoints) {
+            return RANK_TIERS[i];
+        }
+    }
+    return RANK_TIERS[0];
+}
+
+export function getAllRanks(): StudentRank[] {
+    return [...RANK_TIERS];
+}
 
 function normalizeFlag(value: string): string {
     return value.trim().toUpperCase();
 }
 
-export function validateFlag(submitted: string, expected: string): boolean {
-    if (!submitted || !expected) {
-        return false;
+/**
+ * Valide un flag soumis par un étudiant.
+ *
+ * Si le challenge supporte les flags dynamiques (isDynamicFlagChallenge) ET que studentId est fourni,
+ * le flag attendu est recalculé via HMAC côté serveur — unique par étudiant, pas de triche par partage.
+ *
+ * Sinon, fallback sur la comparaison hash classique contre `staticExpected`.
+ */
+export function validateFlag(
+    submitted: string,
+    staticExpected: string,
+    studentId?: string,
+    challengeCode?: string
+): boolean {
+    if (!submitted) return false;
+
+    // Mode dynamique : recalcul HMAC côté serveur
+    if (studentId && challengeCode && isDynamicFlagChallenge(challengeCode)) {
+        try {
+            const expected = generateFlag(studentId, challengeCode);
+            const submittedBuf = crypto.createHash('sha256').update(normalizeFlag(submitted)).digest();
+            const expectedBuf = crypto.createHash('sha256').update(normalizeFlag(expected)).digest();
+            if (submittedBuf.length === expectedBuf.length) {
+                return crypto.timingSafeEqual(submittedBuf, expectedBuf);
+            }
+            return false;
+        } catch {
+            // Si la génération échoue (challenge inconnu), fallback sur static
+        }
     }
 
+    // Mode statique (backward compat ou challenge non dynamique)
+    if (!staticExpected) return false;
     const submittedHash = crypto.createHash('sha256').update(normalizeFlag(submitted)).digest();
-    const expectedHash = crypto.createHash('sha256').update(normalizeFlag(expected)).digest();
-
+    const expectedHash = crypto.createHash('sha256').update(normalizeFlag(staticExpected)).digest();
     return crypto.timingSafeEqual(submittedHash, expectedHash);
 }
 
@@ -253,4 +371,65 @@ export async function awardCtfBadges(studentId: string): Promise<string[]> {
     }
 
     return awardedBadgeTypes;
+}
+
+/* ------------------------------------------------------------------ */
+/*  QUIZ BADGE AWARDS                                                  */
+/* ------------------------------------------------------------------ */
+export async function awardQuizBadges(studentId: string, quizId: string, passed: boolean, percentage: number): Promise<string[]> {
+    if (!passed) return [];
+
+    const awarded: string[] = [];
+
+    try {
+        // QUIZ_FIRST_PASS — first quiz ever passed
+        const firstPassResult = await query(
+            `SELECT COUNT(*)::INTEGER AS cnt
+             FROM learning.cursus_quiz_results
+             WHERE student_id = $1 AND passed = true`,
+            [studentId]
+        );
+        const totalPassed = parseInt(firstPassResult.rows[0]?.cnt, 10) || 0;
+        if (totalPassed <= 1) {
+            if (await awardCtfBadge(studentId, 'QUIZ_FIRST_PASS')) {
+                awarded.push('QUIZ_FIRST_PASS');
+            }
+        }
+
+        // QUIZ_PERFECT — 100% score
+        if (percentage >= 100) {
+            if (await awardCtfBadge(studentId, 'QUIZ_PERFECT')) {
+                awarded.push('QUIZ_PERFECT');
+            }
+        }
+
+        // QUIZ_ALL_PASSED — all quizzes in the same cursus passed
+        const cursusIdResult = await query(
+            `SELECT cursus_id FROM learning.cursus_quizzes WHERE id = $1 LIMIT 1`,
+            [quizId]
+        );
+        const cursusId = cursusIdResult.rows[0]?.cursus_id;
+        if (cursusId) {
+            const allQuizzesResult = await query(
+                `SELECT q.id,
+                        EXISTS (
+                            SELECT 1 FROM learning.cursus_quiz_results r
+                            WHERE r.quiz_id = q.id AND r.student_id = $2 AND r.passed = true
+                        ) AS has_passed
+                 FROM learning.cursus_quizzes q
+                 WHERE q.cursus_id = $1`,
+                [cursusId, studentId]
+            );
+            const allPassed = allQuizzesResult.rows.every((r: any) => r.has_passed);
+            if (allPassed && allQuizzesResult.rows.length > 0) {
+                if (await awardCtfBadge(studentId, 'QUIZ_ALL_PASSED')) {
+                    awarded.push('QUIZ_ALL_PASSED');
+                }
+            }
+        }
+    } catch (error: any) {
+        logger.error('Failed to award quiz badges', { studentId, quizId, error: error.message });
+    }
+
+    return awarded;
 }

@@ -1,10 +1,10 @@
 # 🏦 Ateliers Pédagogiques PMP
 
-> **Suite complète de 14 ateliers pour maîtriser les systèmes monétiques**
+> **Suite complete de 15 ateliers pour maitriser les systemes monetiques**
 
-![Workshops](https://img.shields.io/badge/Ateliers-14-blue.svg)
+![Workshops](https://img.shields.io/badge/Ateliers-15-blue.svg)
 ![Niveau](https://img.shields.io/badge/Niveau-Débutant_à_Expert-orange.svg)
-![Durée](https://img.shields.io/badge/Durée_Totale-~28h-green.svg)
+![Durée](https://img.shields.io/badge/Durée_Totale-~31h-green.svg)
 
 ---
 

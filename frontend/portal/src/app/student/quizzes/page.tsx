@@ -48,6 +48,28 @@ interface WorkshopCatalogEntry {
 
 const WORKSHOP_ORDER = ['intro', 'iso8583', 'hsm-keys', '3ds-flow', 'fraud-detection', 'emv'];
 
+function parseAttemptPassed(value: unknown, percentage: number, fallbackThreshold = 80): boolean {
+    if (typeof value === 'boolean') {
+        return value;
+    }
+
+    if (typeof value === 'number') {
+        return value === 1;
+    }
+
+    if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase();
+        if (normalized === 'true' || normalized === 't' || normalized === '1') {
+            return true;
+        }
+        if (normalized === 'false' || normalized === 'f' || normalized === '0') {
+            return false;
+        }
+    }
+
+    return percentage >= fallbackThreshold;
+}
+
 const WORKSHOP_NAMES: Record<string, string> = {
     'intro': 'Introduction aux Paiements',
     'iso8583': 'Protocole ISO 8583',
@@ -110,15 +132,18 @@ export default function StudentQuizzesPage() {
                     return byWorkshopId || byQuizId;
                 });
 
-                const attempts: QuizAttempt[] = matchingResults.map((result: Record<string, unknown>) => ({
-                    date: result?.submitted_at || result?.date || new Date().toISOString(),
-                    score: Number(result?.percentage ?? 0),
-                    passed: Number(result?.percentage ?? 0) >= 80,
-                    timeSpent: Number(result?.time_taken_seconds ?? result?.timeSpent ?? 0),
-                }));
+                const attempts: QuizAttempt[] = matchingResults.map((result: Record<string, unknown>) => {
+                    const score = Number(result?.percentage ?? 0);
+                    return {
+                        date: String(result?.submitted_at || result?.date || new Date().toISOString()),
+                        score: Number.isFinite(score) ? score : 0,
+                        passed: parseAttemptPassed(result?.passed, score),
+                        timeSpent: Number(result?.time_taken_seconds ?? result?.timeSpent ?? 0),
+                    };
+                });
 
                 const bestScore = attempts.length > 0 ? Math.max(...attempts.map(a => a.score)) : undefined;
-                const passed = bestScore !== undefined && bestScore >= 80;
+                const passed = attempts.some((attempt) => attempt.passed);
 
                 // Workshop availability: sequential unlock
                 const available = Boolean(quizId) && (

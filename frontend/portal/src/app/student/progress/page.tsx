@@ -47,6 +47,28 @@ const WORKSHOP_DESCRIPTIONS: Record<string, string> = {
     'emv': 'Comprenez les cartes à puce et le protocole EMV',
 };
 
+function parseAttemptPassed(value: unknown, percentage: number, fallbackThreshold = 80): boolean {
+    if (typeof value === 'boolean') {
+        return value;
+    }
+
+    if (typeof value === 'number') {
+        return value === 1;
+    }
+
+    if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase();
+        if (normalized === 'true' || normalized === 't' || normalized === '1') {
+            return true;
+        }
+        if (normalized === 'false' || normalized === 'f' || normalized === '0') {
+            return false;
+        }
+    }
+
+    return percentage >= fallbackThreshold;
+}
+
 export default function StudentProgressPage() {
     const { isLoading } = useAuth(true);
     const [workshops, setWorkshops] = useState<WorkshopProgress[]>([]);
@@ -116,7 +138,9 @@ export default function StudentProgressPage() {
                 }
 
                 const quizScore = bestAttempt ? Number(bestAttempt.percentage ?? 0) : undefined;
-                const quizPassed = quizScore !== undefined ? quizScore >= 80 : undefined;
+                const quizPassed = bestAttempt
+                    ? parseAttemptPassed(bestAttempt.passed, quizScore ?? 0)
+                    : undefined;
 
                 // Status with sequential lock
                 let status: WorkshopProgress['status'] = 'not_started';

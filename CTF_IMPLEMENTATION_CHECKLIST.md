@@ -2,7 +2,7 @@
 
 - [x] Phase 1 - Database (migration 011 + schema + leaderboard + badges CTF)
 - [x] Phase 2 - Backend API (routes + controller + service + app.ts)
-- [x] Phase 3 - Contenu (20 challenges + guided steps + hints)
+- [x] Phase 3 - Contenu (50 challenges + guided steps + hints)
 - [x] Phase 4 - Frontend Etudiant (dashboard + detail + leaderboard + navigation + URLs)
 - [x] Phase 5 - Frontend Instructeur (dashboard CTF + lab-control toggles)
 - [x] Phase 6 - Integration Badges & XP (badges CTF + affichage points CTF dans /student)
@@ -18,7 +18,7 @@
 
 ## Verified Runtime Checks
 - [x] `npx ts-node src/database/runMigrations.ts` (migrations + seed CTF)
-- [x] 20 challenges seeded (`learning.ctf_challenges=20`, `ctf_guided_steps=100`, `ctf_hints=40`)
+- [x] 50 challenges seeded (`learning.ctf_challenges=50`, guided steps and hints aligned with current pedagogical policy)
 - [x] `GET /api/ctf/challenges` auth required and returns challenge list
 - [x] `POST /api/ctf/challenges/HSM-001/submit` incorrect flag -> `isCorrect=false`
 - [x] `POST /api/ctf/challenges/HSM-001/submit` correct flag -> points awarded

@@ -2,8 +2,15 @@ import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { RequireRole, UserRole } from '../middleware/roles';
 import * as ctfController from '../controllers/ctf.controller';
+import * as ctfProofController from '../controllers/ctfProof.controller';
 
 const router = Router();
+
+// Internal route used by orchestrators/gateway jobs (protected with x-internal-secret in controller).
+router.post('/internal/ctf/vuln-init', ctfController.internalVulnInit);
+// Public proof routes (student identity from x-student-id or JWT user context).
+router.post('/prove-mitm', ctfProofController.proveMitm);
+router.post('/prove-timing-attack', ctfProofController.proveTimingAttack);
 
 router.use(authMiddleware);
 
@@ -13,6 +20,9 @@ router.post('/challenges/:code/start', RequireRole(UserRole.ETUDIANT), ctfContro
 router.post('/challenges/:code/step/next', RequireRole(UserRole.ETUDIANT), ctfController.advanceGuidedStep);
 router.post('/challenges/:code/submit', RequireRole(UserRole.ETUDIANT), ctfController.submitFlag);
 router.post('/challenges/:code/hint/:number', RequireRole(UserRole.ETUDIANT), ctfController.unlockHint);
+router.get('/challenges/:code/debrief', RequireRole(UserRole.ETUDIANT), ctfController.getDebrief);
+router.post('/challenges/:code/debrief', RequireRole(UserRole.ETUDIANT), ctfController.submitDebrief);
+router.post('/challenges/:code/learning-check', RequireRole(UserRole.ETUDIANT), ctfController.saveLearningCheck);
 router.get('/progress', RequireRole(UserRole.ETUDIANT), ctfController.getProgress);
 router.get('/leaderboard', RequireRole(UserRole.ETUDIANT), ctfController.getLeaderboard);
 

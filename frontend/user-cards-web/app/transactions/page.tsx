@@ -61,6 +61,8 @@ const normalizeTransaction = (raw: unknown): ClientTransaction => {
     };
 };
 
+const PAGE_SIZE = 50;
+
 export default function TransactionsPage() {
     const router = useRouter();
     const { isLoading, isAuthenticated, user } = useAuth();
@@ -70,15 +72,25 @@ export default function TransactionsPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('ALL');
     const [typeFilter, setTypeFilter] = useState('ALL');
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [total, setTotal] = useState(0);
 
     const isClient = user?.role === UserRole.CLIENT;
 
-    const loadTransactions = async () => {
+    const loadTransactions = async (p = page) => {
         setIsRefreshing(true);
         setError(null);
         try {
-            const response = await clientApi.getTransactions('limit=200&page=1');
+            const params = new URLSearchParams({ limit: String(PAGE_SIZE), page: String(p) });
+            if (statusFilter !== 'ALL') params.set('status', statusFilter);
+            if (typeFilter !== 'ALL') params.set('type', typeFilter);
+            const response = await clientApi.getTransactions(params.toString()) as any;
             setTransactions((response.transactions || []).map(normalizeTransaction));
+            if (response.pagination) {
+                setTotalPages(response.pagination.totalPages || 1);
+                setTotal(response.pagination.total || 0);
+            }
         } catch (loadError: unknown) {
             setError(getErrorMessage(loadError, 'Impossible de charger les transactions'));
         } finally {
@@ -88,8 +100,8 @@ export default function TransactionsPage() {
 
     useEffect(() => {
         if (!isAuthenticated || !isClient) return;
-        loadTransactions();
-    }, [isAuthenticated, isClient]);
+        loadTransactions(page);
+    }, [isAuthenticated, isClient, page, statusFilter, typeFilter]);
 
     const filteredTransactions = useMemo(() => {
         const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -156,7 +168,7 @@ export default function TransactionsPage() {
                         <p className="text-slate-400">Liste réelle des transactions liées à votre compte client.</p>
                     </div>
                     <button
-                        onClick={loadTransactions}
+                        onClick={() => { setPage(1); loadTransactions(1); }}
                         disabled={isRefreshing}
                         className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 border border-white/10 text-white hover:bg-slate-700 disabled:opacity-60"
                     >
@@ -203,7 +215,7 @@ export default function TransactionsPage() {
                             <Filter size={14} className="text-slate-500" />
                             <select
                                 value={statusFilter}
-                                onChange={(event) => setStatusFilter(event.target.value)}
+                                onChange={(event) => { setStatusFilter(event.target.value); setPage(1); }}
                                 className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-white/10 text-white focus:outline-none"
                             >
                                 <option value="ALL">Tous statuts</option>
@@ -217,7 +229,7 @@ export default function TransactionsPage() {
                         <label className="text-sm text-slate-300">
                             <select
                                 value={typeFilter}
-                                onChange={(event) => setTypeFilter(event.target.value)}
+                                onChange={(event) => { setTypeFilter(event.target.value); setPage(1); }}
                                 className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-white/10 text-white focus:outline-none"
                             >
                                 <option value="ALL">Tous types</option>
@@ -266,12 +278,37 @@ export default function TransactionsPage() {
                         </div>
                     ))}
 
-                    {filteredTransactions.length === 0 && (
+                    {filteredTransactions.length === 0 && !isRefreshing && (
                         <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-8 text-center text-slate-400">
                             Aucune transaction ne correspond aux filtres.
                         </div>
                     )}
                 </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                    <div className="flex items-center justify-between pt-2">
+                        <p className="text-slate-500 text-sm">
+                            Page {page} / {totalPages} · {total} transaction(s) au total
+                        </p>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                disabled={page <= 1 || isRefreshing}
+                                className="px-4 py-2 rounded-xl bg-slate-800 border border-white/10 text-white text-sm hover:bg-slate-700 disabled:opacity-40 transition"
+                            >
+                                ← Précédent
+                            </button>
+                            <button
+                                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                disabled={page >= totalPages || isRefreshing}
+                                className="px-4 py-2 rounded-xl bg-slate-800 border border-white/10 text-white text-sm hover:bg-slate-700 disabled:opacity-40 transition"
+                            >
+                                Suivant →
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

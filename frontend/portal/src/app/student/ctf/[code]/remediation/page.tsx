@@ -42,32 +42,80 @@ function remediationBlocks(category: string): Array<{ title: string; items: stri
 
     if (key === 'REPLAY_ATTACK') {
         return [
-            { title: 'Correctifs serveur', items: ['Idempotency key obligatoire', 'Nonce + fenetre temporelle', 'Deduplication cote backend'] },
-            { title: 'Observabilite', items: ['Tracer STAN/RRN/nonce', 'Alerting sur doublons', 'Metriques taux de rejouage'] },
-            { title: 'Validation', items: ['Tests e2e de rejeu', 'Tests concurrency', 'Rejeu sur plusieurs noeuds'] },
+            { title: 'Correctifs serveur', items: ['Idempotency key obligatoire sur chaque requête', 'Nonce + fenêtre temporelle (TTL 60s)', 'Déduplication côté backend avec cache Redis', 'Vérifier STAN/RRN unique avant traitement'] },
+            { title: 'Observabilité', items: ['Tracer STAN/RRN/nonce dans les logs structurés', 'Alerting sur taux de doublons > 1%', 'Métriques taux de rejouage par terminal/IP'] },
+            { title: 'Validation', items: ['Tests e2e de rejeu avec même nonce', 'Tests de concurrence multi-thread', 'Rejeu sur plusieurs nœuds du cluster'] },
         ];
     }
 
     if (key === 'HSM_ATTACK') {
         return [
-            { title: 'Isolation', items: ['Reseau prive uniquement', 'Allowlist stricte', 'mTLS entre services'] },
-            { title: 'Autorisation', items: ['RBAC sur operations sensibles', 'Separation des environnements', 'Audit complet des appels'] },
-            { title: 'Validation', items: ['Tests d acces non autorise', 'Revue des endpoints admin', 'Rotation des cles exposees'] },
+            { title: 'Isolation réseau', items: ['Réseau privé (VLAN dédié) uniquement', 'Allowlist IP stricte sur le HSM', 'mTLS obligatoire entre services et HSM', 'Firewall layer 7 avec inspection des commandes'] },
+            { title: 'Autorisation & Audit', items: ['RBAC granulaire sur chaque commande HSM', 'Séparation des environnements (prod ≠ test)', 'Journalisation complète de tous les appels HSM', 'Rotation planifiée des clés exposées'] },
+            { title: 'Validation', items: ['Tests d\'accès non autorisé aux endpoints', 'Revue des endpoints admin/debug', 'Vérification que les clés ne sont pas exposées en clair'] },
         ];
     }
 
     if (key === 'ISO8583_MANIPULATION') {
         return [
-            { title: 'Validation messages', items: ['Schema strict', 'Verification champs critiques', 'Rejet des incoherences bitmap/DE'] },
-            { title: 'Protection', items: ['Authentifier les messages (MAC)', 'Controle de rejeu', 'Rate limit sur endpoints sensibles'] },
-            { title: 'Validation', items: ['Fuzzing format', 'Cas limites DE', 'Tests de rejet'] },
+            { title: 'Validation des messages', items: ['Schéma strict : valider chaque DE selon le MTI', 'Vérification des champs critiques (DE39, DE49, DE4)', 'Rejet des incohérences bitmap/DE', 'Contrôle de longueur LLVAR/LLLVAR'] },
+            { title: 'Protection d\'intégrité', items: ['MAC obligatoire (DE64/DE128) sur tous les messages', 'Contrôle de rejeu (STAN unique + timestamp)', 'Rate limit par terminal/acquéreur', 'Validation croisée montant/devise/merchant'] },
+            { title: 'Tests', items: ['Fuzzing des champs ISO 8583', 'Cas limites : longueur max, caractères spéciaux', 'Tests de rejet de messages malformés'] },
+        ];
+    }
+
+    if (key === '3DS_BYPASS') {
+        return [
+            { title: 'Correctifs protocolaires', items: ['Forcer 3DS sur toutes les transactions > seuil SCA', 'Valider le cavv/eci serveur-side (pas côté client)', 'Rejeter les ECI 07 (3DS non disponible) au-dessus du seuil', 'Vérifier la cohérence transaction ID entre AReq et ARes'] },
+            { title: 'Surveillance', items: ['Alerter sur taux d\'ECI 07 anormal par commerçant', 'Monitorer les downgrades 3DS2 → 3DS1', 'Tracer les échecs d\'authentification par BIN range'] },
+            { title: 'Validation', items: ['Tests de contournement 3DS avec ECI modifié', 'Tests de replay du cavv', 'Vérification de la chaîne de confiance DS → ACS'] },
+        ];
+    }
+
+    if (key === 'FRAUD_CNP') {
+        return [
+            { title: 'Détection', items: ['Moteur de scoring temps réel (vélocité, device, géo)', 'Device fingerprinting côté client', 'Vérification d\'adresse (AVS) et CVV obligatoire', 'Analyse du comportement de navigation (session duration, mouse patterns)'] },
+            { title: 'Prévention', items: ['3-D Secure 2.x avec challenge adaptatif', 'Limites de vélocité par carte/IP/device', 'Blocklist d\'emails jetables et de BIN à risque', 'Machine learning : détection d\'anomalies en temps réel'] },
+            { title: 'Réponse', items: ['Workflow de review pour scores intermédiaires', 'Chargeback représentation avec preuves', 'Partage de renseignements fraude (schemes, consortiums)'] },
+        ];
+    }
+
+    if (key === 'PIN_CRACKING') {
+        return [
+            { title: 'Protection du PIN', items: ['PIN block ISO 9564 format 4 (AES)', 'DUKPT pour dérivation unique par transaction', 'Chiffrement point-to-point (P2PE) dès le terminal', 'Zéroïsation immédiate après vérification'] },
+            { title: 'Contrôle d\'accès', items: ['Limitation à 3 tentatives de PIN', 'Verrouillage de la carte après échecs consécutifs', 'RBAC strict sur les fonctions HSM de vérification PIN', 'Audit trail de chaque vérification PIN'] },
+            { title: 'Tests', items: ['Test de brute force sur l\'API de vérification', 'Vérification que le PIN n\'apparaît pas dans les logs', 'Test de timing attack sur la réponse PIN OK/KO'] },
+        ];
+    }
+
+    if (key === 'MITM') {
+        return [
+            { title: 'Chiffrement transport', items: ['TLS 1.3 obligatoire sur tous les flux', 'Certificate pinning côté client (mobile/terminal)', 'mTLS pour les communications inter-services', 'HSTS avec preload pour les interfaces web'] },
+            { title: 'Intégrité des messages', items: ['MAC/HMAC sur les messages applicatifs', 'Vérification d\'intégrité end-to-end', 'Protection contre le downgrade de protocole', 'Signature des réponses serveur'] },
+            { title: 'Détection', items: ['Monitoring des certificats (CT logs)', 'Alerting sur changement de certificat inattendu', 'Test d\'interception avec proxy MITM'] },
+        ];
+    }
+
+    if (key === 'PRIVILEGE_ESCALATION') {
+        return [
+            { title: 'Contrôle d\'accès', items: ['RBAC strict avec principe du moindre privilège', 'Validation des rôles côté serveur (jamais côté client)', 'Vérification d\'ownership sur chaque ressource', 'JWT avec claims minimaux et validation stricte'] },
+            { title: 'Protection', items: ['Rate limiting sur les endpoints admin', 'Séparation des API admin et utilisateur', 'Input validation et output encoding', 'Gestion d\'erreurs non bavarde (pas de stack traces)'] },
+            { title: 'Audit', items: ['Journalisation de chaque action admin', 'Alerting sur changement de rôle', 'Tests IDOR sur toutes les ressources', 'Revue périodique des droits d\'accès'] },
+        ];
+    }
+
+    if (key === 'CRYPTO_WEAKNESS') {
+        return [
+            { title: 'Algorithmes', items: ['AES-256-GCM pour le chiffrement symétrique', 'RSA ≥ 2048 bits ou ECC P-256 pour l\'asymétrique', 'SHA-256 minimum pour le hashing', 'Abandon de DES, 3DES, MD5, SHA-1'] },
+            { title: 'Gestion des clés', items: ['HSM pour le stockage des clés en production', 'Rotation planifiée des clés (annuelle minimum)', 'Séparation des clés par environnement', 'Key derivation robuste (PBKDF2, Argon2, scrypt)'] },
+            { title: 'Validation', items: ['Tests avec vecteurs de test officiels (NIST, ANSI)', 'Vérification de l\'entropie des IV/nonces', 'Audit de code pour les usages crypto hardcodés'] },
         ];
     }
 
     return [
-        { title: 'Correctifs', items: ['Validation cote serveur', 'Controle d acces / ownership', 'Gestion d erreurs non bavarde'] },
-        { title: 'Surveillance', items: ['Logs structurels', 'Correlation IDs', 'Alerting sur patterns anormaux'] },
-        { title: 'Validation', items: ['Tests unitaires controles', 'Tests d integration', 'Revue securite'] },
+        { title: 'Correctifs', items: ['Validation côté serveur systématique', 'Contrôle d\'accès et ownership sur chaque ressource', 'Gestion d\'erreurs non bavarde (pas d\'information technique)'] },
+        { title: 'Surveillance', items: ['Logs structurés avec correlation IDs', 'Alerting sur patterns anormaux', 'Dashboard de sécurité en temps réel'] },
+        { title: 'Validation', items: ['Tests unitaires sur les contrôles de sécurité', 'Tests d\'intégration end-to-end', 'Revue sécurité périodique et pentest'] },
     ];
 }
 

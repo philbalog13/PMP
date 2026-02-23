@@ -15,5 +15,6 @@ COPY --from=builder /app/local-lib ./local-lib
 COPY --from=builder /app/package.json ./
 USER nodejs
 EXPOSE 8011
+EXPOSE 5959
 HEALTHCHECK --interval=30s --timeout=3s CMD wget -qO- http://localhost:8011/health || exit 1
 CMD ["node", "dist/server.js"]

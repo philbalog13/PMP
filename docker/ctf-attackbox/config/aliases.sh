@@ -25,7 +25,7 @@ alias jsonc='jq -C .'
 fuzz() {
     local target="${1:-http://api-gateway:8000}"
     echo -e "\033[1;33m[*] Fuzzing $target...\033[0m"
-    ffuf -u "$target/FUZZ" -w /usr/share/wordlists/dirb/common.txt -mc 200,201,204,301,302,400,401,403 -c
+    ffuf -u "$target/FUZZ" -w /usr/share/wordlists/common.txt -mc 200,201,204,301,302,400,401,403 -c
 }
 
 # Health check all services

@@ -132,7 +132,7 @@ Testez les cas suivants :
    - [ ] c) Le porteur de carte
    - [ ] d) L'État
 
-**Réponses**: 1-b, 2-c, 3-c, 4-b, 5-b
+**Correction**: disponible uniquement dans la version formateur.
 
 ---
 
@@ -150,3 +150,5 @@ Testez les cas suivants :
 - [ ] Vous savez différencier Frictionless et Challenge
 - [ ] Vous connaissez le rôle de l'ACS et du DS
 - [ ] Vous comprenez l'évaluation du risque
+
+

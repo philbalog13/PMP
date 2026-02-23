@@ -139,7 +139,7 @@ Utilisez les outils de l'Atelier 9 pour vérifier que vos logs sont conformes.
    - [ ] c) Jamais sans protection
    - [ ] d) Le client accepte
 
-**Réponses**: 1-c, 2-c, 3-c, 4-c, 5-c
+**Correction**: disponible uniquement dans la version formateur.
 
 ---
 
@@ -157,3 +157,5 @@ Utilisez les outils de l'Atelier 9 pour vérifier que vos logs sont conformes.
 - [ ] Vous comprenez l'importance du logging (Exigence 10)
 - [ ] Vous savez quelles données doivent être loggées
 - [ ] Vous comprenez le scope PCI et comment le réduire
+
+

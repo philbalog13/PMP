@@ -77,11 +77,14 @@ async function upsertCtfChallenge(client: PoolClient, challenge: CtfChallengeSee
             attack_vector,
             learning_objectives,
             estimated_minutes,
+            mission_brief,
+            incident_artifacts,
+            proof_rubric,
             is_active
         )
         VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8,
-            $9, $10, $11, $12, $13::jsonb, $14, $15
+            $9, $10, $11, $12, $13::jsonb, $14, $15::jsonb, $16::jsonb, $17::jsonb, $18
         )
         ON CONFLICT (challenge_code)
         DO UPDATE SET
@@ -98,6 +101,9 @@ async function upsertCtfChallenge(client: PoolClient, challenge: CtfChallengeSee
             attack_vector = EXCLUDED.attack_vector,
             learning_objectives = EXCLUDED.learning_objectives,
             estimated_minutes = EXCLUDED.estimated_minutes,
+            mission_brief = EXCLUDED.mission_brief,
+            incident_artifacts = EXCLUDED.incident_artifacts,
+            proof_rubric = EXCLUDED.proof_rubric,
             is_active = EXCLUDED.is_active,
             updated_at = NOW()
         RETURNING id`,
@@ -116,6 +122,9 @@ async function upsertCtfChallenge(client: PoolClient, challenge: CtfChallengeSee
             challenge.attackVector,
             JSON.stringify(challenge.learningObjectives || []),
             challenge.estimatedMinutes,
+            JSON.stringify(challenge.missionBrief || {}),
+            JSON.stringify(challenge.incidentArtifacts || []),
+            JSON.stringify(challenge.proofRubric || {}),
             challenge.isActive,
         ]
     );
@@ -176,12 +185,7 @@ async function seedCtfChallenges(): Promise<void> {
 
     const countResult = await pool.query('SELECT COUNT(*)::INTEGER AS count FROM learning.ctf_challenges');
     const challengeCount = parseInt(countResult.rows[0]?.count, 10) || 0;
-
-    if (challengeCount >= CTF_TOTAL_ACTIVE_CHALLENGES) {
-        // eslint-disable-next-line no-console
-        console.log(`[MIGRATION] CTF seed skipped (${challengeCount} challenges already present)`);
-        return;
-    }
+    const refreshMode = challengeCount >= CTF_TOTAL_ACTIVE_CHALLENGES;
 
     const client = await pool.connect();
     try {
@@ -191,7 +195,7 @@ async function seedCtfChallenges(): Promise<void> {
         }
         await client.query('COMMIT');
         // eslint-disable-next-line no-console
-        console.log(`[MIGRATION] Seeded ${CTF_CHALLENGES.length} CTF challenges`);
+        console.log(`[MIGRATION] Seeded ${CTF_CHALLENGES.length} CTF challenges (refreshMode=${refreshMode})`);
     } catch (error) {
         await client.query('ROLLBACK');
         throw error;
@@ -219,7 +223,8 @@ async function runMigrations(): Promise<void> {
         }
 
         const sqlPath = path.join(migrationsDir, fileName);
-        const sql = await fs.readFile(sqlPath, 'utf8');
+        // Some SQL files may be saved with a UTF-8 BOM; strip it to avoid PostgreSQL parse errors.
+        const sql = (await fs.readFile(sqlPath, 'utf8')).replace(/^\uFEFF/, '');
         await executeMigration(fileName, sql);
     }
 
