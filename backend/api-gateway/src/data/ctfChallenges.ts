@@ -442,14 +442,14 @@ function buildRealisticGuidedSteps(challenge: CtfChallengeSeed): CtfGuidedStepSe
             stepNumber: 1,
             stepTitle: 'Reconnaissance reseau',
             stepDescription: 'Identifiez d abord les hôtes actifs et les ports exposés dans la zone cible sans supposer les noms DNS.',
-            stepType: 'HINT',
+            stepType: 'EXPLANATION',
             hintText: 'Commencez par une découverte réseau puis restreignez la cible.',
         },
         {
             stepNumber: 2,
             stepTitle: 'Enumeration services et endpoints',
             stepDescription: 'Dressez l inventaire des services accessibles puis des routes utiles sans dépendre d un chemin prédéfini.',
-            stepType: 'HINT',
+            stepType: 'EXPLANATION',
             hintText: 'Confirmez la méthode HTTP, le code de réponse et le comportement anormal.',
         },
         {
@@ -517,7 +517,7 @@ function buildPostPatchVerificationStep(challenge: CtfChallengeSeed): CtfGuidedS
         stepNumber: 0,
         stepTitle: 'Verification post-patch avant/apres',
         stepDescription: normalizeWhitespace(
-            `Executez le meme test d attaque sur ${challenge.targetEndpoint} avant puis apres patch. ` +
+            'Executez le meme test d attaque que vous avez identifie avant puis apres avoir applique le correctif. ' +
             'Avant patch, la faille doit etre exploitable. Apres patch, l exploitation doit echouer et le flux legitime doit rester valide.'
         ),
         stepType: 'ANALYSIS',

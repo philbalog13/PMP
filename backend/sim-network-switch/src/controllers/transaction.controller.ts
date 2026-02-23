@@ -308,20 +308,23 @@ export const authorizeLegacy = async (
         const transaction = buildLegacyTransaction(body);
         const response = await routingService.routeTransaction(transaction);
         const cvv = typeof body.cvv === 'string' ? body.cvv : undefined;
+        const resolvedStan = typeof response.stan === 'string' && response.stan.length > 0
+            ? response.stan
+            : transaction.stan;
 
         pushTrafficLog(transaction);
 
-        const authorizationCode = response.authorizationCode || `AUTH${response.stan.slice(-2)}`;
+        const authorizationCode = response.authorizationCode || `AUTH${resolvedStan.slice(-2)}`;
         const result: Record<string, unknown> = {
             success: response.responseCode === '00',
             responseCode: response.responseCode,
             responseMessage: response.responseMessage,
             authCode: authorizationCode,
             authorizationCode,
-            stan: response.stan,
+            stan: resolvedStan,
             rrn: response.acquirerReferenceNumber,
             emvData: {
-                tc: `TC${response.stan}`,
+                tc: `TC${resolvedStan}`,
             },
             ...(cvv ? { cvv } : {})
         };

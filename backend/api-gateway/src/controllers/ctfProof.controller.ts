@@ -85,11 +85,12 @@ function approximateTwoTailedPValueFromT(t: number): number {
     return 2 * (1 - normalCdf(absT));
 }
 
-async function getExpectedTimingByte(): Promise<string> {
+async function getExpectedTimingByte(studentId: string): Promise<string> {
     const response = await axios.post(
         `${config.services.hsmSimulator}/hsm/generate-mac`,
         {
-            data: 'PAYLOAD',
+            // Student-specific data — each student has a unique MAC byte for proof isolation
+            data: studentId + ":PAYLOAD",
             keyLabel: 'ZAK_002',
             method: 'ALG3',
         },
@@ -247,7 +248,7 @@ export const proveTimingAttack = async (req: Request, res: Response) => {
             });
         }
 
-        const expectedByte = await getExpectedTimingByte();
+        const expectedByte = await getExpectedTimingByte(studentId);
         if (top.candidate !== expectedByte || discoveredByte !== expectedByte) {
             return res.status(400).json({
                 success: false,

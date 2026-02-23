@@ -72,6 +72,15 @@ RUN pip3 install --break-system-packages \
     scipy \
     pwntools
 
+# Compatibility shim: some test scripts import `pyiso8583` instead of `iso8583`.
+RUN python3 - <<'PY'
+import pathlib
+import site
+
+site_packages = pathlib.Path(site.getsitepackages()[0])
+(site_packages / "pyiso8583.py").write_text("from iso8583 import *\n", encoding="utf-8")
+PY
+
 # Install Nikto from source (Debian bookworm does not provide a nikto package)
 RUN git clone --depth 1 https://github.com/sullo/nikto.git /opt/nikto \
     && ln -sf /opt/nikto/program/nikto.pl /usr/local/bin/nikto \
@@ -101,10 +110,10 @@ RUN mkdir -p /usr/share/wordlists && \
     curl -sL "https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/common.txt" -o /usr/share/wordlists/common.txt || echo "api\nhealth\nstatus" > /usr/share/wordlists/common.txt
 
 # Create attackbox user
-RUN useradd -m -s /bin/bash attacker && \
+RUN groupadd -f wireshark && \
+    useradd -m -s /bin/bash attacker && \
     echo "attacker:pmp2026" | chpasswd && \
-    usermod -aG sudo attacker && \
-    adduser attacker wireshark
+    usermod -aG sudo,wireshark attacker
 
 # Allow packet capture without full root shell
 RUN setcap cap_net_raw,cap_net_admin+eip /usr/bin/tshark && \
@@ -118,7 +127,7 @@ COPY docker/ctf-attackbox/scripts/lab.sh /usr/local/bin/lab
 COPY docker/ctf-attackbox/scripts/tools.sh /usr/local/bin/tools
 COPY docker/ctf-attackbox/scripts/smoke-tools.sh /usr/local/bin/smoke-tools
 COPY docker/ctf-attackbox/samples /opt/attackbox/samples
-COPY backend/api-gateway/src/data/ctf /opt/attackbox/ctf-data
+COPY docker/ctf-attackbox/ctf-data /opt/attackbox/ctf-data
 COPY docker/ctf-attackbox/config/.bashrc /home/attacker/.bashrc
 COPY docker/ctf-attackbox/config/.bashrc /root/.bashrc
 COPY docker/ctf-attackbox/config/banner.sh /etc/profile.d/01-banner.sh
@@ -126,6 +135,8 @@ COPY docker/ctf-attackbox/config/aliases.sh /etc/profile.d/02-aliases.sh
 
 RUN chmod +x /entrypoint.sh /usr/local/bin/lab /usr/local/bin/tools /usr/local/bin/smoke-tools \
     /opt/attackbox/samples/timing-attack.py \
+    /opt/attackbox/samples/iso8583-probe.py \
+    /opt/attackbox/samples/pkcs11-probe.py \
     /etc/profile.d/01-banner.sh /etc/profile.d/02-aliases.sh
 
 # Set permissions

@@ -24,6 +24,9 @@ app.get('/challenge', acsController.getChallengeUrl);
 app.post('/acs/areq', acsController.areq);
 app.post('/acs/creq', acsController.creq);
 app.post('/ds/rreq', acsController.rreq);
+app.get('/acs/areq', (_req, res) => res.status(405).json({ success: false, error: 'Method Not Allowed' }));
+app.get('/acs/creq', (_req, res) => res.status(405).json({ success: false, error: 'Method Not Allowed' }));
+app.get('/ds/rreq', (_req, res) => res.status(405).json({ success: false, error: 'Method Not Allowed' }));
 
 // Legacy CTF compatibility aliases (/acs/*)
 app.post('/acs/authenticate', acsController.authenticate);

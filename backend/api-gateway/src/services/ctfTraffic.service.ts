@@ -1,9 +1,21 @@
 import axios from 'axios';
 import { config } from '../config';
 import { logger } from '../utils/logger';
+import { ctfProofStore } from './ctfProofStore.service';
 
 const mitmIntervals = new Map<string, NodeJS.Timeout>();
 const MITM_INTERVAL_MS = 60_000;
+
+// TTL for the captured CVV proof — 90 min (longer than the interval so the student
+// always has at least one valid window to sniff and submit).
+const PROOF_TTL_SECONDS = 5400;
+
+// MITM-001: traffic MUST route through ctf-target-net (10.10.10.0/24) so that
+// tshark on the attackbox (10.10.10.20, ctf0 interface) can capture the plaintext
+// HTTP packet.  Using the Docker DNS name "sim-network-switch" routes traffic over
+// the monetic-network bridge which is invisible to tshark on ctf0.
+// We therefore use the static ctf-target-net IP of the switch directly.
+const CTF_SWITCH_URL = process.env.CTF_MITM_SWITCH_URL || 'http://10.10.10.12:8004';
 
 function randomCvv(): string {
     return String(Math.floor(100 + Math.random() * 900));
@@ -23,7 +35,7 @@ async function emitMitmTraffic(studentId: string): Promise<void> {
 
     try {
         await axios.post(
-            `${config.services.simNetworkSwitch}/transaction/authorize`,
+            `${CTF_SWITCH_URL}/transaction/authorize`,
             payload,
             {
                 timeout: 4000,
@@ -33,6 +45,13 @@ async function emitMitmTraffic(studentId: string): Promise<void> {
                 },
             },
         );
+
+        // ── CRITICAL: persist the CVV so proveMitm can verify the student captured it ──
+        // The student must intercept this plaintext HTTP traffic (tshark on ctf-target-net)
+        // and submit the CVV value they extracted from the captured packet.
+        const proofKey = `ctf:proof:${studentId}:MITM-001:captured_cvv`;
+        await ctfProofStore.set(proofKey, cvv, PROOF_TTL_SECONDS);
+        logger.debug('[ctfTraffic] MITM proof CVV stored', { studentId, proofKey });
     } catch (error: any) {
         logger.warn('[ctfTraffic] Failed to emit MITM background traffic', {
             studentId,

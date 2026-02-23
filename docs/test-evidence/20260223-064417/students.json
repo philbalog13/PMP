@@ -1,0 +1,14 @@
+{
+  "A": {
+    "username": "studentA_1771825579",
+    "userId": "4e9187cf-98fe-48c2-9e42-39016cd9b8e2",
+    "email": "studentA_1771825579@pmp.edu",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0ZTkxODdjZi05OGZlLTQ4YzItOWU0Mi0zOTAxNmNkOWI4ZTIiLCJyb2xlIjoiUk9MRV9FVFVESUFOVCIsImlhdCI6MTc3MTgyNTU4MCwiZXhwIjoxNzcxODI2NDgwfQ.hm4LYuBflFEZh2lMbZIXFm7KVwl46Qmhh2Pv8lGUq0M"
+  },
+  "B": {
+    "username": "studentB_1771825579",
+    "userId": "f8f9f8cb-d393-477a-a93a-5031bf664ccf",
+    "email": "studentB_1771825579@pmp.edu",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJmOGY5ZjhjYi1kMzkzLTQ3N2EtYTkzYS01MDMxYmY2NjRjY2YiLCJyb2xlIjoiUk9MRV9FVFVESUFOVCIsImlhdCI6MTc3MTgyNTU4MCwiZXhwIjoxNzcxODI2NDgwfQ.PnHKevpKuoa2AqrH1D7F5jBF78ywj5MSVKHXDiXVoO4"
+  }
+}

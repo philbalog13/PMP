@@ -44,3 +44,9 @@ nul
 # Test coverage
 coverage/
 test-results/
+
+# Let's Encrypt material (private keys/certs)
+certbot/conf/*
+!certbot/conf/.gitkeep
+certbot/www/*
+!certbot/www/.gitkeep

@@ -192,13 +192,13 @@ services:
       context: ./frontend
       dockerfile: portal/Dockerfile
       args:
-        - NEXT_PUBLIC_API_URL=http://localhost:8000
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
         - INTERNAL_API_URL=http://api-gateway:8000
-        - NEXT_PUBLIC_PORTAL_URL=http://localhost:3000
-        - NEXT_PUBLIC_TPE_URL=http://localhost:3001
-        - NEXT_PUBLIC_USER_CARDS_URL=http://localhost:3004
-        - NEXT_PUBLIC_HSM_URL=http://localhost:3006
-        - NEXT_PUBLIC_MONITORING_URL=http://localhost:3082
+        - NEXT_PUBLIC_PORTAL_URL=${NEXT_PUBLIC_PORTAL_URL:-http://localhost:3000}
+        - NEXT_PUBLIC_TPE_URL=${NEXT_PUBLIC_TPE_URL:-http://localhost:3001}
+        - NEXT_PUBLIC_USER_CARDS_URL=${NEXT_PUBLIC_USER_CARDS_URL:-http://localhost:3004}
+        - NEXT_PUBLIC_HSM_URL=${NEXT_PUBLIC_HSM_URL:-http://localhost:3006}
+        - NEXT_PUBLIC_MONITORING_URL=${NEXT_PUBLIC_MONITORING_URL:-http://localhost:3082}
         - NEXT_PUBLIC_CTF_ATTACKBOX_URL=${NEXT_PUBLIC_CTF_ATTACKBOX_URL:-http://localhost:7681}
     container_name: pmp-portal
     restart: unless-stopped
@@ -206,13 +206,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV}
       - PORT=3000
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
       - INTERNAL_API_URL=http://api-gateway:8000
-      - NEXT_PUBLIC_PORTAL_URL=http://localhost:3000
-      - NEXT_PUBLIC_TPE_URL=http://localhost:3001
-      - NEXT_PUBLIC_USER_CARDS_URL=http://localhost:3004
-      - NEXT_PUBLIC_HSM_URL=http://localhost:3006
-      - NEXT_PUBLIC_MONITORING_URL=http://localhost:3082
+      - NEXT_PUBLIC_PORTAL_URL=${NEXT_PUBLIC_PORTAL_URL:-http://localhost:3000}
+      - NEXT_PUBLIC_TPE_URL=${NEXT_PUBLIC_TPE_URL:-http://localhost:3001}
+      - NEXT_PUBLIC_USER_CARDS_URL=${NEXT_PUBLIC_USER_CARDS_URL:-http://localhost:3004}
+      - NEXT_PUBLIC_HSM_URL=${NEXT_PUBLIC_HSM_URL:-http://localhost:3006}
+      - NEXT_PUBLIC_MONITORING_URL=${NEXT_PUBLIC_MONITORING_URL:-http://localhost:3082}
       - NEXT_PUBLIC_CTF_ATTACKBOX_URL=${NEXT_PUBLIC_CTF_ATTACKBOX_URL:-http://localhost:7681}
     ports:
       - "3000:3000"
@@ -295,17 +295,17 @@ services:
       context: ./frontend
       dockerfile: tpe-web/Dockerfile
       args:
-        - NEXT_PUBLIC_API_URL=http://localhost:8000
-        - NEXT_PUBLIC_PORTAL_URL=http://localhost:3000
-        - NEXT_PUBLIC_USER_CARDS_URL=http://localhost:3004
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+        - NEXT_PUBLIC_PORTAL_URL=${NEXT_PUBLIC_PORTAL_URL:-http://localhost:3000}
+        - NEXT_PUBLIC_USER_CARDS_URL=${NEXT_PUBLIC_USER_CARDS_URL:-http://localhost:3004}
     container_name: pmp-client-interface
     restart: unless-stopped
     user: "node:node"
     environment:
       - NODE_ENV=${NODE_ENV}
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
-      - NEXT_PUBLIC_PORTAL_URL=http://localhost:3000
-      - NEXT_PUBLIC_USER_CARDS_URL=http://localhost:3004
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      - NEXT_PUBLIC_PORTAL_URL=${NEXT_PUBLIC_PORTAL_URL:-http://localhost:3000}
+      - NEXT_PUBLIC_USER_CARDS_URL=${NEXT_PUBLIC_USER_CARDS_URL:-http://localhost:3004}
     ports:
       - "3001:3000"
     networks:
@@ -382,19 +382,19 @@ services:
       context: ./frontend
       dockerfile: user-cards-web/Dockerfile
       args:
-        - NEXT_PUBLIC_API_URL=http://localhost:8000
-        - NEXT_PUBLIC_PORTAL_URL=http://localhost:3000
-        - NEXT_PUBLIC_TPE_URL=http://localhost:3001
-        - NEXT_PUBLIC_USER_CARDS_URL=http://localhost:3004
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+        - NEXT_PUBLIC_PORTAL_URL=${NEXT_PUBLIC_PORTAL_URL:-http://localhost:3000}
+        - NEXT_PUBLIC_TPE_URL=${NEXT_PUBLIC_TPE_URL:-http://localhost:3001}
+        - NEXT_PUBLIC_USER_CARDS_URL=${NEXT_PUBLIC_USER_CARDS_URL:-http://localhost:3004}
     container_name: pmp-user-cards-web
     restart: unless-stopped
     environment:
       - NODE_ENV=${NODE_ENV}
       - PORT=3000
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
-      - NEXT_PUBLIC_PORTAL_URL=http://localhost:3000
-      - NEXT_PUBLIC_TPE_URL=http://localhost:3001
-      - NEXT_PUBLIC_USER_CARDS_URL=http://localhost:3004
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      - NEXT_PUBLIC_PORTAL_URL=${NEXT_PUBLIC_PORTAL_URL:-http://localhost:3000}
+      - NEXT_PUBLIC_TPE_URL=${NEXT_PUBLIC_TPE_URL:-http://localhost:3001}
+      - NEXT_PUBLIC_USER_CARDS_URL=${NEXT_PUBLIC_USER_CARDS_URL:-http://localhost:3004}
     ports:
       - "3004:3000"
     networks:
@@ -428,16 +428,16 @@ services:
       context: ./frontend
       dockerfile: hsm-web/Dockerfile
       args:
-        - NEXT_PUBLIC_API_URL=http://localhost:8000
-        - NEXT_PUBLIC_PORTAL_URL=http://localhost:3000
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+        - NEXT_PUBLIC_PORTAL_URL=${NEXT_PUBLIC_PORTAL_URL:-http://localhost:3000}
     container_name: pmp-hsm-web
     restart: unless-stopped
     user: "node:node"
     environment:
       - NODE_ENV=${NODE_ENV}
       - PORT=3000
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
-      - NEXT_PUBLIC_PORTAL_URL=http://localhost:3000
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      - NEXT_PUBLIC_PORTAL_URL=${NEXT_PUBLIC_PORTAL_URL:-http://localhost:3000}
     ports:
       - "3006:3000"
     networks:
@@ -542,6 +542,7 @@ services:
       - PORT=8000
       - LOG_LEVEL=${LOG_LEVEL}
       - JWT_SECRET=${JWT_SECRET}
+      - INTERNAL_HSM_SECRET=${INTERNAL_HSM_SECRET}
       - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS}
       - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS}
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
@@ -1007,6 +1008,7 @@ services:
       - PORT=8011
       - LMK_KEY_FILE=${LMK_KEY_FILE}
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+      - INTERNAL_HSM_SECRET=${INTERNAL_HSM_SECRET}
       - CTF_FLAG_SECRET=${CTF_FLAG_SECRET:-pmp_ctf_default_secret_change_in_prod}
     ports:
       - "8011:8011"
@@ -1231,12 +1233,17 @@ services:
     image: nginx:alpine
     container_name: pmp-nginx
     restart: unless-stopped
+    command: >
+      /bin/sh -c
+      "while :; do sleep 6h & wait $$!; nginx -s reload; done &
+      nginx -g 'daemon off;'"
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./certbot/www:/var/www/certbot:ro
       - ./nginx/logs:/var/log/nginx
     networks:
       monetic-network:
@@ -1262,6 +1269,20 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+  certbot-renew:
+    image: certbot/certbot:latest
+    container_name: pmp-certbot-renew
+    restart: unless-stopped
+    entrypoint: /bin/sh
+    command: -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet --deploy-hook 'sh /opt/ssl/certbot-deploy-hook.sh'; sleep 12h; done"
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+      - ./nginx/ssl:/etc/nginx/ssl
+      - ./scripts/ssl:/opt/ssl:ro
+    depends_on:
+      - nginx
 
   # ============================================
   # MONITORING SERVICES

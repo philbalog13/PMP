@@ -11,8 +11,10 @@ STUDENT_ID = os.environ.get("STUDENT_ID", "")
 
 
 def probe(candidate_hex: str) -> float:
+    # Use student-specific data so the expected byte matches what prove-timing-attack computes
+    data_field = f"{STUDENT_ID}:PAYLOAD" if STUDENT_ID else "PAYLOAD"
     payload = {
-        "data": "PAYLOAD",
+        "data": data_field,
         "keyLabel": "ZAK_002",
         "mac": f"{candidate_hex}00000000000000",
     }

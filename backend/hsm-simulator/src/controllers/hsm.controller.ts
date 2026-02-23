@@ -80,12 +80,12 @@ export class HSMController {
             const result = await rpcAdapter.handleRequest('encrypt-data', req.body) as Record<string, unknown>;
             const response: Record<string, unknown> = { success: true, ...result };
 
-            // HSM-004 : flag retournÃ© quand mode ECB est utilisÃ© â€” rÃ©vÃ¨le la vulnÃ©rabilitÃ© ECB penguin
+            // HSM-004 : flag retournÃƒÂ© quand mode ECB est utilisÃƒÂ© Ã¢â‚¬â€ rÃƒÂ©vÃƒÂ¨le la vulnÃƒÂ©rabilitÃƒÂ© ECB penguin
             if (mode === 'ECB' && studentId) {
                 const flag = VulnEngine.generateFlag(studentId, 'HSM-004');
                 if (flag) {
                     response.flag = flag;
-                    response._ctf = 'HSM-004: AES-ECB rÃ©vÃ¨le les patterns â€” blocks identiques produisent le mÃªme chiffrÃ©';
+                    response._ctf = 'HSM-004: AES-ECB rÃƒÂ©vÃƒÂ¨le les patterns Ã¢â‚¬â€ blocks identiques produisent le mÃƒÂªme chiffrÃƒÂ©';
                 }
             }
 
@@ -107,26 +107,8 @@ export class HSMController {
     public listKeys = (req: Request, res: Response): void => {
         const studentId = req.headers['x-student-id'] as string | undefined;
         const keys = hsm.keyStorage.listKeys();
-
-        // HSM-001 : flag dans le body JSON â€” accessible sans auth â†’ exploit Ã©vident
-        const flag001 = VulnEngine.generateFlag(studentId || '', 'HSM-001');
-
-        // HSM-002 : flag dans header discret â€” l'Ã©tudiant doit utiliser curl -v pour le voir
-        if (studentId) {
-            const flag002 = VulnEngine.generateFlag(studentId, 'HSM-002');
-            if (flag002) res.setHeader('X-CTF-Flag-HSM002', flag002);
-        }
-
-        // KEY-003 : ZPK jamais rotÃ©e â€” flag dans header discret, visible dans les mÃ©tadonnÃ©es des clÃ©s
-        // Le ZPK_TEST a createdAt == lastRotated â†’ jamais rotÃ©e depuis le dÃ©ploiement
-        if (studentId) {
-            const flag003 = VulnEngine.generateFlag(studentId, 'KEY-003');
-            if (flag003) res.setHeader('X-CTF-Flag-KEY003', flag003);
-        }
-
         const response: Record<string, unknown> = {
             keys,
-            // MÃ©tadonnÃ©es intentionnellement vulnÃ©rables : ZPK_TEST jamais rotÃ©e
             keyMetadata: [
                 { label: 'LMK', createdAt: '2020-01-01T00:00:00Z', lastRotated: '2024-01-01T00:00:00Z', rotationCount: 4 },
                 { label: 'ZPK_001', createdAt: '2023-06-01T00:00:00Z', lastRotated: '2024-06-01T00:00:00Z', rotationCount: 2 },
@@ -134,9 +116,23 @@ export class HSMController {
                 { label: 'KEK', createdAt: '2023-01-01T00:00:00Z', lastRotated: '2024-01-01T00:00:00Z', rotationCount: 1 },
             ]
         };
+
+        const flag001 = VulnEngine.generateFlag(studentId || '', 'HSM-001');
         if (flag001) {
             response.flag = flag001;
-            response._ctf = 'HSM-001: Broken Access Control â€” clÃ©s exposÃ©es sans authentification';
+            response._ctf = 'HSM-001: Broken Access Control - cles exposees sans authentification';
+        }
+
+        if (studentId) {
+            const flag002 = VulnEngine.generateFlag(studentId, 'HSM-002');
+            if (flag002) {
+                res.setHeader('X-CTF-Flag-HSM002', flag002);
+            }
+
+            const flag003 = VulnEngine.generateFlag(studentId, 'KEY-003');
+            if (flag003) {
+                res.setHeader('X-CTF-Flag-KEY003', flag003);
+            }
         }
 
         res.json(response);
@@ -145,7 +141,7 @@ export class HSMController {
     public backup = (req: Request, res: Response): void => {
         const studentId = req.headers['x-student-id'] as string | undefined;
 
-        // KEY-001 : LMK components exposÃ©s en clair dans le backup
+        // KEY-001 : LMK components exposÃƒÂ©s en clair dans le backup
         const flag = VulnEngine.generateFlag(studentId || '', 'KEY-001');
 
         const response: Record<string, unknown> = {
@@ -156,7 +152,7 @@ export class HSMController {
         };
         if (flag) {
             response.flag = flag;
-            response._ctf = 'KEY-001: LMK components exposÃ©s en clair â€” violation PCI HSM';
+            response._ctf = 'KEY-001: LMK components exposÃƒÂ©s en clair Ã¢â‚¬â€ violation PCI HSM';
         }
 
         res.json(response);
@@ -165,7 +161,7 @@ export class HSMController {
     public terminalKeys = (req: Request, res: Response): void => {
         const studentId = req.headers['x-student-id'] as string | undefined;
 
-        // KEY-002 : tous les terminaux partagent le mÃªme KEK â†’ flag dans le body
+        // KEY-002 : tous les terminaux partagent le mÃƒÂªme KEK Ã¢â€ â€™ flag dans le body
         const flag = VulnEngine.generateFlag(studentId || '', 'KEY-002');
 
         const terminals = [
@@ -177,7 +173,7 @@ export class HSMController {
         const response: Record<string, unknown> = { terminals };
         if (flag) {
             response.flag = flag;
-            response._ctf = 'KEY-002: Tous les terminaux partagent le mÃªme KEK â€” compromission en cascade';
+            response._ctf = 'KEY-002: Tous les terminaux partagent le mÃƒÂªme KEK Ã¢â‚¬â€ compromission en cascade';
         }
 
         res.json(response);
@@ -206,18 +202,18 @@ export class HSMController {
             keyLabel,
             wrapperKeyLabel,
             wrappedKey,
-            _ctf: 'KEY-004: Le HSM permet d\'exporter une clÃ© forte sous une clÃ© wrapper â€” downgrade de sÃ©curitÃ©'
+            _ctf: 'KEY-004: Le HSM permet d\'exporter une clÃƒÂ© forte sous une clÃƒÂ© wrapper Ã¢â‚¬â€ downgrade de sÃƒÂ©curitÃƒÂ©'
         };
 
-        // KEY-004 : flag quand une clÃ© forte (ZPK_001, LMK) est exportÃ©e sous une clÃ© faible (ZPK_TEST)
-        // ZPK_TEST est connue (valeur triviale) â†’ l'export permet de rÃ©cupÃ©rer la clÃ© forte en clair
+        // KEY-004 : flag quand une clÃƒÂ© forte (ZPK_001, LMK) est exportÃƒÂ©e sous une clÃƒÂ© faible (ZPK_TEST)
+        // ZPK_TEST est connue (valeur triviale) Ã¢â€ â€™ l'export permet de rÃƒÂ©cupÃƒÂ©rer la clÃƒÂ© forte en clair
         const WEAK_KEYS = ['ZPK_TEST', 'TEST', 'WEAK'];
         const SENSITIVE_KEYS = ['ZPK_001', 'LMK', 'KEK', 'ZPK_PROD'];
         if (studentId && WEAK_KEYS.includes(wrapperKeyLabel) && SENSITIVE_KEYS.includes(keyLabel)) {
             const flag = VulnEngine.generateFlag(studentId, 'KEY-004');
             if (flag) {
                 response.flag = flag;
-                response._ctf = `KEY-004: ClÃ© ${keyLabel} exportÃ©e sous la clÃ© faible ${wrapperKeyLabel} â€” brute-force trivial possible`;
+                response._ctf = `KEY-004: ClÃƒÂ© ${keyLabel} exportÃƒÂ©e sous la clÃƒÂ© faible ${wrapperKeyLabel} Ã¢â‚¬â€ brute-force trivial possible`;
             }
         }
 
@@ -273,7 +269,7 @@ export class HSMController {
         const vulns = ((req as any).vulnConfig || VulnEngine.getConfig(req)) as ReturnType<typeof VulnEngine.getConfig>;
 
         if (vulns.simulateDown) {
-            // PIN-001 : fail-open â†’ flag dans le body quand HSM simulÃ© hors-ligne
+            // PIN-001 : fail-open Ã¢â€ â€™ flag dans le body quand HSM simulÃƒÂ© hors-ligne
             const flag = VulnEngine.generateFlag(studentId || '', 'PIN-001');
             const response: Record<string, unknown> = {
                 success: true,
@@ -283,7 +279,7 @@ export class HSMController {
             };
             if (flag) {
                 response.flag = flag;
-                response._ctf = 'PIN-001: PIN verification dÃ©sactivÃ©e â€” HSM simulÃ© hors-ligne';
+                response._ctf = 'PIN-001: PIN verification dÃƒÂ©sactivÃƒÂ©e Ã¢â‚¬â€ HSM simulÃƒÂ© hors-ligne';
             }
             res.json(response);
             return;
@@ -301,11 +297,11 @@ export class HSMController {
         const pan = String(req.body?.pan || '4111111111111111').replace(/\D/g, '').slice(-12);
         const studentId = req.headers['x-student-id'] as string | undefined;
 
-        // PIN-002 : Math.random() comme PRNG pour le padding â€” faible entropie
+        // PIN-002 : Math.random() comme PRNG pour le padding Ã¢â‚¬â€ faible entropie
         const weakPadding = `${Math.floor(Math.random() * 99999999)}`.padStart(8, '0');
         const pinBlock = `04${pin}${pan}${weakPadding}`.slice(0, 16).padEnd(16, '0');
 
-        // Flag dans header discret â€” l'Ã©tudiant doit analyser plusieurs pinBlocks pour dÃ©tecter le pattern
+        // Flag dans header discret Ã¢â‚¬â€ l'ÃƒÂ©tudiant doit analyser plusieurs pinBlocks pour dÃƒÂ©tecter le pattern
         const flag = VulnEngine.generateFlag(studentId || '', 'PIN-002');
         if (flag && studentId) {
             res.setHeader('X-CTF-Flag-PIN002', flag);
@@ -314,7 +310,8 @@ export class HSMController {
         res.json({
             success: true,
             pinBlock,
-            _ctf: 'PIN-002: Padding gÃ©nÃ©rÃ© avec Math.random() â€” PRNG non cryptographique'
+            _ctf: 'PIN-002: Padding gÃƒÂ©nÃƒÂ©rÃƒÂ© avec Math.random() Ã¢â‚¬â€ PRNG non cryptographique'
         });
     };
 }
+

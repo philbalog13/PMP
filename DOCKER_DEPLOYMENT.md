@@ -137,6 +137,64 @@ make stats          # Resource usage stats
 - Strong cipher suite
 - Auto-generated on `make keys`
 
+### Public HTTPS with Let's Encrypt
+
+1. Point your DNS records to your server public IP (A/AAAA records).
+2. Open inbound ports `80` and `443` on your firewall/security group.
+3. Configure these variables in `.env`:
+   - `LETSENCRYPT_EMAIL`
+   - `LETSENCRYPT_DOMAINS` (comma-separated, e.g. `example.com,www.example.com`)
+   - `LETSENCRYPT_CERT_NAME` (default: `pmp`)
+   - `LETSENCRYPT_STAGING=1` for first test, then `0` for production certs
+4. Start platform and request cert:
+
+```bash
+docker compose up -d nginx
+bash scripts/ssl/request-letsencrypt.sh
+```
+
+If you deploy with runtime compose:
+
+```bash
+PMP_COMPOSE_FILE=docker-compose-runtime.yml bash scripts/ssl/request-letsencrypt.sh
+```
+
+5. Keep automatic renewal running:
+
+```bash
+docker compose up -d certbot-renew
+```
+
+Public routes via Nginx:
+- `https://<domain>/` -> client interface (`client-interface`)
+- `https://<domain>/merchant/` -> portal (`portal`)
+- `https://<domain>/api/` -> API Gateway (`api-gateway`)
+
+### PowerShell automation (Windows)
+
+```powershell
+# Standard stack (start services + staging cert)
+powershell -ExecutionPolicy Bypass -File scripts/ssl/setup-public-https.ps1 `
+  -Domain monetic.com `
+  -Email admin@monetic.com `
+  -StartPlatform `
+  -Staging
+
+# Runtime stack (uses docker-compose-runtime.yml)
+powershell -ExecutionPolicy Bypass -File scripts/ssl/setup-public-https.ps1 `
+  -Domain monetic.com `
+  -Email admin@monetic.com `
+  -StartPlatform `
+  -Staging `
+  -Runtime
+```
+
+Optional flags:
+- `-BuildPlatform` to force image rebuild before startup.
+- remove `-Staging` when DNS is fully propagated to request the production certificate.
+
+Home-server reminder: your router must forward TCP ports `80` and `443` to this machine.
+
 ### Rate Limiting (Nginx)
 
 - API endpoints: 100 req/min

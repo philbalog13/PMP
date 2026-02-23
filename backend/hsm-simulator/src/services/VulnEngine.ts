@@ -1,7 +1,19 @@
 import { NextFunction, Request, Response } from 'express';
 import * as crypto from 'crypto';
-import Redis from 'ioredis';
 import { logger } from '../utils/logger';
+
+// Lazy-load ioredis so the HSM can start without Redis (falls back to in-memory Map).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let RedisClass: any = null;
+try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    RedisClass = require('ioredis');
+} catch {
+    logger.warn('[VulnEngine] ioredis not available — using in-memory Map for vuln configs');
+}
+// Use the same type alias to keep internal method signatures identical
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Redis = any;
 
 export interface VulnerabilityConfig {
     allowReplay: boolean;
@@ -32,7 +44,9 @@ const DEFAULT_CONFIG: VulnerabilityConfig = {
     verboseErrors: false,
     keyLeakInLogs: false,
     simulateDown: false,
-    timingAttackEnabled: true,
+    // OFF by default: timing-safe comparison used for all students not on HSM-005.
+    // CHALLENGE_DEFAULTS['HSM-005'] flips this to true for that specific challenge.
+    timingAttackEnabled: false,
 };
 
 const CHALLENGE_DEFAULTS: Record<string, Partial<VulnerabilityConfig>> = {
@@ -41,7 +55,9 @@ const CHALLENGE_DEFAULTS: Record<string, Partial<VulnerabilityConfig>> = {
     'HSM-003': { keyLeakInLogs: true },
     'HSM-004': {},
     'HSM-005': { timingAttackEnabled: true },
-    'PIN-001': { simulateDown: false },
+    // PIN-001: HSM always "down" → pin/verify returns fail-open (verified:true even for wrong PIN).
+    // Students discover this flaw by testing an invalid PIN block and observing verified:true.
+    'PIN-001': { simulateDown: true },
     'PIN-002': {},
     'REPLAY-001': { allowReplay: true },
 };

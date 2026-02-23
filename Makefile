@@ -2,7 +2,7 @@
 # Makefile for Plateforme Monétique Pédagogique
 # ==============================================
 
-.PHONY: help start stop restart logs logs-follow test status clean keys init build ps health
+.PHONY: help start stop restart logs logs-follow test status clean keys init build ps health ssl-init ssl-renew-start ssl-renew-stop
 
 # Colors for terminal output
 RED := \033[0;31m
@@ -48,6 +48,20 @@ build: ## Build all Docker images
 	@echo "$(GREEN)Building Docker images...$(NC)"
 	@docker-compose build --parallel
 	@echo "$(GREEN)✓ Build complete$(NC)"
+
+ssl-init: ## Request Let's Encrypt cert and deploy to Nginx
+	@echo "$(GREEN)Requesting Let's Encrypt certificate...$(NC)"
+	@chmod +x scripts/ssl/request-letsencrypt.sh
+	@bash scripts/ssl/request-letsencrypt.sh
+	@echo "$(GREEN)✓ Certificate deployed$(NC)"
+
+ssl-renew-start: ## Start automatic Let's Encrypt renewal
+	@docker-compose up -d certbot-renew
+	@echo "$(GREEN)✓ certbot-renew started$(NC)"
+
+ssl-renew-stop: ## Stop automatic Let's Encrypt renewal
+	@docker-compose stop certbot-renew
+	@echo "$(YELLOW)certbot-renew stopped$(NC)"
 
 # ==============================================
 # Start/Stop commands

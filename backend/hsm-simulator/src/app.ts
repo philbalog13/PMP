@@ -1,13 +1,23 @@
 import express, { NextFunction, Request, Response } from 'express';
 import cors from 'cors';
-import Redis from 'ioredis';
 import { hsmRoutes } from './routes/hsm.routes';
 import { VulnEngine } from './services/VulnEngine';
 import { HSMController } from './controllers/hsm.controller';
 
+// Lazy-load ioredis — HSM starts in memory-only mode when Redis is unavailable.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let RedisConstructor: any = null;
+try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    RedisConstructor = require('ioredis');
+} catch {
+    console.warn('[HSM] ioredis not installed — VulnEngine will use in-memory Map');
+}
+
 const app = express();
 const controller = new HSMController();
-let vulnRedisClient: Redis | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let vulnRedisClient: any | null = null;
 
 app.disable('x-powered-by');
 app.use(cors());
@@ -18,7 +28,7 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
     next();
 });
 
-app.use(VulnEngine.middleware);
+app.use(VulnEngine.middleware.bind(VulnEngine));
 app.use('/hsm', hsmRoutes);
 
 // Legacy CTF PIN compatibility routes
@@ -39,9 +49,13 @@ export async function initializeVulnEngineRedis(): Promise<void> {
         return;
     }
 
+    if (!RedisConstructor) {
+        console.warn('[HSM] ioredis not available — VulnEngine stays in memory mode');
+        return;
+    }
     const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
     try {
-        vulnRedisClient = new Redis(redisUrl, {
+        vulnRedisClient = new RedisConstructor(redisUrl, {
             lazyConnect: true,
             maxRetriesPerRequest: 1,
         });
