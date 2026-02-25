@@ -31,6 +31,14 @@ const isPublicPath = (path: string): boolean => {
         return true;
     }
 
+    // Internal CTF lab resolve route (sessionCode is dynamic)
+    if (
+        path.startsWith('/api/ctf/internal/lab/sessions/') &&
+        path.endsWith('/resolve')
+    ) {
+        return true;
+    }
+
     // Specific auth endpoints that are public
     const publicAuthPaths = [
         '/api/auth/login',

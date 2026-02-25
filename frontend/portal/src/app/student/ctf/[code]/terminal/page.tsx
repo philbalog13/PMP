@@ -1,21 +1,123 @@
 'use client';
 
-import { use, useMemo, useState } from 'react';
+import { use, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Copy, ExternalLink, Terminal } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Copy, ExternalLink, RefreshCw, Terminal } from 'lucide-react';
 import { CourseCard, CoursePageShell, CoursePill } from '@/components/course/CoursePageShell';
 import { APP_URLS } from '@shared/lib/app-urls';
+import { CtfLabSession } from '@/lib/ctf-lab';
+import { normalizeCtfCode } from '@/lib/ctf-code-map';
 
 export default function CtfTerminalPage({ params }: { params: Promise<{ code: string }> }) {
     const { code } = use(params);
-    const normalizedCode = useMemo(
-        () => decodeURIComponent(String(code || '')).trim().toUpperCase(),
+    const requestedCode = useMemo(
+        () => normalizeCtfCode(decodeURIComponent(String(code || ''))),
         [code]
     );
+    const normalizedCode = requestedCode;
 
-    const attackboxUrl = APP_URLS.ctfAttackbox;
-    const helperCommand = `lab ${normalizedCode || '<CODE>'}`;
+    const [session, setSession] = useState<CtfLabSession | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
+    const [attackboxReady, setAttackboxReady] = useState(false);
+
+    const getToken = useCallback(() => localStorage.getItem('token') || '', []);
+
+    const attackboxUrl = useMemo(() => {
+        const sessionPath = session?.attackboxPath;
+        if (!sessionPath) return APP_URLS.ctfAttackbox;
+        const token = getToken();
+        // Point directly to lab-access-proxy so WebSocket upgrade works (Next.js rewrites don't proxy WS)
+        const base = APP_URLS.labProxy.replace(/\/+$/, '');
+        const path = sessionPath.startsWith('/') ? sessionPath : `/${sessionPath}`;
+        return token ? `${base}${path}?token=${encodeURIComponent(token)}` : `${base}${path}`;
+    }, [session?.attackboxPath, getToken]);
+
+    const helperCommand = `lab ${normalizedCode || '<CODE>'}`;
+
+    const getHeaders = useCallback(() => {
+        const token = getToken();
+        return token ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } : null;
+    }, [getToken]);
+
+    const bootstrapAttackboxAccess = useCallback(async (attackboxPath: string): Promise<boolean> => {
+        const headers = getHeaders();
+        if (!headers) {
+            return false;
+        }
+
+        // Auth bootstrap via Next.js rewrite (sets cookie for subsequent requests)
+        const authPath = `${String(attackboxPath || '').replace(/\/+$/, '')}/auth`;
+        try {
+            const response = await fetch(authPath, {
+                method: 'POST',
+                headers,
+                cache: 'no-store',
+            });
+            return response.ok;
+        } catch {
+            // Fallback: token will be in the iframe URL query param
+            return true;
+        }
+    }, [getHeaders]);
+
+    const fetchSession = useCallback(async () => {
+        const headers = getHeaders();
+        if (!headers || !normalizedCode) {
+            setError('Session expiree.');
+            setLoading(false);
+            return;
+        }
+
+        try {
+            setLoading(true);
+            setError(null);
+            const res = await fetch(`/api/ctf/challenges/${encodeURIComponent(normalizedCode)}/session`, {
+                method: 'GET',
+                headers,
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data?.success) {
+                throw new Error(data?.error || 'Impossible de charger la session lab.');
+            }
+
+            setSession(data.session || null);
+            setAttackboxReady(false);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Erreur de chargement de session.');
+        } finally {
+            setLoading(false);
+        }
+    }, [getHeaders, normalizedCode]);
+
+    useEffect(() => {
+        void fetchSession();
+    }, [fetchSession]);
+
+    useEffect(() => {
+        const sessionPath = session?.attackboxPath;
+        if (!sessionPath || session?.status !== 'RUNNING') {
+            setAttackboxReady(false);
+            return;
+        }
+
+        let active = true;
+        setAttackboxReady(false);
+        void (async () => {
+            // Try auth bootstrap via cookie; if it fails, the token query param in the iframe URL handles auth
+            await bootstrapAttackboxAccess(sessionPath);
+            if (!active) {
+                return;
+            }
+            // Always mark ready: the iframe URL includes ?token= as fallback auth
+            setAttackboxReady(true);
+        })();
+
+        return () => {
+            active = false;
+        };
+    }, [bootstrapAttackboxAccess, session?.attackboxPath, session?.sessionId, session?.status]);
 
     const copyHelper = async () => {
         try {
@@ -43,7 +145,7 @@ export default function CtfTerminalPage({ params }: { params: Promise<{ code: st
             meta={
                 <>
                     <CoursePill tone="slate">{normalizedCode || 'CTF'}</CoursePill>
-                    <CoursePill tone="cyan">{attackboxUrl}</CoursePill>
+                    <CoursePill tone="cyan">{session?.status || 'NO_SESSION'}</CoursePill>
                 </>
             }
             actions={
@@ -52,11 +154,22 @@ export default function CtfTerminalPage({ params }: { params: Promise<{ code: st
                         href={attackboxUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="px-4 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-semibold inline-flex items-center gap-2"
+                        className={`px-4 py-2.5 rounded-xl text-white text-sm font-semibold inline-flex items-center gap-2 ${
+                            session && attackboxReady
+                                ? 'bg-cyan-600 hover:bg-cyan-500'
+                                : 'bg-slate-700/60 pointer-events-none'
+                        }`}
                     >
                         <ExternalLink className="h-4 w-4" />
                         Ouvrir dans un onglet
                     </a>
+                    <button
+                        onClick={() => void fetchSession()}
+                        className="px-4 py-2.5 rounded-xl border border-white/10 bg-slate-900/40 hover:bg-slate-900/60 text-sm font-semibold inline-flex items-center gap-2"
+                    >
+                        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                        Refresh
+                    </button>
                     <Link
                         href={`${APP_URLS.studentCtf}/${encodeURIComponent(normalizedCode)}`}
                         className="px-4 py-2.5 rounded-xl border border-white/10 bg-slate-900/40 hover:bg-slate-900/60 text-sm font-semibold inline-flex items-center gap-2"
@@ -68,6 +181,32 @@ export default function CtfTerminalPage({ params }: { params: Promise<{ code: st
             }
         >
             <div className="space-y-6">
+                {error && (
+                    <CourseCard className="border border-red-500/20 bg-red-500/5 p-4">
+                        <div className="flex items-start gap-2">
+                            <AlertCircle className="h-4 w-4 text-red-300 mt-0.5" />
+                            <p className="text-sm text-red-100/90">{error}</p>
+                        </div>
+                    </CourseCard>
+                )}
+
+                {!loading && !session && (
+                    <CourseCard className="p-6 border border-amber-500/20 bg-amber-500/5">
+                        <p className="text-sm text-amber-100/90 leading-relaxed">
+                            Aucune machine active pour cette room. Lance d&apos;abord la room depuis la page principale
+                            puis reouvre ce terminal.
+                        </p>
+                        <div className="mt-4">
+                            <Link
+                                href={`${APP_URLS.studentCtf}/${encodeURIComponent(normalizedCode)}`}
+                                className="px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white text-sm font-semibold inline-flex items-center gap-2"
+                            >
+                                Retour a la room
+                            </Link>
+                        </div>
+                    </CourseCard>
+                )}
+
                 <CourseCard className="p-6 md:p-8">
                     <p className="text-sm text-slate-300 leading-relaxed">
                         Dans l&apos;AttackBox, utilisez le helper ci-dessous pour afficher les objectifs et commandes utiles.
@@ -89,15 +228,26 @@ export default function CtfTerminalPage({ params }: { params: Promise<{ code: st
                     </p>
                 </CourseCard>
 
-                <CourseCard className="p-0 overflow-hidden">
-                    <iframe
-                        title="CTF AttackBox"
-                        src={attackboxUrl}
-                        className="w-full h-[70vh]"
-                    />
-                </CourseCard>
+                {session && (
+                    attackboxReady ? (
+                        <CourseCard className="p-0 overflow-hidden">
+                            <iframe
+                                title="CTF AttackBox"
+                                src={attackboxUrl}
+                                loading="lazy"
+                                className="w-full h-[70vh]"
+                            />
+                        </CourseCard>
+                    ) : (
+                        <CourseCard className="p-6 border border-cyan-500/20 bg-cyan-500/5">
+                            <div className="flex items-center gap-3 text-cyan-100/90">
+                                <RefreshCw className="h-4 w-4 animate-spin text-cyan-300" />
+                                <p className="text-sm">Initialisation securisee de l&apos;AttackBox...</p>
+                            </div>
+                        </CourseCard>
+                    )
+                )}
             </div>
         </CoursePageShell>
     );
 }
-

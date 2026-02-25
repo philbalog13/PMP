@@ -1,0 +1,702 @@
+
+
+=================================== PAGE 1 ===================================
+Fonctions monétiques : émetteur et acquéreur
+Module 722-2
+Expert(e) en Monétique et Transactions Sécurisées
+Responsable : Georges Balog
+Semestre 5
+
+=================================== PAGE 2 ===================================
+Table des matières
+Introduction 4
+1 L’écosystème émetteur-acquéreur 5
+1.1 Définitions et rôles fondamentaux . . . . . . . . . . . . . . . . . . . . . . . 5
+1.1.1 L’émetteur (Issuer) . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+1.1.2 L’acquéreur (Acquirer) . . . . . . . . . . . . . . . . . . . . . . . . . 5
+1.2 Interaction émetteur-acquéreur dans une transaction . . . . . . . . . . . . 6
+1.2.1 Le flux d’autorisation . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+1.2.2 La compensation et le règlement . . . . . . . . . . . . . . . . . . . . 7
+1.3 Les commissions . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7
+1.3.1 Commission d’interchange . . . . . . . . . . . . . . . . . . . . . . . 7
+1.3.2 Commission réseau (schéma) . . . . . . . . . . . . . . . . . . . . . . 7
+1.3.3 Commission commerçant (MSC) . . . . . . . . . . . . . . . . . . . . 7
+1.4 Spécificités françaises : le rôle du GIE Cartes Bancaires . . . . . . . . . . . 7
+2 Fonctions Émetteur 8
+2.1 La carte : support physique et données . . . . . . . . . . . . . . . . . . . . 8
+2.1.1 Cycle de vie d’une carte . . . . . . . . . . . . . . . . . . . . . . . . 8
+2.1.2 Données de la carte . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+2.2 Dématérialisation de la carte . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+2.2.1 Types de dématérialisation . . . . . . . . . . . . . . . . . . . . . . . 9
+2.2.2 Avantages pour l’émetteur . . . . . . . . . . . . . . . . . . . . . . . 9
+2.3 Front-Office Émetteur . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 9
+2.3.1 Services en ligne (banque à distance) . . . . . . . . . . . . . . . . . 9
+2.3.2 Applications mobiles . . . . . . . . . . . . . . . . . . . . . . . . . . 9
+2.3.3 GAB (Guichets Automatiques) . . . . . . . . . . . . . . . . . . . . 9
+2.3.4 Plateforme d’authentification 3-D Secure (ACS) . . . . . . . . . . . 10
+2.4 Back-Office Émetteur . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 10
+2.4.1 Serveur d’Autorisation Émetteur (SAE) . . . . . . . . . . . . . . . 10
+2.4.2 Gestion des comptes . . . . . . . . . . . . . . . . . . . . . . . . . . 10
+2.4.3 Gestion des listes noires . . . . . . . . . . . . . . . . . . . . . . . . 10
+2.4.4 Traitement de la compensation (clearing) . . . . . . . . . . . . . . . 11
+2.4.5 Gestion des litiges (disputes) . . . . . . . . . . . . . . . . . . . . . . 11
+2.4.6 Reporting et analyse . . . . . . . . . . . . . . . . . . . . . . . . . . 11
+2.5 Intégration avec le système d’information bancaire . . . . . . . . . . . . . . 11
+1
+
+=================================== PAGE 3 ===================================
+Fonctions monétiques : émetteur et acquéreur TABLE DES MATIÈRES
+3 Fonctions Acquéreur 12
+3.1 Le Terminal de Paiement Électronique (TPE) . . . . . . . . . . . . . . . . 12
+3.1.1 Fonctions du TPE . . . . . . . . . . . . . . . . . . . . . . . . . . . 12
+3.1.2 Types de TPE . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 12
+3.1.3 Certification et sécurité . . . . . . . . . . . . . . . . . . . . . . . . . 12
+3.2 Le Guichet Automatique de Banque (GAB) . . . . . . . . . . . . . . . . . 12
+3.2.1 Fonctions du GAB . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+3.2.2 Spécificités techniques . . . . . . . . . . . . . . . . . . . . . . . . . 13
+3.3 Front-Office Acquéreur . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+3.3.1 Portail commerçant . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+3.3.2 Plateforme de téléparamétrage . . . . . . . . . . . . . . . . . . . . . 13
+3.3.3 Support technique . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+3.4 Back-Office Acquéreur . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+3.4.1 Système d’Autorisation Acquéreur (SAA) . . . . . . . . . . . . . . . 13
+3.4.2 Gestionnaire de GAB (GDG) . . . . . . . . . . . . . . . . . . . . . 14
+3.4.3 Télécollecte et compensation . . . . . . . . . . . . . . . . . . . . . . 14
+3.4.4 Gestion des risques et des litiges . . . . . . . . . . . . . . . . . . . . 14
+3.5 Protocoles d’échange . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 14
+3.5.1 CB2A / 2AP (Acceptor Acquirer Protocol) . . . . . . . . . . . . . . 14
+3.5.2 CBAE (Acquéreur Émetteur) . . . . . . . . . . . . . . . . . . . . . 15
+3.5.3 Évolutions récentes : CB2A 1.6 . . . . . . . . . . . . . . . . . . . . 15
+4 Système d’information bancaire 16
+4.1 Architecture générale . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 16
+4.1.1 Composants principaux . . . . . . . . . . . . . . . . . . . . . . . . . 16
+4.1.2 Interfaces avec la monétique . . . . . . . . . . . . . . . . . . . . . . 16
+4.2 Flux comptables . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 16
+4.2.1 Cycle de traitement d’une transaction . . . . . . . . . . . . . . . . . 16
+4.2.2 Gestion des impayés . . . . . . . . . . . . . . . . . . . . . . . . . . 17
+4.3 Sécurité et continuité d’activité . . . . . . . . . . . . . . . . . . . . . . . . 17
+5 Travaux Pratiques 18
+5.1 TP1 : Front-Office (4h) . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+5.1.1 Matériel et logiciels . . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+5.1.2 Exercice 1 : Simulation d’un portail commerçant . . . . . . . . . . . 18
+5.1.3 Exercice 2 : Gestion des plafonds porteur . . . . . . . . . . . . . . . 18
+5.1.4 Exercice 3 : Simulation d’authentification 3-D Secure . . . . . . . . 18
+5.2 TP2 : Back-Office et préparation des données carte (4h) . . . . . . . . . . . 19
+5.2.1 Exercice 1 : Création d’un référentiel de cartes dans Kanest . . . . . 19
+5.2.2 Exercice 2 : Analyse de fichiers de compensation . . . . . . . . . . . 19
+5.2.3 Exercice 3 : Simulation d’autorisations avec CB2A . . . . . . . . . . 19
+5.3 TP3 : Mise en service GAB (4h) . . . . . . . . . . . . . . . . . . . . . . . . 20
+5.3.1 Matériel . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 20
+5.3.2 Exercice 1 : Configuration du GAB . . . . . . . . . . . . . . . . . . 20
+5.3.3 Exercice 2 : Simulation de retraits . . . . . . . . . . . . . . . . . . . 20
+5.3.4 Exercice 3 : Gestion des incidents . . . . . . . . . . . . . . . . . . . 21
+5.3.5 Exercice 4 : Télécollecte des opérations GAB . . . . . . . . . . . . . 21
+2
+
+=================================== PAGE 4 ===================================
+Fonctions monétiques : émetteur et acquéreur TABLE DES MATIÈRES
+A Annexes techniques 22
+A.1 Annexe A : Spécifications PROGAB D . . . . . . . . . . . . . . . . . . . . 22
+A.2 Annexe B : Outil Kanest – Guide rapide . . . . . . . . . . . . . . . . . . . 22
+A.3 Annexe C : Glossaire des protocoles . . . . . . . . . . . . . . . . . . . . . . 23
+3
+
+=================================== PAGE 5 ===================================
+Introduction
+Le système de paiement électronique repose sur une infrastructure complexe où deux
+acteurs centraux – l’émetteur et l’acquéreur – assurent le bon déroulement des transac-
+tions. Derrière chaque paiement par carte se cachent des systèmes d’information sophis-
+tiqués, des frontaux de communication, des back-offices de traitement, et des interfaces
+normalisées.
+Ce module de 28 heures (16h de cours, 12h de travaux pratiques) vous plonge au
+cœur des fonctions monétiques. Vous découvrirez l’architecture complète des systèmes
+d’émission et d’acquisition, depuis la carte physique jusqu’aux systèmes d’information
+bancaires, en passant par les TPE, les GAB, et les protocoles d’échange.
+Pré-requis :
+— Maîtrise des fondamentaux de la monétique (module 734-2)
+— Connaissance des protocoles EMV et 3-D Secure (module 732-2)
+— Utilisation de l’outil Kanest (introduction en TP)
+Compétences visées :
+— Maîtrise du protocole CB2A (2AP) et des échanges interbancaires
+— Utilisation avancée de l’outil Kanest pour la simulation et les tests
+— Connaissance des spécifications d’interface PROGAB D avec LE GDG
+— Capacité à configurer et paramétrer des front-office et back-office monétiques
+4
+
+=================================== PAGE 6 ===================================
+1. L’écosystème émetteur-acquéreur
+Objectifs d’apprentissage
+— Comprendre les rôles respectifs de l’émetteur et de l’acquéreur
+— Analyser leurs interactions dans une transaction
+— Maîtriser les flux financiers et les commissions
+— Connaître les spécificités du marché français
+1.1 Définitions et rôles fondamentaux
+1.1.1 L’émetteur (Issuer)
+L’émetteurest l’établissement financier qui fournit la carte au porteur et gère son
+compte. Il peut s’agir d’une banque traditionnelle, d’une coopérative de crédit, ou d’un
+établissement de paiement.
+Fonctions principales :
+—Émission des cartes: personnalisation, envoi au client, gestion des codes PIN
+—Gestion des comptes: tenue de compte, calcul des intérêts, gestion des plafonds
+—Autorisation: validation ou refus des transactions en fonction du solde et des
+risques
+—Gestion des litiges: traitement des contestations, remboursements
+—Sécurité: détection de fraude, mise en opposition, listes noires
+L’émetteurprendunrisquedecrédit:ilaccordeunelignedecréditauporteur(souvent
+non garantie) et supporte les pertes en cas de défaut de paiement. En cas de fraude,
+l’émetteur est généralement responsable du remboursement du porteur, sauf négligence
+avérée.
+Émetteurs majeurs :
+En France, les principaux émetteurs sont BNP Paribas, Crédit Agricole, So-
+ciété Générale, BPCE. Aux États-Unis, Chase, Bank of America et Capital
+One sont parmi les plus importants. Ces établissements émettent des cartes
+sous les marques Visa, Mastercard ou CB.
+1.1.2 L’acquéreur (Acquirer)
+L’acquéreurest l’établissement financier qui gère la relation avec le commerçant
+(accepteur). Il fournit les terminaux de paiement, collecte les transactions, et crédite le
+compte du commerçant.
+Fonctions principales :
+5
+
+=================================== PAGE 7 ===================================
+Fonctions monétiques : émetteur et acquéreur CHAPITRE 1. L’ÉCOSYSTÈME ÉMETTEUR-ACQUÉREUR
+—Équipement des commerçants: fourniture et maintenance des TPE
+—Gestion des contrats: évaluation des risques, signature des conventions
+—Traitement des transactions: collecte, autorisation, transmission
+—Paiement du commerçant: crédit du compte, déduction des commissions
+—Gestion des litiges: traitement des contestations côté commerçant
+L’acquéreur assume également un risque : si un commerçant fait faillite après avoir été
+payé mais avant d’avoir livré les biens (et que des contestations surviennent), l’acquéreur
+peut être tenu de rembourser.
+Acquéreurs en France :
+Les principaux acquéreurs français sont BNP Paribas, BPCE, Crédit Agri-
+cole (via sa filiale EuroInformation), ainsi que des acteurs spécialisés comme
+Worldline ou Adyen.
+1.2 Interaction émetteur-acquéreur dans une transac-
+tion
+1.2.1 Le flux d’autorisation
+Lors d’une transaction, émetteur et acquéreur collaborent étroitement. Le processus
+typique se déroule ainsi :
+1.Initiation: Le porteur présente sa carte chez le commerçant. Le TPE lit les données
+et construit une demande d’autorisation.
+2.Transmission à l’acquéreur: Le TPE envoie la demande à l’acquéreur (via le
+protocole CB2A/2AP). L’acquéreur effectue des contrôles préliminaires (identifiant
+commerçant, etc.).
+3.Acheminement vers l’émetteur: L’acquéreur transmet la demande au réseau
+interbancaire (ex. e-RSB pour CB). Le réseau route vers le bon émetteur.
+4.Traitement par l’émetteur: L’émetteur vérifie le solde, les plafonds, le crypto-
+gramme, et applique ses règles de risque. Il autorise ou refuse.
+5.Retour: La réponse repart en sens inverse jusqu’au TPE.
+Transaction chez un commerçant :
+Un client (porteur) achète un livre à 30€chez un libraire. Le libraire utilise
+un TPE fourni par sa banque acquéreuse (BNP). La carte est émise par le
+Crédit Mutuel.
+— Le TPE envoie la demande à BNP (acquéreur)
+— BNP transmet au réseau CB
+— CB route vers le Crédit Mutuel (émetteur)
+— Crédit Mutuel autorise (compte suffisant)
+— La réponse retourne au TPE qui imprime le ticket
+Le libraire sera crédité du montant moins les commissions dans les 24-48h.
+6
+
+=================================== PAGE 8 ===================================
+Fonctions monétiques : émetteur et acquéreur CHAPITRE 1. L’ÉCOSYSTÈME ÉMETTEUR-ACQUÉREUR
+1.2.2 La compensation et le règlement
+Après l’autorisation, les transactions sont regroupées en lots pour la compensation
+(clearing). Les fichiers de compensation sont échangés entre banques, et les positions
+nettes sont calculées. Le règlement final (settlement) intervient via les comptes à la banque
+centrale (TARGET2).
+1.3 Les commissions
+Chaque transaction génère des commissions qui rémunèrent les acteurs :
+1.3.1 Commission d’interchange
+Payée par l’acquéreur à l’émetteur. Elle est plafonnée par la régulation européenne :
+— Cartes de débit : 0,2% du montant
+— Cartes de crédit : 0,3% du montant
+Cette commission rémunère l’émetteur pour le risque et la gestion du compte.
+1.3.2 Commission réseau (schéma)
+Payée au schéma (Visa, Mastercard, CB) pour l’utilisation du réseau. Elle est généra-
+lement de l’ordre de 0,01% à 0,1%.
+1.3.3 Commission commerçant (MSC)
+Prélevée par l’acquéreur sur le commerçant. Elle inclut l’interchange, la commission
+réseau, et la marge de l’acquéreur. Négociable selon le volume.
+Table 1.1– Répartition typique des commissions (exemple pour 100€)
+Type Montant Payeur Bénéficiaire
+Interchange 0,20€Acquéreur Émetteur
+Réseau 0,05€Acquéreur Schéma
+Marge acquéreur 0,15€Acquéreur Acquéreur
+Total prélevé au commerçant 0,40€Commerçant -
+1.4 Spécificités françaises : le rôle du GIE Cartes Ban-
+caires
+En France, le GIE Cartes Bancaires (CB) joue un rôle central. Il définit les spéci-
+fications techniques, gère le réseau interbancaire e-RSB, et assure la compensation. La
+plupart des cartes françaises sont co-badgées CB/Visa ou CB/Mastercard, ce qui permet
+une utilisation internationale.
+7
+
+=================================== PAGE 9 ===================================
+2. Fonctions Émetteur
+Objectifs d’apprentissage
+— Comprendre le cycle de vie d’une carte
+— Maîtriser les concepts de dématérialisation
+— Décrire l’architecture front-office et back-office de l’émetteur
+— Analyser les flux d’autorisation et de compensation côté émetteur
+2.1 La carte : support physique et données
+2.1.1 Cycle de vie d’une carte
+1.Commande et personnalisation: L’émetteur commande des cartes vierges au-
+près d’un fabricant (Idemia, Thales). La personnalisation consiste à graver les don-
+nées du porteur (nom, PAN, date d’expiration) et à injecter les clés cryptogra-
+phiques.
+2.Expédition et activation: La carte est envoyée au porteur avec son code PIN
+(souvent sous pli séparé). L’activation peut être automatique ou nécessiter un pre-
+mier appel.
+3.Utilisation: La carte est utilisée pour des transactions. L’émetteur gère les auto-
+risations, les plafonds, et la détection de fraude.
+4.Expiration et renouvellement: Avant expiration, une nouvelle carte est émise.
+5.Opposition et fin de vie: En cas de perte/vol, opposition. La carte est désactivée.
+2.1.2 Données de la carte
+—PAN(Primary Account Number) : 16 chiffres, avec IIN (6 premiers) identifiant
+l’émetteur.
+—Date d’expiration: mois/année.
+—Nom du porteur.
+—Puce EMV: contient les données d’authentification et les clés.
+—Piste magnétique(pour compatibilité) : contient les mêmes données en clair (vul-
+nérable).
+2.2 Dématérialisation de la carte
+La dématérialisation (ou tokenisation) consiste à remplacer les données sensibles de la
+carte par un jeton (token) utilisé dans des contextes spécifiques.
+8
+
+=================================== PAGE 10 ===================================
+Fonctions monétiques : émetteur et acquéreur CHAPITRE 2. FONCTIONS ÉMETTEUR
+2.2.1 Types de dématérialisation
+—Carte virtualisée dans un wallet: Apple Pay, Google Pay stockent un jeton
+(DPAN – Device Primary Account Number) sur le téléphone. Le vrai PAN (FPAN)
+n’est jamais transmis.
+—Carte virtuelle à usage unique: générée pour un achat en ligne.
+—Carte prépayée virtuelle: chargée d’un montant, utilisable sans compte bancaire.
+2.2.2 Avantages pour l’émetteur
+— Réduction de la fraude (le jeton est inutilisable hors contexte)
+— Meilleure expérience client (paiement mobile)
+— Contrôle renforcé (possibilité de désactiver un jeton sans affecter la carte physique)
+Apple Pay :
+Un client ajoute sa carte physique dans Apple Pay. L’émetteur (via son service
+de tokenisation) génère un jeton stocké dans l’iPhone. Lors d’un paiement, le
+jeton est transmis au terminal, jamais le vrai numéro. Si l’iPhone est volé, le
+voleur ne peut pas utiliser le jeton ailleurs.
+2.3 Front-Office Émetteur
+Le front-office de l’émetteur regroupe les interfaces et services accessibles au porteur.
+2.3.1 Services en ligne (banque à distance)
+— Consultation des opérations
+— Gestion des plafonds (modification temporaire)
+— Opposition en cas de perte/vol
+— Téléchargement des relevés
+— Activation de la carte
+2.3.2 Applications mobiles
+— Notifications en temps réel (paiements)
+— Authentification forte pour les paiements en ligne (3-D Secure)
+— Gestion des cartes virtuelles
+2.3.3 GAB (Guichets Automatiques)
+L’émetteur gère également ses propres GAB où les porteurs peuvent retirer de l’argent.
+Le GAB interagit avec le système d’autorisation de l’émetteur.
+9
+
+=================================== PAGE 11 ===================================
+Fonctions monétiques : émetteur et acquéreur CHAPITRE 2. FONCTIONS ÉMETTEUR
+2.3.4 Plateforme d’authentification 3-D Secure (ACS)
+L’Access Control Server (ACS) est un composant critique du front-office. Il reçoit
+les demandes d’authentification des commerçants, dialogue avec le porteur (challenge),
+et renvoie un résultat signé. L’ACS s’appuie sur les règles de risque et les données du
+porteur.
+2.4 Back-Office Émetteur
+Le back-office est le cœur du système d’information de l’émetteur. Il assure le traite-
+ment des transactions, la gestion des comptes, et la sécurité.
+2.4.1 Serveur d’Autorisation Émetteur (SAE)
+C’est le composant central qui reçoit les demandes d’autorisation et prend la décision.
+Fonctions du SAE :
+— Vérificationducryptogramme(ARQC–AuthorizationRequestCryptogram)généré
+par la carte
+— Vérification du code PIN (si online)
+— Contrôle du solde et des plafonds
+— Analyse de risque (scoring)
+— Consultation des listes noires
+— Gestion du stand-in (délégation si le système central est indisponible)
+Traitement d’une autorisation :
+Le SAE reçoit une demande pour 150€sur une carte. Il vérifie :
+— Le cryptogramme ARQC (preuve que la carte est authentique)
+— Le solde du compte : 500€ →OK
+— Le plafond quotidien : déjà 200€aujourd’hui, total après transaction
+350€(plafond 500€)→OK
+— Le scoring : transaction dans un magasin habituel→risque faible
+Décision : autorisation (code 00).
+2.4.2 Gestion des comptes
+Le back-office tient à jour les soldes, les plafonds, les intérêts. Il alimente les relevés.
+2.4.3 Gestion des listes noires
+L’émetteur maintient des listes de cartes volées, perdues, ou frauduleuses. Ces listes
+sont diffusées aux terminaux (via les acquireurs) pour blocage offline.
+10
+
+=================================== PAGE 12 ===================================
+Fonctions monétiques : émetteur et acquéreur CHAPITRE 2. FONCTIONS ÉMETTEUR
+2.4.4 Traitement de la compensation (clearing)
+L’émetteur reçoit des fichiers de compensation (fichiers d’échanges interbancaires)
+contenant toutes les transactions autorisées. Il doit :
+— Vérifier la cohérence avec les autorisations émises
+— Provisionner les débits sur les comptes des porteurs
+— Générer des fichiers de réponse (exceptions)
+2.4.5 Gestion des litiges (disputes)
+Lorsqu’un porteur conteste une transaction, le back-office gère la procédure :
+— Réception de la contestation
+— Analyse (preuves, délais)
+— Envoi d’une demande de chargeback à l’acquéreur via le réseau
+— Crédit provisoire ou permanent du porteur
+2.4.6 Reporting et analyse
+Le back-office produit des rapports pour la direction financière, la conformité, et la
+détection de fraudes.
+2.5 Intégration avec le système d’information bancaire
+Le SI bancaire (core banking) gère les comptes, les transactions financières, les in-
+térêts. Le système monétique (SAE, back-office) s’y interface en temps réel (pour les
+autorisations) et en batch (pour les écritures comptables).
+11
+
+=================================== PAGE 13 ===================================
+3. Fonctions Acquéreur
+Objectifs d’apprentissage
+— Comprendre le rôle des TPE et GAB
+— Maîtriser l’architecture front-office et back-office de l’acquéreur
+— Analyser les flux d’autorisation et de télécollecte
+— Connaître les protocoles d’échange (CB2A, CBAE)
+3.1 Le Terminal de Paiement Électronique (TPE)
+3.1.1 Fonctions du TPE
+Le TPE est l’interface entre le commerçant et le système de paiement. Ses fonctions :
+— Lecture de la carte (contact, sans contact)
+— Dialogue EMV avec la carte
+— Saisie du code PIN
+— Construction et envoi des demandes d’autorisation
+— Impression des tickets
+— Télécollecte des transactions (envoi des lots)
+— Téléparamétrage (mise à jour des configurations, listes noires)
+3.1.2 Types de TPE
+—TPE fixe: en magasin, relié par Ethernet ou téléphone
+—TPE mobile: Bluetooth/3G/4G, pour les commerçants ambulants
+—SoftPOS: application sur smartphone transformant le téléphone en terminal
+—Automate: parking, distributeur de billets, borne de recharge
+3.1.3 Certification et sécurité
+Les TPE doivent être certifiés EMV et PCI PTS. Ils stockent des clés cryptographiques
+et des configurations sécurisées.
+3.2 Le Guichet Automatique de Banque (GAB)
+Le GAB (ou DAB – Distributeur Automatique de Billets) est un cas particulier de
+terminal.
+12
+
+=================================== PAGE 14 ===================================
+Fonctions monétiques : émetteur et acquéreur CHAPITRE 3. FONCTIONS ACQUÉREUR
+3.2.1 Fonctions du GAB
+— Retrait d’espèces
+— Consultation de solde
+— Dépôt d’espèces/chèques (GAB avec fonction dépôt)
+— Impression de relevés
+3.2.2 Spécificités techniques
+Le GAB dialogue avec l’acquéreur (ou directement avec l’émetteur) via des protocoles
+spécifiques. En France, l’interface PROGAB D avec LE GDG est un standard.
+PROGAB D :
+PROGAB D est une spécification d’interface pour les GAB. Elle définit les
+messages échangés entre le GAB et le GDG (Gestionnaire de GAB). Le GDG
+est le système de l’acquéreur qui gère les automates. La norme précise les
+formats des demandes de retrait, des réponses, des télécollectes, etc.
+3.3 Front-Office Acquéreur
+Le front-office de l’acquéreur est tourné vers les commerçants.
+3.3.1 Portail commerçant
+— Consultation des transactions
+— Téléchargement des relevés
+— Gestion des litiges
+— Paramétrage des TPE (plafonds, options)
+3.3.2 Plateforme de téléparamétrage
+Elle permet de configurer à distance les TPE :
+— Mise à jour des listes noires
+— Modification des paramètres d’autorisation (ex. basculement online/offline)
+— Installation de nouvelles applications
+3.3.3 Support technique
+Assistanceauxcommerçantspourlesincidents(TPEenpanne,problèmesdeconnexion).
+3.4 Back-Office Acquéreur
+3.4.1 Système d’Autorisation Acquéreur (SAA)
+Le SAA reçoit les demandes des TPE, effectue des contrôles, et les route vers le bon
+émetteur (via le réseau).
+Fonctions du SAA :
+13
+
+=================================== PAGE 15 ===================================
+Fonctions monétiques : émetteur et acquéreur CHAPITRE 3. FONCTIONS ACQUÉREUR
+— Contrôle de l’identifiant commerçant
+— Vérification des plafonds commerçant (risque)
+— Routage vers le réseau (CB, Visa, etc.) ou directement vers l’émetteur (si même
+banque)
+— Gestion des timeouts et des réponses de substitution (stand-in)
+— Enregistrement des autorisations pour la compensation
+3.4.2 Gestionnaire de GAB (GDG)
+Le GDG est le système spécifique aux automates. Il gère :
+— Les demandes de retrait (vérification du solde via l’émetteur)
+— La distribution des billets (commande au GAB)
+— La télécollecte des opérations
+— La supervision des stocks de billets
+3.4.3 Télécollecte et compensation
+En fin de journée (ou plusieurs fois par jour), les TPE et GAB envoient leurs lots de
+transactions au SAA/GDG. Ces lots sont consolidés et transmis au système de compen-
+sation pour échange interbancaire.
+3.4.4 Gestion des risques et des litiges
+L’acquéreur gère les contestations côté commerçant :
+— Réception des demandes de chargeback de l’émetteur
+— Débit du compte commerçant si la contestation est valide
+— Gestion des représentations (si le commerçant fournit des preuves)
+3.5 Protocoles d’échange
+3.5.1 CB2A / 2AP (Acceptor Acquirer Protocol)
+Le protocole CB2A (devenu 2AP) est le standard français pour les échanges entre le
+TPE et l’acquéreur.
+Fonctions :
+— Autorisation (2AP Auto) : échange en temps réel
+— Télécollecte (2AP Coll) : envoi des lots
+— Téléparamétrage (2AP Géré) : mise à jour des TPE
+Le 2AP est "scheme agnostic" : il supporte tous les réseaux (CB, Visa, Mastercard,
+Amex). Il évolue régulièrement pour intégrer les nouvelles exigences (DSP2, 3DS2).
+Message 2AP Auto :
+Un message d’autorisation 2AP contient :
+— En-tête : type de message, identifiant du TPE
+14
+
+=================================== PAGE 16 ===================================
+Fonctions monétiques : émetteur et acquéreur CHAPITRE 3. FONCTIONS ACQUÉREUR
+— Données transaction : montant, devise, mode de lecture
+— Données carte : PAN, date d’expiration, cryptogramme
+— Données EMV : tags de la carte
+La réponse contient le code réponse (00 = OK) et éventuellement des données
+de personnalisation.
+3.5.2 CBAE (Acquéreur Émetteur)
+Le protocole CBAE assure l’échange interbancaire entre l’acquéreur et l’émetteur.
+Il agit comme un pont entre le 2AP (côté acceptation) et les protocoles des schémas
+internationaux. Il est utilisé sur le réseau e-RSB de CB.
+3.5.3 Évolutions récentes : CB2A 1.6
+La version 1.6 du protocole CB2A intègre les exigences de la DSP2 et du 3DS2. Elle
+permet :
+— La transmission des données 3DS (CAVV, identifiant de transaction)
+— La gestion des exemptions (TRA)
+— Le chaînage des transactions pour les paiements récurrents (référence unique de
+transaction)
+— Le support de Mastercard et Visa en 3DS2
+Chaînage des paiements récurrents :
+Unsited’abonnement(Netflix)prélève15€chaquemois.Lepremierpaiement
+est authentifié en 3DS2. L’acquéreur reçoit une "référence unique de tran-
+saction" (liée à l’authentification). Pour les échéances suivantes (sans CVV),
+l’acquéreur transmet cette référence dans le message CB2A 1.6. L’émetteur
+reconnaît le chaînage et autorise plus facilement.
+15
+
+=================================== PAGE 17 ===================================
+4. Système d’information bancaire
+Objectifs d’apprentissage
+— Comprendre l’architecture globale du SI bancaire
+— Analyser les interfaces entre monétique et core banking
+— Maîtriser les flux comptables
+4.1 Architecture générale
+Le système d’information bancaire (core banking system) gère l’ensemble des comptes,
+destransactionsfinancières,etdesrelationsclients.Lamonétiquen’estqu’unsous-système
+qui s’y interface.
+4.1.1 Composants principaux
+—Système de gestion des comptes: soldes, intérêts, conditions
+—Système de paiement: virements, prélèvements, chèques
+—Système monétique: émission, acquisition, autorisation
+—Système de gestion de la relation client (CRM): données clients
+—Système décisionnel (BI): reporting, analyse
+4.1.2 Interfaces avec la monétique
+Le système monétique (SAE, SAA) doit communiquer avec le core banking :
+—En temps réel: pour les autorisations (vérification du solde)
+—En batch: pour les écritures comptables (débits, crédits)
+—En quasi temps réel: pour les oppositions, les modifications de plafonds
+4.2 Flux comptables
+4.2.1 Cycle de traitement d’une transaction
+1.Autorisation: vérification du solde (consultation sans écriture)
+2.Compensation: réception du fichier d’échange, génération des écritures
+3.Comptabilisation: débit du compte porteur, crédit du compte commerçant (via
+la banque)
+4.Relevé: mise à disposition des opérations
+16
+
+=================================== PAGE 18 ===================================
+Fonctions monétiques : émetteur et acquéreur CHAPITRE 4. SYSTÈME D’INFORMATION BANCAIRE
+4.2.2 Gestion des impayés
+Si un compte est insuffisamment approvisionné au moment du débit, l’émetteur peut :
+— Rejeter l’opération (si autorisation systématique)
+— Passer en agios (découvert)
+— Engager des procédures de recouvrement
+4.3 Sécurité et continuité d’activité
+Le SI bancaire doit garantir une disponibilité élevée (24h/24, 7j/7). Des centres de
+secours (datacenters redondants) assurent la continuité. Les systèmes monétiques sont
+souvent dupliqués pour résister aux pannes.
+17
+
+=================================== PAGE 19 ===================================
+5. Travaux Pratiques
+Les travaux pratiques (12h) sont répartis en trois séances de 4h. Ils utilisent l’outil
+Kanest pour simuler les échanges monétiques et configurer les systèmes.
+5.1 TP1 : Front-Office (4h)
+Objectif :Configurer et tester les interfaces front-office d’un émetteur et d’un acqué-
+reur.
+5.1.1 Matériel et logiciels
+— Postes avec environnement Kanest installé
+— Accès à la Plateforme Monétique Pédagogique (PMP)
+— Cartes de test virtuelles
+5.1.2 Exercice 1 : Simulation d’un portail commerçant
+1. Se connecter à l’interface acquéreur (simulée)
+2. Consulter les transactions du jour
+3. Télécharger un relevé
+4. Simuler une demande de remboursement
+5.1.3 Exercice 2 : Gestion des plafonds porteur
+1. Se connecter à l’interface émetteur (simulée)
+2. Modifier le plafond quotidien d’un porteur
+3. Ajouter une opposition temporaire
+4. Vérifier que les nouvelles règles sont appliquées sur une transaction test
+5.1.4 Exercice 3 : Simulation d’authentification 3-D Secure
+1. Configurer un ACS simple dans Kanest
+2. Simuler une transaction en ligne avec challenge
+3. Observer les échanges 3DS
+18
+
+=================================== PAGE 20 ===================================
+Fonctions monétiques : émetteur et acquéreurCHAPITRE 5. TRAVAUX PRATIQUES
+5.2 TP2 : Back-Office et préparation des données carte
+(4h)
+Objectif :Préparer des données de cartes de test et analyser les fichiers de compen-
+sation.
+5.2.1 Exercice 1 : Création d’un référentiel de cartes dans Kanest
+1. Créer un nouveau référentiel de test
+2. Définir un format de carte (IIN, plages de numéros)
+3. Générer des cartes virtuelles avec différents profils (débit, crédit, plafonds)
+4. Exporter le référentiel pour utilisation dans les tests
+Travaux Pratiques
+Extrait de fichier de configuration Kanest :
+1<CardProfile >
+2<IIN >497123 </ IIN >
+3< PanRange start ="000000001" end ="000001000"/ >
+4<ExpiryDate >1225 </ ExpiryDate >
+5<CVV2 >123 </ CVV2 >
+6<PIN >4567 </ PIN >
+7< PlafondQuotidien >1000 </ PlafondQuotidien >
+8<Type > DEBIT </ Type >
+9</ CardProfile >
+5.2.2 Exercice 2 : Analyse de fichiers de compensation
+1. Charger un fichier de compensation réel (anonymisé) au format ISO 20022
+2. Identifier les différents types d’enregistrements
+3. Calculer les montants totaux par émetteur
+4. Simuler un rejet de transaction (montant trop élevé)
+5.2.3 Exercice 3 : Simulation d’autorisations avec CB2A
+1. Configurer un simulateur d’acquéreur dans Kanest
+2. Définir une cinématique d’autorisation (scénario de test)
+3. Lancer une série de transactions avec différents codes réponse
+4. Analyser les logs et les traces
+Travaux Pratiques
+Exemple de log d’autorisation CB2A :
+19
+
+=================================== PAGE 21 ===================================
+Fonctions monétiques : émetteur et acquéreurCHAPITRE 5. TRAVAUX PRATIQUES
+1[2026 -02 -21 10:30:45] Demande r e u e du TPE 12345678
+2PAN : 497123******1234
+3Montant : 45.90 EUR
+4Type : ACHAT
+5Cryptogramme : 8 F3A2B ...
+6[2026 -02 -21 10:30:46] Envoi l’ metteur via CBAE
+7[2026 -02 -21 10:30:47] R p o n s e metteur : 00 ( A u t o r i s )
+8[2026 -02 -21 10:30:47] Transmission au TPE
+5.3 TP3 : Mise en service GAB (4h)
+Objectif :Configurer et tester un GAB virtuel avec l’interface PROGAB D.
+5.3.1 Matériel
+— Simulateur de GAB (intégré à Kanest ou application dédiée)
+— Environnement de test avec GDG (Gestionnaire de GAB)
+— Cartes de test
+5.3.2 Exercice 1 : Configuration du GAB
+1. Paramétrer le GAB (identifiant, localisation, stocks de billets)
+2. Configurer les protocoles de communication (PROGAB D)
+3. Établir la connexion avec le GDG simulateur
+5.3.3 Exercice 2 : Simulation de retraits
+1. Simuler un retrait de 50€avec une carte valide
+2. Observer les échanges entre GAB et GDG
+3. Vérifier que le stock de billets est mis à jour
+4. Simuler un retrait avec solde insuffisant→observer le rejet
+Travaux Pratiques
+Extrait de spécification PROGAB D (message de demande de re-
+trait) :
+1Message : RETRAIT_REQ
+2GAB_ID : GAB001
+3Carte : 497123******1234
+4Montant : 5000 ( centimes )
+5PIN : ( b l o q u )
+6DateHeure : 202602211035
+Réponse attendue :
+20
+
+=================================== PAGE 22 ===================================
+Fonctions monétiques : émetteur et acquéreurCHAPITRE 5. TRAVAUX PRATIQUES
+1Message : RETRAIT_RESP
+2CodeReponse : 00
+3BilletsDistribues : 1 x20 + 1 x10 + 1x5
+4NouveauStock : 500
+5.3.4 Exercice 3 : Gestion des incidents
+1. Simuler une panne de connexion pendant un retrait
+2. Observer la gestion du timeout
+3. Simuler une coupure de courant et la reprise après redémarrage
+5.3.5 Exercice 4 : Télécollecte des opérations GAB
+1. En fin de journée, déclencher la télécollecte
+2. Vérifier que toutes les opérations sont transmises au GDG
+3. Consulter le fichier de télécollecte généré
+21
+
+=================================== PAGE 23 ===================================
+A. Annexes techniques
+A.1 Annexe A : Spécifications PROGAB D
+La spécification PROGAB D (version 5.2) définit les échanges entre GAB et GDG.
+Principauxmessages:
+Message Fonction
+RETRAIT_REQ Demande de retrait
+RETRAIT_RESP Réponse à la demande
+CONSULT_REQ Demande de solde
+CONSULT_RESP Réponse solde
+DEPOT_REQ Demande de dépôt
+DEPOT_RESP Réponse dépôt
+TELECOLLECTE_REQ Demande de télécollecte
+TELECOLLECTE_RESP Fichier de télécollecte
+A.2 Annexe B : Outil Kanest – Guide rapide
+Kanest est un outil de simulation et de test pour les systèmes monétiques.
+Fonctionnalités principales :
+— Création de référentiels (cartes, commerçants)
+— Définition de cinématiques (scénarios de test)
+— Simulation de protocoles (CB2A, CBAE, ISO 8583)
+— Analyse de logs
+— Data Driven Testing (DDT)
+Exemple d’utilisation :
+1. Créer un référentiel avec des données de cartes
+2. Définir une suite de tests (autorisation, rejet, etc.)
+3. Lancer les tests et analyser les résultats
+4. Exporter les rapports
+22
+
+=================================== PAGE 24 ===================================
+Fonctions monétiques : émetteur et acquéreurANNEXE A. ANNEXES TECHNIQUES
+A.3 Annexe C : Glossaire des protocoles
+CB2A / 2APProtocole d’échange TPE-Acquéreur
+CBAEProtocole Acquéreur-Émetteur (interbancaire)
+e-RSBRéseau interbancaire français
+PROGAB DInterface GAB-GDG
+ISO 8583Standard international pour messages d’autorisation
+ISO 20022Standard pour messages de compensation (XML)
+23
+
+=================================== PAGE 25 ===================================
+Bibliographie
+[1] Stripe,Acquéreur et émetteur : rôles et différences, 2025
+[2] Lyra,Protocole CB2A 1.6 et DSP2, 2025
+[3] ENSICAEN,Livret pédagogique - Composants de la monétique, 2025
+[4] Adyen,Qu’est-ce qu’un acquéreur, 2025
+[5] Blog Monétiques,L’autorisation, 2014
+[6] Galitt Academy,Formation KANEST, 2026
+[7] FrenchSys,Spécifications FRv6, 2025
+[8] Headmind,Introduction à la monétique, 2025
+[9] Worldline,Release note 20.3 - CB2A 1.6, 2020
+24

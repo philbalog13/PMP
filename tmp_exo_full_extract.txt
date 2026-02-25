@@ -1,0 +1,394 @@
+
+
+=================================== PAGE 1 ===================================
+Recueil d’exercices et QCM
+Modules de Monétique
+Principes du paiement, Paiements carte présente/non présente,
+Fonctions monétiques : émetteur et acquéreur
+Expert(e) en Monétique et Transactions Sécurisées
+Semestre 5
+Table des matières
+1 Module 734-2 – Principes du paiement 3
+1.1 QCM . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3
+1.2 Questions courtes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+1.3 Étude de cas . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+2 Module 732-2 – Paiements carte présente / carte non présente 6
+2.1 QCM . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+2.2 Questions courtes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7
+2.3 Étude de cas . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+3 Module 722-2 – Fonctions monétiques : émetteur et acquéreur 9
+3.1 QCM . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 9
+3.2 Questions courtes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 10
+3.3 Étude de cas . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 11
+Corrigés des QCM 13
+1
+
+=================================== PAGE 2 ===================================
+Exercices et Quiz – Monétique 2
+Introduction
+Ce recueil rassemble des exercices et questions à choix multiples (QCM) couvrant les
+trois modules du cursus d’Expert(e) en Monétique et Transactions Sécurisées :
+— Module 734-2 : Principes du paiement (40h)
+— Module 732-2 : Paiements carte présente / carte non présente (14h)
+— Module 722-2 : Fonctions monétiques : émetteur et acquéreur (28h)
+Chaque exercice est suivi de son corrigé détaillé. Les exercices sont conçus pour évaluer
+la compréhension des concepts fondamentaux, des mécanismes techniques et des aspects
+réglementaires.
+Expert(e) en Monétique et Transactions Sécurisées Semestre 5
+
+=================================== PAGE 3 ===================================
+Exercices et Quiz – Monétique 3
+1 Module 734-2 – Principes du paiement
+1.1 QCM
+Question à choix multiples
+Quels sont les cinq acteurs principaux d’une transaction par carte?
+a) Porteur, émetteur, accepteur, acquéreur, schéma
+b) Porteur, banque centrale, commerçant, processeur, État
+c) Client, vendeur, banque, police, fisc
+d) Payeur, bénéficiaire, intermédiaire, notaire, huissier
+CorrigéRéponse correcte :a. Les cinq acteurs sont le porteur (titulaire de la carte),
+l’émetteur (sa banque), l’accepteur (le commerçant), l’acquéreur (la banque du commer-
+çant) et le schéma (Visa, Mastercard, CB). Les autres options incluent des acteurs non
+pertinents (banque centrale, police, etc.).
+Question à choix multiples
+Que signifie le sigle PAN?
+a) Primary Account Number
+b) Payment Authorization Number
+c) Personal Access Number
+d) Public Authentication Node
+CorrigéRéponse correcte :a. Le PAN (Primary Account Number) est le numéro à 16
+chiffres de la carte. Les autres propositions sont des inventions.
+Question à choix multiples
+Dans une transaction, quel acteur reçoit la commission d’interchange?
+a) L’acquéreur
+b) L’émetteur
+c) Le commerçant
+d) Le porteur
+CorrigéRéponse correcte :b. La commission d’interchange est payée par l’acquéreur à
+l’émetteur pour rémunérer la gestion du compte et le risque. Le commerçant paie la MSC
+(Merchant Service Charge) à l’acquéreur.
+Question à choix multiples
+Quelle est la principale fonction du clearing (compensation)? une transaction en
+temps réel changer les données de transactions entre banques et calculer les positions
+nettes érer les fonds du compte du porteur au compte du commerçant les tickets de
+caisse
+Expert(e) en Monétique et Transactions Sécurisées Semestre 5
+
+=================================== PAGE 4 ===================================
+Exercices et Quiz – Monétique 4
+CorrigéRéponse correcte :b. Le clearing est l’échange des données de transaction entre
+établissements pour déterminer les montants nets à régler. Le transfert effectif des fonds
+est le settlement (règlement). L’autorisation est le temps réel.
+1.2 Questions courtes
+Exercice 1 – VocabulaireDéfinissez les termes suivants en une ou deux phrases :
+1. Acquéreur
+2. Accepteur
+3. Processeur technique
+4. Commission d’interchange
+Corrigé
+1.Acquéreur: banque du commerçant, qui lui fournit le terminal de paiement, col-
+lecte les transactions et crédite son compte.
+2.Accepteur: commerçant ou prestataire qui accepte le paiement par carte.
+3.Processeur technique: société qui gère pour le compte d’un émetteur ou d’un
+acquéreur l’infrastructure d’autorisation, de compensation et de sécurité.
+4.Commission d’interchange: fraction de la transaction payée par l’acquéreur à
+l’émetteur, plafonnée par la régulation européenne (0,2% pour les cartes de débit,
+0,3% pour les cartes de crédit).
+Exercice 2 – Schéma de transactionDécrivez brièvement les étapes d’une transac-
+tion par carte, de la présentation de la carte jusqu’au règlement interbancaire. Citez les
+acteurs impliqués à chaque étape.
+CorrigéÉtapes :
+1.Présentation: le porteur présente sa carte chez l’accepteur (commerçant).
+2.Demanded’autorisation:leTPElitlacarteetenvoieunedemandeàl’acquéreur.
+3.Acheminement: l’acquéreur transmet la demande au schéma (Visa, CB...), qui
+la route vers l’émetteur.
+4.Autorisation: l’émetteur vérifie le solde, le plafond, le cryptogramme, et renvoie
+une réponse (OK/refus) par le même chemin.
+5.Réponse au TPE: le TPE affiche le résultat et imprime un ticket.
+6.Télécollecte: en fin de journée, le TPE envoie les lots de transactions à l’acquéreur.
+7.Compensation: l’acquéreur et l’émetteur échangent les données via la chambre
+de compensation (ou le schéma) pour déterminer les positions nettes.
+8.Règlement: les banques règlent leurs soldes nets via la banque centrale (TAR-
+GET2).
+Expert(e) en Monétique et Transactions Sécurisées Semestre 5
+
+=================================== PAGE 5 ===================================
+Exercices et Quiz – Monétique 5
+Exercice 3 – Acteurs du SEPACitez les trois instruments de paiement du SEPA et
+donnez une brève description de chacun.
+Corrigé
+—SCT(SEPA Credit Transfer) : virement en euros, exécuté en J+1 ou instantané
+(SCT Inst).
+—SDD(SEPA Direct Debit) : prélèvement en euros, avec deux formules (Core pour
+les consommateurs, B2B pour les entreprises).
+—SCF(SEPA Cards Framework) : cadre pour les paiements par carte, visant l’inter-
+opérabilité et le co-badgeage.
+1.3 Étude de cas
+Exercice 4 – Analyse d’une transaction avec fraudeUn client conteste un achat
+de 200€sur un site Internet. Il affirme n’avoir jamais autorisé cette transaction. La carte
+utilisée est une carte de débit standard, avec 3-D Secure activé. Le commerçant a mis en
+œuvre 3-D Secure version 2.
+1. Qui est responsable en premier lieu du remboursement du client?
+2. Quelles preuves le commerçant peut-il apporter pour se dégager de sa responsabi-
+lité?
+3. Si le commerçant n’a pas utilisé 3-D Secure, que se passe-t-il?
+Corrigé
+1. En cas de contestation légitime, l’émetteur (banque du client) doit rembourser le
+porteur (conformément à la réglementation). Ensuite, l’émetteur engage une procé-
+dure de chargeback auprès de l’acquéreur pour récupérer les fonds.
+2. Le commerçant peut prouver que l’authentification forte a été réalisée (3-D Secure)
+en fournissant le CAVV (Cardholder Authentication Verification Value) et l’identi-
+fiantdetransaction3DS.Sil’authentificationaréussi,laresponsabilitéesttransférée
+à l’émetteur (car c’est l’émetteur qui a authentifié le porteur).
+3. Si le commerçant n’a pas utilisé 3-D Secure, il est généralement responsable de la
+fraude (car il n’a pas mis en œuvre les moyens d’authentification requis). Il devra
+rembourser l’émetteur et supporter la perte.
+Expert(e) en Monétique et Transactions Sécurisées Semestre 5
+
+=================================== PAGE 6 ===================================
+Exercices et Quiz – Monétique 6
+2 Module 732-2 – Paiements carte présente / carte non
+présente
+2.1 QCM
+Question à choix multiples
+En EMV, quelle commande APDU est utilisée pour sélectionner l’application de
+paiement?
+a) GET PROCESSING OPTIONS
+b) SELECT
+c) READ RECORD
+d) VERIFY
+CorrigéRéponse correcte :b. La commande SELECT (INS = A4) permet de choisir
+l’application (AID) parmi celles supportées par la carte.
+Question à choix multiples
+Quelle méthode d’authentification EMV génère une signature différente à chaque
+transaction?
+a) SDA (Static Data Authentication)
+b) DDA (Dynamic Data Authentication)
+c) CDA (Combined Data Authentication)
+d) Toutes les méthodes sont dynamiques
+CorrigéRéponse correcte :b. La DDA utilise un défi du terminal pour produire une
+signature unique. La SDA est statique. La CDA combine DDA et signature du terminal.
+Question à choix multiples
+Dans 3-D Secure version 2, que signifie un flux "frictionless"?
+a) L’authentification est impossible
+b) L’utilisateur doit saisir un code reçu par SMS
+c) L’authentification se fait sans interaction avec l’utilisateur (analyse de risque suffi-
+sante)
+d) La transaction est refusée sans explication
+CorrigéRéponse correcte :c. Le flux frictionless signifie que l’émetteur estime que le
+risque est faible et autorise la transaction sans demander de challenge au porteur.
+Expert(e) en Monétique et Transactions Sécurisées Semestre 5
+
+=================================== PAGE 7 ===================================
+Exercices et Quiz – Monétique 7
+Question à choix multiples
+Quel est le principal avantage de la tokenisation dans les paiements mobiles (Apple
+Pay, Google Pay)?
+a) Réduire le temps de transaction
+b) Remplacer le code PIN
+c) Protéger les données réelles de la carte en utilisant un jeton
+d) Permettre le paiement sans contact à distance
+CorrigéRéponse correcte :c. La tokenisation remplace le PAN par un jeton spécifique
+à l’appareil. Si le serveur du commerçant est piraté, le jeton est inutilisable ailleurs.
+2.2 Questions courtes
+Exercice 5 – Commandes APDUExpliquez le rôle des commandes APDU sui-
+vantes dans une transaction EMV : SELECT, GET PROCESSING OPTIONS, READ
+RECORD, GENERATE AC.
+Corrigé
+—SELECT: choisit l’application de paiement (AID) avec laquelle le terminal va
+dialoguer.
+—GET PROCESSING OPTIONS(GPO) : demande à la carte de fournir les
+données nécessaires à la transaction (liste des fichiers, paramètres offline/online).
+—READ RECORD: lit les enregistrements (fichiers) de la carte pour obtenir des
+données comme les certificats, les limites, etc.
+—GENERATE AC(Generate Application Cryptogram) : demande à la carte de
+générer un cryptogramme de transaction (TC, ARQC ou AAC) pour finaliser la
+transaction.
+Exercice 6 – Différence entre 3DS 1 et 3DS 2Citez trois améliorations majeures
+apportées par la version 2 de 3-D Secure par rapport à la version 1.
+Corrigé
+1.Communication API: remplacement des redirections HTTP par des échanges
+JSON, plus fluides.
+2.Données enrichies: transmission de nombreuses données de contexte (adresse IP,
+historique, etc.) pour l’analyse de risque.
+3.Frictionless: possibilité d’authentification sans interaction si le risque est faible,
+améliorant l’expérience utilisateur.
+4.Support natif des applications mobilesvia SDK.
+Expert(e) en Monétique et Transactions Sécurisées Semestre 5
+
+=================================== PAGE 8 ===================================
+Exercices et Quiz – Monétique 8
+2.3 Étude de cas
+Exercice 7 – Scénario EMV offlineUn commerçant utilise un TPE configuré pour
+autoriser les transactions de moins de 25€en mode offline (sans connexion à l’acquéreur).
+La carte du client est une carte EMV avec plafond offline de 50€.
+1. Expliquez le déroulement de la transaction si le client achète un article à 20€.
+2. Que se passe-t-il si la carte a déjà accumulé 45€de transactions offline non encore
+transmises?
+3. Pourquoi le mode offline présente-t-il un risque pour l’émetteur?
+Corrigé
+1. Le TPE et la carte dialoguent en offline. La carte vérifie que le montant (20€)
+est inférieur au plafond offline restant (si elle tient un compteur). Elle génère un
+cryptogramme offline (TC) et autorise la transaction. Le TPE imprime le ticket
+sans demander d’autorisation online.
+2. Si la carte a déjà utilisé 45€sur son plafond offline (cumul depuis la dernière mise à
+jour), le nouveau montant de 20€dépasse le plafond de 50€. La carte demandera
+alors une autorisation online (passage en online) pour que l’émetteur valide.
+3. Le risque est que le porteur puisse accumuler des dettes sans contrôle en temps
+réel de l’émetteur (par exemple si le compte est insuffisamment approvisionné).
+L’émetteur ne découvre le dépassement qu’à la réception des lots offline, parfois
+plusieurs jours après.
+Expert(e) en Monétique et Transactions Sécurisées Semestre 5
+
+=================================== PAGE 9 ===================================
+Exercices et Quiz – Monétique 9
+3 Module 722-2 – Fonctions monétiques : émetteur et
+acquéreur
+3.1 QCM
+Question à choix multiples
+Quel système est responsable de la vérification du cryptogramme ARQC dans une
+transaction?
+a) Le TPE
+b) L’acquéreur
+c) L’émetteur (via son SAE)
+d) Le schéma de carte
+CorrigéRéponse correcte :c. L’ARQC (Authorization Request Cryptogram) est généré
+par la carte et vérifié par l’émetteur pour s’assurer de l’authenticité de la carte.
+Question à choix multiples
+Que signifie le sigle GDG dans le contexte des GAB?
+a) Gestionnaire de Dépôts et Garanties
+b) Gestionnaire de GAB (Guichets Automatiques)
+c) Groupe de Développement des GAB
+d) Grand Distributeur de GAB
+CorrigéRéponse correcte :b. Le GDG est le système de l’acquéreur qui gère les auto-
+mates (GAB).
+Question à choix multiples
+Le protocole CB2A (2AP) est utilisé pour les échanges entre :
+a) L’émetteur et l’acquéreur
+b) Le TPE et l’acquéreur
+c) La carte et le TPE
+d) Le schéma et l’émetteur
+CorrigéRéponse correcte :b. CB2A (devenu 2AP – Acceptor Acquirer Protocol) est
+le protocole français normalisé entre le terminal (accepteur) et l’acquéreur.
+Question à choix multiples
+Dans le cadre de la DSP2, que permet le "chaînage" des transactions introduit dans
+CB2A 1.6?
+a) Relier plusieurs transactions d’un même porteur pour le calcul des frais
+b) Associer des paiements récurrents à une authentification initiale, évitant de rede-
+mander le CVV
+c) Lier une carte à plusieurs comptes
+d) Créer une chaîne de blocs pour sécuriser les transactions
+Expert(e) en Monétique et Transactions Sécurisées Semestre 5
+
+=================================== PAGE 10 ===================================
+Exercices et Quiz – Monétique 10
+CorrigéRéponse correcte :b. Le chaînage permet d’utiliser une référence unique de
+transaction pour les paiements récurrents (abonnements) sans avoir à ressaisir le crypto-
+gramme à chaque fois.
+3.2 Questions courtes
+Exercice 8 – Rôles du SAE et du SAADistinguez les fonctions du SAE (Système
+d’Autorisation Émetteur) et du SAA (Système d’Autorisation Acquéreur).
+Corrigé
+—SAE: côté émetteur, reçoit les demandes d’autorisation, vérifie le solde, le plafond,
+le cryptogramme, applique les règles de risque, et décide d’autoriser ou refuser.
+—SAA: côté acquéreur, reçoit les demandes des TPE, effectue des contrôles prélimi-
+naires (validité du commerçant, plafonds commerçant), route les demandes vers le
+bon émetteur (via le réseau), et enregistre les autorisations pour la compensation.
+Exercice 9 – Dématérialisation de la carteExpliquez le principe de la tokenisation
+dans un wallet mobile (ex. Apple Pay). Quels sont les avantages pour l’émetteur et pour
+le porteur?
+CorrigéLa tokenisation remplace le PAN (FPAN – Funding Primary Account Number)
+par un jeton (DPAN – Device PAN) spécifique à l’appareil. Le vrai numéro n’est jamais
+transmis lors du paiement. Avantages :
+—Pour l’émetteur: réduction de la fraude (le jeton est inutilisable hors contexte),
+possibilité de désactiver le jeton sans affecter la carte physique.
+—Pour le porteur: sécurité renforcée (pas de transmission du vrai numéro), com-
+modité (paiement sans contact avec le téléphone).
+Exercice 10 – Interface PROGAB DCitez trois types de messages échangés entre
+un GAB et un GDG selon la spécification PROGAB D, et indiquez brièvement leur rôle.
+Corrigé
+—RETRAIT_REQ / RETRAIT_RESP: demande de retrait et réponse (avec
+code autorisation et distribution des billets).
+—CONSULT_REQ / CONSULT_RESP: consultation de solde.
+—TELECOLLECTE_REQ / TELECOLLECTE_RESP: demande de télécol-
+lecte des opérations du GAB vers le GDG.
+Expert(e) en Monétique et Transactions Sécurisées Semestre 5
+
+=================================== PAGE 11 ===================================
+Exercices et Quiz – Monétique 11
+3.3 Étude de cas
+Exercice 11 – Configuration d’un TPE avec CB2AUn commerçant souhaite
+configurer son TPE pour accepter les paiements par carte. L’acquéreur lui fournit les
+paramètres suivants :
+— Identifiant commerçant : 12345678
+— Adresse du serveur d’autorisation : autorisation.banque.fr
+— Port : 443
+— Protocole : CB2A 1.6
+Le commerçant vend des articles de luxe (montant moyen 500€). Il souhaite que le TPE
+demande systématiquement le code PIN (même pour le sans contact) et qu’il imprime un
+ticket pour toute transaction.
+1. Expliquez comment le TPE utilise ces paramètres pour construire une demande
+d’autorisation.
+2. Pourquoi le commerçant veut-il forcer la saisie du PIN? Quel paramètre doit-il
+configurer dans le TPE?
+3. Si le réseau est momentanément indisponible, que se passe-t-il? (Options possibles
+selon la configuration)
+Corrigé
+1. LeTPEutilisel’identifiantcommerçantdansl’en-têtedumessage2AP.Ilseconnecte
+au serveur d’autorisation via l’URL et le port fournis, en utilisant le protocole CB2A
+1.6 (qui encapsule les données EMV). Il construit un message avec le montant, le
+PAN, le cryptogramme, etc., et attend la réponse.
+2. Le commerçant veut forcer le PIN pour renforcer la sécurité (authentification du
+porteur) et réduire les risques de fraude, surtout pour des montants élevés. Dans le
+TPE, il doit configurer le paramètre "Force PIN" ou "CVM Required" pour que le
+terminal exige toujours la saisie du code, même si la carte supporte le sans contact
+sans PIN pour les petits montants.
+3. Si le réseau est indisponible, plusieurs options selon la configuration :
+— Le TPE peut stocker la transaction en mémoire et tenter de l’envoyer plus tard
+(mode différé).
+— Il peut refuser la transaction (si le commerçant ne veut pas de risque).
+— Il peut passer en mode offline si la carte le permet (mais pour 500€, l’offline
+ne sera probablement pas autorisé).
+Généralement, pour les montants élevés, le TPE refusera la transaction en cas d’in-
+disponibilité réseau.
+Exercice 12 – Gestion d’un incident GABLe GAB de la rue de la Paix signale
+une panne de distributeur de billets. Le GDG reçoit une alerte. Décrivez les étapes de
+diagnostic et de résolution que l’équipe technique doit suivre, en mentionnant les échanges
+avec le GDG.
+Expert(e) en Monétique et Transactions Sécurisées Semestre 5
+
+=================================== PAGE 12 ===================================
+Exercices et Quiz – Monétique 12
+CorrigéÉtapes typiques :
+1. Le GDG reçoit une alarme (par exemple, code erreur "jamais de billets" ou "dys-
+fonctionnement mécanique").
+2. Le technicien se rend sur site et se connecte en local au GAB.
+3. Il consulte les logs du GAB (via l’interface de maintenance) pour identifier la cause
+(bourrage papier, capteur défaillant, stock épuisé).
+4. Il effectue les réparations (débourrage, recharge, remplacement de pièce).
+5. Il relance le GAB et effectue un test de retrait avec une carte de test.
+6. Il déclenche une télécollecte manuelle pour que le GDG récupère les éventuelles
+opérations effectuées pendant la panne (si certaines ont réussi partiellement).
+7. Il informe le GDG de la remise en service via le système de supervision.
+Expert(e) en Monétique et Transactions Sécurisées Semestre 5
+
+=================================== PAGE 13 ===================================
+Exercices et Quiz – Monétique 13
+Corrigés des QCM (récapitulatif)
+Module 734-2
+1. a) Porteur, émetteur, accepteur, acquéreur, schéma
+2. a) Primary Account Number
+3. b) L’émetteur
+4. b) Échanger les données de transactions entre banques et calculer les positions nettes
+Module 732-2
+1. b) SELECT
+2. b) DDA (Dynamic Data Authentication)
+3. c) L’authentification se fait sans interaction avec l’utilisateur
+4. c) Protéger les données réelles de la carte en utilisant un jeton
+Module 722-2
+1. c) L’émetteur (via son SAE)
+2. b) Gestionnaire de GAB
+3. b) Le TPE et l’acquéreur
+4. b) Associer des paiements récurrents à une authentification initiale
+Fin du recueil
+Expert(e) en Monétique et Transactions Sécurisées Semestre 5

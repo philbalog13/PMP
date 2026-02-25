@@ -1,0 +1,3201 @@
+{
+  "generatedAt": "2026-02-25T07:35:39.457Z",
+  "desktop": [
+    {
+      "target": "home",
+      "context": "desktop",
+      "title": "Learn Cyber Security | TryHackMe Cyber Training",
+      "location": "https://tryhackme.com/",
+      "metaDescription": "TryHackMe is a free online platform to learn cyber security through hands-on labs and exercises, accessible entirely in your browser—perfect for all skill levels.",
+      "headings": {
+        "h1": [
+          "Anyone can learn cyber security with TryHackMe"
+        ],
+        "h2": []
+      },
+      "counts": {
+        "links": 58,
+        "buttons": 24,
+        "inputs": 1,
+        "images": 79
+      },
+      "navigationItems": [
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "Join for FREE",
+          "href": "/signup"
+        }
+      ],
+      "topLinks": [
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "Join for FREE",
+          "href": "/signup"
+        },
+        {
+          "text": "Cyber Security 101Enroll in Path",
+          "href": "/path/outline/cybersecurity101"
+        },
+        {
+          "text": "Pre Security (New)Enroll in Path",
+          "href": "/path/outline/presecurity"
+        },
+        {
+          "text": "Jr Penetration TesterEnroll in Path",
+          "href": "/path/outline/jrpenetrationtester"
+        },
+        {
+          "text": "SOC Level 1Enroll in Path",
+          "href": "/path/outline/soclevel1"
+        },
+        {
+          "text": "Web FundamentalsEnroll in Path",
+          "href": "/path/outline/web"
+        },
+        {
+          "text": "SSG AI Security PathEnroll in Path",
+          "href": "/path/outline/rslbcbzdpli"
+        },
+        {
+          "text": "Web Application Red TeamingEnroll in Path",
+          "href": "/path/outline/webappredteaming"
+        },
+        {
+          "text": "SSG Introduction to Web Security and DevSecOpsEnroll in Path",
+          "href": "/path/outline/4d4ku9cib4"
+        },
+        {
+          "text": "Pre Security (Legacy)Enroll in Path",
+          "href": "/path/outline/presecuritylegacy"
+        },
+        {
+          "text": "Red TeamingEnroll in Path",
+          "href": "/path/outline/redteaming"
+        },
+        {
+          "text": "SOC Level 2Enroll in Path",
+          "href": "/path/outline/soclevel2"
+        },
+        {
+          "text": "Security EngineerEnroll in Path",
+          "href": "/path/outline/security-engineer-training"
+        },
+        {
+          "text": "DevSecOpsEnroll in Path",
+          "href": "/path/outline/devsecops"
+        },
+        {
+          "text": "Defending AzureEnroll in Path",
+          "href": "/path/outline/azuresecurity"
+        },
+        {
+          "text": "Advanced Endpoint InvestigationsEnroll in Path",
+          "href": "/path/outline/advancedendpointinvestigations"
+        },
+        {
+          "text": "Attacking and Defending AWSEnroll in Path",
+          "href": "/path/outline/attackinganddefendingaws"
+        },
+        {
+          "text": "Offensive PentestingEnroll in Path",
+          "href": "/path/outline/pentesting"
+        },
+        {
+          "text": "Web Application PentestingEnroll in Path",
+          "href": "/path/outline/webapppentesting"
+        },
+        {
+          "text": "CompTIA Pentest+Enroll in Path",
+          "href": "/path/outline/pentestplus"
+        },
+        {
+          "text": "Learn More",
+          "href": "https://business.tryhackme.com"
+        },
+        {
+          "text": "Learn More",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Hands-on labs",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "For Business",
+          "href": "/business"
+        },
+        {
+          "text": "For Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Competitive Hacking",
+          "href": "/games/koth"
+        },
+        {
+          "text": "Defensive Certifications",
+          "href": "/certification/security-analyst-level-1"
+        },
+        {
+          "text": "About Us",
+          "href": "/about"
+        },
+        {
+          "text": "Newsroom",
+          "href": "/resources/newsroom"
+        },
+        {
+          "text": "Blog",
+          "href": "/resources/blog"
+        },
+        {
+          "text": "Glossary",
+          "href": "/glossary"
+        },
+        {
+          "text": "Work at TryHackMe",
+          "href": "https://careers.tryhackme.com"
+        }
+      ],
+      "body": {
+        "fontFamily": "\"Source Sans Pro\", sans-serif",
+        "color": "rgb(0, 0, 0)",
+        "backgroundColor": "rgb(249, 249, 251)",
+        "lineHeight": "normal"
+      },
+      "rootVars": {
+        "darkblue": "#1c2331",
+        "hackerGreen": "#88cc14",
+        "loggedOutBg": "#111b29",
+        "navbarHeight": "85px"
+      },
+      "cta": {
+        "text": "Join for FREE",
+        "background": "rgb(163, 234, 42)",
+        "color": "rgb(249, 249, 251)",
+        "borderRadius": "5px",
+        "fontWeight": "400",
+        "padding": "9px 16px"
+      },
+      "paint": [
+        {
+          "name": "first-paint",
+          "startTime": 344
+        },
+        {
+          "name": "first-contentful-paint",
+          "startTime": 2480
+        }
+      ],
+      "navTiming": {
+        "domContentLoaded": 1577,
+        "loadEventEnd": 4536,
+        "transferSize": 287858,
+        "encodedBodySize": 287558
+      },
+      "prefersReducedMotion": false,
+      "hasThemeToggle": false,
+      "totalTimeMs": 4918,
+      "screenshot": "c:\\Users\\ASUS-GEORGES-GXT\\Downloads\\PMP\\.tmp_thm\\playwright\\home-desktop.png"
+    },
+    {
+      "target": "pricing",
+      "context": "desktop",
+      "title": "TryHackMe | Pricing",
+      "location": "https://tryhackme.com/pricing",
+      "metaDescription": "TryHackMe offers cost-effective cyber security training online. See our pricing and start learning immediately!",
+      "headings": {
+        "h1": [
+          "€0",
+          "€10",
+          ".50",
+          "$99"
+        ],
+        "h2": [
+          "Free",
+          "Premium",
+          "Business",
+          "Compare plans",
+          "Trusted by experts",
+          "FAQs"
+        ]
+      },
+      "counts": {
+        "links": 41,
+        "buttons": 32,
+        "inputs": 0,
+        "images": 151
+      },
+      "navigationItems": [
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "Join for FREE",
+          "href": "/signup"
+        }
+      ],
+      "topLinks": [
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "Join for FREE",
+          "href": "/signup"
+        },
+        {
+          "text": "student discount",
+          "href": "https://help.tryhackme.com/en/articles/6494960-student-discount"
+        },
+        {
+          "text": "your profile settings",
+          "href": "/manage-account"
+        },
+        {
+          "text": "full cancellation policy here",
+          "href": "https://help.tryhackme.com/en/articles/7262866-cancelling-your-subscription"
+        },
+        {
+          "text": "support@tryhackme.com",
+          "href": "mailto:support@tryhackme.com"
+        },
+        {
+          "text": "Hands-on labs",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "For Business",
+          "href": "/business"
+        },
+        {
+          "text": "For Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Competitive Hacking",
+          "href": "/games/koth"
+        },
+        {
+          "text": "Defensive Certifications",
+          "href": "/certification/security-analyst-level-1"
+        },
+        {
+          "text": "About Us",
+          "href": "/about"
+        },
+        {
+          "text": "Newsroom",
+          "href": "/resources/newsroom"
+        },
+        {
+          "text": "Blog",
+          "href": "/resources/blog"
+        },
+        {
+          "text": "Glossary",
+          "href": "/glossary"
+        },
+        {
+          "text": "Work at TryHackMe",
+          "href": "https://careers.tryhackme.com"
+        },
+        {
+          "text": "Careers in Cyber",
+          "href": "/careers"
+        },
+        {
+          "text": "Privacy Policy",
+          "href": "/legal/privacy-policy"
+        },
+        {
+          "text": "Terms of Use",
+          "href": "/legal/terms-of-use"
+        },
+        {
+          "text": "AI Terms of Use",
+          "href": "/legal/ai-terms-of-use"
+        },
+        {
+          "text": "Acceptable Use Policy",
+          "href": "/legal/acceptable-use-policy"
+        },
+        {
+          "text": "Cookie Policy",
+          "href": "/legal/cookie-policy"
+        },
+        {
+          "text": "Contact Us",
+          "href": "/contact"
+        },
+        {
+          "text": "Affiliates",
+          "href": "/affiliates"
+        },
+        {
+          "text": "Forum",
+          "href": "/forum"
+        },
+        {
+          "text": "Student Discount",
+          "href": "https://www.studentbeans.com/en-gb/uk/beansid-connect/hosted/tryhackme"
+        },
+        {
+          "text": "Swag Shop",
+          "href": "https://store.tryhackme.com"
+        },
+        {
+          "text": "",
+          "href": "https://twitter.com/tryhackme"
+        },
+        {
+          "text": "",
+          "href": "https://www.linkedin.com/company/tryhackme/"
+        },
+        {
+          "text": "",
+          "href": "https://discord.com/invite/tryhackme"
+        },
+        {
+          "text": "",
+          "href": "https://www.facebook.com/people/Tryhackme/100069557747714/"
+        },
+        {
+          "text": "",
+          "href": "https://www.youtube.com/channel/UCRnWD3BsY5Co2MMETB7lHQw"
+        },
+        {
+          "text": "",
+          "href": "https://instagram.com/realtryhackme"
+        }
+      ],
+      "body": {
+        "fontFamily": "\"Source Sans Pro\", sans-serif",
+        "color": "rgb(0, 0, 0)",
+        "backgroundColor": "rgb(249, 249, 251)",
+        "lineHeight": "normal"
+      },
+      "rootVars": {
+        "darkblue": "#1c2331",
+        "hackerGreen": "#88cc14",
+        "loggedOutBg": "#111b29",
+        "navbarHeight": "85px"
+      },
+      "cta": {
+        "text": "Join for FREE",
+        "background": "rgb(163, 234, 42)",
+        "color": "rgb(249, 249, 251)",
+        "borderRadius": "5px",
+        "fontWeight": "400",
+        "padding": "9px 16px"
+      },
+      "paint": [
+        {
+          "name": "first-paint",
+          "startTime": 228
+        },
+        {
+          "name": "first-contentful-paint",
+          "startTime": 1996
+        }
+      ],
+      "navTiming": {
+        "domContentLoaded": 1202,
+        "loadEventEnd": 3606,
+        "transferSize": 288109,
+        "encodedBodySize": 287809
+      },
+      "prefersReducedMotion": false,
+      "hasThemeToggle": false,
+      "totalTimeMs": 3722,
+      "screenshot": "c:\\Users\\ASUS-GEORGES-GXT\\Downloads\\PMP\\.tmp_thm\\playwright\\pricing-desktop.png"
+    },
+    {
+      "target": "login",
+      "context": "desktop",
+      "title": "TryHackMe | Login",
+      "location": "https://tryhackme.com/login",
+      "metaDescription": "TryHackMe is a free online platform for learning cyber security, using hands-on exercises and labs, all through your browser!",
+      "headings": {
+        "h1": [],
+        "h2": [
+          "Welcome back!"
+        ]
+      },
+      "counts": {
+        "links": 15,
+        "buttons": 24,
+        "inputs": 3,
+        "images": 26
+      },
+      "navigationItems": [
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "Join for FREE",
+          "href": "/signup"
+        }
+      ],
+      "topLinks": [
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "Join for FREE",
+          "href": "/signup"
+        },
+        {
+          "text": "Forgot password?",
+          "href": "/forgot"
+        },
+        {
+          "text": "Send magic link",
+          "href": "/login/magic"
+        },
+        {
+          "text": "Continue with Google",
+          "href": "/login/google"
+        },
+        {
+          "text": "Continue with LinkedIn",
+          "href": "/login/linkedin"
+        },
+        {
+          "text": "Continue with SSO",
+          "href": "/login/sso"
+        },
+        {
+          "text": "Sign up",
+          "href": "/signup"
+        }
+      ],
+      "body": {
+        "fontFamily": "\"Source Sans Pro\", sans-serif",
+        "color": "rgb(0, 0, 0)",
+        "backgroundColor": "rgb(249, 249, 251)",
+        "lineHeight": "normal"
+      },
+      "rootVars": {
+        "darkblue": "#1c2331",
+        "hackerGreen": "#88cc14",
+        "loggedOutBg": "#111b29",
+        "navbarHeight": "85px"
+      },
+      "cta": {
+        "text": "Join for FREE",
+        "background": "rgb(163, 234, 42)",
+        "color": "rgb(249, 249, 251)",
+        "borderRadius": "5px",
+        "fontWeight": "400",
+        "padding": "9px 16px"
+      },
+      "paint": [
+        {
+          "name": "first-paint",
+          "startTime": 276
+        },
+        {
+          "name": "first-contentful-paint",
+          "startTime": 2020
+        }
+      ],
+      "navTiming": {
+        "domContentLoaded": 1389,
+        "loadEventEnd": 0,
+        "transferSize": 287811,
+        "encodedBodySize": 287511
+      },
+      "prefersReducedMotion": false,
+      "hasThemeToggle": false,
+      "totalTimeMs": 3394,
+      "screenshot": "c:\\Users\\ASUS-GEORGES-GXT\\Downloads\\PMP\\.tmp_thm\\playwright\\login-desktop.png"
+    },
+    {
+      "target": "signup",
+      "context": "desktop",
+      "title": "TryHackMe | Signup",
+      "location": "https://tryhackme.com/signup",
+      "metaDescription": "TryHackMe is a free online platform for learning cyber security, using hands-on exercises and labs, all through your browser!",
+      "headings": {
+        "h1": [],
+        "h2": [
+          "Sign Up"
+        ]
+      },
+      "counts": {
+        "links": 11,
+        "buttons": 23,
+        "inputs": 1,
+        "images": 25
+      },
+      "navigationItems": [
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "Join for FREE",
+          "href": "/signup"
+        }
+      ],
+      "topLinks": [
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "Join for FREE",
+          "href": "/signup"
+        },
+        {
+          "text": "Terms and Conditions",
+          "href": "/legal/terms-of-use"
+        },
+        {
+          "text": "Log in",
+          "href": "/login"
+        }
+      ],
+      "body": {
+        "fontFamily": "\"Source Sans Pro\", sans-serif",
+        "color": "rgb(0, 0, 0)",
+        "backgroundColor": "rgb(249, 249, 251)",
+        "lineHeight": "normal"
+      },
+      "rootVars": {
+        "darkblue": "#1c2331",
+        "hackerGreen": "#88cc14",
+        "loggedOutBg": "#111b29",
+        "navbarHeight": "85px"
+      },
+      "cta": {
+        "text": "Join for FREE",
+        "background": "rgb(163, 234, 42)",
+        "color": "rgb(249, 249, 251)",
+        "borderRadius": "5px",
+        "fontWeight": "400",
+        "padding": "9px 16px"
+      },
+      "paint": [
+        {
+          "name": "first-paint",
+          "startTime": 92
+        },
+        {
+          "name": "first-contentful-paint",
+          "startTime": 1832
+        }
+      ],
+      "navTiming": {
+        "domContentLoaded": 1291,
+        "loadEventEnd": 2260,
+        "transferSize": 288083,
+        "encodedBodySize": 287783
+      },
+      "prefersReducedMotion": false,
+      "hasThemeToggle": false,
+      "totalTimeMs": 2995,
+      "screenshot": "c:\\Users\\ASUS-GEORGES-GXT\\Downloads\\PMP\\.tmp_thm\\playwright\\signup-desktop.png"
+    },
+    {
+      "target": "blog",
+      "context": "desktop",
+      "title": "TryHackMe | Resources",
+      "location": "https://tryhackme.com/resources/blog",
+      "metaDescription": "TryHackMe is a free online platform for learning cyber security, using hands-on exercises and labs, all through your browser!",
+      "headings": {
+        "h1": [
+          "Get the latest Cyber Security insights"
+        ],
+        "h2": [
+          "Looking to upskill your security team?"
+        ]
+      },
+      "counts": {
+        "links": 40,
+        "buttons": 25,
+        "inputs": 1,
+        "images": 33
+      },
+      "navigationItems": [
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "Join for FREE",
+          "href": "/signup"
+        }
+      ],
+      "topLinks": [
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "Join for FREE",
+          "href": "/signup"
+        },
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Hands-on labs",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "For Business",
+          "href": "/business"
+        },
+        {
+          "text": "For Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Competitive Hacking",
+          "href": "/games/koth"
+        },
+        {
+          "text": "Defensive Certifications",
+          "href": "/certification/security-analyst-level-1"
+        },
+        {
+          "text": "About Us",
+          "href": "/about"
+        },
+        {
+          "text": "Newsroom",
+          "href": "/resources/newsroom"
+        },
+        {
+          "text": "Blog",
+          "href": "/resources/blog"
+        },
+        {
+          "text": "Glossary",
+          "href": "/glossary"
+        },
+        {
+          "text": "Work at TryHackMe",
+          "href": "https://careers.tryhackme.com"
+        },
+        {
+          "text": "Careers in Cyber",
+          "href": "/careers"
+        },
+        {
+          "text": "Privacy Policy",
+          "href": "/legal/privacy-policy"
+        },
+        {
+          "text": "Terms of Use",
+          "href": "/legal/terms-of-use"
+        },
+        {
+          "text": "AI Terms of Use",
+          "href": "/legal/ai-terms-of-use"
+        },
+        {
+          "text": "Acceptable Use Policy",
+          "href": "/legal/acceptable-use-policy"
+        },
+        {
+          "text": "Cookie Policy",
+          "href": "/legal/cookie-policy"
+        },
+        {
+          "text": "Contact Us",
+          "href": "/contact"
+        },
+        {
+          "text": "Affiliates",
+          "href": "/affiliates"
+        },
+        {
+          "text": "Forum",
+          "href": "/forum"
+        },
+        {
+          "text": "Student Discount",
+          "href": "https://www.studentbeans.com/en-gb/uk/beansid-connect/hosted/tryhackme"
+        },
+        {
+          "text": "Swag Shop",
+          "href": "https://store.tryhackme.com"
+        },
+        {
+          "text": "",
+          "href": "https://twitter.com/tryhackme"
+        },
+        {
+          "text": "",
+          "href": "https://www.linkedin.com/company/tryhackme/"
+        },
+        {
+          "text": "",
+          "href": "https://discord.com/invite/tryhackme"
+        },
+        {
+          "text": "",
+          "href": "https://www.facebook.com/people/Tryhackme/100069557747714/"
+        },
+        {
+          "text": "",
+          "href": "https://www.youtube.com/channel/UCRnWD3BsY5Co2MMETB7lHQw"
+        },
+        {
+          "text": "",
+          "href": "https://instagram.com/realtryhackme"
+        },
+        {
+          "text": "",
+          "href": "https://www.pinterest.co.uk/RealTryHackMe/"
+        }
+      ],
+      "body": {
+        "fontFamily": "\"Source Sans Pro\", sans-serif",
+        "color": "rgb(0, 0, 0)",
+        "backgroundColor": "rgb(249, 249, 251)",
+        "lineHeight": "normal"
+      },
+      "rootVars": {
+        "darkblue": "#1c2331",
+        "hackerGreen": "#88cc14",
+        "loggedOutBg": "#111b29",
+        "navbarHeight": "85px"
+      },
+      "cta": {
+        "text": "Join for FREE",
+        "background": "rgb(163, 234, 42)",
+        "color": "rgb(249, 249, 251)",
+        "borderRadius": "5px",
+        "fontWeight": "400",
+        "padding": "9px 16px"
+      },
+      "paint": [
+        {
+          "name": "first-paint",
+          "startTime": 284
+        },
+        {
+          "name": "first-contentful-paint",
+          "startTime": 1804
+        }
+      ],
+      "navTiming": {
+        "domContentLoaded": 1182,
+        "loadEventEnd": 2466,
+        "transferSize": 288106,
+        "encodedBodySize": 287806
+      },
+      "prefersReducedMotion": false,
+      "hasThemeToggle": false,
+      "totalTimeMs": 3158,
+      "screenshot": "c:\\Users\\ASUS-GEORGES-GXT\\Downloads\\PMP\\.tmp_thm\\playwright\\blog-desktop.png"
+    },
+    {
+      "target": "hacktivities",
+      "context": "desktop",
+      "title": "TryHackMe | Hacktivities",
+      "location": "https://tryhackme.com/hacktivities",
+      "metaDescription": "Offensive and defensive cyber security training with hands-on exercises and labs.",
+      "headings": {
+        "h1": [
+          "Learn"
+        ],
+        "h2": [
+          "1.1K+",
+          "400+",
+          "Cyber Security Learning Roadmap"
+        ]
+      },
+      "counts": {
+        "links": 37,
+        "buttons": 19,
+        "inputs": 0,
+        "images": 37
+      },
+      "navigationItems": [
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "Join for FREE",
+          "href": "/signup"
+        }
+      ],
+      "topLinks": [
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "Join for FREE",
+          "href": "/signup"
+        },
+        {
+          "text": "Hands-on labs",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "For Business",
+          "href": "/business"
+        },
+        {
+          "text": "For Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Competitive Hacking",
+          "href": "/games/koth"
+        },
+        {
+          "text": "Defensive Certifications",
+          "href": "/certification/security-analyst-level-1"
+        },
+        {
+          "text": "About Us",
+          "href": "/about"
+        },
+        {
+          "text": "Newsroom",
+          "href": "/resources/newsroom"
+        },
+        {
+          "text": "Blog",
+          "href": "/resources/blog"
+        },
+        {
+          "text": "Glossary",
+          "href": "/glossary"
+        },
+        {
+          "text": "Work at TryHackMe",
+          "href": "https://careers.tryhackme.com"
+        },
+        {
+          "text": "Careers in Cyber",
+          "href": "/careers"
+        },
+        {
+          "text": "Privacy Policy",
+          "href": "/legal/privacy-policy"
+        },
+        {
+          "text": "Terms of Use",
+          "href": "/legal/terms-of-use"
+        },
+        {
+          "text": "AI Terms of Use",
+          "href": "/legal/ai-terms-of-use"
+        },
+        {
+          "text": "Acceptable Use Policy",
+          "href": "/legal/acceptable-use-policy"
+        },
+        {
+          "text": "Cookie Policy",
+          "href": "/legal/cookie-policy"
+        },
+        {
+          "text": "Contact Us",
+          "href": "/contact"
+        },
+        {
+          "text": "Affiliates",
+          "href": "/affiliates"
+        },
+        {
+          "text": "Forum",
+          "href": "/forum"
+        },
+        {
+          "text": "Student Discount",
+          "href": "https://www.studentbeans.com/en-gb/uk/beansid-connect/hosted/tryhackme"
+        },
+        {
+          "text": "Swag Shop",
+          "href": "https://store.tryhackme.com"
+        },
+        {
+          "text": "",
+          "href": "https://twitter.com/tryhackme"
+        },
+        {
+          "text": "",
+          "href": "https://www.linkedin.com/company/tryhackme/"
+        },
+        {
+          "text": "",
+          "href": "https://discord.com/invite/tryhackme"
+        },
+        {
+          "text": "",
+          "href": "https://www.facebook.com/people/Tryhackme/100069557747714/"
+        },
+        {
+          "text": "",
+          "href": "https://www.youtube.com/channel/UCRnWD3BsY5Co2MMETB7lHQw"
+        },
+        {
+          "text": "",
+          "href": "https://instagram.com/realtryhackme"
+        },
+        {
+          "text": "",
+          "href": "https://www.pinterest.co.uk/RealTryHackMe/"
+        }
+      ],
+      "body": {
+        "fontFamily": "\"Source Sans Pro\", sans-serif",
+        "color": "rgb(0, 0, 0)",
+        "backgroundColor": "rgb(249, 249, 251)",
+        "lineHeight": "normal"
+      },
+      "rootVars": {
+        "darkblue": "#1c2331",
+        "hackerGreen": "#88cc14",
+        "loggedOutBg": "#111b29",
+        "navbarHeight": "85px"
+      },
+      "cta": {
+        "text": "Join for FREE",
+        "background": "rgb(163, 234, 42)",
+        "color": "rgb(249, 249, 251)",
+        "borderRadius": "5px",
+        "fontWeight": "400",
+        "padding": "9px 16px"
+      },
+      "paint": [
+        {
+          "name": "first-paint",
+          "startTime": 136
+        },
+        {
+          "name": "first-contentful-paint",
+          "startTime": 1728
+        }
+      ],
+      "navTiming": {
+        "domContentLoaded": 1073,
+        "loadEventEnd": 3222,
+        "transferSize": 287739,
+        "encodedBodySize": 287439
+      },
+      "prefersReducedMotion": false,
+      "hasThemeToggle": false,
+      "totalTimeMs": 3568,
+      "screenshot": "c:\\Users\\ASUS-GEORGES-GXT\\Downloads\\PMP\\.tmp_thm\\playwright\\hacktivities-desktop.png"
+    },
+    {
+      "target": "business",
+      "context": "desktop",
+      "title": "TryHackMe | TryHackMe for Business",
+      "location": "https://tryhackme.com/business",
+      "metaDescription": "Hands-on, hyper-realistic cyber training for SOC & IR teams - build confidence, close gaps, and reduce breach impact",
+      "headings": {
+        "h1": [
+          "Develop teams that stop breaches faster"
+        ],
+        "h2": [
+          "Trusted by more than 1000+ security teams and 6.5M+ million users",
+          "Go Business for all the right reasons",
+          "How SOC teams use TryHackMe to improve detection and response",
+          "Trusted by 1000+ security teams worldwide",
+          "Get started with the Business plan today",
+          "FAQs"
+        ]
+      },
+      "counts": {
+        "links": 37,
+        "buttons": 49,
+        "inputs": 0,
+        "images": 145
+      },
+      "navigationItems": [
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "Join for FREE",
+          "href": "/signup"
+        }
+      ],
+      "topLinks": [
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "Join for FREE",
+          "href": "/signup"
+        },
+        {
+          "text": "Hands-on labs",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "For Business",
+          "href": "/business"
+        },
+        {
+          "text": "For Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Competitive Hacking",
+          "href": "/games/koth"
+        },
+        {
+          "text": "Defensive Certifications",
+          "href": "/certification/security-analyst-level-1"
+        },
+        {
+          "text": "About Us",
+          "href": "/about"
+        },
+        {
+          "text": "Newsroom",
+          "href": "/resources/newsroom"
+        },
+        {
+          "text": "Blog",
+          "href": "/resources/blog"
+        },
+        {
+          "text": "Glossary",
+          "href": "/glossary"
+        },
+        {
+          "text": "Work at TryHackMe",
+          "href": "https://careers.tryhackme.com"
+        },
+        {
+          "text": "Careers in Cyber",
+          "href": "/careers"
+        },
+        {
+          "text": "Privacy Policy",
+          "href": "/legal/privacy-policy"
+        },
+        {
+          "text": "Terms of Use",
+          "href": "/legal/terms-of-use"
+        },
+        {
+          "text": "AI Terms of Use",
+          "href": "/legal/ai-terms-of-use"
+        },
+        {
+          "text": "Acceptable Use Policy",
+          "href": "/legal/acceptable-use-policy"
+        },
+        {
+          "text": "Cookie Policy",
+          "href": "/legal/cookie-policy"
+        },
+        {
+          "text": "Contact Us",
+          "href": "/contact"
+        },
+        {
+          "text": "Affiliates",
+          "href": "/affiliates"
+        },
+        {
+          "text": "Forum",
+          "href": "/forum"
+        },
+        {
+          "text": "Student Discount",
+          "href": "https://www.studentbeans.com/en-gb/uk/beansid-connect/hosted/tryhackme"
+        },
+        {
+          "text": "Swag Shop",
+          "href": "https://store.tryhackme.com"
+        },
+        {
+          "text": "",
+          "href": "https://twitter.com/tryhackme"
+        },
+        {
+          "text": "",
+          "href": "https://www.linkedin.com/company/tryhackme/"
+        },
+        {
+          "text": "",
+          "href": "https://discord.com/invite/tryhackme"
+        },
+        {
+          "text": "",
+          "href": "https://www.facebook.com/people/Tryhackme/100069557747714/"
+        },
+        {
+          "text": "",
+          "href": "https://www.youtube.com/channel/UCRnWD3BsY5Co2MMETB7lHQw"
+        },
+        {
+          "text": "",
+          "href": "https://instagram.com/realtryhackme"
+        },
+        {
+          "text": "",
+          "href": "https://www.pinterest.co.uk/RealTryHackMe/"
+        }
+      ],
+      "body": {
+        "fontFamily": "\"Source Sans Pro\", sans-serif",
+        "color": "rgb(0, 0, 0)",
+        "backgroundColor": "rgb(21, 28, 43)",
+        "lineHeight": "normal"
+      },
+      "rootVars": {
+        "darkblue": "#1c2331",
+        "hackerGreen": "#88cc14",
+        "loggedOutBg": "#111b29",
+        "navbarHeight": "85px"
+      },
+      "cta": {
+        "text": "Join for FREE",
+        "background": "rgb(163, 234, 42)",
+        "color": "rgb(249, 249, 251)",
+        "borderRadius": "5px",
+        "fontWeight": "400",
+        "padding": "9px 16px"
+      },
+      "paint": [
+        {
+          "name": "first-paint",
+          "startTime": 168
+        },
+        {
+          "name": "first-contentful-paint",
+          "startTime": 1936
+        }
+      ],
+      "navTiming": {
+        "domContentLoaded": 1074,
+        "loadEventEnd": 3301,
+        "transferSize": 287775,
+        "encodedBodySize": 287475
+      },
+      "prefersReducedMotion": false,
+      "hasThemeToggle": false,
+      "totalTimeMs": 3446,
+      "screenshot": "c:\\Users\\ASUS-GEORGES-GXT\\Downloads\\PMP\\.tmp_thm\\playwright\\business-desktop.png"
+    }
+  ],
+  "mobile": [
+    {
+      "target": "home",
+      "context": "mobile",
+      "title": "Learn Cyber Security | TryHackMe Cyber Training",
+      "location": "https://tryhackme.com/",
+      "metaDescription": "TryHackMe is a free online platform to learn cyber security through hands-on labs and exercises, accessible entirely in your browser—perfect for all skill levels.",
+      "headings": {
+        "h1": [
+          "Anyone can learn cyber security with TryHackMe",
+          "FREE"
+        ],
+        "h2": [
+          "Learn, practice, level up",
+          "Hands-on labs that mimic real-world environments",
+          "TRYHACKME BUSINESS",
+          "TRYHACKME EDUCATION"
+        ]
+      },
+      "counts": {
+        "links": 39,
+        "buttons": 30,
+        "inputs": 1,
+        "images": 156
+      },
+      "navigationItems": [
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "Join for FREE",
+          "href": "/signup"
+        }
+      ],
+      "topLinks": [
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "Join for FREE",
+          "href": "/signup"
+        },
+        {
+          "text": "Learn more",
+          "href": "https://business.tryhackme.com/"
+        },
+        {
+          "text": "Learn more",
+          "href": "https://tryhackme.com/classrooms"
+        },
+        {
+          "text": "Hands-on labs",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "For Business",
+          "href": "/business"
+        },
+        {
+          "text": "For Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Competitive Hacking",
+          "href": "/games/koth"
+        },
+        {
+          "text": "Defensive Certifications",
+          "href": "/certification/security-analyst-level-1"
+        },
+        {
+          "text": "About Us",
+          "href": "/about"
+        },
+        {
+          "text": "Newsroom",
+          "href": "/resources/newsroom"
+        },
+        {
+          "text": "Blog",
+          "href": "/resources/blog"
+        },
+        {
+          "text": "Glossary",
+          "href": "/glossary"
+        },
+        {
+          "text": "Work at TryHackMe",
+          "href": "https://careers.tryhackme.com"
+        },
+        {
+          "text": "Careers in Cyber",
+          "href": "/careers"
+        },
+        {
+          "text": "Privacy Policy",
+          "href": "/legal/privacy-policy"
+        },
+        {
+          "text": "Terms of Use",
+          "href": "/legal/terms-of-use"
+        },
+        {
+          "text": "AI Terms of Use",
+          "href": "/legal/ai-terms-of-use"
+        },
+        {
+          "text": "Acceptable Use Policy",
+          "href": "/legal/acceptable-use-policy"
+        },
+        {
+          "text": "Cookie Policy",
+          "href": "/legal/cookie-policy"
+        },
+        {
+          "text": "Contact Us",
+          "href": "/contact"
+        },
+        {
+          "text": "Affiliates",
+          "href": "/affiliates"
+        },
+        {
+          "text": "Forum",
+          "href": "/forum"
+        },
+        {
+          "text": "Student Discount",
+          "href": "https://www.studentbeans.com/en-gb/uk/beansid-connect/hosted/tryhackme"
+        },
+        {
+          "text": "Swag Shop",
+          "href": "https://store.tryhackme.com"
+        },
+        {
+          "text": "",
+          "href": "https://twitter.com/tryhackme"
+        },
+        {
+          "text": "",
+          "href": "https://www.linkedin.com/company/tryhackme/"
+        },
+        {
+          "text": "",
+          "href": "https://discord.com/invite/tryhackme"
+        },
+        {
+          "text": "",
+          "href": "https://www.facebook.com/people/Tryhackme/100069557747714/"
+        },
+        {
+          "text": "",
+          "href": "https://www.youtube.com/channel/UCRnWD3BsY5Co2MMETB7lHQw"
+        },
+        {
+          "text": "",
+          "href": "https://instagram.com/realtryhackme"
+        },
+        {
+          "text": "",
+          "href": "https://www.pinterest.co.uk/RealTryHackMe/"
+        }
+      ],
+      "body": {
+        "fontFamily": "\"Source Sans Pro\", sans-serif",
+        "color": "rgb(0, 0, 0)",
+        "backgroundColor": "rgb(249, 249, 251)",
+        "lineHeight": "normal"
+      },
+      "rootVars": {
+        "darkblue": "#1c2331",
+        "hackerGreen": "#88cc14",
+        "loggedOutBg": "#111b29",
+        "navbarHeight": "85px"
+      },
+      "cta": {
+        "text": "Join for FREE",
+        "background": "rgb(163, 234, 42)",
+        "color": "rgb(249, 249, 251)",
+        "borderRadius": "5px",
+        "fontWeight": "400",
+        "padding": "9px 16px"
+      },
+      "paint": [
+        {
+          "name": "first-paint",
+          "startTime": 296
+        },
+        {
+          "name": "first-contentful-paint",
+          "startTime": 1976
+        }
+      ],
+      "navTiming": {
+        "domContentLoaded": 1420,
+        "loadEventEnd": 0,
+        "transferSize": 288515,
+        "encodedBodySize": 288215
+      },
+      "prefersReducedMotion": false,
+      "hasThemeToggle": false,
+      "totalTimeMs": 4102,
+      "screenshot": "c:\\Users\\ASUS-GEORGES-GXT\\Downloads\\PMP\\.tmp_thm\\playwright\\home-mobile.png"
+    },
+    {
+      "target": "pricing",
+      "context": "mobile",
+      "title": "TryHackMe | Pricing",
+      "location": "https://tryhackme.com/pricing",
+      "metaDescription": "TryHackMe offers cost-effective cyber security training online. See our pricing and start learning immediately!",
+      "headings": {
+        "h1": [
+          "€0",
+          "€10",
+          ".50",
+          "$99"
+        ],
+        "h2": [
+          "Free",
+          "Premium",
+          "Business",
+          "Compare plans",
+          "Trusted by experts",
+          "FAQs"
+        ]
+      },
+      "counts": {
+        "links": 41,
+        "buttons": 27,
+        "inputs": 0,
+        "images": 146
+      },
+      "navigationItems": [
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "Join for FREE",
+          "href": "/signup"
+        }
+      ],
+      "topLinks": [
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "Join for FREE",
+          "href": "/signup"
+        },
+        {
+          "text": "student discount",
+          "href": "https://help.tryhackme.com/en/articles/6494960-student-discount"
+        },
+        {
+          "text": "your profile settings",
+          "href": "/manage-account"
+        },
+        {
+          "text": "full cancellation policy here",
+          "href": "https://help.tryhackme.com/en/articles/7262866-cancelling-your-subscription"
+        },
+        {
+          "text": "support@tryhackme.com",
+          "href": "mailto:support@tryhackme.com"
+        },
+        {
+          "text": "Hands-on labs",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "For Business",
+          "href": "/business"
+        },
+        {
+          "text": "For Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Competitive Hacking",
+          "href": "/games/koth"
+        },
+        {
+          "text": "Defensive Certifications",
+          "href": "/certification/security-analyst-level-1"
+        },
+        {
+          "text": "About Us",
+          "href": "/about"
+        },
+        {
+          "text": "Newsroom",
+          "href": "/resources/newsroom"
+        },
+        {
+          "text": "Blog",
+          "href": "/resources/blog"
+        },
+        {
+          "text": "Glossary",
+          "href": "/glossary"
+        },
+        {
+          "text": "Work at TryHackMe",
+          "href": "https://careers.tryhackme.com"
+        },
+        {
+          "text": "Careers in Cyber",
+          "href": "/careers"
+        },
+        {
+          "text": "Privacy Policy",
+          "href": "/legal/privacy-policy"
+        },
+        {
+          "text": "Terms of Use",
+          "href": "/legal/terms-of-use"
+        },
+        {
+          "text": "AI Terms of Use",
+          "href": "/legal/ai-terms-of-use"
+        },
+        {
+          "text": "Acceptable Use Policy",
+          "href": "/legal/acceptable-use-policy"
+        },
+        {
+          "text": "Cookie Policy",
+          "href": "/legal/cookie-policy"
+        },
+        {
+          "text": "Contact Us",
+          "href": "/contact"
+        },
+        {
+          "text": "Affiliates",
+          "href": "/affiliates"
+        },
+        {
+          "text": "Forum",
+          "href": "/forum"
+        },
+        {
+          "text": "Student Discount",
+          "href": "https://www.studentbeans.com/en-gb/uk/beansid-connect/hosted/tryhackme"
+        },
+        {
+          "text": "Swag Shop",
+          "href": "https://store.tryhackme.com"
+        },
+        {
+          "text": "",
+          "href": "https://twitter.com/tryhackme"
+        },
+        {
+          "text": "",
+          "href": "https://www.linkedin.com/company/tryhackme/"
+        },
+        {
+          "text": "",
+          "href": "https://discord.com/invite/tryhackme"
+        },
+        {
+          "text": "",
+          "href": "https://www.facebook.com/people/Tryhackme/100069557747714/"
+        },
+        {
+          "text": "",
+          "href": "https://www.youtube.com/channel/UCRnWD3BsY5Co2MMETB7lHQw"
+        },
+        {
+          "text": "",
+          "href": "https://instagram.com/realtryhackme"
+        }
+      ],
+      "body": {
+        "fontFamily": "\"Source Sans Pro\", sans-serif",
+        "color": "rgb(0, 0, 0)",
+        "backgroundColor": "rgb(249, 249, 251)",
+        "lineHeight": "normal"
+      },
+      "rootVars": {
+        "darkblue": "#1c2331",
+        "hackerGreen": "#88cc14",
+        "loggedOutBg": "#111b29",
+        "navbarHeight": "85px"
+      },
+      "cta": {
+        "text": "Join for FREE",
+        "background": "rgb(163, 234, 42)",
+        "color": "rgb(249, 249, 251)",
+        "borderRadius": "5px",
+        "fontWeight": "400",
+        "padding": "9px 16px"
+      },
+      "paint": [
+        {
+          "name": "first-paint",
+          "startTime": 212
+        },
+        {
+          "name": "first-contentful-paint",
+          "startTime": 2240
+        }
+      ],
+      "navTiming": {
+        "domContentLoaded": 1607,
+        "loadEventEnd": 3705,
+        "transferSize": 287876,
+        "encodedBodySize": 287576
+      },
+      "prefersReducedMotion": false,
+      "hasThemeToggle": false,
+      "totalTimeMs": 3967,
+      "screenshot": "c:\\Users\\ASUS-GEORGES-GXT\\Downloads\\PMP\\.tmp_thm\\playwright\\pricing-mobile.png"
+    },
+    {
+      "target": "login",
+      "context": "mobile",
+      "title": "TryHackMe | Login",
+      "location": "https://tryhackme.com/login",
+      "metaDescription": "TryHackMe is a free online platform for learning cyber security, using hands-on exercises and labs, all through your browser!",
+      "headings": {
+        "h1": [],
+        "h2": [
+          "Welcome back!"
+        ]
+      },
+      "counts": {
+        "links": 15,
+        "buttons": 24,
+        "inputs": 3,
+        "images": 26
+      },
+      "navigationItems": [
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "Join for FREE",
+          "href": "/signup"
+        }
+      ],
+      "topLinks": [
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "Join for FREE",
+          "href": "/signup"
+        },
+        {
+          "text": "Forgot password?",
+          "href": "/forgot"
+        },
+        {
+          "text": "Send magic link",
+          "href": "/login/magic"
+        },
+        {
+          "text": "Continue with Google",
+          "href": "/login/google"
+        },
+        {
+          "text": "Continue with LinkedIn",
+          "href": "/login/linkedin"
+        },
+        {
+          "text": "Continue with SSO",
+          "href": "/login/sso"
+        },
+        {
+          "text": "Sign up",
+          "href": "/signup"
+        }
+      ],
+      "body": {
+        "fontFamily": "\"Source Sans Pro\", sans-serif",
+        "color": "rgb(0, 0, 0)",
+        "backgroundColor": "rgb(249, 249, 251)",
+        "lineHeight": "normal"
+      },
+      "rootVars": {
+        "darkblue": "#1c2331",
+        "hackerGreen": "#88cc14",
+        "loggedOutBg": "#111b29",
+        "navbarHeight": "85px"
+      },
+      "cta": {
+        "text": "Join for FREE",
+        "background": "rgb(163, 234, 42)",
+        "color": "rgb(249, 249, 251)",
+        "borderRadius": "5px",
+        "fontWeight": "400",
+        "padding": "9px 16px"
+      },
+      "paint": [
+        {
+          "name": "first-paint",
+          "startTime": 212
+        },
+        {
+          "name": "first-contentful-paint",
+          "startTime": 1480
+        }
+      ],
+      "navTiming": {
+        "domContentLoaded": 1022,
+        "loadEventEnd": 3173,
+        "transferSize": 288860,
+        "encodedBodySize": 288560
+      },
+      "prefersReducedMotion": false,
+      "hasThemeToggle": false,
+      "totalTimeMs": 3410,
+      "screenshot": "c:\\Users\\ASUS-GEORGES-GXT\\Downloads\\PMP\\.tmp_thm\\playwright\\login-mobile.png"
+    },
+    {
+      "target": "signup",
+      "context": "mobile",
+      "title": "TryHackMe | Signup",
+      "location": "https://tryhackme.com/signup",
+      "metaDescription": "TryHackMe is a free online platform for learning cyber security, using hands-on exercises and labs, all through your browser!",
+      "headings": {
+        "h1": [],
+        "h2": [
+          "Sign Up"
+        ]
+      },
+      "counts": {
+        "links": 11,
+        "buttons": 23,
+        "inputs": 1,
+        "images": 25
+      },
+      "navigationItems": [
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "Join for FREE",
+          "href": "/signup"
+        }
+      ],
+      "topLinks": [
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "Join for FREE",
+          "href": "/signup"
+        },
+        {
+          "text": "Terms and Conditions",
+          "href": "/legal/terms-of-use"
+        },
+        {
+          "text": "Log in",
+          "href": "/login"
+        }
+      ],
+      "body": {
+        "fontFamily": "\"Source Sans Pro\", sans-serif",
+        "color": "rgb(0, 0, 0)",
+        "backgroundColor": "rgb(249, 249, 251)",
+        "lineHeight": "normal"
+      },
+      "rootVars": {
+        "darkblue": "#1c2331",
+        "hackerGreen": "#88cc14",
+        "loggedOutBg": "#111b29",
+        "navbarHeight": "85px"
+      },
+      "cta": {
+        "text": "Join for FREE",
+        "background": "rgb(163, 234, 42)",
+        "color": "rgb(249, 249, 251)",
+        "borderRadius": "5px",
+        "fontWeight": "400",
+        "padding": "9px 16px"
+      },
+      "paint": [
+        {
+          "name": "first-paint",
+          "startTime": 176
+        },
+        {
+          "name": "first-contentful-paint",
+          "startTime": 1280
+        }
+      ],
+      "navTiming": {
+        "domContentLoaded": 855,
+        "loadEventEnd": 1991,
+        "transferSize": 288236,
+        "encodedBodySize": 287936
+      },
+      "prefersReducedMotion": false,
+      "hasThemeToggle": false,
+      "totalTimeMs": 3103,
+      "screenshot": "c:\\Users\\ASUS-GEORGES-GXT\\Downloads\\PMP\\.tmp_thm\\playwright\\signup-mobile.png"
+    },
+    {
+      "target": "blog",
+      "context": "mobile",
+      "title": "TryHackMe | Resources",
+      "location": "https://tryhackme.com/resources/blog",
+      "metaDescription": "TryHackMe is a free online platform for learning cyber security, using hands-on exercises and labs, all through your browser!",
+      "headings": {
+        "h1": [
+          "Get the latest Cyber Security insights"
+        ],
+        "h2": [
+          "Looking to upskill your security team?"
+        ]
+      },
+      "counts": {
+        "links": 40,
+        "buttons": 25,
+        "inputs": 1,
+        "images": 33
+      },
+      "navigationItems": [
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "Join for FREE",
+          "href": "/signup"
+        }
+      ],
+      "topLinks": [
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "Join for FREE",
+          "href": "/signup"
+        },
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Hands-on labs",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "For Business",
+          "href": "/business"
+        },
+        {
+          "text": "For Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Competitive Hacking",
+          "href": "/games/koth"
+        },
+        {
+          "text": "Defensive Certifications",
+          "href": "/certification/security-analyst-level-1"
+        },
+        {
+          "text": "About Us",
+          "href": "/about"
+        },
+        {
+          "text": "Newsroom",
+          "href": "/resources/newsroom"
+        },
+        {
+          "text": "Blog",
+          "href": "/resources/blog"
+        },
+        {
+          "text": "Glossary",
+          "href": "/glossary"
+        },
+        {
+          "text": "Work at TryHackMe",
+          "href": "https://careers.tryhackme.com"
+        },
+        {
+          "text": "Careers in Cyber",
+          "href": "/careers"
+        },
+        {
+          "text": "Privacy Policy",
+          "href": "/legal/privacy-policy"
+        },
+        {
+          "text": "Terms of Use",
+          "href": "/legal/terms-of-use"
+        },
+        {
+          "text": "AI Terms of Use",
+          "href": "/legal/ai-terms-of-use"
+        },
+        {
+          "text": "Acceptable Use Policy",
+          "href": "/legal/acceptable-use-policy"
+        },
+        {
+          "text": "Cookie Policy",
+          "href": "/legal/cookie-policy"
+        },
+        {
+          "text": "Contact Us",
+          "href": "/contact"
+        },
+        {
+          "text": "Affiliates",
+          "href": "/affiliates"
+        },
+        {
+          "text": "Forum",
+          "href": "/forum"
+        },
+        {
+          "text": "Student Discount",
+          "href": "https://www.studentbeans.com/en-gb/uk/beansid-connect/hosted/tryhackme"
+        },
+        {
+          "text": "Swag Shop",
+          "href": "https://store.tryhackme.com"
+        },
+        {
+          "text": "",
+          "href": "https://twitter.com/tryhackme"
+        },
+        {
+          "text": "",
+          "href": "https://www.linkedin.com/company/tryhackme/"
+        },
+        {
+          "text": "",
+          "href": "https://discord.com/invite/tryhackme"
+        },
+        {
+          "text": "",
+          "href": "https://www.facebook.com/people/Tryhackme/100069557747714/"
+        },
+        {
+          "text": "",
+          "href": "https://www.youtube.com/channel/UCRnWD3BsY5Co2MMETB7lHQw"
+        },
+        {
+          "text": "",
+          "href": "https://instagram.com/realtryhackme"
+        },
+        {
+          "text": "",
+          "href": "https://www.pinterest.co.uk/RealTryHackMe/"
+        }
+      ],
+      "body": {
+        "fontFamily": "\"Source Sans Pro\", sans-serif",
+        "color": "rgb(0, 0, 0)",
+        "backgroundColor": "rgb(249, 249, 251)",
+        "lineHeight": "normal"
+      },
+      "rootVars": {
+        "darkblue": "#1c2331",
+        "hackerGreen": "#88cc14",
+        "loggedOutBg": "#111b29",
+        "navbarHeight": "85px"
+      },
+      "cta": {
+        "text": "Join for FREE",
+        "background": "rgb(163, 234, 42)",
+        "color": "rgb(249, 249, 251)",
+        "borderRadius": "5px",
+        "fontWeight": "400",
+        "padding": "9px 16px"
+      },
+      "paint": [
+        {
+          "name": "first-paint",
+          "startTime": 192
+        },
+        {
+          "name": "first-contentful-paint",
+          "startTime": 1768
+        }
+      ],
+      "navTiming": {
+        "domContentLoaded": 954,
+        "loadEventEnd": 2946,
+        "transferSize": 288808,
+        "encodedBodySize": 288508
+      },
+      "prefersReducedMotion": false,
+      "hasThemeToggle": false,
+      "totalTimeMs": 3217,
+      "screenshot": "c:\\Users\\ASUS-GEORGES-GXT\\Downloads\\PMP\\.tmp_thm\\playwright\\blog-mobile.png"
+    },
+    {
+      "target": "hacktivities",
+      "context": "mobile",
+      "title": "TryHackMe | Hacktivities",
+      "location": "https://tryhackme.com/hacktivities",
+      "metaDescription": "Offensive and defensive cyber security training with hands-on exercises and labs.",
+      "headings": {
+        "h1": [
+          "Learn"
+        ],
+        "h2": [
+          "1.1K+",
+          "400+",
+          "Cyber Security Learning Roadmap"
+        ]
+      },
+      "counts": {
+        "links": 37,
+        "buttons": 20,
+        "inputs": 0,
+        "images": 41
+      },
+      "navigationItems": [
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "Join for FREE",
+          "href": "/signup"
+        }
+      ],
+      "topLinks": [
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "Join for FREE",
+          "href": "/signup"
+        },
+        {
+          "text": "Hands-on labs",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "For Business",
+          "href": "/business"
+        },
+        {
+          "text": "For Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Competitive Hacking",
+          "href": "/games/koth"
+        },
+        {
+          "text": "Defensive Certifications",
+          "href": "/certification/security-analyst-level-1"
+        },
+        {
+          "text": "About Us",
+          "href": "/about"
+        },
+        {
+          "text": "Newsroom",
+          "href": "/resources/newsroom"
+        },
+        {
+          "text": "Blog",
+          "href": "/resources/blog"
+        },
+        {
+          "text": "Glossary",
+          "href": "/glossary"
+        },
+        {
+          "text": "Work at TryHackMe",
+          "href": "https://careers.tryhackme.com"
+        },
+        {
+          "text": "Careers in Cyber",
+          "href": "/careers"
+        },
+        {
+          "text": "Privacy Policy",
+          "href": "/legal/privacy-policy"
+        },
+        {
+          "text": "Terms of Use",
+          "href": "/legal/terms-of-use"
+        },
+        {
+          "text": "AI Terms of Use",
+          "href": "/legal/ai-terms-of-use"
+        },
+        {
+          "text": "Acceptable Use Policy",
+          "href": "/legal/acceptable-use-policy"
+        },
+        {
+          "text": "Cookie Policy",
+          "href": "/legal/cookie-policy"
+        },
+        {
+          "text": "Contact Us",
+          "href": "/contact"
+        },
+        {
+          "text": "Affiliates",
+          "href": "/affiliates"
+        },
+        {
+          "text": "Forum",
+          "href": "/forum"
+        },
+        {
+          "text": "Student Discount",
+          "href": "https://www.studentbeans.com/en-gb/uk/beansid-connect/hosted/tryhackme"
+        },
+        {
+          "text": "Swag Shop",
+          "href": "https://store.tryhackme.com"
+        },
+        {
+          "text": "",
+          "href": "https://twitter.com/tryhackme"
+        },
+        {
+          "text": "",
+          "href": "https://www.linkedin.com/company/tryhackme/"
+        },
+        {
+          "text": "",
+          "href": "https://discord.com/invite/tryhackme"
+        },
+        {
+          "text": "",
+          "href": "https://www.facebook.com/people/Tryhackme/100069557747714/"
+        },
+        {
+          "text": "",
+          "href": "https://www.youtube.com/channel/UCRnWD3BsY5Co2MMETB7lHQw"
+        },
+        {
+          "text": "",
+          "href": "https://instagram.com/realtryhackme"
+        },
+        {
+          "text": "",
+          "href": "https://www.pinterest.co.uk/RealTryHackMe/"
+        }
+      ],
+      "body": {
+        "fontFamily": "\"Source Sans Pro\", sans-serif",
+        "color": "rgb(0, 0, 0)",
+        "backgroundColor": "rgb(249, 249, 251)",
+        "lineHeight": "normal"
+      },
+      "rootVars": {
+        "darkblue": "#1c2331",
+        "hackerGreen": "#88cc14",
+        "loggedOutBg": "#111b29",
+        "navbarHeight": "85px"
+      },
+      "cta": {
+        "text": "Join for FREE",
+        "background": "rgb(163, 234, 42)",
+        "color": "rgb(249, 249, 251)",
+        "borderRadius": "5px",
+        "fontWeight": "400",
+        "padding": "9px 16px"
+      },
+      "paint": [
+        {
+          "name": "first-paint",
+          "startTime": 120
+        },
+        {
+          "name": "first-contentful-paint",
+          "startTime": 2684
+        }
+      ],
+      "navTiming": {
+        "domContentLoaded": 1008,
+        "loadEventEnd": 2038,
+        "transferSize": 288340,
+        "encodedBodySize": 288040
+      },
+      "prefersReducedMotion": false,
+      "hasThemeToggle": false,
+      "totalTimeMs": 3574,
+      "screenshot": "c:\\Users\\ASUS-GEORGES-GXT\\Downloads\\PMP\\.tmp_thm\\playwright\\hacktivities-mobile.png"
+    },
+    {
+      "target": "business",
+      "context": "mobile",
+      "title": "TryHackMe | TryHackMe for Business",
+      "location": "https://tryhackme.com/business",
+      "metaDescription": "Hands-on, hyper-realistic cyber training for SOC & IR teams - build confidence, close gaps, and reduce breach impact",
+      "headings": {
+        "h1": [
+          "Develop teams that stop breaches faster"
+        ],
+        "h2": [
+          "Trusted by more than 1000+ security teams and 6.5M+ million users",
+          "Go Business for all the right reasons",
+          "How SOC teams use TryHackMe to improve detection and response",
+          "Trusted by 1000+ security teams worldwide",
+          "Get started with the Business plan today",
+          "FAQs"
+        ]
+      },
+      "counts": {
+        "links": 37,
+        "buttons": 49,
+        "inputs": 0,
+        "images": 135
+      },
+      "navigationItems": [
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "Join for FREE",
+          "href": "/signup"
+        }
+      ],
+      "topLinks": [
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "",
+          "href": "/"
+        },
+        {
+          "text": "Learn",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Pricing",
+          "href": "/pricing"
+        },
+        {
+          "text": "Join for FREE",
+          "href": "/signup"
+        },
+        {
+          "text": "Hands-on labs",
+          "href": "/hacktivities"
+        },
+        {
+          "text": "For Business",
+          "href": "/business"
+        },
+        {
+          "text": "For Education",
+          "href": "/classrooms"
+        },
+        {
+          "text": "Competitive Hacking",
+          "href": "/games/koth"
+        },
+        {
+          "text": "Defensive Certifications",
+          "href": "/certification/security-analyst-level-1"
+        },
+        {
+          "text": "About Us",
+          "href": "/about"
+        },
+        {
+          "text": "Newsroom",
+          "href": "/resources/newsroom"
+        },
+        {
+          "text": "Blog",
+          "href": "/resources/blog"
+        },
+        {
+          "text": "Glossary",
+          "href": "/glossary"
+        },
+        {
+          "text": "Work at TryHackMe",
+          "href": "https://careers.tryhackme.com"
+        },
+        {
+          "text": "Careers in Cyber",
+          "href": "/careers"
+        },
+        {
+          "text": "Privacy Policy",
+          "href": "/legal/privacy-policy"
+        },
+        {
+          "text": "Terms of Use",
+          "href": "/legal/terms-of-use"
+        },
+        {
+          "text": "AI Terms of Use",
+          "href": "/legal/ai-terms-of-use"
+        },
+        {
+          "text": "Acceptable Use Policy",
+          "href": "/legal/acceptable-use-policy"
+        },
+        {
+          "text": "Cookie Policy",
+          "href": "/legal/cookie-policy"
+        },
+        {
+          "text": "Contact Us",
+          "href": "/contact"
+        },
+        {
+          "text": "Affiliates",
+          "href": "/affiliates"
+        },
+        {
+          "text": "Forum",
+          "href": "/forum"
+        },
+        {
+          "text": "Student Discount",
+          "href": "https://www.studentbeans.com/en-gb/uk/beansid-connect/hosted/tryhackme"
+        },
+        {
+          "text": "Swag Shop",
+          "href": "https://store.tryhackme.com"
+        },
+        {
+          "text": "",
+          "href": "https://twitter.com/tryhackme"
+        },
+        {
+          "text": "",
+          "href": "https://www.linkedin.com/company/tryhackme/"
+        },
+        {
+          "text": "",
+          "href": "https://discord.com/invite/tryhackme"
+        },
+        {
+          "text": "",
+          "href": "https://www.facebook.com/people/Tryhackme/100069557747714/"
+        },
+        {
+          "text": "",
+          "href": "https://www.youtube.com/channel/UCRnWD3BsY5Co2MMETB7lHQw"
+        },
+        {
+          "text": "",
+          "href": "https://instagram.com/realtryhackme"
+        },
+        {
+          "text": "",
+          "href": "https://www.pinterest.co.uk/RealTryHackMe/"
+        }
+      ],
+      "body": {
+        "fontFamily": "\"Source Sans Pro\", sans-serif",
+        "color": "rgb(0, 0, 0)",
+        "backgroundColor": "rgb(21, 28, 43)",
+        "lineHeight": "normal"
+      },
+      "rootVars": {
+        "darkblue": "#1c2331",
+        "hackerGreen": "#88cc14",
+        "loggedOutBg": "#111b29",
+        "navbarHeight": "85px"
+      },
+      "cta": {
+        "text": "Join for FREE",
+        "background": "rgb(163, 234, 42)",
+        "color": "rgb(249, 249, 251)",
+        "borderRadius": "5px",
+        "fontWeight": "400",
+        "padding": "9px 16px"
+      },
+      "paint": [
+        {
+          "name": "first-paint",
+          "startTime": 304
+        },
+        {
+          "name": "first-contentful-paint",
+          "startTime": 1720
+        }
+      ],
+      "navTiming": {
+        "domContentLoaded": 1102,
+        "loadEventEnd": 2939,
+        "transferSize": 288578,
+        "encodedBodySize": 288278
+      },
+      "prefersReducedMotion": false,
+      "hasThemeToggle": false,
+      "totalTimeMs": 3389,
+      "screenshot": "c:\\Users\\ASUS-GEORGES-GXT\\Downloads\\PMP\\.tmp_thm\\playwright\\business-mobile.png"
+    }
+  ]
+}

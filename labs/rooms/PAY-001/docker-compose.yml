@@ -1,0 +1,24 @@
+services:
+  pos-terminal:
+    build: ./pos-terminal
+    image: pmp-ctf-pay001-pos
+    ports:
+      - "18080:8080"
+    depends_on:
+      - bank-backend
+    environment:
+      - BANK_BACKEND_URL=http://bank-backend:9090
+    networks:
+      - pay001-net
+
+  bank-backend:
+    build: ./bank-backend
+    image: pmp-ctf-pay001-bank
+    ports:
+      - "19090:9090"
+    networks:
+      - pay001-net
+
+networks:
+  pay001-net:
+    driver: bridge

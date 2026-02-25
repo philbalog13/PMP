@@ -1,0 +1,1951 @@
+{
+  "734": {
+    "file": "c:\\Users\\ASUS-GEORGES-GXT\\Downloads\\c4 (2).pdf",
+    "pages": 37,
+    "modules": [
+      {
+        "code": "734-2",
+        "title": "UE Paiements électroniques"
+      }
+    ],
+    "headings": [
+      {
+        "num": "1",
+        "title": "Définitions et concepts fondamentaux 5"
+      },
+      {
+        "num": "1.1",
+        "title": "Introduction . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5"
+      },
+      {
+        "num": "1.2",
+        "title": "Les acteurs de la relation de paiement . . . . . . . . . . . . . . . . . . . . . 5"
+      },
+      {
+        "num": "1.2.1",
+        "title": "Le porteur . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6"
+      },
+      {
+        "num": "1.2.2",
+        "title": "La carte . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6"
+      },
+      {
+        "num": "1.2.3",
+        "title": "L’émetteur . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6"
+      },
+      {
+        "num": "1.2.4",
+        "title": "L’accepteur . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6"
+      },
+      {
+        "num": "1.2.5",
+        "title": "L’acquéreur . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6"
+      },
+      {
+        "num": "1.2.6",
+        "title": "Le schéma de carte . . . . . . . . . . . . . . . . . . . . . . . . . . . 6"
+      },
+      {
+        "num": "1.2.7",
+        "title": "Les autres acteurs . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7"
+      },
+      {
+        "num": "1.3",
+        "title": "Typologie des moyens de paiement . . . . . . . . . . . . . . . . . . . . . . 7"
+      },
+      {
+        "num": "1.4",
+        "title": "Concepts associés . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8"
+      },
+      {
+        "num": "1.4.1",
+        "title": "Autorisation, clearing et settlement . . . . . . . . . . . . . . . . . . 8"
+      },
+      {
+        "num": "1.4.2",
+        "title": "Commissions . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8"
+      },
+      {
+        "num": "1.4.3",
+        "title": "Schémas de responsabilité . . . . . . . . . . . . . . . . . . . . . . . 8"
+      },
+      {
+        "num": "1.5",
+        "title": "Résumé du chapitre . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8"
+      },
+      {
+        "num": "1.6",
+        "title": "Questions de révision . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 9"
+      },
+      {
+        "num": "2",
+        "title": "Le modèle interbancaire 10"
+      },
+      {
+        "num": "2.1",
+        "title": "Organisation des établissements financiers . . . . . . . . . . . . . . . . . . 10"
+      },
+      {
+        "num": "2.1.1",
+        "title": "Les groupements nationaux : l’exemple du GIE Cartes Bancaires . . 10"
+      },
+      {
+        "num": "2.1.2",
+        "title": "Les groupements internationaux . . . . . . . . . . . . . . . . . . . . 10"
+      },
+      {
+        "num": "2.2",
+        "title": "Notion de schéma carte . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 11"
+      },
+      {
+        "num": "2.2.1",
+        "title": "Exemple : co-badgeage CB/Visa . . . . . . . . . . . . . . . . . . . . 11"
+      },
+      {
+        "num": "2.3",
+        "title": "Introduction à EMV . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 11"
+      },
+      {
+        "num": "2.3.1",
+        "title": "Principes de base . . . . . . . . . . . . . . . . . . . . . . . . . . . . 11"
+      },
+      {
+        "num": "2.3.2",
+        "title": "Cryptographie EMV . . . . . . . . . . . . . . . . . . . . . . . . . . 12"
+      },
+      {
+        "num": "2.3.3",
+        "title": "Les modes d’autorisation . . . . . . . . . . . . . . . . . . . . . . . . 12"
+      },
+      {
+        "num": "2.3.4",
+        "title": "Le sans contact EMV . . . . . . . . . . . . . . . . . . . . . . . . . . 12"
+      },
+      {
+        "num": "2.4",
+        "title": "Les flux interbancaires . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13"
+      },
+      {
+        "num": "2.4.1",
+        "title": "ISO 8583 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13"
+      },
+      {
+        "num": "2.4.2",
+        "title": "ISO 20022 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13"
+      },
+      {
+        "num": "2.5",
+        "title": "Résumé . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13"
+      },
+      {
+        "num": "3",
+        "title": "Histoire et géographie de la monétique 14"
+      },
+      {
+        "num": "3.1",
+        "title": "Des origines à nos jours . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 14"
+      },
+      {
+        "num": "3.1.1",
+        "title": "Années 1950 : l’invention de la carte de crédit . . . . . . . . . . . . 14"
+      },
+      {
+        "num": "3.1.2",
+        "title": "Années 1960 : premiers pas en France . . . . . . . . . . . . . . . . . 14"
+      },
+      {
+        "num": "3.1.3",
+        "title": "Années 1970 : la bande magnétique s’impose . . . . . . . . . . . . . 14"
+      },
+      {
+        "num": "3.1.4",
+        "title": "Années 1980 : naissance du GIE CB . . . . . . . . . . . . . . . . . . 14"
+      },
+      {
+        "num": "3.1.5",
+        "title": "Années 1990 : EMV et Internet . . . . . . . . . . . . . . . . . . . . 14"
+      },
+      {
+        "num": "3.1.6",
+        "title": "Années 2000 : migration EMV et SEPA . . . . . . . . . . . . . . . . 15"
+      },
+      {
+        "num": "3.1.7",
+        "title": "Années 2010 : sans contact et mobile . . . . . . . . . . . . . . . . . 15"
+      },
+      {
+        "num": "3.1.8",
+        "title": "Années 2020 : instantanéité et tokenisation . . . . . . . . . . . . . . 15"
+      },
+      {
+        "num": "3.2",
+        "title": "Géographie des paiements . . . . . . . . . . . . . . . . . . . . . . . . . . . 15"
+      },
+      {
+        "num": "3.2.1",
+        "title": "Niveau régional : pôle TES . . . . . . . . . . . . . . . . . . . . . . . 15"
+      },
+      {
+        "num": "3.2.2",
+        "title": "Niveau national : spécificités françaises . . . . . . . . . . . . . . . . 15"
+      },
+      {
+        "num": "3.2.3",
+        "title": "Niveau européen : le SEPA . . . . . . . . . . . . . . . . . . . . . . . 15"
+      },
+      {
+        "num": "3.2.4",
+        "title": "Niveau mondial : la domination américaine . . . . . . . . . . . . . . 15"
+      },
+      {
+        "num": "3.3",
+        "title": "Enjeux actuels . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 16"
+      },
+      {
+        "num": "4",
+        "title": "Sécurité et fraude 17"
+      },
+      {
+        "num": "4.1",
+        "title": "Généralités sur la sécurité des paiements . . . . . . . . . . . . . . . . . . . 17"
+      },
+      {
+        "num": "4.2",
+        "title": "Les dispositifs de sécurité de la carte . . . . . . . . . . . . . . . . . . . . . 17"
+      },
+      {
+        "num": "4.2.1",
+        "title": "La puce EMV . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 17"
+      },
+      {
+        "num": "4.2.2",
+        "title": "Le code PIN . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 17"
+      },
+      {
+        "num": "4.2.3",
+        "title": "Le cryptogramme visuel (CVV/CVC) . . . . . . . . . . . . . . . . . 17"
+      },
+      {
+        "num": "4.2.4",
+        "title": "La tokenisation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18"
+      },
+      {
+        "num": "4.2.5",
+        "title": "Le 3-D Secure . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18"
+      },
+      {
+        "num": "4.3",
+        "title": "La fraude : typologie et chiffres . . . . . . . . . . . . . . . . . . . . . . . . 18"
+      },
+      {
+        "num": "4.3.1",
+        "title": "Fraude à la carte non présente (CNP) . . . . . . . . . . . . . . . . . 18"
+      },
+      {
+        "num": "4.3.2",
+        "title": "Contrefaçon . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18"
+      },
+      {
+        "num": "4.3.3",
+        "title": "Perte ou vol . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18"
+      },
+      {
+        "num": "4.3.4",
+        "title": "Usurpation d’identité . . . . . . . . . . . . . . . . . . . . . . . . . . 18"
+      },
+      {
+        "num": "4.3.5",
+        "title": "Fraude interne . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 19"
+      },
+      {
+        "num": "4.4",
+        "title": "Les contre-mesures et la régulation . . . . . . . . . . . . . . . . . . . . . . 19"
+      },
+      {
+        "num": "4.4.1",
+        "title": "La norme PCI DSS . . . . . . . . . . . . . . . . . . . . . . . . . . . 19"
+      },
+      {
+        "num": "4.4.2",
+        "title": "La DSP2 et l’authentification forte . . . . . . . . . . . . . . . . . . 19"
+      },
+      {
+        "num": "4.4.3",
+        "title": "L’analyse comportementale . . . . . . . . . . . . . . . . . . . . . . 19"
+      },
+      {
+        "num": "4.5",
+        "title": "Résumé . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 20"
+      },
+      {
+        "num": "5",
+        "title": "Le dispositif industriel 21"
+      },
+      {
+        "num": "5.1",
+        "title": "Les industriels . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 21"
+      },
+      {
+        "num": "5.1.1",
+        "title": "Fabricants de cartes . . . . . . . . . . . . . . . . . . . . . . . . . . 21"
+      },
+      {
+        "num": "5.1.2",
+        "title": "Fabricants de terminaux de paiement (TPE) . . . . . . . . . . . . . 21"
+      },
+      {
+        "num": "5.1.3",
+        "title": "Processeurs techniques . . . . . . . . . . . . . . . . . . . . . . . . . 21"
+      },
+      {
+        "num": "5.1.4",
+        "title": "Prestataires de services de paiement (PSP) . . . . . . . . . . . . . . 22"
+      },
+      {
+        "num": "5.2",
+        "title": "Architectures techniques . . . . . . . . . . . . . . . . . . . . . . . . . . . . 22"
+      },
+      {
+        "num": "5.2.1",
+        "title": "Le système d’autorisation . . . . . . . . . . . . . . . . . . . . . . . 22"
+      },
+      {
+        "num": "5.2.2",
+        "title": "La compensation (clearing) . . . . . . . . . . . . . . . . . . . . . . 22"
+      },
+      {
+        "num": "5.2.3",
+        "title": "Le règlement (settlement) . . . . . . . . . . . . . . . . . . . . . . . 22"
+      },
+      {
+        "num": "5.3",
+        "title": "La chaîne monétique détaillée . . . . . . . . . . . . . . . . . . . . . . . . . 22"
+      },
+      {
+        "num": "5.4",
+        "title": "Les défis industriels . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 23"
+      },
+      {
+        "num": "6",
+        "title": "Architectures des e-paiements : le modèle à 15 coins 24"
+      },
+      {
+        "num": "6.1",
+        "title": "Limites du modèle à 4 coins . . . . . . . . . . . . . . . . . . . . . . . . . . 24"
+      },
+      {
+        "num": "6.2",
+        "title": "Le modèle à 15 coins . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 24"
+      },
+      {
+        "num": "6.2.1",
+        "title": "Les 15 rôles identifiés . . . . . . . . . . . . . . . . . . . . . . . . . . 24"
+      },
+      {
+        "num": "6.2.2",
+        "title": "Exemple d’une transaction en ligne complexe . . . . . . . . . . . . . 25"
+      },
+      {
+        "num": "6.3",
+        "title": "Impact sur les responsabilités . . . . . . . . . . . . . . . . . . . . . . . . . 25"
+      },
+      {
+        "num": "6.4",
+        "title": "Conclusion . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 26"
+      },
+      {
+        "num": "7",
+        "title": "Les instruments de paiement du SEPA 27"
+      },
+      {
+        "num": "7.1",
+        "title": "Le SEPA : principes et périmètre . . . . . . . . . . . . . . . . . . . . . . . 27"
+      },
+      {
+        "num": "7.2",
+        "title": "SEPA Credit Transfer (SCT) . . . . . . . . . . . . . . . . . . . . . . . . . . 27"
+      },
+      {
+        "num": "7.2.1",
+        "title": "Le virement instantané (SCT Inst) . . . . . . . . . . . . . . . . . . 27"
+      },
+      {
+        "num": "7.3",
+        "title": "SEPA Direct Debit (SDD) . . . . . . . . . . . . . . . . . . . . . . . . . . . 28"
+      },
+      {
+        "num": "7.3.1",
+        "title": "Exemple de prélèvement SEPA . . . . . . . . . . . . . . . . . . . . 28"
+      },
+      {
+        "num": "7.4",
+        "title": "SEPA Cards Framework (SCF) et projet Nexo . . . . . . . . . . . . . . . . 28"
+      },
+      {
+        "num": "7.4.1",
+        "title": "L’avenir de la carte en Europe . . . . . . . . . . . . . . . . . . . . . 28"
+      },
+      {
+        "num": "7.5",
+        "title": "Résumé . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 29"
+      },
+      {
+        "num": "8",
+        "title": "Les futurs des paiements électroniques 30"
+      },
+      {
+        "num": "8.1",
+        "title": "Tendances technologiques . . . . . . . . . . . . . . . . . . . . . . . . . . . 30"
+      },
+      {
+        "num": "8.1.1",
+        "title": "Paiement mobile et NFC . . . . . . . . . . . . . . . . . . . . . . . . 30"
+      },
+      {
+        "num": "8.1.2",
+        "title": "Paiement instantané . . . . . . . . . . . . . . . . . . . . . . . . . . 30"
+      },
+      {
+        "num": "8.1.3",
+        "title": "Cryptomonnaies et stablecoins . . . . . . . . . . . . . . . . . . . . . 30"
+      },
+      {
+        "num": "8.1.4",
+        "title": "Monnaies numériques de banque centrale (MNBC) . . . . . . . . . 30"
+      },
+      {
+        "num": "8.1.5",
+        "title": "Intelligence artificielle et analyse de données . . . . . . . . . . . . . 31"
+      },
+      {
+        "num": "8.2",
+        "title": "Évolutions réglementaires . . . . . . . . . . . . . . . . . . . . . . . . . . . 31"
+      },
+      {
+        "num": "8.3",
+        "title": "Impact sur les acteurs . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 31"
+      },
+      {
+        "num": "8.4",
+        "title": "Les métiers de la monétique de demain . . . . . . . . . . . . . . . . . . . . 31"
+      },
+      {
+        "num": "9",
+        "title": "Applications pratiques 32"
+      },
+      {
+        "num": "9.1",
+        "title": "Visite de la Plateforme Monétique Pédagogique . . . . . . . . . . . . . . . 32"
+      },
+      {
+        "num": "9.2",
+        "title": "Études de cas . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 32"
+      },
+      {
+        "num": "9.2.1",
+        "title": "Cas n°1 : Mise en place d’une solution de paiement pour un site"
+      },
+      {
+        "num": "9.2.2",
+        "title": "Cas n°2 : Analyse d’un incident de fraude . . . . . . . . . . . . . . . 32"
+      },
+      {
+        "num": "9.2.3",
+        "title": "Cas n°3 : Conception d’un nouveau moyen de paiement . . . . . . . 33"
+      },
+      {
+        "num": "9.3",
+        "title": "Exercices pratiques . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 33"
+      },
+      {
+        "num": "1.1",
+        "title": "Introduction"
+      },
+      {
+        "num": "1.2",
+        "title": "Les acteurs de la relation de paiement"
+      },
+      {
+        "num": "1.2.1",
+        "title": "Le porteur"
+      },
+      {
+        "num": "1.2.2",
+        "title": "La carte"
+      },
+      {
+        "num": "1.2.3",
+        "title": "L’émetteur"
+      },
+      {
+        "num": "1.2.4",
+        "title": "L’accepteur"
+      },
+      {
+        "num": "1.2.5",
+        "title": "L’acquéreur"
+      },
+      {
+        "num": "1.2.6",
+        "title": "Le schéma de carte"
+      },
+      {
+        "num": "1.2.7",
+        "title": "Les autres acteurs"
+      },
+      {
+        "num": "1.3",
+        "title": "Typologie des moyens de paiement"
+      },
+      {
+        "num": "1.4",
+        "title": "Concepts associés"
+      },
+      {
+        "num": "1.4.1",
+        "title": "Autorisation, clearing et settlement"
+      },
+      {
+        "num": "1.4.2",
+        "title": "Commissions"
+      },
+      {
+        "num": "1.4.3",
+        "title": "Schémas de responsabilité"
+      },
+      {
+        "num": "1.5",
+        "title": "Résumé du chapitre"
+      },
+      {
+        "num": "1.6",
+        "title": "Questions de révision"
+      },
+      {
+        "num": "2.1",
+        "title": "Organisation des établissements financiers"
+      },
+      {
+        "num": "2.1.1",
+        "title": "Les groupements nationaux : l’exemple du GIE Cartes Ban-"
+      },
+      {
+        "num": "2.1.2",
+        "title": "Les groupements internationaux"
+      },
+      {
+        "num": "2.2",
+        "title": "Notion de schéma carte"
+      },
+      {
+        "num": "2.2.1",
+        "title": "Exemple : co-badgeage CB/Visa"
+      },
+      {
+        "num": "2.3",
+        "title": "Introduction à EMV"
+      },
+      {
+        "num": "2.3.1",
+        "title": "Principes de base"
+      },
+      {
+        "num": "2.3.2",
+        "title": "Cryptographie EMV"
+      },
+      {
+        "num": "2.3.3",
+        "title": "Les modes d’autorisation"
+      },
+      {
+        "num": "2.3.4",
+        "title": "Le sans contact EMV"
+      },
+      {
+        "num": "2.4",
+        "title": "Les flux interbancaires"
+      },
+      {
+        "num": "2.4.1",
+        "title": "ISO 8583"
+      },
+      {
+        "num": "2.4.2",
+        "title": "ISO 20022"
+      },
+      {
+        "num": "2.5",
+        "title": "Résumé"
+      },
+      {
+        "num": "3.1",
+        "title": "Des origines à nos jours"
+      },
+      {
+        "num": "3.1.1",
+        "title": "Années 1950 : l’invention de la carte de crédit"
+      },
+      {
+        "num": "3.1.2",
+        "title": "Années 1960 : premiers pas en France"
+      },
+      {
+        "num": "3.1.3",
+        "title": "Années 1970 : la bande magnétique s’impose"
+      },
+      {
+        "num": "3.1.4",
+        "title": "Années 1980 : naissance du GIE CB"
+      },
+      {
+        "num": "3.1.5",
+        "title": "Années 1990 : EMV et Internet"
+      },
+      {
+        "num": "3.1.6",
+        "title": "Années 2000 : migration EMV et SEPA"
+      },
+      {
+        "num": "3.1.7",
+        "title": "Années 2010 : sans contact et mobile"
+      },
+      {
+        "num": "3.1.8",
+        "title": "Années 2020 : instantanéité et tokenisation"
+      },
+      {
+        "num": "3.2",
+        "title": "Géographie des paiements"
+      },
+      {
+        "num": "3.2.1",
+        "title": "Niveau régional : pôle TES"
+      },
+      {
+        "num": "3.2.2",
+        "title": "Niveau national : spécificités françaises"
+      },
+      {
+        "num": "3.2.3",
+        "title": "Niveau européen : le SEPA"
+      },
+      {
+        "num": "3.2.4",
+        "title": "Niveau mondial : la domination américaine"
+      },
+      {
+        "num": "3.3",
+        "title": "Enjeux actuels"
+      },
+      {
+        "num": "4.1",
+        "title": "Généralités sur la sécurité des paiements"
+      },
+      {
+        "num": "4.2",
+        "title": "Les dispositifs de sécurité de la carte"
+      },
+      {
+        "num": "4.2.1",
+        "title": "La puce EMV"
+      },
+      {
+        "num": "4.2.2",
+        "title": "Le code PIN"
+      },
+      {
+        "num": "4.2.3",
+        "title": "Le cryptogramme visuel (CVV/CVC)"
+      },
+      {
+        "num": "4.2.4",
+        "title": "La tokenisation"
+      },
+      {
+        "num": "4.2.5",
+        "title": "Le 3-D Secure"
+      },
+      {
+        "num": "4.3",
+        "title": "La fraude : typologie et chiffres"
+      },
+      {
+        "num": "4.3.1",
+        "title": "Fraude à la carte non présente (CNP)"
+      },
+      {
+        "num": "4.3.2",
+        "title": "Contrefaçon"
+      },
+      {
+        "num": "4.3.3",
+        "title": "Perte ou vol"
+      },
+      {
+        "num": "4.3.4",
+        "title": "Usurpation d’identité"
+      },
+      {
+        "num": "4.3.5",
+        "title": "Fraude interne"
+      },
+      {
+        "num": "4.4",
+        "title": "Les contre-mesures et la régulation"
+      },
+      {
+        "num": "4.4.1",
+        "title": "La norme PCI DSS"
+      },
+      {
+        "num": "4.4.2",
+        "title": "La DSP2 et l’authentification forte"
+      },
+      {
+        "num": "4.4.3",
+        "title": "L’analyse comportementale"
+      },
+      {
+        "num": "4.5",
+        "title": "Résumé"
+      },
+      {
+        "num": "5.1",
+        "title": "Les industriels"
+      },
+      {
+        "num": "5.1.1",
+        "title": "Fabricants de cartes"
+      },
+      {
+        "num": "5.1.2",
+        "title": "Fabricants de terminaux de paiement (TPE)"
+      },
+      {
+        "num": "5.1.3",
+        "title": "Processeurs techniques"
+      },
+      {
+        "num": "5.1.4",
+        "title": "Prestataires de services de paiement (PSP)"
+      },
+      {
+        "num": "5.2",
+        "title": "Architectures techniques"
+      },
+      {
+        "num": "5.2.1",
+        "title": "Le système d’autorisation"
+      },
+      {
+        "num": "5.2.2",
+        "title": "La compensation (clearing)"
+      },
+      {
+        "num": "5.2.3",
+        "title": "Le règlement (settlement)"
+      },
+      {
+        "num": "5.3",
+        "title": "La chaîne monétique détaillée"
+      },
+      {
+        "num": "3",
+        "title": "jours ouvrés."
+      },
+      {
+        "num": "5.4",
+        "title": "Les défis industriels"
+      },
+      {
+        "num": "6.1",
+        "title": "Limites du modèle à 4 coins"
+      },
+      {
+        "num": "6.2",
+        "title": "Le modèle à 15 coins"
+      },
+      {
+        "num": "6.2.1",
+        "title": "Les 15 rôles identifiés"
+      },
+      {
+        "num": "6.2.2",
+        "title": "Exemple d’une transaction en ligne complexe"
+      },
+      {
+        "num": "6.3",
+        "title": "Impact sur les responsabilités"
+      },
+      {
+        "num": "6.4",
+        "title": "Conclusion"
+      },
+      {
+        "num": "7.1",
+        "title": "Le SEPA : principes et périmètre"
+      },
+      {
+        "num": "7.2",
+        "title": "SEPA Credit Transfer (SCT)"
+      },
+      {
+        "num": "7.2.1",
+        "title": "Le virement instantané (SCT Inst)"
+      },
+      {
+        "num": "7.3",
+        "title": "SEPA Direct Debit (SDD)"
+      },
+      {
+        "num": "13",
+        "title": "mois en cas de prélèvement non autorisé."
+      },
+      {
+        "num": "7.3.1",
+        "title": "Exemple de prélèvement SEPA"
+      },
+      {
+        "num": "7.4",
+        "title": "SEPA Cards Framework (SCF) et projet Nexo"
+      },
+      {
+        "num": "7.4.1",
+        "title": "L’avenir de la carte en Europe"
+      },
+      {
+        "num": "7.5",
+        "title": "Résumé"
+      },
+      {
+        "num": "8.1",
+        "title": "Tendances technologiques"
+      },
+      {
+        "num": "8.1.1",
+        "title": "Paiement mobile et NFC"
+      },
+      {
+        "num": "8.1.2",
+        "title": "Paiement instantané"
+      },
+      {
+        "num": "8.1.3",
+        "title": "Cryptomonnaies et stablecoins"
+      },
+      {
+        "num": "8.1.4",
+        "title": "Monnaies numériques de banque centrale (MNBC)"
+      },
+      {
+        "num": "8.1.5",
+        "title": "Intelligence artificielle et analyse de données"
+      },
+      {
+        "num": "8.2",
+        "title": "Évolutions réglementaires"
+      },
+      {
+        "num": "8.3",
+        "title": "Impact sur les acteurs"
+      },
+      {
+        "num": "8.4",
+        "title": "Les métiers de la monétique de demain"
+      },
+      {
+        "num": "9.1",
+        "title": "Visite de la Plateforme Monétique Pédagogique"
+      },
+      {
+        "num": "9.2",
+        "title": "Études de cas"
+      },
+      {
+        "num": "9.2.1",
+        "title": "Cas n°1 : Mise en place d’une solution de paiement pour un"
+      },
+      {
+        "num": "9.2.2",
+        "title": "Cas n°2 : Analyse d’un incident de fraude"
+      },
+      {
+        "num": "9.2.3",
+        "title": "Cas n°3 : Conception d’un nouveau moyen de paiement"
+      },
+      {
+        "num": "9.3",
+        "title": "Exercices pratiques"
+      }
+    ],
+    "preview_page1": "Principes du paiement Module 734-2 - UE Paiements électroniques Expert(e) en Monétique et Transactions Sécurisées Responsable : Georges Balog Semestre 5"
+  },
+  "732": {
+    "file": "c:\\Users\\ASUS-GEORGES-GXT\\Downloads\\c4 (1).pdf",
+    "pages": 18,
+    "modules": [],
+    "headings": [
+      {
+        "num": "1",
+        "title": "EMV pour les transactions avec carte présente 4"
+      },
+      {
+        "num": "1.1",
+        "title": "Introduction à EMV . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4"
+      },
+      {
+        "num": "1.1.1",
+        "title": "Objectifs d’EMV . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4"
+      },
+      {
+        "num": "1.1.2",
+        "title": "Les acteurs impliqués . . . . . . . . . . . . . . . . . . . . . . . . . . 4"
+      },
+      {
+        "num": "1.2",
+        "title": "Rappel sur ISO/IEC 7816-4 . . . . . . . . . . . . . . . . . . . . . . . . . . 4"
+      },
+      {
+        "num": "1.3",
+        "title": "Architecture d’une transaction EMV . . . . . . . . . . . . . . . . . . . . . 5"
+      },
+      {
+        "num": "1.3.1",
+        "title": "1. Sélection de l’application . . . . . . . . . . . . . . . . . . . . . . 5"
+      },
+      {
+        "num": "1.3.2",
+        "title": "2. Initiation de la transaction . . . . . . . . . . . . . . . . . . . . . 5"
+      },
+      {
+        "num": "1.3.3",
+        "title": "3. Authentification de la carte . . . . . . . . . . . . . . . . . . . . . 5"
+      },
+      {
+        "num": "1.3.4",
+        "title": "4. Traitement des restrictions . . . . . . . . . . . . . . . . . . . . . 6"
+      },
+      {
+        "num": "1.3.5",
+        "title": "5. Authentification du porteur . . . . . . . . . . . . . . . . . . . . . 6"
+      },
+      {
+        "num": "1.3.6",
+        "title": "6. Analyse des risques et décision . . . . . . . . . . . . . . . . . . . 6"
+      },
+      {
+        "num": "1.3.7",
+        "title": "7. Autorisation online . . . . . . . . . . . . . . . . . . . . . . . . . . 6"
+      },
+      {
+        "num": "1.3.8",
+        "title": "8. Finalisation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6"
+      },
+      {
+        "num": "1.4",
+        "title": "Le cryptogramme de transaction . . . . . . . . . . . . . . . . . . . . . . . . 6"
+      },
+      {
+        "num": "1.5",
+        "title": "Le sans contact (EMV Contactless) . . . . . . . . . . . . . . . . . . . . . . 7"
+      },
+      {
+        "num": "1.6",
+        "title": "Sécurité et évolutions . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7"
+      },
+      {
+        "num": "1.7",
+        "title": "Résumé . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7"
+      },
+      {
+        "num": "2",
+        "title": "3-D Secure pour les transactions sans carte 8"
+      },
+      {
+        "num": "2.1",
+        "title": "Introduction . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8"
+      },
+      {
+        "num": "2.1.1",
+        "title": "Objectifs . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8"
+      },
+      {
+        "num": "2.2",
+        "title": "Architecture de 3-D Secure . . . . . . . . . . . . . . . . . . . . . . . . . . . 8"
+      },
+      {
+        "num": "2.3",
+        "title": "3-D Secure version 1 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 9"
+      },
+      {
+        "num": "2.4",
+        "title": "3-D Secure version 2 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 9"
+      },
+      {
+        "num": "2.4.1",
+        "title": "Flux 3DS 2 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 9"
+      },
+      {
+        "num": "2.4.2",
+        "title": "Données échangées . . . . . . . . . . . . . . . . . . . . . . . . . . . 10"
+      },
+      {
+        "num": "2.5",
+        "title": "Intégration de 3-D Secure . . . . . . . . . . . . . . . . . . . . . . . . . . . 10"
+      },
+      {
+        "num": "2.5.1",
+        "title": "Côté marchand . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 10"
+      },
+      {
+        "num": "2.5.2",
+        "title": "Côté émetteur . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 10"
+      },
+      {
+        "num": "2.6",
+        "title": "Impact de la DSP2 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 10"
+      },
+      {
+        "num": "2.7",
+        "title": "Sécurité et limites . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 11"
+      },
+      {
+        "num": "2.8",
+        "title": "Résumé . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 11"
+      },
+      {
+        "num": "3",
+        "title": "Travaux pratiques 12"
+      },
+      {
+        "num": "3.1",
+        "title": "TP EMV : Analyse d’une transaction en laboratoire . . . . . . . . . . . . . 12"
+      },
+      {
+        "num": "3.1.1",
+        "title": "Matériel . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 12"
+      },
+      {
+        "num": "3.1.2",
+        "title": "Déroulement . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 12"
+      },
+      {
+        "num": "3.1.3",
+        "title": "Livrable . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13"
+      },
+      {
+        "num": "3.2",
+        "title": "TP EMV : Implémentation simplifiée d’un terminal . . . . . . . . . . . . . 13"
+      },
+      {
+        "num": "3.2.1",
+        "title": "Préparation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13"
+      },
+      {
+        "num": "3.2.2",
+        "title": "Étapes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13"
+      },
+      {
+        "num": "3.3",
+        "title": "TP 3D Secure : Simulation d’une authentification . . . . . . . . . . . . . . 13"
+      },
+      {
+        "num": "3.3.1",
+        "title": "Outils . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13"
+      },
+      {
+        "num": "3.3.2",
+        "title": "Déroulement . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13"
+      },
+      {
+        "num": "3.3.3",
+        "title": "Variantes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 14"
+      },
+      {
+        "num": "3.3.4",
+        "title": "Livrable . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 14"
+      },
+      {
+        "num": "1.1",
+        "title": "Introduction à EMV"
+      },
+      {
+        "num": "1.1.1",
+        "title": "Objectifs d’EMV"
+      },
+      {
+        "num": "1.1.2",
+        "title": "Les acteurs impliqués"
+      },
+      {
+        "num": "1.2",
+        "title": "Rappel sur ISO/IEC 7816-4"
+      },
+      {
+        "num": "1.3",
+        "title": "Architecture d’une transaction EMV"
+      },
+      {
+        "num": "1.3.1",
+        "title": "1. Sélection de l’application"
+      },
+      {
+        "num": "1.3.2",
+        "title": "2. Initiation de la transaction"
+      },
+      {
+        "num": "1.3.3",
+        "title": "3. Authentification de la carte"
+      },
+      {
+        "num": "1.3.4",
+        "title": "4. Traitement des restrictions"
+      },
+      {
+        "num": "1.3.5",
+        "title": "5. Authentification du porteur"
+      },
+      {
+        "num": "1.3.6",
+        "title": "6. Analyse des risques et décision"
+      },
+      {
+        "num": "1.3.7",
+        "title": "7. Autorisation online"
+      },
+      {
+        "num": "1.3.8",
+        "title": "8. Finalisation"
+      },
+      {
+        "num": "1.4",
+        "title": "Le cryptogramme de transaction"
+      },
+      {
+        "num": "1.5",
+        "title": "Le sans contact (EMV Contactless)"
+      },
+      {
+        "num": "1.6",
+        "title": "Sécurité et évolutions"
+      },
+      {
+        "num": "1.7",
+        "title": "Résumé"
+      },
+      {
+        "num": "2.1",
+        "title": "Introduction"
+      },
+      {
+        "num": "2.1.1",
+        "title": "Objectifs"
+      },
+      {
+        "num": "2.2",
+        "title": "Architecture de 3-D Secure"
+      },
+      {
+        "num": "2.3",
+        "title": "3-D Secure version 1"
+      },
+      {
+        "num": "2.4",
+        "title": "3-D Secure version 2"
+      },
+      {
+        "num": "2.4.1",
+        "title": "Flux 3DS 2"
+      },
+      {
+        "num": "2.4.2",
+        "title": "Données échangées"
+      },
+      {
+        "num": "2.5",
+        "title": "Intégration de 3-D Secure"
+      },
+      {
+        "num": "2.5.1",
+        "title": "Côté marchand"
+      },
+      {
+        "num": "2.5.2",
+        "title": "Côté émetteur"
+      },
+      {
+        "num": "2.6",
+        "title": "Impact de la DSP2"
+      },
+      {
+        "num": "2.7",
+        "title": "Sécurité et limites"
+      },
+      {
+        "num": "2.8",
+        "title": "Résumé"
+      },
+      {
+        "num": "3.1",
+        "title": "TP EMV : Analyse d’une transaction en laboratoire"
+      },
+      {
+        "num": "3.1.1",
+        "title": "Matériel"
+      },
+      {
+        "num": "3.1.2",
+        "title": "Déroulement"
+      },
+      {
+        "num": "3.1.3",
+        "title": "Livrable"
+      },
+      {
+        "num": "3.2",
+        "title": "TP EMV : Implémentation simplifiée d’un terminal"
+      },
+      {
+        "num": "3.2.1",
+        "title": "Préparation"
+      },
+      {
+        "num": "3.2.2",
+        "title": "Étapes"
+      },
+      {
+        "num": "3.3",
+        "title": "TP 3D Secure : Simulation d’une authentification"
+      },
+      {
+        "num": "3.3.1",
+        "title": "Outils"
+      },
+      {
+        "num": "3.3.2",
+        "title": "Déroulement"
+      },
+      {
+        "num": "3.3.3",
+        "title": "Variantes"
+      },
+      {
+        "num": "3.3.4",
+        "title": "Livrable"
+      }
+    ],
+    "preview_page1": "Paiements carte présente / carte non présente Module 732-2 Expert(e) en Monétique et Transactions Sécurisées Responsable : Georges Balog Semestre 5"
+  },
+  "722": {
+    "file": "c:\\Users\\ASUS-GEORGES-GXT\\Downloads\\c4.pdf",
+    "pages": 25,
+    "modules": [],
+    "headings": [
+      {
+        "num": "1",
+        "title": "L’écosystème émetteur-acquéreur 5"
+      },
+      {
+        "num": "1.1",
+        "title": "Définitions et rôles fondamentaux . . . . . . . . . . . . . . . . . . . . . . . 5"
+      },
+      {
+        "num": "1.1.1",
+        "title": "L’émetteur (Issuer) . . . . . . . . . . . . . . . . . . . . . . . . . . . 5"
+      },
+      {
+        "num": "1.1.2",
+        "title": "L’acquéreur (Acquirer) . . . . . . . . . . . . . . . . . . . . . . . . . 5"
+      },
+      {
+        "num": "1.2",
+        "title": "Interaction émetteur-acquéreur dans une transaction . . . . . . . . . . . . 6"
+      },
+      {
+        "num": "1.2.1",
+        "title": "Le flux d’autorisation . . . . . . . . . . . . . . . . . . . . . . . . . . 6"
+      },
+      {
+        "num": "1.2.2",
+        "title": "La compensation et le règlement . . . . . . . . . . . . . . . . . . . . 7"
+      },
+      {
+        "num": "1.3",
+        "title": "Les commissions . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7"
+      },
+      {
+        "num": "1.3.1",
+        "title": "Commission d’interchange . . . . . . . . . . . . . . . . . . . . . . . 7"
+      },
+      {
+        "num": "1.3.2",
+        "title": "Commission réseau (schéma) . . . . . . . . . . . . . . . . . . . . . . 7"
+      },
+      {
+        "num": "1.3.3",
+        "title": "Commission commerçant (MSC) . . . . . . . . . . . . . . . . . . . . 7"
+      },
+      {
+        "num": "1.4",
+        "title": "Spécificités françaises : le rôle du GIE Cartes Bancaires . . . . . . . . . . . 7"
+      },
+      {
+        "num": "2",
+        "title": "Fonctions Émetteur 8"
+      },
+      {
+        "num": "2.1",
+        "title": "La carte : support physique et données . . . . . . . . . . . . . . . . . . . . 8"
+      },
+      {
+        "num": "2.1.1",
+        "title": "Cycle de vie d’une carte . . . . . . . . . . . . . . . . . . . . . . . . 8"
+      },
+      {
+        "num": "2.1.2",
+        "title": "Données de la carte . . . . . . . . . . . . . . . . . . . . . . . . . . . 8"
+      },
+      {
+        "num": "2.2",
+        "title": "Dématérialisation de la carte . . . . . . . . . . . . . . . . . . . . . . . . . . 8"
+      },
+      {
+        "num": "2.2.1",
+        "title": "Types de dématérialisation . . . . . . . . . . . . . . . . . . . . . . . 9"
+      },
+      {
+        "num": "2.2.2",
+        "title": "Avantages pour l’émetteur . . . . . . . . . . . . . . . . . . . . . . . 9"
+      },
+      {
+        "num": "2.3",
+        "title": "Front-Office Émetteur . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 9"
+      },
+      {
+        "num": "2.3.1",
+        "title": "Services en ligne (banque à distance) . . . . . . . . . . . . . . . . . 9"
+      },
+      {
+        "num": "2.3.2",
+        "title": "Applications mobiles . . . . . . . . . . . . . . . . . . . . . . . . . . 9"
+      },
+      {
+        "num": "2.3.3",
+        "title": "GAB (Guichets Automatiques) . . . . . . . . . . . . . . . . . . . . 9"
+      },
+      {
+        "num": "2.3.4",
+        "title": "Plateforme d’authentification 3-D Secure (ACS) . . . . . . . . . . . 10"
+      },
+      {
+        "num": "2.4",
+        "title": "Back-Office Émetteur . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 10"
+      },
+      {
+        "num": "2.4.1",
+        "title": "Serveur d’Autorisation Émetteur (SAE) . . . . . . . . . . . . . . . 10"
+      },
+      {
+        "num": "2.4.2",
+        "title": "Gestion des comptes . . . . . . . . . . . . . . . . . . . . . . . . . . 10"
+      },
+      {
+        "num": "2.4.3",
+        "title": "Gestion des listes noires . . . . . . . . . . . . . . . . . . . . . . . . 10"
+      },
+      {
+        "num": "2.4.4",
+        "title": "Traitement de la compensation (clearing) . . . . . . . . . . . . . . . 11"
+      },
+      {
+        "num": "2.4.5",
+        "title": "Gestion des litiges (disputes) . . . . . . . . . . . . . . . . . . . . . . 11"
+      },
+      {
+        "num": "2.4.6",
+        "title": "Reporting et analyse . . . . . . . . . . . . . . . . . . . . . . . . . . 11"
+      },
+      {
+        "num": "2.5",
+        "title": "Intégration avec le système d’information bancaire . . . . . . . . . . . . . . 11"
+      },
+      {
+        "num": "3",
+        "title": "Fonctions Acquéreur 12"
+      },
+      {
+        "num": "3.1",
+        "title": "Le Terminal de Paiement Électronique (TPE) . . . . . . . . . . . . . . . . 12"
+      },
+      {
+        "num": "3.1.1",
+        "title": "Fonctions du TPE . . . . . . . . . . . . . . . . . . . . . . . . . . . 12"
+      },
+      {
+        "num": "3.1.2",
+        "title": "Types de TPE . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 12"
+      },
+      {
+        "num": "3.1.3",
+        "title": "Certification et sécurité . . . . . . . . . . . . . . . . . . . . . . . . . 12"
+      },
+      {
+        "num": "3.2",
+        "title": "Le Guichet Automatique de Banque (GAB) . . . . . . . . . . . . . . . . . 12"
+      },
+      {
+        "num": "3.2.1",
+        "title": "Fonctions du GAB . . . . . . . . . . . . . . . . . . . . . . . . . . . 13"
+      },
+      {
+        "num": "3.2.2",
+        "title": "Spécificités techniques . . . . . . . . . . . . . . . . . . . . . . . . . 13"
+      },
+      {
+        "num": "3.3",
+        "title": "Front-Office Acquéreur . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13"
+      },
+      {
+        "num": "3.3.1",
+        "title": "Portail commerçant . . . . . . . . . . . . . . . . . . . . . . . . . . . 13"
+      },
+      {
+        "num": "3.3.2",
+        "title": "Plateforme de téléparamétrage . . . . . . . . . . . . . . . . . . . . . 13"
+      },
+      {
+        "num": "3.3.3",
+        "title": "Support technique . . . . . . . . . . . . . . . . . . . . . . . . . . . 13"
+      },
+      {
+        "num": "3.4",
+        "title": "Back-Office Acquéreur . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13"
+      },
+      {
+        "num": "3.4.1",
+        "title": "Système d’Autorisation Acquéreur (SAA) . . . . . . . . . . . . . . . 13"
+      },
+      {
+        "num": "3.4.2",
+        "title": "Gestionnaire de GAB (GDG) . . . . . . . . . . . . . . . . . . . . . 14"
+      },
+      {
+        "num": "3.4.3",
+        "title": "Télécollecte et compensation . . . . . . . . . . . . . . . . . . . . . . 14"
+      },
+      {
+        "num": "3.4.4",
+        "title": "Gestion des risques et des litiges . . . . . . . . . . . . . . . . . . . . 14"
+      },
+      {
+        "num": "3.5",
+        "title": "Protocoles d’échange . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 14"
+      },
+      {
+        "num": "3.5.1",
+        "title": "CB2A / 2AP (Acceptor Acquirer Protocol) . . . . . . . . . . . . . . 14"
+      },
+      {
+        "num": "3.5.2",
+        "title": "CBAE (Acquéreur Émetteur) . . . . . . . . . . . . . . . . . . . . . 15"
+      },
+      {
+        "num": "3.5.3",
+        "title": "Évolutions récentes : CB2A 1.6 . . . . . . . . . . . . . . . . . . . . 15"
+      },
+      {
+        "num": "4",
+        "title": "Système d’information bancaire 16"
+      },
+      {
+        "num": "4.1",
+        "title": "Architecture générale . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 16"
+      },
+      {
+        "num": "4.1.1",
+        "title": "Composants principaux . . . . . . . . . . . . . . . . . . . . . . . . . 16"
+      },
+      {
+        "num": "4.1.2",
+        "title": "Interfaces avec la monétique . . . . . . . . . . . . . . . . . . . . . . 16"
+      },
+      {
+        "num": "4.2",
+        "title": "Flux comptables . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 16"
+      },
+      {
+        "num": "4.2.1",
+        "title": "Cycle de traitement d’une transaction . . . . . . . . . . . . . . . . . 16"
+      },
+      {
+        "num": "4.2.2",
+        "title": "Gestion des impayés . . . . . . . . . . . . . . . . . . . . . . . . . . 17"
+      },
+      {
+        "num": "4.3",
+        "title": "Sécurité et continuité d’activité . . . . . . . . . . . . . . . . . . . . . . . . 17"
+      },
+      {
+        "num": "5",
+        "title": "Travaux Pratiques 18"
+      },
+      {
+        "num": "5.1",
+        "title": "TP1 : Front-Office (4h) . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18"
+      },
+      {
+        "num": "5.1.1",
+        "title": "Matériel et logiciels . . . . . . . . . . . . . . . . . . . . . . . . . . . 18"
+      },
+      {
+        "num": "5.1.2",
+        "title": "Exercice 1 : Simulation d’un portail commerçant . . . . . . . . . . . 18"
+      },
+      {
+        "num": "5.1.3",
+        "title": "Exercice 2 : Gestion des plafonds porteur . . . . . . . . . . . . . . . 18"
+      },
+      {
+        "num": "5.1.4",
+        "title": "Exercice 3 : Simulation d’authentification 3-D Secure . . . . . . . . 18"
+      },
+      {
+        "num": "5.2",
+        "title": "TP2 : Back-Office et préparation des données carte (4h) . . . . . . . . . . . 19"
+      },
+      {
+        "num": "5.2.1",
+        "title": "Exercice 1 : Création d’un référentiel de cartes dans Kanest . . . . . 19"
+      },
+      {
+        "num": "5.2.2",
+        "title": "Exercice 2 : Analyse de fichiers de compensation . . . . . . . . . . . 19"
+      },
+      {
+        "num": "5.2.3",
+        "title": "Exercice 3 : Simulation d’autorisations avec CB2A . . . . . . . . . . 19"
+      },
+      {
+        "num": "5.3",
+        "title": "TP3 : Mise en service GAB (4h) . . . . . . . . . . . . . . . . . . . . . . . . 20"
+      },
+      {
+        "num": "5.3.1",
+        "title": "Matériel . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 20"
+      },
+      {
+        "num": "5.3.2",
+        "title": "Exercice 1 : Configuration du GAB . . . . . . . . . . . . . . . . . . 20"
+      },
+      {
+        "num": "5.3.3",
+        "title": "Exercice 2 : Simulation de retraits . . . . . . . . . . . . . . . . . . . 20"
+      },
+      {
+        "num": "5.3.4",
+        "title": "Exercice 3 : Gestion des incidents . . . . . . . . . . . . . . . . . . . 21"
+      },
+      {
+        "num": "5.3.5",
+        "title": "Exercice 4 : Télécollecte des opérations GAB . . . . . . . . . . . . . 21"
+      },
+      {
+        "num": "1.1",
+        "title": "Définitions et rôles fondamentaux"
+      },
+      {
+        "num": "1.1.1",
+        "title": "L’émetteur (Issuer)"
+      },
+      {
+        "num": "1.1.2",
+        "title": "L’acquéreur (Acquirer)"
+      },
+      {
+        "num": "1.2",
+        "title": "Interaction émetteur-acquéreur dans une transac-"
+      },
+      {
+        "num": "1.2.1",
+        "title": "Le flux d’autorisation"
+      },
+      {
+        "num": "1.2.2",
+        "title": "La compensation et le règlement"
+      },
+      {
+        "num": "1.3",
+        "title": "Les commissions"
+      },
+      {
+        "num": "1.3.1",
+        "title": "Commission d’interchange"
+      },
+      {
+        "num": "1.3.2",
+        "title": "Commission réseau (schéma)"
+      },
+      {
+        "num": "1.3.3",
+        "title": "Commission commerçant (MSC)"
+      },
+      {
+        "num": "1.4",
+        "title": "Spécificités françaises : le rôle du GIE Cartes Ban-"
+      },
+      {
+        "num": "2.1",
+        "title": "La carte : support physique et données"
+      },
+      {
+        "num": "2.1.1",
+        "title": "Cycle de vie d’une carte"
+      },
+      {
+        "num": "2.1.2",
+        "title": "Données de la carte"
+      },
+      {
+        "num": "2.2",
+        "title": "Dématérialisation de la carte"
+      },
+      {
+        "num": "2.2.1",
+        "title": "Types de dématérialisation"
+      },
+      {
+        "num": "2.2.2",
+        "title": "Avantages pour l’émetteur"
+      },
+      {
+        "num": "2.3",
+        "title": "Front-Office Émetteur"
+      },
+      {
+        "num": "2.3.1",
+        "title": "Services en ligne (banque à distance)"
+      },
+      {
+        "num": "2.3.2",
+        "title": "Applications mobiles"
+      },
+      {
+        "num": "2.3.3",
+        "title": "GAB (Guichets Automatiques)"
+      },
+      {
+        "num": "2.3.4",
+        "title": "Plateforme d’authentification 3-D Secure (ACS)"
+      },
+      {
+        "num": "2.4",
+        "title": "Back-Office Émetteur"
+      },
+      {
+        "num": "2.4.1",
+        "title": "Serveur d’Autorisation Émetteur (SAE)"
+      },
+      {
+        "num": "2.4.2",
+        "title": "Gestion des comptes"
+      },
+      {
+        "num": "2.4.3",
+        "title": "Gestion des listes noires"
+      },
+      {
+        "num": "2.4.4",
+        "title": "Traitement de la compensation (clearing)"
+      },
+      {
+        "num": "2.4.5",
+        "title": "Gestion des litiges (disputes)"
+      },
+      {
+        "num": "2.4.6",
+        "title": "Reporting et analyse"
+      },
+      {
+        "num": "2.5",
+        "title": "Intégration avec le système d’information bancaire"
+      },
+      {
+        "num": "3.1",
+        "title": "Le Terminal de Paiement Électronique (TPE)"
+      },
+      {
+        "num": "3.1.1",
+        "title": "Fonctions du TPE"
+      },
+      {
+        "num": "3.1.2",
+        "title": "Types de TPE"
+      },
+      {
+        "num": "3.1.3",
+        "title": "Certification et sécurité"
+      },
+      {
+        "num": "3.2",
+        "title": "Le Guichet Automatique de Banque (GAB)"
+      },
+      {
+        "num": "3.2.1",
+        "title": "Fonctions du GAB"
+      },
+      {
+        "num": "3.2.2",
+        "title": "Spécificités techniques"
+      },
+      {
+        "num": "3.3",
+        "title": "Front-Office Acquéreur"
+      },
+      {
+        "num": "3.3.1",
+        "title": "Portail commerçant"
+      },
+      {
+        "num": "3.3.2",
+        "title": "Plateforme de téléparamétrage"
+      },
+      {
+        "num": "3.3.3",
+        "title": "Support technique"
+      },
+      {
+        "num": "3.4",
+        "title": "Back-Office Acquéreur"
+      },
+      {
+        "num": "3.4.1",
+        "title": "Système d’Autorisation Acquéreur (SAA)"
+      },
+      {
+        "num": "3.4.2",
+        "title": "Gestionnaire de GAB (GDG)"
+      },
+      {
+        "num": "3.4.3",
+        "title": "Télécollecte et compensation"
+      },
+      {
+        "num": "3.4.4",
+        "title": "Gestion des risques et des litiges"
+      },
+      {
+        "num": "3.5",
+        "title": "Protocoles d’échange"
+      },
+      {
+        "num": "3.5.1",
+        "title": "CB2A / 2AP (Acceptor Acquirer Protocol)"
+      },
+      {
+        "num": "3.5.2",
+        "title": "CBAE (Acquéreur Émetteur)"
+      },
+      {
+        "num": "3.5.3",
+        "title": "Évolutions récentes : CB2A 1.6"
+      },
+      {
+        "num": "4.1",
+        "title": "Architecture générale"
+      },
+      {
+        "num": "4.1.1",
+        "title": "Composants principaux"
+      },
+      {
+        "num": "4.1.2",
+        "title": "Interfaces avec la monétique"
+      },
+      {
+        "num": "4.2",
+        "title": "Flux comptables"
+      },
+      {
+        "num": "4.2.1",
+        "title": "Cycle de traitement d’une transaction"
+      },
+      {
+        "num": "4.2.2",
+        "title": "Gestion des impayés"
+      },
+      {
+        "num": "4.3",
+        "title": "Sécurité et continuité d’activité"
+      },
+      {
+        "num": "5.1",
+        "title": "TP1 : Front-Office (4h)"
+      },
+      {
+        "num": "5.1.1",
+        "title": "Matériel et logiciels"
+      },
+      {
+        "num": "5.1.2",
+        "title": "Exercice 1 : Simulation d’un portail commerçant"
+      },
+      {
+        "num": "5.1.3",
+        "title": "Exercice 2 : Gestion des plafonds porteur"
+      },
+      {
+        "num": "5.1.4",
+        "title": "Exercice 3 : Simulation d’authentification 3-D Secure"
+      },
+      {
+        "num": "5.2",
+        "title": "TP2 : Back-Office et préparation des données carte"
+      },
+      {
+        "num": "5.2.1",
+        "title": "Exercice 1 : Création d’un référentiel de cartes dans Kanest"
+      },
+      {
+        "num": "5.2.2",
+        "title": "Exercice 2 : Analyse de fichiers de compensation"
+      },
+      {
+        "num": "5.2.3",
+        "title": "Exercice 3 : Simulation d’autorisations avec CB2A"
+      },
+      {
+        "num": "5.3",
+        "title": "TP3 : Mise en service GAB (4h)"
+      },
+      {
+        "num": "5.3.1",
+        "title": "Matériel"
+      },
+      {
+        "num": "5.3.2",
+        "title": "Exercice 1 : Configuration du GAB"
+      },
+      {
+        "num": "5.3.3",
+        "title": "Exercice 2 : Simulation de retraits"
+      },
+      {
+        "num": "5.3.4",
+        "title": "Exercice 3 : Gestion des incidents"
+      },
+      {
+        "num": "5.3.5",
+        "title": "Exercice 4 : Télécollecte des opérations GAB"
+      }
+    ],
+    "preview_page1": "Fonctions monétiques : émetteur et acquéreur Module 722-2 Expert(e) en Monétique et Transactions Sécurisées Responsable : Georges Balog Semestre 5"
+  },
+  "exo": {
+    "file": "c:\\Users\\ASUS-GEORGES-GXT\\Downloads\\exo.pdf",
+    "pages": 13,
+    "modules": [],
+    "headings": [
+      {
+        "num": "1",
+        "title": "Module 734-2 – Principes du paiement 3"
+      },
+      {
+        "num": "1.1",
+        "title": "QCM . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3"
+      },
+      {
+        "num": "1.2",
+        "title": "Questions courtes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4"
+      },
+      {
+        "num": "1.3",
+        "title": "Étude de cas . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5"
+      },
+      {
+        "num": "2",
+        "title": "Module 732-2 – Paiements carte présente / carte non présente 6"
+      },
+      {
+        "num": "2.1",
+        "title": "QCM . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6"
+      },
+      {
+        "num": "2.2",
+        "title": "Questions courtes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7"
+      },
+      {
+        "num": "2.3",
+        "title": "Étude de cas . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8"
+      },
+      {
+        "num": "3",
+        "title": "Module 722-2 – Fonctions monétiques : émetteur et acquéreur 9"
+      },
+      {
+        "num": "3.1",
+        "title": "QCM . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 9"
+      },
+      {
+        "num": "3.2",
+        "title": "Questions courtes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 10"
+      },
+      {
+        "num": "3.3",
+        "title": "Étude de cas . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 11"
+      },
+      {
+        "num": "1",
+        "title": "Module 734-2 – Principes du paiement"
+      },
+      {
+        "num": "1.1",
+        "title": "QCM"
+      },
+      {
+        "num": "1.2",
+        "title": "Questions courtes"
+      },
+      {
+        "num": "1.3",
+        "title": "Étude de cas"
+      },
+      {
+        "num": "2",
+        "title": "Module 732-2 – Paiements carte présente / carte non"
+      },
+      {
+        "num": "2.1",
+        "title": "QCM"
+      },
+      {
+        "num": "2.2",
+        "title": "Questions courtes"
+      },
+      {
+        "num": "2.3",
+        "title": "Étude de cas"
+      },
+      {
+        "num": "3",
+        "title": "Module 722-2 – Fonctions monétiques : émetteur et"
+      },
+      {
+        "num": "3.1",
+        "title": "QCM"
+      },
+      {
+        "num": "3.2",
+        "title": "Questions courtes"
+      },
+      {
+        "num": "3.3",
+        "title": "Étude de cas"
+      },
+      {
+        "num": "1.6",
+        "title": "(qui encapsule les données EMV). Il construit un message avec le montant, le"
+      }
+    ],
+    "preview_page1": "Recueil d’exercices et QCM Modules de Monétique Principes du paiement, Paiements carte présente/non présente, Fonctions monétiques : émetteur et acquéreur Expert(e) en Monétique et Transactions Sécurisées Semestre 5 Table des matières 1 Module 734-2 – Principes du paiement 3 1.1 QCM . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3 1.2 Questions courtes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4 1.3 Étude de cas . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5 2 Module 732-2 – Paiements carte présente / carte non présente 6 2.1 QCM . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6 2.2 Questions courtes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7 2.3 Étude de cas . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8 3 Module 722-2 – Fonctions monétiques : émetteur et acquéreur 9 3.1 QCM . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 9 3.2 Questions courtes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 10 3.3 Étude de cas . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 1"
+  }
+}

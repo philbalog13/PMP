@@ -2,7 +2,6 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { useTerminalStore } from '@/lib/store';
 import { getAvailableMerchants, simulateClientPayment, processTransaction } from '@/lib/api-client';
@@ -741,7 +740,7 @@ function HomeContent() {
 
                         <div className="flex justify-between items-center mb-8 px-2 text-blue-200/60">
                             <span className="font-bold tracking-[0.2em] text-xs uppercase flex items-center gap-2">
-                                <Image src="/icons/pos_terminal_icon.png" alt="POS" width={16} height={16} className="drop-shadow-[0_0_5px_rgba(59,130,246,0.6)]" />
+                                <Activity size={14} className="text-blue-500" />
                                 Ingenico PMP  <span className="text-blue-400">NEO</span>
                             </span>
                             <div className="flex items-center gap-3">

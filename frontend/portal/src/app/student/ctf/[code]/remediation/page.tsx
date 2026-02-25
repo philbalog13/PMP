@@ -6,6 +6,7 @@ import { AlertCircle, ArrowLeft, BookOpen, CheckCircle2, Shield } from 'lucide-r
 import { useAuth } from '../../../../auth/useAuth';
 import { CourseCard, CoursePageShell, CoursePill } from '@/components/course/CoursePageShell';
 import { APP_URLS } from '@shared/lib/app-urls';
+import { normalizeCtfCode } from '@/lib/ctf-code-map';
 
 type CtfStatus = 'LOCKED' | 'UNLOCKED' | 'IN_PROGRESS' | 'COMPLETED';
 
@@ -123,10 +124,11 @@ export default function CtfRemediationPage({ params }: { params: Promise<{ code:
     const { code } = use(params);
     const { isLoading: authLoading } = useAuth(true);
 
-    const normalizedCode = useMemo(
-        () => decodeURIComponent(String(code || '')).trim().toUpperCase(),
+    const requestedCode = useMemo(
+        () => normalizeCtfCode(decodeURIComponent(String(code || ''))),
         [code]
     );
+    const normalizedCode = requestedCode;
 
     const [challenge, setChallenge] = useState<ChallengeDetail | null>(null);
     const [loading, setLoading] = useState(true);

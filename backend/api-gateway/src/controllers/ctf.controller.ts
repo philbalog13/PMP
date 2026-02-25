@@ -23,16 +23,42 @@ import {
     recordCtfLearningEvent,
 } from '../services/ctfLearning.service';
 import { initStudentVulnForChallenge, resetStudentVuln } from '../services/ctfVuln.service';
-import { startMitmBackgroundTraffic, stopMitmBackgroundTraffic } from '../services/ctfTraffic.service';
+import { stopMitmBackgroundTraffic } from '../services/ctfTraffic.service';
+import {
+    cleanupExpiredLabSessions,
+    CtfLabServiceError,
+    extendLabSession,
+    getLabSessionForChallenge,
+    resetLabSession,
+    resolveLabProxyTarget,
+    startOrReuseLabSession,
+    terminateLabSession,
+} from '../services/ctfLab.service';
 import { logger } from '../utils/logger';
 
 type CtfMode = 'GUIDED' | 'FREE';
 type LearnerProfile = 'NOVICE' | 'INTERMEDIATE' | 'ADVANCED';
+type CtfWorkflowMode = 'FLAG_ONLY' | 'TASK_VALIDATION';
 
 type CtfStatus = 'LOCKED' | 'UNLOCKED' | 'IN_PROGRESS' | 'COMPLETED';
 
+interface GuidedStepValidationResult {
+    isCorrect: boolean;
+    message: string;
+}
+
 let seedInitialized = false;
 let seedInFlight: Promise<void> | null = null;
+const ACTIVE_ROOM_CODES = CTF_CHALLENGES.map((challenge) => challenge.code.toUpperCase());
+const ACTIVE_ROOM_CODE_SET = new Set(ACTIVE_ROOM_CODES);
+
+function normalizeChallengeCode(value: unknown): string {
+    return String(value || '').trim().toUpperCase();
+}
+
+function resolveChallengeCode(value: unknown): string {
+    return normalizeChallengeCode(value);
+}
 
 function getStudentId(req: Request): string | null {
     return (req as any).user?.userId || null;
@@ -44,6 +70,28 @@ function parseMode(value: unknown): CtfMode {
 
 function parseLearnerProfile(value: unknown, fallback: LearnerProfile = 'INTERMEDIATE'): LearnerProfile {
     return normalizeLearnerProfile(value, fallback);
+}
+
+function getChallengeWorkflowMode(challengeCode: string): CtfWorkflowMode {
+    const seed = CTF_CHALLENGE_BY_CODE.get(challengeCode);
+    return seed?.workflowMode === 'TASK_VALIDATION' ? 'TASK_VALIDATION' : 'FLAG_ONLY';
+}
+
+function getInternalProxySecret(): string {
+    return process.env.LAB_INTERNAL_PROXY_SECRET || process.env.INTERNAL_HSM_SECRET || '';
+}
+
+function handleLabError(res: Response, error: any, fallbackMessage: string) {
+    if (error instanceof CtfLabServiceError) {
+        return res.status(error.statusCode).json({
+            success: false,
+            error: error.message,
+            code: error.code,
+        });
+    }
+
+    logger.error(fallbackMessage, { error: error?.message || String(error) });
+    return res.status(500).json({ success: false, error: fallbackMessage });
 }
 
 function parseJsonObject(value: unknown): Record<string, any> {
@@ -151,6 +199,472 @@ function normalizeIntArray(value: unknown): number[] {
     }
 
     return [];
+}
+
+function normalizeFreeTextAnswer(value: string): string {
+    return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+}
+
+function normalizeCompactAnswer(value: string): string {
+    return String(value || '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+}
+
+function validatePay001StepAnswer(stepNumber: number, submittedAnswer: string): GuidedStepValidationResult {
+    const raw = String(submittedAnswer || '').trim();
+    const normalized = normalizeFreeTextAnswer(raw);
+    const compact = normalizeCompactAnswer(raw);
+
+    if (stepNumber === 1) {
+        const isCorrect = /\b8080\b/.test(normalized)
+            && /\btcp\b/.test(normalized)
+            && /\bopen\b/.test(normalized)
+            && /\bhttp\b/.test(normalized);
+        return {
+            isCorrect,
+            message: isCorrect
+                ? 'Correct: port 8080/tcp open http identified.'
+                : 'Expected service evidence like: 8080/tcp open http.',
+        };
+    }
+
+    if (stepNumber === 2) {
+        const expected = 'pmp{cleartext_pos_sniff_4c8f3}';
+        const isCorrect = normalizeCompactAnswer(raw) === expected;
+        return {
+            isCorrect,
+            message: isCorrect
+                ? 'Correct user flag recovered from network traffic.'
+                : 'Incorrect user flag. Re-check tcpdump transaction payloads.',
+        };
+    }
+
+    if (stepNumber === 3) {
+        const isCorrect = /uid=0\(root\)/.test(compact)
+            && /gid=0\(root\)/.test(compact)
+            && /groups=0\(root\)/.test(compact);
+        return {
+            isCorrect,
+            message: isCorrect
+                ? 'Correct: admin command execution runs as root.'
+                : 'Expected id output showing uid=0(root) gid=0(root) groups=0(root).',
+        };
+    }
+
+    if (stepNumber === 4) {
+        const expected = 'pmp{rce_admin_panel_root_9a2b1}';
+        const isCorrect = normalizeCompactAnswer(raw) === expected;
+        return {
+            isCorrect,
+            message: isCorrect
+                ? 'Correct root flag recovered.'
+                : 'Incorrect root flag. Re-check /root/root.txt command output.',
+        };
+    }
+
+    if (stepNumber === 5) {
+        const hasCleartextIssue = /(cleartext|plaintext|non chiff|en clair)/.test(normalized)
+            && /(transaction|trafic|traffic|reseau|network)/.test(normalized);
+        const hasInterceptionImpact = /(intercept|sniff|capture)/.test(normalized)
+            && /(sensible|sensitive|user flag|flag utilisateur|user\.txt)/.test(normalized);
+        const hasAdminRce = /(admin|8080)/.test(normalized)
+            && /(commande|command|injection|sans validation|without validation|unsanitized|non securise)/.test(normalized);
+        const hasRootImpact = /(root|privilege|privileges|escalade|escalation)/.test(normalized)
+            && /(root\.txt|flag root|lecture|lire|read)/.test(normalized);
+
+        const isCorrect = hasCleartextIssue && hasInterceptionImpact && hasAdminRce && hasRootImpact;
+        return {
+            isCorrect,
+            message: isCorrect
+                ? 'Synthesis accepted.'
+                : 'Mention cleartext transaction interception and admin command injection leading to root compromise.',
+        };
+    }
+
+    return {
+        isCorrect: false,
+        message: 'Unsupported step for PAY-001 validator.',
+    };
+}
+
+function normalizeDigits(value: string): string {
+    return String(value || '').replace(/\D+/g, '');
+}
+
+function validatePci001StepAnswer(stepNumber: number, submittedAnswer: string): GuidedStepValidationResult {
+    const raw = String(submittedAnswer || '').trim();
+    const normalized = normalizeFreeTextAnswer(raw);
+    const compact = normalizeCompactAnswer(raw);
+
+    if (stepNumber === 1) {
+        const isCorrect = normalized === '1' || compact === 'q' || /\b(parameter|param|get)\s*[:=]?\s*q\b/.test(normalized);
+        return {
+            isCorrect,
+            message: isCorrect
+                ? 'Correct search parameter identification.'
+                : 'Expected one GET search parameter (commonly q).',
+        };
+    }
+
+    if (stepNumber === 2) {
+        const isCorrect = compact === 'ecommerce_db';
+        return {
+            isCorrect,
+            message: isCorrect
+                ? 'Correct database name found.'
+                : 'Expected database name: ecommerce_db.',
+        };
+    }
+
+    if (stepNumber === 3) {
+        const isCorrect = compact === 'pmp{pci_dss_weak_sql_5f3a2}';
+        return {
+            isCorrect,
+            message: isCorrect
+                ? 'Correct user flag extracted.'
+                : 'Incorrect user flag from cards table.',
+        };
+    }
+
+    if (stepNumber === 4) {
+        const isCorrect = compact === 'root' || /\broot\b/.test(normalized);
+        return {
+            isCorrect,
+            message: isCorrect
+                ? 'Correct UID 0 account identified.'
+                : 'Expected UID 0 user: root.',
+        };
+    }
+
+    if (stepNumber === 5) {
+        const isCorrect = compact === 'cvv' || compact === 'cvv2' || /\bcvv2?\b/.test(normalized);
+        return {
+            isCorrect,
+            message: isCorrect
+                ? 'Correct PCI DSS violation identified.'
+                : 'Expected forbidden column: cvv (or cvv2).',
+        };
+    }
+
+    if (stepNumber === 6) {
+        const isCorrect = compact === 'pmp{pci_dss_root_violation_8c4e7}';
+        return {
+            isCorrect,
+            message: isCorrect
+                ? 'Correct root flag recovered.'
+                : 'Incorrect root flag value.',
+        };
+    }
+
+    if (stepNumber === 7) {
+        const hasSqli = /(sql injection|injection sql|sqli)/.test(normalized);
+        const hasCvvStorage = /\bcvv2?\b/.test(normalized) && /(stock|stor|enregistre|persist)/.test(normalized);
+        const hasWeakCredentials = /(mot de passe|password)/.test(normalized)
+            && /(clair|clear|weak|faible|plain)/.test(normalized);
+        const hasPciImpact = /(pci|compliance|conformite|non conform|dss)/.test(normalized);
+
+        const matches = [hasSqli, hasCvvStorage, hasWeakCredentials, hasPciImpact].filter(Boolean).length;
+        const isCorrect = matches >= 3;
+        return {
+            isCorrect,
+            message: isCorrect
+                ? 'PCI DSS synthesis accepted.'
+                : 'Mention SQL injection, CVV storage, weak credential/data handling, and PCI impact.',
+        };
+    }
+
+    return {
+        isCorrect: false,
+        message: 'Unsupported step for PCI-001 validator.',
+    };
+}
+
+function validateSoc001StepAnswer(stepNumber: number, submittedAnswer: string): GuidedStepValidationResult {
+    const raw = String(submittedAnswer || '').trim();
+    const normalized = normalizeFreeTextAnswer(raw);
+    const compact = normalizeCompactAnswer(raw);
+
+    if (stepNumber === 1) {
+        const isCorrect = compact === 'support@banque-securite.com';
+        return {
+            isCorrect,
+            message: isCorrect
+                ? 'Correct displayed sender identified.'
+                : 'Expected sender: support@banque-securite.com.',
+        };
+    }
+
+    if (stepNumber === 2) {
+        const isCorrect = compact === 'phisher@malicious.net';
+        return {
+            isCorrect,
+            message: isCorrect
+                ? 'Correct Return-Path identified.'
+                : 'Expected Return-Path: phisher@malicious.net.',
+        };
+    }
+
+    if (stepNumber === 3) {
+        const isCorrect = compact === 'http://192.168.1.105/fake-login';
+        return {
+            isCorrect,
+            message: isCorrect
+                ? 'Correct hidden URL identified.'
+                : 'Expected URL: http://192.168.1.105/fake-login.',
+        };
+    }
+
+    if (stepNumber === 4) {
+        const digits = normalizeDigits(raw);
+        const isCorrect = digits === '0123456789';
+        return {
+            isCorrect,
+            message: isCorrect
+                ? 'Correct spoofed phone number identified.'
+                : 'Expected number: 01 23 45 67 89.',
+        };
+    }
+
+    if (stepNumber === 5) {
+        const hasAmount = /\b15000\b/.test(normalized) || /\b15 000\b/.test(raw);
+        const normalizedIban = raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        const hasIban = normalizedIban.includes('FR7612345678901234567890123');
+        const isCorrect = hasAmount && hasIban;
+        return {
+            isCorrect,
+            message: isCorrect
+                ? 'Correct fraudulent transfer details identified.'
+                : 'Provide both amount (15000) and IBAN FR76 1234 5678 9012 3456 7890 123.',
+        };
+    }
+
+    if (stepNumber === 6) {
+        const hasLinkCare = /(ne pas cliquer|do not click|url|lien)/.test(normalized);
+        const hasCallback = /(verifier|verification|telephone|call[- ]?back|rappel)/.test(normalized);
+        const hasHeaderCheck = /(header|en[- ]?tete|from|return[- ]?path|expediteur|sender)/.test(normalized);
+        const hasNoCodeShare = /(code|otp|identifiant|credential|mot de passe|password)/.test(normalized)
+            && /(ne pas communiquer|never share|ne jamais partager|do not share)/.test(normalized);
+
+        const matches = [hasLinkCare, hasCallback, hasHeaderCheck, hasNoCodeShare].filter(Boolean).length;
+        const isCorrect = matches >= 3;
+        return {
+            isCorrect,
+            message: isCorrect
+                ? 'Prevention synthesis accepted.'
+                : 'Provide at least three controls: link caution, independent verification, sender/header checks, no code sharing.',
+        };
+    }
+
+    return {
+        isCorrect: false,
+        message: 'Unsupported step for SOC-001 validator.',
+    };
+}
+
+function validateApi001StepAnswer(stepNumber: number, submittedAnswer: string): GuidedStepValidationResult {
+    const raw = String(submittedAnswer || '').trim();
+    const normalized = normalizeFreeTextAnswer(raw);
+    const compact = normalizeCompactAnswer(raw);
+
+    if (stepNumber === 1) {
+        const match = raw.match(/\d+/);
+        const count = match ? Number(match[0]) : NaN;
+        const isCorrect = Number.isFinite(count) && count === 5;
+        return {
+            isCorrect,
+            message: isCorrect
+                ? 'Correct endpoint count identified.'
+                : 'Expected endpoint count: 5.',
+        };
+    }
+
+    if (stepNumber === 2) {
+        const tokenCandidate = raw.replace(/^bearer\s+/i, '').trim();
+        const jwtLike = /^eyJ[A-Za-z0-9\-_]*\.[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+$/.test(tokenCandidate);
+        const isCorrect = jwtLike || /^eyJ[A-Za-z0-9\-_]{10,}$/.test(tokenCandidate);
+        return {
+            isCorrect,
+            message: isCorrect
+                ? 'Token format accepted.'
+                : 'Expected a JWT-like token beginning with eyJ...',
+        };
+    }
+
+    if (stepNumber === 3) {
+        const isCorrect = compact === 'pmp{api_bola_vulnerability_7d8e2}';
+        return {
+            isCorrect,
+            message: isCorrect
+                ? 'Correct BOLA user flag recovered.'
+                : 'Incorrect BOLA user flag value.',
+        };
+    }
+
+    if (stepNumber === 4) {
+        const isCorrect = /\b(oui|yes|success|true)\b/.test(normalized) || /status["'=:\s]+success/.test(compact);
+        return {
+            isCorrect,
+            message: isCorrect
+                ? 'Transfer bypass confirmation accepted.'
+                : 'Expected success confirmation (yes/oui/status success).',
+        };
+    }
+
+    if (stepNumber === 5) {
+        const isCorrect = compact === 'pmp{api_admin_exposure_9f1b4}';
+        return {
+            isCorrect,
+            message: isCorrect
+                ? 'Correct admin/root flag recovered.'
+                : 'Incorrect admin/root flag value.',
+        };
+    }
+
+    if (stepNumber === 6) {
+        const hasBola = /\bbola\b|object level authorization|broken object/.test(normalized);
+        const hasRateBypass = /(rate limit|limite|limit).*(bypass|contourn|evit)/.test(normalized)
+            || /(bypass|contourn).*(rate limit|limite|limit)/.test(normalized);
+        const hasAccessControl = /(access control|controle d acces|admin|authorization|autorisation)/.test(normalized);
+
+        const isCorrect = hasBola && hasRateBypass && hasAccessControl;
+        return {
+            isCorrect,
+            message: isCorrect
+                ? 'API vulnerability synthesis accepted.'
+                : 'Mention BOLA, transfer/rate-limit bypass, and insufficient admin access control.',
+        };
+    }
+
+    return {
+        isCorrect: false,
+        message: 'Unsupported step for API-001 validator.',
+    };
+}
+
+function validateDora001StepAnswer(stepNumber: number, submittedAnswer: string): GuidedStepValidationResult {
+    const raw = String(submittedAnswer || '').trim();
+    const normalized = normalizeFreeTextAnswer(raw);
+    const compact = normalizeCompactAnswer(raw);
+
+    if (stepNumber === 1) {
+        const isCorrect = compact === 'readme_ransom.txt';
+        return {
+            isCorrect,
+            message: isCorrect
+                ? 'Correct ransom note identified.'
+                : 'Expected ransomware note: README_RANSOM.txt.',
+        };
+    }
+
+    if (stepNumber === 2) {
+        const isCorrect = /\b192\.168\.1\.100\b/.test(raw);
+        return {
+            isCorrect,
+            message: isCorrect
+                ? 'Correct initial attacker IP identified.'
+                : 'Expected source IP: 192.168.1.100.',
+        };
+    }
+
+    if (stepNumber === 3) {
+        const isCorrect = compact === 'appuser' || /\bappuser\b/.test(normalized);
+        return {
+            isCorrect,
+            message: isCorrect
+                ? 'Correct lateral movement user identified.'
+                : 'Expected user: appuser.',
+        };
+    }
+
+    if (stepNumber === 4) {
+        const hasIptables = /\biptables\b/.test(normalized);
+        const hasDrop = /\bdrop\b/.test(normalized);
+        const hasDirection = /\boutput\b|\bforward\b/.test(normalized);
+        const hasSrcDst = /\-s\b/.test(raw) && /\-d\b/.test(raw);
+        const isCorrect = hasIptables && hasDrop && hasDirection && hasSrcDst;
+        return {
+            isCorrect,
+            message: isCorrect
+                ? 'Containment rule accepted.'
+                : 'Provide an iptables DROP rule with source and destination.',
+        };
+    }
+
+    if (stepNumber === 5) {
+        const isCorrect = /\b2026-02-20\b/.test(raw);
+        return {
+            isCorrect,
+            message: isCorrect
+                ? 'Correct backup date identified.'
+                : 'Expected clean backup date: 2026-02-20.',
+        };
+    }
+
+    if (stepNumber === 6) {
+        const isCorrect = compact === 'pmp{dora_recovery_success_3e6d9}';
+        return {
+            isCorrect,
+            message: isCorrect
+                ? 'Correct recovery flag recovered.'
+                : 'Incorrect recovery flag value.',
+        };
+    }
+
+    if (stepNumber === 7) {
+        const match = raw.match(/\d{3}/);
+        const status = match ? Number(match[0]) : NaN;
+        const isCorrect = Number.isFinite(status) && status === 200;
+        return {
+            isCorrect,
+            message: isCorrect
+                ? 'Service continuity check passed.'
+                : 'Expected API health HTTP status: 200.',
+        };
+    }
+
+    if (stepNumber === 8) {
+        const hasTimeline = /(timeline|chronologie|sequence|when)/.test(normalized);
+        const hasImpact = /(impact|service|donnees|data|business)/.test(normalized);
+        const hasActions = /(isolation|restauration|restore|containment|corrective|actions)/.test(normalized);
+        const hasRecommendations = /(recommendation|prevention|avoid|amelioration|hardening|resilience)/.test(normalized);
+
+        const isCorrect = hasTimeline && hasImpact && hasActions && hasRecommendations;
+        return {
+            isCorrect,
+            message: isCorrect
+                ? 'DORA report synthesis accepted.'
+                : 'Include timeline, impact, corrective actions, and recommendations.',
+        };
+    }
+
+    return {
+        isCorrect: false,
+        message: 'Unsupported step for DORA-001 validator.',
+    };
+}
+
+function validateGuidedStepAnswer(
+    challengeCode: string,
+    stepNumber: number,
+    submittedAnswer: string
+): GuidedStepValidationResult {
+    if (challengeCode === 'PAY-001') return validatePay001StepAnswer(stepNumber, submittedAnswer);
+    if (challengeCode === 'PCI-001') return validatePci001StepAnswer(stepNumber, submittedAnswer);
+    if (challengeCode === 'SOC-001') return validateSoc001StepAnswer(stepNumber, submittedAnswer);
+    if (challengeCode === 'API-001') return validateApi001StepAnswer(stepNumber, submittedAnswer);
+    if (challengeCode === 'DORA-001') return validateDora001StepAnswer(stepNumber, submittedAnswer);
+
+    return {
+        isCorrect: false,
+        message: `No step validator configured for ${challengeCode}.`,
+    };
 }
 
 async function isPrerequisiteCompleted(studentId: string, prerequisiteCode: string | null): Promise<boolean> {
@@ -294,6 +808,16 @@ async function seedCtfChallengesIfNeeded(): Promise<void> {
         await upsertChallengeSeed(challenge);
     }
 
+    // Keep only the canonical THM-like 5 rooms active and hide legacy challenges.
+    await query(
+        `UPDATE learning.ctf_challenges
+         SET is_active = false,
+             updated_at = NOW()
+         WHERE is_active = true
+           AND NOT (challenge_code = ANY($1::text[]))`,
+        [ACTIVE_ROOM_CODES]
+    );
+
     logger.info('CTF challenge seed completed', {
         seededChallenges: CTF_CHALLENGES.length,
         refreshMode,
@@ -322,7 +846,12 @@ async function ensureCtfSeeded(): Promise<void> {
     await seedInFlight;
 }
 
-async function getChallengeByCode(challengeCode: string) {
+async function getChallengeByCode(rawChallengeCode: string) {
+    const challengeCode = resolveChallengeCode(rawChallengeCode);
+    if (!challengeCode || !ACTIVE_ROOM_CODE_SET.has(challengeCode)) {
+        return null;
+    }
+
     const challengeResult = await query(
         `SELECT *
          FROM learning.ctf_challenges
@@ -349,6 +878,7 @@ function serializeChallenge(challenge: any, options: { redactSpoilers?: boolean 
     return {
         id: challenge.id,
         code: challenge.challenge_code,
+        workflowMode: getChallengeWorkflowMode(challenge.challenge_code),
         title: challenge.title,
         description: challenge.description,
         category: challenge.category,
@@ -402,7 +932,9 @@ export const getChallenges = async (req: Request, res: Response) => {
                     GROUP BY challenge_id
                  ) s ON s.challenge_id = c.id
                  WHERE c.is_active = true
-                 ORDER BY c.category ASC, c.challenge_code ASC`
+                   AND c.challenge_code = ANY($1::text[])
+                 ORDER BY c.category ASC, c.challenge_code ASC`,
+                [ACTIVE_ROOM_CODES]
             ),
             query(
                 `SELECT challenge_id, status, mode_preference, current_guided_step, hints_unlocked, started_at, completed_at, failed_attempts, learner_profile, debrief_completed, last_activity_at
@@ -415,8 +947,10 @@ export const getChallenges = async (req: Request, res: Response) => {
                  FROM learning.ctf_submissions s
                  JOIN learning.ctf_challenges c ON c.id = s.challenge_id
                  WHERE s.student_id = $1
-                   AND s.is_correct = true`,
-                [studentId]
+                   AND s.is_correct = true
+                   AND c.is_active = true
+                   AND c.challenge_code = ANY($2::text[])`,
+                [studentId, ACTIVE_ROOM_CODES]
             ),
         ]);
 
@@ -468,7 +1002,7 @@ export const getChallengeDetail = async (req: Request, res: Response) => {
             return res.status(401).json({ success: false, error: 'Unauthorized' });
         }
 
-        const challengeCode = req.params.code;
+        const challengeCode = resolveChallengeCode(req.params.code);
         const challenge = await getChallengeByCode(challengeCode);
 
         if (!challenge) {
@@ -490,6 +1024,7 @@ export const getChallengeDetail = async (req: Request, res: Response) => {
 
         const isCompleted = progress?.status === 'COMPLETED';
         const challengePayload = serializeChallenge(challenge, { redactSpoilers: !isCompleted });
+        const workflowMode = getChallengeWorkflowMode(challenge.challenge_code);
         const mode = parseMode(req.query.mode || progress?.mode_preference || 'GUIDED');
         const learnerProfile = parseLearnerProfile(req.query.profile || progress?.learner_profile || 'INTERMEDIATE');
 
@@ -580,6 +1115,16 @@ export const getChallengeDetail = async (req: Request, res: Response) => {
             }
             : null;
 
+        const labContext = await getLabSessionForChallenge(studentId, challengeCode)
+            .catch((error: any) => {
+                logger.warn('CTF getChallengeDetail lab context unavailable', {
+                    challengeCode,
+                    studentId,
+                    error: error.message,
+                });
+                return { session: null, tasks: [] as any[] };
+            });
+
         await recordCtfLearningEvent({
             studentId,
             challengeId: challenge.id,
@@ -606,6 +1151,7 @@ export const getChallengeDetail = async (req: Request, res: Response) => {
             const maxVisibleStep = progress?.status === 'COMPLETED'
                 ? totalSteps
                 : Math.min(currentGuidedStep, totalSteps);
+            const revealCommands = isCompleted || workflowMode === 'TASK_VALIDATION';
 
             const guidedSteps = stepsResult.rows
                 .filter((step) => Number(step.step_number) <= maxVisibleStep)
@@ -615,7 +1161,7 @@ export const getChallengeDetail = async (req: Request, res: Response) => {
                         stepTitle: step.step_title,
                         stepDescription: step.step_description,
                         stepType: step.step_type,
-                        commandTemplate: isCompleted ? step.command_template : null,
+                        commandTemplate: revealCommands ? step.command_template : null,
                         expectedOutput: step.expected_output,
                         hintText: step.hint_text,
                     };
@@ -641,6 +1187,8 @@ export const getChallengeDetail = async (req: Request, res: Response) => {
                     ...challengePayload,
                     status: progress?.status || 'UNLOCKED',
                     started: Boolean(progress),
+                    labSession: labContext.session,
+                    labTasks: labContext.tasks,
                     mode,
                     currentGuidedStep,
                     totalSteps,
@@ -666,6 +1214,8 @@ export const getChallengeDetail = async (req: Request, res: Response) => {
                 ...challengePayload,
                 status: progress?.status || 'UNLOCKED',
                 started: Boolean(progress),
+                labSession: labContext.session,
+                labTasks: labContext.tasks,
                 mode,
                 learnerProfile,
                 failedAttempts,
@@ -685,13 +1235,16 @@ export const getChallengeDetail = async (req: Request, res: Response) => {
 export const startChallenge = async (req: Request, res: Response) => {
     try {
         await ensureCtfSeeded();
+        await cleanupExpiredLabSessions().catch((error: any) => {
+            logger.warn('CTF startChallenge cleanupExpiredLabSessions failed', { error: error.message });
+        });
 
         const studentId = getStudentId(req);
         if (!studentId) {
             return res.status(401).json({ success: false, error: 'Unauthorized' });
         }
 
-        const challengeCode = req.params.code;
+        const challengeCode = resolveChallengeCode(req.params.code);
         const mode = parseMode(req.body?.mode);
         const learnerProfile = parseLearnerProfile(req.body?.learnerProfile || 'INTERMEDIATE');
 
@@ -699,7 +1252,6 @@ export const startChallenge = async (req: Request, res: Response) => {
         if (!challenge) {
             return res.status(404).json({ success: false, error: 'Challenge not found' });
         }
-
         const prerequisiteMet = await isPrerequisiteCompleted(studentId, challenge.prerequisite_challenge_code || null);
         if (!prerequisiteMet) {
             return res.status(403).json({
@@ -735,9 +1287,7 @@ export const startChallenge = async (req: Request, res: Response) => {
             challengeSeed?.initialVulnConfig || {},
         );
 
-        if (challenge.challenge_code === 'MITM-001') {
-            await startMitmBackgroundTraffic(studentId);
-        }
+        const lab = await startOrReuseLabSession(studentId, challenge.challenge_code);
 
         await recordCtfLearningEvent({
             studentId,
@@ -754,10 +1304,512 @@ export const startChallenge = async (req: Request, res: Response) => {
             success: true,
             challengeCode,
             progress: progressResult.rows[0],
+            session: lab.session,
+            tasks: lab.tasks,
         });
     } catch (error: any) {
-        logger.error('CTF startChallenge failed', { error: error.message });
-        res.status(500).json({ success: false, error: 'Failed to start challenge' });
+        return handleLabError(res, error, 'Failed to start challenge');
+    }
+};
+
+export const getChallengeSession = async (req: Request, res: Response) => {
+    try {
+        const studentId = getStudentId(req);
+        if (!studentId) {
+            return res.status(401).json({ success: false, error: 'Unauthorized' });
+        }
+
+        const challengeCode = resolveChallengeCode(req.params.code);
+        if (!challengeCode) {
+            return res.status(400).json({ success: false, error: 'Missing challenge code' });
+        }
+        if (!ACTIVE_ROOM_CODE_SET.has(challengeCode)) {
+            return res.status(404).json({ success: false, error: 'Challenge not found' });
+        }
+
+        const context = await getLabSessionForChallenge(studentId, challengeCode);
+        return res.json({
+            success: true,
+            challengeCode,
+            session: context.session,
+            tasks: context.tasks,
+        });
+    } catch (error: any) {
+        return handleLabError(res, error, 'Failed to fetch challenge session');
+    }
+};
+
+export const extendChallengeSession = async (req: Request, res: Response) => {
+    try {
+        const studentId = getStudentId(req);
+        if (!studentId) {
+            return res.status(401).json({ success: false, error: 'Unauthorized' });
+        }
+
+        const sessionId = String(req.params.sessionId || '').trim();
+        if (!sessionId) {
+            return res.status(400).json({ success: false, error: 'Missing sessionId' });
+        }
+
+        const session = await extendLabSession(studentId, sessionId);
+        return res.json({ success: true, session });
+    } catch (error: any) {
+        return handleLabError(res, error, 'Failed to extend challenge session');
+    }
+};
+
+export const resetChallengeSession = async (req: Request, res: Response) => {
+    try {
+        const studentId = getStudentId(req);
+        if (!studentId) {
+            return res.status(401).json({ success: false, error: 'Unauthorized' });
+        }
+
+        const sessionId = String(req.params.sessionId || '').trim();
+        if (!sessionId) {
+            return res.status(400).json({ success: false, error: 'Missing sessionId' });
+        }
+
+        const session = await resetLabSession(studentId, sessionId);
+        return res.json({ success: true, session });
+    } catch (error: any) {
+        return handleLabError(res, error, 'Failed to reset challenge session');
+    }
+};
+
+export const terminateChallengeSession = async (req: Request, res: Response) => {
+    try {
+        const studentId = getStudentId(req);
+        if (!studentId) {
+            return res.status(401).json({ success: false, error: 'Unauthorized' });
+        }
+
+        const sessionId = String(req.params.sessionId || '').trim();
+        if (!sessionId) {
+            return res.status(400).json({ success: false, error: 'Missing sessionId' });
+        }
+
+        const session = await terminateLabSession(studentId, sessionId);
+        return res.json({ success: true, session });
+    } catch (error: any) {
+        return handleLabError(res, error, 'Failed to terminate challenge session');
+    }
+};
+
+export const resolveLabSessionAccess = async (req: Request, res: Response) => {
+    try {
+        const expectedSecret = getInternalProxySecret();
+        const providedSecret = String(req.headers['x-internal-secret'] || '');
+        if (!expectedSecret || providedSecret !== expectedSecret) {
+            return res.status(403).json({ success: false, error: 'Forbidden' });
+        }
+
+        const studentId = getStudentId(req) || String(req.headers['x-student-id'] || '').trim() || null;
+        if (!studentId) {
+            return res.status(401).json({ success: false, error: 'Unauthorized' });
+        }
+
+        const sessionCode = String(req.params.sessionCode || '').trim();
+        if (!sessionCode) {
+            return res.status(400).json({ success: false, error: 'Missing sessionCode' });
+        }
+
+        const target = await resolveLabProxyTarget(studentId, sessionCode);
+        return res.json({
+            success: true,
+            sessionId: target.sessionId,
+            targetUrl: target.targetUrl,
+        });
+    } catch (error: any) {
+        return handleLabError(res, error, 'Failed to resolve session access');
+    }
+};
+
+export const submitGuidedStepAnswer = async (req: Request, res: Response) => {
+    try {
+        await ensureCtfSeeded();
+
+        const studentId = getStudentId(req);
+        if (!studentId) {
+            return res.status(401).json({ success: false, error: 'Unauthorized' });
+        }
+
+        const challengeCode = resolveChallengeCode(req.params.code);
+        const challenge = await getChallengeByCode(challengeCode);
+        if (!challenge) {
+            return res.status(404).json({ success: false, error: 'Challenge not found' });
+        }
+
+        const workflowMode = getChallengeWorkflowMode(challenge.challenge_code);
+        if (workflowMode !== 'TASK_VALIDATION') {
+            return res.status(400).json({
+                success: false,
+                error: 'Guided step validation is not enabled for this challenge',
+            });
+        }
+
+        const stepNumber = Number(req.params.number);
+        if (!Number.isInteger(stepNumber) || stepNumber <= 0) {
+            return res.status(400).json({ success: false, error: 'Invalid step number' });
+        }
+
+        const submittedAnswer = String(req.body?.answer ?? req.body?.submittedAnswer ?? '').trim();
+        if (!submittedAnswer) {
+            return res.status(400).json({ success: false, error: 'answer is required' });
+        }
+
+        const prerequisiteMet = await isPrerequisiteCompleted(studentId, challenge.prerequisite_challenge_code || null);
+        if (!prerequisiteMet) {
+            return res.status(403).json({
+                success: false,
+                error: `Challenge locked. Complete prerequisite ${challenge.prerequisite_challenge_code}`,
+            });
+        }
+
+        const progressResult = await query(
+            `SELECT *
+             FROM learning.ctf_student_progress
+             WHERE student_id = $1
+               AND challenge_id = $2
+             LIMIT 1`,
+            [studentId, challenge.id]
+        );
+        const progress = progressResult.rows[0];
+        if (!progress) {
+            return res.status(400).json({ success: false, error: 'Challenge not started yet' });
+        }
+
+        if (progress.mode_preference !== 'GUIDED') {
+            return res.status(400).json({ success: false, error: 'Current challenge mode is not GUIDED' });
+        }
+
+        const stepCountResult = await query(
+            `SELECT COUNT(*)::INTEGER AS total_steps
+             FROM learning.ctf_guided_steps
+             WHERE challenge_id = $1`,
+            [challenge.id]
+        );
+        const totalSteps = parseInt(stepCountResult.rows[0]?.total_steps, 10) || 1;
+        const currentGuidedStep = Math.max(1, Math.min(totalSteps, Number(progress.current_guided_step || 1)));
+
+        if (progress.status === 'COMPLETED') {
+            return res.json({
+                success: true,
+                result: {
+                    isCorrect: true,
+                    alreadyCompleted: true,
+                    completed: true,
+                    message: 'Challenge already completed.',
+                    stepNumber,
+                    currentGuidedStep: totalSteps,
+                    totalSteps,
+                    failedAttempts: Number(progress.failed_attempts || 0),
+                },
+            });
+        }
+
+        if (stepNumber !== currentGuidedStep) {
+            return res.status(409).json({
+                success: false,
+                error: `Submit the current step first (expected step ${currentGuidedStep}).`,
+                expectedStep: currentGuidedStep,
+            });
+        }
+
+        const validation = validateGuidedStepAnswer(challenge.challenge_code, stepNumber, submittedAnswer);
+        if (!validation.isCorrect) {
+            const failedUpdate = await query(
+                `UPDATE learning.ctf_student_progress
+                 SET
+                    failed_attempts = COALESCE(failed_attempts, 0) + 1,
+                    status = CASE
+                        WHEN status = 'UNLOCKED' THEN 'IN_PROGRESS'
+                        ELSE status
+                    END,
+                    last_activity_at = NOW(),
+                    updated_at = NOW()
+                 WHERE student_id = $1
+                   AND challenge_id = $2
+                 RETURNING failed_attempts, current_guided_step, status`,
+                [studentId, challenge.id]
+            );
+
+            await recordCtfLearningEvent({
+                studentId,
+                challengeId: challenge.id,
+                eventName: 'guided_step_submit',
+                payload: {
+                    challengeCode,
+                    stepNumber,
+                    totalSteps,
+                    isCorrect: false,
+                    workflowMode,
+                },
+            });
+
+            return res.json({
+                success: true,
+                result: {
+                    isCorrect: false,
+                    completed: false,
+                    message: validation.message,
+                    stepNumber,
+                    currentGuidedStep: Number(failedUpdate.rows[0]?.current_guided_step || currentGuidedStep),
+                    totalSteps,
+                    failedAttempts: Number(failedUpdate.rows[0]?.failed_attempts || 0),
+                    status: failedUpdate.rows[0]?.status || progress.status,
+                },
+            });
+        }
+
+        const isFinalStep = stepNumber >= totalSteps;
+        if (!isFinalStep) {
+            const nextStep = Math.min(totalSteps, currentGuidedStep + 1);
+            const updateResult = await query(
+                `UPDATE learning.ctf_student_progress
+                 SET
+                    current_guided_step = $3,
+                    status = CASE
+                        WHEN status = 'UNLOCKED' THEN 'IN_PROGRESS'
+                        ELSE status
+                    END,
+                    last_activity_at = NOW(),
+                    updated_at = NOW()
+                 WHERE student_id = $1
+                   AND challenge_id = $2
+                 RETURNING current_guided_step, failed_attempts, status`,
+                [studentId, challenge.id, nextStep]
+            );
+
+            await recordCtfLearningEvent({
+                studentId,
+                challengeId: challenge.id,
+                eventName: 'guided_step_submit',
+                payload: {
+                    challengeCode,
+                    stepNumber,
+                    totalSteps,
+                    isCorrect: true,
+                    completed: false,
+                    workflowMode,
+                },
+            });
+
+            return res.json({
+                success: true,
+                result: {
+                    isCorrect: true,
+                    completed: false,
+                    message: validation.message,
+                    stepNumber,
+                    currentGuidedStep: Number(updateResult.rows[0]?.current_guided_step || nextStep),
+                    totalSteps,
+                    failedAttempts: Number(updateResult.rows[0]?.failed_attempts || progress.failed_attempts || 0),
+                    status: updateResult.rows[0]?.status || progress.status,
+                },
+            });
+        }
+
+        const mode = parseMode(progress.mode_preference || 'GUIDED');
+        const learnerProfile = parseLearnerProfile(progress.learner_profile || 'INTERMEDIATE');
+        const hintsUnlocked = normalizeIntArray(progress?.hints_unlocked);
+        const hintsUsed = hintsUnlocked.length;
+        const failedAttempts = Number(progress?.failed_attempts || 0);
+
+        const hintCostResult = hintsUsed > 0
+            ? await query(
+                `SELECT COALESCE(SUM(cost_points), 0)::INTEGER AS total_hint_cost
+                 FROM learning.ctf_hints
+                 WHERE challenge_id = $1
+                   AND hint_number = ANY($2::int[])`,
+                [challenge.id, hintsUnlocked]
+            )
+            : { rows: [{ total_hint_cost: 0 }] } as any;
+
+        const totalHintCost = parseInt(hintCostResult.rows[0]?.total_hint_cost, 10) || 0;
+
+        const existingCorrectResult = await query(
+            `SELECT EXISTS (
+                SELECT 1
+                FROM learning.ctf_submissions
+                WHERE student_id = $1
+                  AND challenge_id = $2
+                  AND is_correct = true
+            ) AS already_solved`,
+            [studentId, challenge.id]
+        );
+        const alreadySolved = Boolean(existingCorrectResult.rows[0]?.already_solved);
+
+        let isFirstBlood = false;
+        let pointsAwarded = 0;
+        let unlockedCount = 0;
+        let awardedBadges: string[] = [];
+        let scoringResult = calculateMultiAxisScore({
+            basePoints: Number(challenge.points || 0),
+            estimatedMinutes: Number(challenge.estimated_minutes || 15),
+            startedAt: progress?.started_at || null,
+            submittedAt: new Date(),
+            hintsUsed,
+            hintCost: totalHintCost,
+            incorrectAttempts: failedAttempts,
+            mode,
+            isFirstBlood: false,
+        });
+
+        if (!alreadySolved) {
+            const firstBloodResult = await query(
+                `SELECT COUNT(*)::INTEGER AS solved_count
+                 FROM learning.ctf_submissions
+                 WHERE challenge_id = $1
+                   AND is_correct = true`,
+                [challenge.id]
+            );
+            const solvedCount = parseInt(firstBloodResult.rows[0]?.solved_count, 10) || 0;
+            isFirstBlood = solvedCount === 0;
+
+            const legacyPoints = calculatePoints(
+                Number(challenge.points),
+                hintsUsed,
+                totalHintCost,
+                isFirstBlood
+            );
+            scoringResult = calculateMultiAxisScore({
+                basePoints: Number(challenge.points || 0),
+                estimatedMinutes: Number(challenge.estimated_minutes || 15),
+                startedAt: progress?.started_at || null,
+                submittedAt: new Date(),
+                hintsUsed,
+                hintCost: totalHintCost,
+                incorrectAttempts: failedAttempts,
+                mode,
+                isFirstBlood,
+            });
+
+            pointsAwarded = Math.max(
+                10,
+                Math.round((legacyPoints * 0.4) + (scoringResult.suggestedPoints * 0.6))
+            );
+        }
+
+        const feedback = deriveFeedbackPatterns({
+            submittedFlag: `TASK_VALIDATION:${challengeCode}:STEP:${stepNumber}`,
+            isCorrect: true,
+            hintsUsed,
+            incorrectAttempts: failedAttempts,
+            elapsedMinutes: scoringResult.elapsedMinutes,
+            estimatedMinutes: Number(challenge.estimated_minutes || 15),
+            mode,
+            axisTotalScore: scoringResult.axisTotalScore,
+            debriefCompleteness: scoringResult.debriefCompleteness,
+        });
+        const feedbackCodes = feedback.map((item) => item.code);
+
+        await query(
+            `INSERT INTO learning.ctf_submissions
+                (student_id, challenge_id, submitted_flag, is_correct, mode, points_awarded, hints_used, is_first_blood, axis_time_score, axis_proof_score, axis_patch_score, axis_total_score, scoring_version, feedback_codes, submission_metadata, submitted_at)
+             VALUES ($1, $2, $3, true, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14::jsonb, NOW())`,
+            [
+                studentId,
+                challenge.id,
+                submittedAnswer,
+                mode,
+                pointsAwarded,
+                hintsUsed,
+                isFirstBlood,
+                scoringResult.timeScore,
+                scoringResult.proofScore,
+                scoringResult.patchScore,
+                scoringResult.axisTotalScore,
+                scoringResult.scoringVersion,
+                JSON.stringify(feedbackCodes),
+                JSON.stringify({
+                    learnerProfile,
+                    workflowMode,
+                    completedBy: 'guided_step_validation',
+                    failedAttempts,
+                    elapsedMinutes: scoringResult.elapsedMinutes,
+                }),
+            ]
+        );
+
+        if (!alreadySolved) {
+            await query(
+                `UPDATE learning.ctf_student_progress
+                 SET
+                    status = 'COMPLETED',
+                    current_guided_step = GREATEST(
+                        current_guided_step,
+                        COALESCE((
+                            SELECT MAX(step_number)
+                            FROM learning.ctf_guided_steps
+                            WHERE challenge_id = $2
+                        ), current_guided_step)
+                    ),
+                    completed_at = NOW(),
+                    debrief_completed = COALESCE(debrief_completed, false),
+                    last_activity_at = NOW(),
+                    updated_at = NOW()
+                 WHERE student_id = $1
+                   AND challenge_id = $2`,
+                [studentId, challenge.id]
+            );
+
+            unlockedCount = await unlockNextChallenges(studentId, challenge.challenge_code);
+            awardedBadges = await awardCtfBadges(studentId);
+        } else {
+            await query(
+                `UPDATE learning.ctf_student_progress
+                 SET
+                    status = 'COMPLETED',
+                    current_guided_step = GREATEST(current_guided_step, $3),
+                    completed_at = COALESCE(completed_at, NOW()),
+                    last_activity_at = NOW(),
+                    updated_at = NOW()
+                 WHERE student_id = $1
+                   AND challenge_id = $2`,
+                [studentId, challenge.id, totalSteps]
+            );
+        }
+
+        await recordCtfLearningEvent({
+            studentId,
+            challengeId: challenge.id,
+            eventName: 'guided_step_submit',
+            payload: {
+                challengeCode,
+                stepNumber,
+                totalSteps,
+                isCorrect: true,
+                completed: true,
+                workflowMode,
+                alreadySolved,
+                pointsAwarded,
+                unlockedCount,
+                feedbackCodes,
+            },
+        });
+
+        return res.json({
+            success: true,
+            result: {
+                isCorrect: true,
+                completed: true,
+                alreadySolved,
+                message: validation.message,
+                stepNumber,
+                currentGuidedStep: totalSteps,
+                totalSteps,
+                pointsAwarded,
+                unlockedCount,
+                awardedBadges,
+                failedAttempts,
+                feedback,
+                debriefRequired: Boolean(!alreadySolved),
+            },
+        });
+    } catch (error: any) {
+        logger.error('CTF submitGuidedStepAnswer failed', { error: error.message });
+        return res.status(500).json({ success: false, error: 'Failed to submit guided step answer' });
     }
 };
 
@@ -770,11 +1822,18 @@ export const advanceGuidedStep = async (req: Request, res: Response) => {
             return res.status(401).json({ success: false, error: 'Unauthorized' });
         }
 
-        const challengeCode = req.params.code;
+        const challengeCode = resolveChallengeCode(req.params.code);
         const challenge = await getChallengeByCode(challengeCode);
 
         if (!challenge) {
             return res.status(404).json({ success: false, error: 'Challenge not found' });
+        }
+
+        if (getChallengeWorkflowMode(challenge.challenge_code) === 'TASK_VALIDATION') {
+            return res.status(400).json({
+                success: false,
+                error: 'This room requires validated answers. Use step submission endpoint.',
+            });
         }
 
         const progressResult = await query(
@@ -853,7 +1912,7 @@ export const submitFlag = async (req: Request, res: Response) => {
             return res.status(401).json({ success: false, error: 'Unauthorized' });
         }
 
-        const challengeCode = req.params.code;
+        const challengeCode = resolveChallengeCode(req.params.code);
         const submittedFlagRaw = String(req.body?.submittedFlag ?? req.body?.flag ?? '');
         const submittedFlag = submittedFlagRaw.trim();
         if (!submittedFlag) {
@@ -863,6 +1922,13 @@ export const submitFlag = async (req: Request, res: Response) => {
         const challenge = await getChallengeByCode(challengeCode);
         if (!challenge) {
             return res.status(404).json({ success: false, error: 'Challenge not found' });
+        }
+
+        if (getChallengeWorkflowMode(challenge.challenge_code) === 'TASK_VALIDATION') {
+            return res.status(400).json({
+                success: false,
+                error: 'This room uses step-by-step task validation instead of direct flag submission.',
+            });
         }
 
         const prerequisiteMet = await isPrerequisiteCompleted(studentId, challenge.prerequisite_challenge_code || null);
@@ -1115,7 +2181,7 @@ export const unlockHint = async (req: Request, res: Response) => {
             return res.status(401).json({ success: false, error: 'Unauthorized' });
         }
 
-        const challengeCode = req.params.code;
+        const challengeCode = resolveChallengeCode(req.params.code);
         const hintNumber = Number(req.params.number);
         if (!Number.isInteger(hintNumber) || hintNumber <= 0) {
             return res.status(400).json({ success: false, error: 'Invalid hint number' });
@@ -1237,7 +2303,7 @@ export const getDebrief = async (req: Request, res: Response) => {
             return res.status(401).json({ success: false, error: 'Unauthorized' });
         }
 
-        const challengeCode = req.params.code;
+        const challengeCode = resolveChallengeCode(req.params.code);
         const challenge = await getChallengeByCode(challengeCode);
         if (!challenge) {
             return res.status(404).json({ success: false, error: 'Challenge not found' });
@@ -1288,7 +2354,7 @@ export const submitDebrief = async (req: Request, res: Response) => {
             return res.status(401).json({ success: false, error: 'Unauthorized' });
         }
 
-        const challengeCode = req.params.code;
+        const challengeCode = resolveChallengeCode(req.params.code);
         const challenge = await getChallengeByCode(challengeCode);
         if (!challenge) {
             return res.status(404).json({ success: false, error: 'Challenge not found' });
@@ -1560,27 +2626,37 @@ export const getProgress = async (req: Request, res: Response) => {
                  FROM learning.ctf_student_progress p
                  JOIN learning.ctf_challenges c ON c.id = p.challenge_id
                  WHERE p.student_id = $1
+                   AND c.is_active = true
+                   AND c.challenge_code = ANY($2::text[])
                  ORDER BY c.challenge_code ASC`,
-                [studentId]
+                [studentId, ACTIVE_ROOM_CODES]
             ),
             query(
-                `SELECT COALESCE(SUM(points_awarded), 0)::INTEGER AS total_points
-                 FROM learning.ctf_submissions
-                 WHERE student_id = $1
-                   AND is_correct = true`,
-                [studentId]
+                `SELECT COALESCE(SUM(s.points_awarded), 0)::INTEGER AS total_points
+                 FROM learning.ctf_submissions s
+                 JOIN learning.ctf_challenges c ON c.id = s.challenge_id
+                 WHERE s.student_id = $1
+                   AND s.is_correct = true
+                   AND c.is_active = true
+                   AND c.challenge_code = ANY($2::text[])`,
+                [studentId, ACTIVE_ROOM_CODES]
             ),
             query(
-                `SELECT COUNT(DISTINCT challenge_id)::INTEGER AS solved_count
-                 FROM learning.ctf_submissions
-                 WHERE student_id = $1
-                   AND is_correct = true`,
-                [studentId]
+                `SELECT COUNT(DISTINCT s.challenge_id)::INTEGER AS solved_count
+                 FROM learning.ctf_submissions s
+                 JOIN learning.ctf_challenges c ON c.id = s.challenge_id
+                 WHERE s.student_id = $1
+                   AND s.is_correct = true
+                   AND c.is_active = true
+                   AND c.challenge_code = ANY($2::text[])`,
+                [studentId, ACTIVE_ROOM_CODES]
             ),
             query(
                 `SELECT COUNT(*)::INTEGER AS total_count
                  FROM learning.ctf_challenges
-                 WHERE is_active = true`
+                 WHERE is_active = true
+                   AND challenge_code = ANY($1::text[])`,
+                [ACTIVE_ROOM_CODES]
             ),
             query(
                 `SELECT
@@ -1588,16 +2664,22 @@ export const getProgress = async (req: Request, res: Response) => {
                     COALESCE(ROUND(AVG(axis_proof_score), 2), 0) AS avg_proof_score,
                     COALESCE(ROUND(AVG(axis_patch_score), 2), 0) AS avg_patch_score,
                     COALESCE(ROUND(AVG(axis_total_score), 2), 0) AS avg_axis_score
-                 FROM learning.ctf_submissions
-                 WHERE student_id = $1
-                   AND is_correct = true`,
-                [studentId]
+                 FROM learning.ctf_submissions s
+                 JOIN learning.ctf_challenges c ON c.id = s.challenge_id
+                 WHERE s.student_id = $1
+                   AND s.is_correct = true
+                   AND c.is_active = true
+                   AND c.challenge_code = ANY($2::text[])`,
+                [studentId, ACTIVE_ROOM_CODES]
             ),
             query(
                 `SELECT COUNT(*)::INTEGER AS debrief_count
-                 FROM learning.ctf_debriefs
-                 WHERE student_id = $1`,
-                [studentId]
+                 FROM learning.ctf_debriefs d
+                 JOIN learning.ctf_challenges c ON c.id = d.challenge_id
+                 WHERE d.student_id = $1
+                   AND c.is_active = true
+                   AND c.challenge_code = ANY($2::text[])`,
+                [studentId, ACTIVE_ROOM_CODES]
             ),
         ]);
 
@@ -1948,7 +3030,7 @@ export const saveLearningCheck = async (req: Request, res: Response) => {
             return res.status(401).json({ success: false, error: 'Unauthorized' });
         }
 
-        const challengeCode = req.params.code;
+        const challengeCode = resolveChallengeCode(req.params.code);
         const { vulnerabilityType, businessImpact, fixPriority } = req.body;
 
         const challenge = await getChallengeByCode(challengeCode);
@@ -1988,7 +3070,7 @@ export const internalVulnInit = async (req: Request, res: Response) => {
         }
 
         const studentId = String(req.body?.studentId || '').trim();
-        const challengeCode = String(req.body?.challengeCode || '').trim().toUpperCase();
+        const challengeCode = resolveChallengeCode(req.body?.challengeCode);
         const rawOverrides = req.body?.overrides;
         const overrides = rawOverrides && typeof rawOverrides === 'object'
             ? rawOverrides as Record<string, boolean>
@@ -1996,6 +3078,10 @@ export const internalVulnInit = async (req: Request, res: Response) => {
 
         if (!studentId || !challengeCode) {
             return res.status(400).json({ success: false, error: 'studentId and challengeCode are required' });
+        }
+
+        if (!ACTIVE_ROOM_CODE_SET.has(challengeCode)) {
+            return res.status(400).json({ success: false, error: 'Unknown challengeCode' });
         }
 
         await initStudentVulnForChallenge(studentId, challengeCode, overrides);

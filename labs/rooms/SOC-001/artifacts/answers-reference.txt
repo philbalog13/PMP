@@ -1,0 +1,5 @@
+﻿SOC-001 expected findings (author-side):
+- Suspicious reply-to domain: consult-secure-pay.com
+- Typosquatting URL: supplier-payables-update.io
+- Fraud pattern: CEO fraud + supplier compromise blend
+- Final local flag sample: PMP{SOC001_FINAL_LOCAL}

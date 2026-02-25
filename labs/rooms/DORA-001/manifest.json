@@ -1,0 +1,17 @@
+﻿{
+  "roomCode": "DORA-001",
+  "title": "DORA's Recovery",
+  "ttlMinutes": 120,
+  "maxExtensionMinutes": 60,
+  "hybrid": true,
+  "entryTarget": "dora-frontend",
+  "targets": [
+    { "name": "dora-frontend", "image": "pmp-ctf-dora001-frontend", "internalPort": 8080 },
+    { "name": "dora-backend", "image": "pmp-ctf-dora001-backend", "internalPort": 8081 },
+    { "name": "dora-core", "image": "pmp-ctf-dora001-core", "internalPort": 8082 }
+  ],
+  "tasks": [
+    { "taskId": "DORA-001-T1", "hasMachine": true, "questionType": "FLAG", "requiresFlag": false },
+    { "taskId": "DORA-001-T2", "hasMachine": true, "questionType": "TEXT", "requiresFlag": true }
+  ]
+}

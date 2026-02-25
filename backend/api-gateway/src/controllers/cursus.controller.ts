@@ -116,10 +116,10 @@ export const getCursusDetail = async (req: Request, res: Response) => {
             }
             // Best quiz score per module
             const quizScores = await query(
-                `SELECT q.module_id, MAX(qs.score) AS best_score
-                 FROM learning.cursus_quiz_submissions qs
-                 JOIN learning.cursus_quizzes q ON q.id = qs.quiz_id
-                 WHERE qs.student_id = $1 AND q.cursus_id = $2
+                `SELECT q.module_id, MAX(qr.percentage)::int AS best_score
+                 FROM learning.cursus_quiz_results qr
+                 JOIN learning.cursus_quizzes q ON q.id = qr.quiz_id
+                 WHERE qr.student_id = $1 AND q.cursus_id = $2
                  GROUP BY q.module_id`,
                 [userId, id]
             ).catch(() => ({ rows: [] as any[] }));
@@ -191,10 +191,18 @@ export const getModuleContent = async (req: Request, res: Response) => {
             ),
             query(
                 `SELECT q.id, q.title, q.pass_percentage, q.time_limit_minutes,
-                        json_agg(json_build_object(
-                            'id', qq.id, 'question', qq.question,
-                            'options', qq.options, 'questionOrder', qq.question_order
-                        ) ORDER BY qq.question_order) AS questions
+                        COALESCE(
+                            json_agg(
+                                json_build_object(
+                                    'id', qq.id,
+                                    'question', qq.question,
+                                    'options', qq.options,
+                                    'questionOrder', qq.question_order
+                                )
+                                ORDER BY qq.question_order
+                            ) FILTER (WHERE qq.id IS NOT NULL),
+                            '[]'::json
+                        ) AS questions
                  FROM learning.cursus_quizzes q
                  LEFT JOIN learning.cursus_quiz_questions qq ON qq.quiz_id = q.id
                  WHERE q.module_id = $1 AND q.is_final_evaluation = false
@@ -204,7 +212,8 @@ export const getModuleContent = async (req: Request, res: Response) => {
             query(
                 `SELECT id, title, type, description, instructions, hints, estimated_minutes
                  FROM learning.cursus_exercises
-                 WHERE module_id = $1`,
+                 WHERE module_id = $1
+                 ORDER BY id ASC`,
                 [moduleId]
             )
         ]);
@@ -221,12 +230,15 @@ export const getModuleContent = async (req: Request, res: Response) => {
             completedChapterIds = prog.rows.map((r) => r.chapter_id);
         }
 
+        const exercises = exerciseResult.rows || [];
+
         res.json({
             success: true,
             module: modResult.rows[0],
             chapters: chaptersResult.rows,
             quiz: quizResult.rows[0] || null,
-            exercise: exerciseResult.rows[0] || null,
+            exercise: exercises[0] || null, // Backward compatibility for old clients
+            exercises,
             completedChapterIds
         });
     } catch (error: any) {

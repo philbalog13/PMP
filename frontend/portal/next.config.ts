@@ -27,10 +27,17 @@ const nextConfig: NextConfig = {
     const apiUrl = process.env.INTERNAL_API_URL
       || process.env.NEXT_PUBLIC_API_URL
       || 'http://api-gateway:8000';
+    const labProxyUrl = process.env.INTERNAL_LAB_PROXY_URL
+      || process.env.LAB_ACCESS_PROXY_URL
+      || 'http://lab-access-proxy:8099';
     return [
       {
         source: '/api/:path*',
         destination: `${apiUrl}/api/:path*`,
+      },
+      {
+        source: '/lab/:path*',
+        destination: `${labProxyUrl}/lab/:path*`,
       },
     ];
   },

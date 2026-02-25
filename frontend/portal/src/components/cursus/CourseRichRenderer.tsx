@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ArrowRight, Check, Clipboard, Info, Lightbulb, ShieldAlert } from 'lucide-react';
+import { ArrowLeftRight, ArrowRight, Check, Clipboard, Info, Lightbulb, ShieldAlert } from 'lucide-react';
 import { GLOSSARY, GLOSSARY_REGEX } from '../../lib/glossary';
 
 type HeadingLevel = 1 | 2 | 3 | 4;
@@ -24,6 +24,21 @@ type MarkdownBlock =
 type ParsedMarkdown = {
     blocks: MarkdownBlock[];
     headings: MarkdownHeading[];
+};
+
+type DiagramEdgeDirection = 'forward' | 'both';
+
+type DiagramEdge = {
+    from: string;
+    to: string;
+    direction: DiagramEdgeDirection;
+    label?: string;
+};
+
+type ParsedDiagram = {
+    nodes: string[];
+    edges: DiagramEdge[];
+    linearPath: string[] | null;
 };
 
 interface CourseRichRendererProps {
@@ -232,31 +247,290 @@ function parseMarkdown(content: string): ParsedMarkdown {
     return { blocks, headings };
 }
 
-function inferFlowSteps(rawCode: string): string[] | null {
-    const lines = rawCode.split('\n').map((line) => line.trim()).filter(Boolean);
-    const arrowCandidates = lines.filter((line) => /--?>|=>|\u2192/.test(line));
-    if (arrowCandidates.length === 0) {
-        return null;
-    }
+const DIAGRAM_LANGUAGES = new Set(['', 'text', 'txt', 'ascii', 'diagram', 'flow', 'mermaid']);
 
-    const line = arrowCandidates.sort((a, b) => b.length - a.length)[0]
-        .replace(/[|]/g, ' ')
-        .replace(/-{2,}>/g, '->')
+function cleanDiagramText(raw: string): string {
+    return raw
+        .replace(/^\d+[.)]\s*/, '')
+        .replace(/^[-*]\s+/, '')
+        .replace(/^[|]+|[|]+$/g, '')
+        .replace(/^\[([^\]]+)\]$/, '$1')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function normalizeFlowLine(rawLine: string): string {
+    return rawLine
+        .replace(/←→|↔/g, '<->')
+        .replace(/--?>/g, '->')
         .replace(/=>/g, '->')
-        .replace(/\u2192/g, '->');
+        .replace(/<--?/g, '<-')
+        .replace(/→/g, '->')
+        .replace(/←/g, '<-')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
 
-    const steps = line
-        .split(/->/)
-        .map((part) => part.trim())
-        .map((part) => part.replace(/^[^\p{L}0-9(]+/gu, '').replace(/[^\p{L}0-9)\]]+$/gu, ''))
-        .filter(Boolean)
-        .filter((part) => !/^(graph|flowchart|td|lr|bt|rl)$/i.test(part));
+function splitNodeAndLabel(raw: string): { node: string; label?: string } {
+    const separator = raw.indexOf(':');
+    if (separator <= 0 || separator >= raw.length - 1) {
+        return { node: cleanDiagramText(raw) };
+    }
 
-    if (steps.length < 3) {
+    const node = cleanDiagramText(raw.slice(0, separator));
+    const label = raw.slice(separator + 1).trim();
+    if (!node || !label) {
+        return { node: cleanDiagramText(raw) };
+    }
+
+    return { node, label };
+}
+
+function extractBracketNodes(rawLine: string): string[] {
+    const matches = [...rawLine.matchAll(/\[([^\]]+)\]/g)];
+    return matches
+        .map((match) => cleanDiagramText(match[1] || ''))
+        .filter(Boolean);
+}
+
+function inferLaneActors(rawLine: string): [string, string] | null {
+    if (/[|<>→←]/.test(rawLine)) {
         return null;
     }
 
-    return steps;
+    const parts = rawLine
+        .split(/\s{2,}/)
+        .map((part) => cleanDiagramText(part))
+        .filter(Boolean);
+
+    if (parts.length !== 2) {
+        return null;
+    }
+
+    return [parts[0], parts[1]];
+}
+
+function extractLaneEdge(rawLine: string, actors: [string, string]): DiagramEdge | null {
+    if (!/^\|.*\|$/.test(rawLine.trim())) {
+        return null;
+    }
+
+    const normalized = normalizeFlowLine(rawLine);
+    const rightIndex = normalized.indexOf('->');
+    const leftIndex = normalized.indexOf('<-');
+    if (rightIndex === -1 && leftIndex === -1) {
+        return null;
+    }
+
+    const direction = leftIndex !== -1 && (rightIndex === -1 || leftIndex < rightIndex) ? '<-' : '->';
+    const label = cleanDiagramText(
+        normalized
+            .replace(/<->|->|<-/g, ' ')
+            .replace(/-+/g, ' ')
+    );
+
+    if (!label) {
+        return null;
+    }
+
+    if (direction === '<-') {
+        return {
+            from: actors[1],
+            to: actors[0],
+            direction: 'forward',
+            label,
+        };
+    }
+
+    return {
+        from: actors[0],
+        to: actors[1],
+        direction: 'forward',
+        label,
+    };
+}
+
+function extractInlineEdges(rawLine: string): DiagramEdge[] {
+    const normalized = normalizeFlowLine(rawLine);
+    if (!/(<->|->|<-)/.test(normalized)) {
+        return [];
+    }
+
+    const parts = normalized
+        .split(/(<->|->|<-)/g)
+        .map((part) => part.trim())
+        .filter(Boolean);
+
+    if (parts.length < 3) {
+        return [];
+    }
+
+    const edges: DiagramEdge[] = [];
+    let current = cleanDiagramText(parts[0]);
+    if (!current) {
+        return [];
+    }
+
+    for (let index = 1; index < parts.length - 1; index += 2) {
+        const arrow = parts[index];
+        const targetRaw = parts[index + 1];
+        const { node: nextNode, label } = splitNodeAndLabel(targetRaw);
+        if (!nextNode) {
+            continue;
+        }
+
+        if (arrow === '<-') {
+            edges.push({
+                from: nextNode,
+                to: current,
+                direction: 'forward',
+                label,
+            });
+        } else {
+            edges.push({
+                from: current,
+                to: nextNode,
+                direction: arrow === '<->' ? 'both' : 'forward',
+                label,
+            });
+        }
+
+        current = nextNode;
+    }
+
+    return edges.filter((edge) => edge.from && edge.to && edge.from !== edge.to);
+}
+
+function inferLinearPath(nodes: string[], edges: DiagramEdge[]): string[] | null {
+    if (nodes.length < 3 || edges.length !== nodes.length - 1) {
+        return null;
+    }
+
+    const adjacency = new Map<string, Set<string>>();
+    for (const node of nodes) {
+        adjacency.set(node, new Set<string>());
+    }
+    for (const edge of edges) {
+        adjacency.get(edge.from)?.add(edge.to);
+        adjacency.get(edge.to)?.add(edge.from);
+    }
+
+    const invalidDegree = nodes.some((node) => {
+        const degree = adjacency.get(node)?.size || 0;
+        return degree === 0 || degree > 2;
+    });
+    if (invalidDegree) {
+        return null;
+    }
+
+    const endpoints = nodes.filter((node) => (adjacency.get(node)?.size || 0) === 1);
+    if (endpoints.length !== 2) {
+        return null;
+    }
+
+    const path = [endpoints[0]];
+    const visited = new Set(path);
+    let cursor = endpoints[0];
+
+    while (path.length < nodes.length) {
+        const next = [...(adjacency.get(cursor) || [])].find((candidate) => !visited.has(candidate));
+        if (!next) {
+            return null;
+        }
+        path.push(next);
+        visited.add(next);
+        cursor = next;
+    }
+
+    return path;
+}
+
+function parseDiagram(rawCode: string, language: string): ParsedDiagram | null {
+    const normalizedLanguage = (language || '').trim().toLowerCase();
+    if (!DIAGRAM_LANGUAGES.has(normalizedLanguage)) {
+        return null;
+    }
+
+    const lines = rawCode
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean);
+
+    const nodes: string[] = [];
+    const nodeSet = new Set<string>();
+    const edges: DiagramEdge[] = [];
+    const edgeSet = new Set<string>();
+    let laneActors: [string, string] | null = null;
+
+    const addNode = (raw: string) => {
+        const node = cleanDiagramText(raw);
+        if (!node || nodeSet.has(node)) {
+            return;
+        }
+        nodeSet.add(node);
+        nodes.push(node);
+    };
+
+    const addEdge = (edge: DiagramEdge) => {
+        const from = cleanDiagramText(edge.from);
+        const to = cleanDiagramText(edge.to);
+        if (!from || !to || from === to) {
+            return;
+        }
+
+        const label = edge.label?.trim() || undefined;
+        const key = `${from}|${to}|${edge.direction}|${label || ''}`;
+        if (edgeSet.has(key)) {
+            return;
+        }
+        edgeSet.add(key);
+
+        addNode(from);
+        addNode(to);
+        edges.push({
+            from,
+            to,
+            direction: edge.direction,
+            label,
+        });
+    };
+
+    for (const line of lines) {
+        const maybeActors = inferLaneActors(line);
+        if (maybeActors) {
+            laneActors = maybeActors;
+            addNode(maybeActors[0]);
+            addNode(maybeActors[1]);
+        }
+
+        const bracketNodes = extractBracketNodes(line);
+        for (const bracketNode of bracketNodes) {
+            addNode(bracketNode);
+        }
+
+        if (laneActors) {
+            const laneEdge = extractLaneEdge(line, laneActors);
+            if (laneEdge) {
+                addEdge(laneEdge);
+                continue;
+            }
+        }
+
+        const inlineEdges = extractInlineEdges(line);
+        for (const edge of inlineEdges) {
+            addEdge(edge);
+        }
+    }
+
+    if (edges.length === 0) {
+        return null;
+    }
+
+    return {
+        nodes,
+        edges,
+        linearPath: inferLinearPath(nodes, edges),
+    };
 }
 
 function calloutTone(text: string): {
@@ -293,11 +567,99 @@ function calloutTone(text: string): {
     };
 }
 
+function DiagramPreview({ diagram }: { diagram: ParsedDiagram }) {
+    const edgeLabelRows = diagram.edges.filter((edge) => Boolean(edge.label));
+    const isLinear = Boolean(diagram.linearPath);
+
+    return (
+        <div className="border-b border-slate-800/80 bg-cyan-500/5 px-4 py-3.5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-300 mb-2.5">
+                Schema visuel
+            </p>
+
+            {isLinear ? (
+                <div className="flex flex-wrap items-center gap-2">
+                    {diagram.linearPath!.map((node, index) => {
+                        const nextNode = diagram.linearPath![index + 1];
+                        const edge = nextNode
+                            ? diagram.edges.find((candidate) => (
+                                (candidate.from === node && candidate.to === nextNode)
+                                || (candidate.direction === 'both' && candidate.from === nextNode && candidate.to === node)
+                            ))
+                            : null;
+                        const arrow = edge?.direction === 'both'
+                            ? <ArrowLeftRight size={14} className="text-cyan-300" />
+                            : <ArrowRight size={14} className="text-cyan-300" />;
+
+                        return (
+                            <div key={`${node}-${index}`} className="inline-flex items-center gap-2">
+                                <span className="rounded-lg border border-cyan-500/20 bg-slate-900/70 px-3 py-1.5 text-xs text-slate-200">
+                                    {node}
+                                </span>
+                                {nextNode && arrow}
+                            </div>
+                        );
+                    })}
+                </div>
+            ) : (
+                <div className="space-y-2">
+                    <div className="flex flex-wrap gap-2">
+                        {diagram.nodes.map((node) => (
+                            <span
+                                key={node}
+                                className="rounded-lg border border-cyan-500/20 bg-slate-900/70 px-3 py-1.5 text-xs text-slate-200"
+                            >
+                                {node}
+                            </span>
+                        ))}
+                    </div>
+                    <div className="space-y-2">
+                        {diagram.edges.map((edge, index) => (
+                            <div
+                                key={`${edge.from}-${edge.to}-${index}`}
+                                className="rounded-lg border border-white/10 bg-slate-900/50 px-3 py-2"
+                            >
+                                <div className="flex items-center gap-2 text-xs text-slate-200">
+                                    <span className="rounded-md border border-white/10 bg-slate-950/70 px-2 py-1">
+                                        {edge.from}
+                                    </span>
+                                    {edge.direction === 'both' ? (
+                                        <ArrowLeftRight size={13} className="text-cyan-300" />
+                                    ) : (
+                                        <ArrowRight size={13} className="text-cyan-300" />
+                                    )}
+                                    <span className="rounded-md border border-white/10 bg-slate-950/70 px-2 py-1">
+                                        {edge.to}
+                                    </span>
+                                </div>
+                                {edge.label && (
+                                    <p className="mt-1.5 text-[11px] text-cyan-100/90">{edge.label}</p>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {isLinear && edgeLabelRows.length > 0 && (
+                <div className="mt-3 space-y-1">
+                    {edgeLabelRows.map((edge, index) => (
+                        <p key={`${edge.from}-${edge.to}-${index}`} className="text-[11px] text-cyan-100/90">
+                            <span className="text-cyan-300">{edge.from}</span> {'->'} <span className="text-cyan-300">{edge.to}</span>
+                            {' '} : {edge.label}
+                        </p>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 function CodeBlock({ language, code }: { language: string; code: string }) {
     const [copied, setCopied] = useState(false);
     const lines = code.replace(/\n$/, '').split('\n');
     const languageLabel = language || 'text';
-    const flowSteps = inferFlowSteps(code);
+    const diagram = useMemo(() => parseDiagram(code, language), [code, language]);
 
     const copy = async () => {
         try {
@@ -325,36 +687,36 @@ function CodeBlock({ language, code }: { language: string; code: string }) {
                 </button>
             </div>
 
-            {flowSteps && (
-                <div className="border-b border-slate-800/80 bg-cyan-500/5 px-4 py-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-300 mb-2">
-                        Diagramme de flux
-                    </p>
-                    <div className="flex flex-wrap items-center gap-2">
-                        {flowSteps.map((step, index) => (
-                            <div key={`${step}-${index}`} className="inline-flex items-center gap-2">
-                                <span className="rounded-lg border border-cyan-500/20 bg-slate-900/70 px-3 py-1.5 text-xs text-slate-200">
-                                    {step}
-                                </span>
-                                {index < flowSteps.length - 1 && (
-                                    <ArrowRight size={14} className="text-cyan-300" />
-                                )}
+            {diagram && <DiagramPreview diagram={diagram} />}
+
+            {diagram ? (
+                <details className="border-t border-slate-800/80">
+                    <summary className="cursor-pointer px-4 py-2.5 text-[11px] uppercase tracking-[0.2em] text-slate-500 hover:text-slate-300">
+                        Version texte
+                    </summary>
+                    <div className="overflow-x-auto px-4 pb-4">
+                        <code className="block font-mono text-[13px] md:text-sm text-slate-200 leading-6 md:leading-7 min-w-full">
+                            {lines.map((line, lineNumber) => (
+                                <div key={`line-${lineNumber}`} className="grid grid-cols-[3rem_1fr] gap-3">
+                                    <span className="select-none text-right text-slate-600">{lineNumber + 1}</span>
+                                    <span className="whitespace-pre">{line || ' '}</span>
+                                </div>
+                            ))}
+                        </code>
+                    </div>
+                </details>
+            ) : (
+                <div className="overflow-x-auto p-4">
+                    <code className="block font-mono text-[13px] md:text-sm text-slate-200 leading-6 md:leading-7 min-w-full">
+                        {lines.map((line, lineNumber) => (
+                            <div key={`line-${lineNumber}`} className="grid grid-cols-[3rem_1fr] gap-3">
+                                <span className="select-none text-right text-slate-600">{lineNumber + 1}</span>
+                                <span className="whitespace-pre">{line || ' '}</span>
                             </div>
                         ))}
-                    </div>
+                    </code>
                 </div>
             )}
-
-            <div className="overflow-x-auto p-4">
-                <code className="block font-mono text-[13px] md:text-sm text-slate-200 leading-6 md:leading-7 min-w-full">
-                    {lines.map((line, lineNumber) => (
-                        <div key={`line-${lineNumber}`} className="grid grid-cols-[3rem_1fr] gap-3">
-                            <span className="select-none text-right text-slate-600">{lineNumber + 1}</span>
-                            <span className="whitespace-pre">{line || ' '}</span>
-                        </div>
-                    ))}
-                </code>
-            </div>
         </div>
     );
 }

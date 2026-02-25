@@ -1,29 +1,39 @@
 'use client';
 
+import { Suspense } from 'react';
 import { use, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import {
     AlertCircle,
-    ArrowLeft,
-    Beaker,
+    ArrowRight,
     BookOpen,
     CheckCircle2,
+    ChevronRight,
+    Copy,
+    ExternalLink,
+    Flag,
     Flame,
     Lightbulb,
     Lock,
-    Play,
+    Monitor,
     RefreshCw,
     Send,
+    Shield,
     Terminal,
     Trophy,
+    Zap,
 } from 'lucide-react';
 import { useAuth } from '../../../auth/useAuth';
 import { CourseCard, CoursePageShell, CoursePill } from '@/components/course/CoursePageShell';
 import { APP_URLS } from '@shared/lib/app-urls';
+import { CtfLabSession, CtfTask } from '@/lib/ctf-lab';
+import { normalizeCtfCode } from '@/lib/ctf-code-map';
 
-type CtfStatus = 'LOCKED' | 'UNLOCKED' | 'IN_PROGRESS' | 'COMPLETED';
-type CtfMode = 'GUIDED' | 'FREE';
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type RoomStatus = 'LOCKED' | 'UNLOCKED' | 'IN_PROGRESS' | 'COMPLETED';
+type WorkflowMode = 'FLAG_ONLY' | 'TASK_VALIDATION';
 
 type GuidedStep = {
     stepNumber: number;
@@ -33,12 +43,6 @@ type GuidedStep = {
     commandTemplate: string | null;
     expectedOutput: string | null;
     hintText: string | null;
-    adaptiveGuidance?: {
-        learnerProfile: 'NOVICE' | 'INTERMEDIATE' | 'ADVANCED';
-        focus: string;
-        checklist: string[];
-        successSignal: string;
-    };
 };
 
 type HintInfo = {
@@ -57,47 +61,7 @@ type HintInfo = {
     };
 };
 
-type MissionBrief = {
-    role: string;
-    businessContext: string;
-    incidentTrigger: string;
-    objective: string;
-    successCriteria: string;
-};
-
-type IncidentArtifact = {
-    artifactId: string;
-    artifactType: 'LOG' | 'TRACE' | 'TICKET' | 'SIEM';
-    title: string;
-    description: string;
-    sample: string;
-};
-
-type RubricCriteria = {
-    criterion: string;
-    weight: number;
-    description: string;
-};
-
-type ProofRubric = {
-    technical: RubricCriteria[];
-    communication: RubricCriteria[];
-    passingScore: number;
-};
-
-type DebriefPayload = {
-    rootCause: string;
-    impactSummary: string;
-    mitigationPriorities: string[];
-    evidenceSummary: string;
-    technicalScore?: number;
-    communicationScore?: number;
-    patchScore?: number;
-    completed?: boolean;
-    updatedAt?: string | null;
-};
-
-type ChallengeDetail = {
+type RoomDetail = {
     id: string;
     code: string;
     title: string;
@@ -105,448 +69,596 @@ type ChallengeDetail = {
     category: string;
     difficulty: string;
     points: number;
-    prerequisiteChallengeCode: string | null;
     targetService: string;
     targetEndpoint: string;
     vulnerabilityType: string;
     attackVector: string;
     learningObjectives: string[];
     estimatedMinutes: number;
-    status: CtfStatus;
+    status: RoomStatus;
+    workflowMode?: WorkflowMode;
     started?: boolean;
-    mode?: CtfMode;
     currentGuidedStep?: number;
     totalSteps?: number;
     guidedSteps?: GuidedStep[];
-    freeModeDescription?: string;
     hints?: HintInfo[];
-    hintsUnlocked?: number[];
-    relatedWorkshopPath?: string;
-    learnerProfile?: 'NOVICE' | 'INTERMEDIATE' | 'ADVANCED';
-    adaptiveProfiles?: Array<'NOVICE' | 'INTERMEDIATE' | 'ADVANCED'>;
-    adaptivePathNotes?: Partial<Record<'NOVICE' | 'INTERMEDIATE' | 'ADVANCED', string>>;
     failedAttempts?: number;
-    missionBrief?: MissionBrief;
-    incidentArtifacts?: IncidentArtifact[];
-    proofRubric?: ProofRubric;
-    debriefTemplate?: {
-        rootCausePrompt?: string;
-        impactPrompt?: string;
-        mitigationPrompt?: string;
-        evidencePrompt?: string;
-        checklist?: string[];
-    };
-    debrief?: DebriefPayload | null;
+    prerequisiteChallengeCode?: string | null;
+    relatedWorkshopPath?: string | null;
+    labSession?: CtfLabSession | null;
+    labTasks?: CtfTask[];
+};
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const DIFFICULTY_STYLES: Record<string, { label: string; tone: 'emerald' | 'amber' | 'rose' | 'violet' | 'slate' }> = {
+    BEGINNER:     { label: 'Easy',   tone: 'emerald' },
+    INTERMEDIATE: { label: 'Medium', tone: 'amber'   },
+    ADVANCED:     { label: 'Hard',   tone: 'rose'    },
+    EXPERT:       { label: 'Expert', tone: 'violet'  },
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
-    HSM_ATTACK: 'HSM',
-    REPLAY_ATTACK: 'Replay',
-    '3DS_BYPASS': '3DS',
-    FRAUD_CNP: 'Fraude CNP',
-    ISO8583_MANIPULATION: 'ISO 8583',
-    PIN_CRACKING: 'PIN',
-    MITM: 'MITM',
-    PRIVILEGE_ESCALATION: 'Privesc',
-    CRYPTO_WEAKNESS: 'Crypto',
+    HSM_ATTACK: 'HSM Attack', REPLAY_ATTACK: 'Replay Attack', '3DS_BYPASS': '3DS Bypass',
+    FRAUD_CNP: 'Fraud CNP', ISO8583_MANIPULATION: 'ISO 8583', PIN_CRACKING: 'PIN Cracking',
+    MITM: 'MITM', PRIVILEGE_ESCALATION: 'Privesc', CRYPTO_WEAKNESS: 'Crypto',
+    EMV_CLONING: 'EMV Cloning', TOKEN_VAULT: 'Token Vault', NETWORK_ATTACK: 'Network',
+    KEY_MANAGEMENT: 'Key Mgmt', ADVANCED_FRAUD: 'Adv. Fraud', SUPPLY_CHAIN: 'Supply Chain',
+    BOSS: 'Boss',
 };
 
-const DIFFICULTY_PILL: Record<string, { label: string; tone: Parameters<typeof CoursePill>[0]['tone'] }> = {
-    BEGINNER: { label: 'Beginner', tone: 'emerald' },
-    INTERMEDIATE: { label: 'Intermediate', tone: 'amber' },
-    ADVANCED: { label: 'Advanced', tone: 'rose' },
-    EXPERT: { label: 'Expert', tone: 'violet' },
+// Machine IP map — matches Docker service names to IPs within the lab network
+const TARGET_HOST_MAP: Record<string, string> = {
+    'hsm-simulator':        '10.10.0.10',
+    'api-gateway':          '10.10.0.1',
+    'sim-network-switch':   '10.10.0.4',
+    'sim-fraud-detection':  '10.10.0.7',
+    'sim-auth-engine':      '10.10.0.5',
+    'sim-card-service':     '10.10.0.6',
+    'sim-issuer-service':   '10.10.0.8',
+    'sim-acquirer-service': '10.10.0.9',
+    'acs-simulator':        '10.10.0.11',
 };
 
-const LEGACY_WORKSHOP_REDIRECTS: Record<string, string> = {
-    '/workshops/intro': '/student/theory/intro',
-    '/workshops/iso8583': '/student/theory/iso8583',
-    '/workshops/hsm-keys': '/student/theory/hsm-keys',
-    '/workshops/3ds-flow': '/student/theory/3ds-flow',
-    '/workshops/fraud-detection': '/student/theory/fraud-detection',
-    '/workshops/emv': '/student/theory/emv',
-    '/workshops/session-security': '/student/cursus'
-};
-
-function statusMeta(status: CtfStatus): { label: string; tone: Parameters<typeof CoursePill>[0]['tone']; icon: React.ReactNode } {
-    if (status === 'COMPLETED') {
-        return { label: 'Résolu', tone: 'emerald', icon: <CheckCircle2 className="h-4 w-4" /> };
-    }
-    if (status === 'IN_PROGRESS') {
-        return { label: 'En cours', tone: 'amber', icon: <Flame className="h-4 w-4" /> };
-    }
-    if (status === 'LOCKED') {
-        return { label: 'Verrouillé', tone: 'slate', icon: <Lock className="h-4 w-4" /> };
-    }
-    return { label: 'Disponible', tone: 'cyan', icon: <Trophy className="h-4 w-4" /> };
+function getMachineIp(targetService: string): string {
+    const normalized = targetService.toLowerCase().trim();
+    return TARGET_HOST_MAP[normalized] || '10.10.x.x';
 }
 
-function normalizeRelatedTheoryPath(path?: string | null): string | null {
-    if (!path) {
-        return null;
-    }
-
-    const trimmed = path.trim();
-    if (!trimmed) {
-        return null;
-    }
-
-    if (LEGACY_WORKSHOP_REDIRECTS[trimmed]) {
-        return LEGACY_WORKSHOP_REDIRECTS[trimmed];
-    }
-
-    if (trimmed.startsWith('/workshops/')) {
-        return '/student/cursus';
-    }
-
-    return trimmed;
+function substituteIp(text: string | null | undefined, ip: string): string {
+    if (!text) return text ?? '';
+    return text
+        .replaceAll('MACHINE_IP', ip)
+        .replaceAll('{{MACHINE_IP}}', ip)
+        .replaceAll('<MACHINE_IP>', ip);
 }
 
-export default function CtfChallengeDetailPage({ params }: { params: Promise<{ code: string }> }) {
+function formatRemainingTime(totalSeconds: number): string {
+    const safeSeconds = Math.max(0, Math.floor(totalSeconds));
+    const hours = Math.floor(safeSeconds / 3600);
+    const minutes = Math.floor((safeSeconds % 3600) / 60);
+    const seconds = safeSeconds % 60;
+
+    if (hours > 0) {
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+// ─── Inner wrapper for Suspense ───────────────────────────────────────────────
+
+export default function CtfRoomPage({ params }: { params: Promise<{ code: string }> }) {
     const { code } = use(params);
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+                <RefreshCw className="h-8 w-8 animate-spin text-orange-400" />
+            </div>
+        }>
+            <RoomPageInner rawCode={code} />
+        </Suspense>
+    );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
+function RoomPageInner({ rawCode }: { rawCode: string }) {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { isLoading: authLoading } = useAuth(true);
 
-    const challengeCode = useMemo(() => decodeURIComponent(String(code || '')).trim(), [code]);
-    const normalizedCode = useMemo(() => challengeCode.toUpperCase(), [challengeCode]);
+    const requestedCode = useMemo(
+        () => normalizeCtfCode(decodeURIComponent(String(rawCode || ''))),
+        [rawCode]
+    );
+    const normalizedCode = requestedCode;
 
-    const [mode, setMode] = useState<CtfMode>('GUIDED');
-    const [learnerProfile, setLearnerProfile] = useState<'NOVICE' | 'INTERMEDIATE' | 'ADVANCED'>('INTERMEDIATE');
-    const [challenge, setChallenge] = useState<ChallengeDetail | null>(null);
+    const [room, setRoom] = useState<RoomDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
-
-    const [flagInput, setFlagInput] = useState('');
     const [submitting, setSubmitting] = useState(false);
-    const [showLearningModal, setShowLearningModal] = useState(false);
-    const [learningAnswers, setLearningAnswers] = useState<{ vulnerabilityType: string; businessImpact: string; fixPriority: string }>({ vulnerabilityType: '', businessImpact: '', fixPriority: '' });
-    const [submitResult, setSubmitResult] = useState<{
-        ok: boolean;
-        message: string;
-        pointsAwarded?: number;
-        axisScores?: { time: number; proof: number; patch: number; total: number };
-        feedback?: Array<{ code: string; severity: string; message: string }>;
-        debriefRequired?: boolean;
-    } | null>(null);
-    const [debriefDraft, setDebriefDraft] = useState<DebriefPayload>({
-        rootCause: '',
-        impactSummary: '',
-        mitigationPriorities: [],
-        evidenceSummary: '',
-    });
-    const [debriefInput, setDebriefInput] = useState('');
-    const [debriefSaving, setDebriefSaving] = useState(false);
-    const [debriefMessage, setDebriefMessage] = useState<string | null>(null);
+
+    // Active task index (1-based step number, or 0 = room overview, or totalSteps+1 = flag task)
+    const taskParam = searchParams.get('task');
+    const [activeTask, setActiveTask] = useState<number>(taskParam ? parseInt(taskParam, 10) : 1);
+
+    // Flag submission
+    const [flagInput, setFlagInput] = useState('');
+    const [flagResult, setFlagResult] = useState<{ ok: boolean; message: string; points?: number } | null>(null);
+    const [stepAnswers, setStepAnswers] = useState<Record<number, string>>({});
+    const [stepResult, setStepResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+    // Hints
+    const [hintError, setHintError] = useState<string | null>(null);
+
+    // Copy state
+    const [copiedCmd, setCopiedCmd] = useState(false);
+    const [nowMs, setNowMs] = useState<number>(Date.now());
 
     const getHeaders = useCallback(() => {
         const token = localStorage.getItem('token');
         return token ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } : null;
     }, []);
 
-    const fetchChallenge = useCallback(async (
-        requestedMode?: CtfMode,
-        requestedProfile?: 'NOVICE' | 'INTERMEDIATE' | 'ADVANCED'
-    ) => {
-        if (!normalizedCode) return;
-
+    const bootstrapAttackboxAccess = useCallback(async (attackboxPath: string): Promise<boolean> => {
         const headers = getHeaders();
         if (!headers) {
-            setError('Session expirée. Merci de vous reconnecter.');
-            setLoading(false);
-            return;
+            return false;
         }
 
-        const activeMode = requestedMode || mode;
-        const activeProfile = requestedProfile || learnerProfile;
+        const authPath = `${String(attackboxPath || '').replace(/\/+$/, '')}/auth`;
+        try {
+            const response = await fetch(authPath, {
+                method: 'POST',
+                headers,
+                cache: 'no-store',
+            });
+            return response.ok;
+        } catch {
+            return false;
+        }
+    }, [getHeaders]);
 
+    const fetchRoom = useCallback(async () => {
+        if (!normalizedCode) return;
+        const headers = getHeaders();
+        if (!headers) { setError('Session expirée.'); setLoading(false); return; }
         try {
             setError(null);
             setRefreshing(true);
-            setLoading((prev) => prev || !challenge);
-
-            const params = new URLSearchParams({
-                mode: activeMode,
-                profile: activeProfile,
-            });
-
-            const res = await fetch(`/api/ctf/challenges/${encodeURIComponent(normalizedCode)}?${params.toString()}`, {
-                headers,
-            });
-
+            const res = await fetch(
+                `/api/ctf/challenges/${encodeURIComponent(normalizedCode)}?mode=GUIDED&profile=INTERMEDIATE`,
+                { headers }
+            );
             const data = await res.json().catch(() => ({}));
-
             if (res.ok && data?.success && data?.challenge) {
-                const normalizedChallenge: ChallengeDetail = {
-                    ...data.challenge,
-                    relatedWorkshopPath: normalizeRelatedTheoryPath(data.challenge.relatedWorkshopPath)
-                };
-                setChallenge(normalizedChallenge);
-                if (normalizedChallenge.mode === 'GUIDED' || normalizedChallenge.mode === 'FREE') {
-                    setMode(normalizedChallenge.mode);
-                }
-                if (normalizedChallenge.learnerProfile === 'NOVICE' || normalizedChallenge.learnerProfile === 'INTERMEDIATE' || normalizedChallenge.learnerProfile === 'ADVANCED') {
-                    setLearnerProfile(normalizedChallenge.learnerProfile);
-                }
-                if (normalizedChallenge.debrief) {
-                    setDebriefDraft(normalizedChallenge.debrief);
-                    setDebriefInput((normalizedChallenge.debrief.mitigationPriorities || []).join('\n'));
-                }
-                return;
+                setRoom(data.challenge);
+            } else {
+                throw new Error(data?.error || 'Impossible de charger cette room.');
             }
-
-            if (data?.challenge) {
-                const normalizedChallenge: ChallengeDetail = {
-                    ...data.challenge,
-                    relatedWorkshopPath: normalizeRelatedTheoryPath(data.challenge.relatedWorkshopPath)
-                };
-                setChallenge(normalizedChallenge);
-            }
-
-            throw new Error(data?.error || 'Impossible de charger ce challenge.');
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Erreur de chargement.');
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [challenge, getHeaders, learnerProfile, mode, normalizedCode]);
+    }, [getHeaders, normalizedCode]);
 
     useEffect(() => {
         if (authLoading) return;
-        void fetchChallenge();
-    }, [authLoading, fetchChallenge]);
+        void fetchRoom();
+    }, [authLoading, fetchRoom]);
 
-    const startChallenge = useCallback(async () => {
+    useEffect(() => {
+        const interval = window.setInterval(() => setNowMs(Date.now()), 1000);
+        return () => window.clearInterval(interval);
+    }, []);
+
+    useEffect(() => {
+        const session = room?.labSession;
+        if (!session || session.status !== 'RUNNING' || !session.attackboxPath) {
+            return;
+        }
+        void bootstrapAttackboxAccess(session.attackboxPath);
+    }, [room?.labSession?.attackboxPath, room?.labSession?.sessionId, room?.labSession?.status, bootstrapAttackboxAccess]);
+
+    // Sync active task from URL
+    useEffect(() => {
+        const t = searchParams.get('task');
+        if (t) setActiveTask(parseInt(t, 10));
+    }, [searchParams]);
+
+    const navigateToTask = useCallback((n: number) => {
+        setActiveTask(n);
+        setFlagResult(null);
+        setStepResult(null);
+        setHintError(null);
+        const url = `${APP_URLS.studentCtf}/${encodeURIComponent(normalizedCode)}?task=${n}`;
+        router.replace(url, { scroll: false });
+    }, [normalizedCode, router]);
+
+    const startRoom = useCallback(async () => {
         const headers = getHeaders();
-        if (!headers || !normalizedCode) return;
-
+        if (!headers) return;
         try {
             setSubmitting(true);
-            setSubmitResult(null);
             setError(null);
-
             const res = await fetch(`/api/ctf/challenges/${encodeURIComponent(normalizedCode)}/start`, {
                 method: 'POST',
                 headers,
-                body: JSON.stringify({ mode, learnerProfile }),
+                body: JSON.stringify({ mode: 'GUIDED', learnerProfile: 'INTERMEDIATE' }),
             });
-
             const data = await res.json().catch(() => ({}));
-            if (!res.ok || !data?.success) {
-                throw new Error(data?.error || 'Impossible de démarrer ce challenge.');
+            if (!res.ok || !data?.success) throw new Error(data?.error || 'Impossible de démarrer.');
+            await fetchRoom();
+            // Apply session from /start response as authoritative source — fetchRoom() may
+            // return labSession: null in edge cases, but the /start response always has the
+            // real session (machineIp, expiresAt) which drives the IP display and timer.
+            if (data.session) {
+                setRoom((prev) => prev ? {
+                    ...prev,
+                    labSession: data.session,
+                    labTasks: Array.isArray(data.tasks) ? data.tasks : (prev.labTasks ?? []),
+                } : prev);
             }
-
-            await fetchChallenge(mode, learnerProfile);
+            navigateToTask(1);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Erreur lors du démarrage.');
+            setError(err instanceof Error ? err.message : 'Erreur démarrage.');
         } finally {
             setSubmitting(false);
         }
-    }, [fetchChallenge, getHeaders, learnerProfile, mode, normalizedCode]);
+    }, [fetchRoom, getHeaders, navigateToTask, normalizedCode]);
 
-    const advanceGuidedStep = useCallback(async () => {
+    const refreshLabSession = useCallback(async () => {
         const headers = getHeaders();
         if (!headers || !normalizedCode) return;
 
         try {
+            const res = await fetch(`/api/ctf/challenges/${encodeURIComponent(normalizedCode)}/session`, {
+                method: 'GET',
+                headers,
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data?.success) {
+                return;
+            }
+
+            setRoom((previous) => {
+                if (!previous) {
+                    return previous;
+                }
+                return {
+                    ...previous,
+                    labSession: data.session || null,
+                    labTasks: Array.isArray(data.tasks) ? data.tasks : previous.labTasks,
+                };
+            });
+        } catch {
+            // passive refresh only
+        }
+    }, [getHeaders, normalizedCode]);
+
+    const extendSession = useCallback(async () => {
+        const headers = getHeaders();
+        const sessionId = room?.labSession?.sessionId;
+        if (!headers || !sessionId) return;
+
+        try {
             setSubmitting(true);
             setError(null);
+            const res = await fetch(`/api/ctf/sessions/${encodeURIComponent(sessionId)}/extend`, {
+                method: 'POST',
+                headers,
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data?.success || !data?.session) {
+                throw new Error(data?.error || 'Impossible d\'étendre la session.');
+            }
+            setRoom((previous) => previous ? { ...previous, labSession: data.session } : previous);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Erreur extension de session.');
+        } finally {
+            setSubmitting(false);
+        }
+    }, [getHeaders, room?.labSession?.sessionId]);
 
+    const resetSession = useCallback(async () => {
+        const headers = getHeaders();
+        const sessionId = room?.labSession?.sessionId;
+        if (!headers || !sessionId) return;
+
+        try {
+            setSubmitting(true);
+            setError(null);
+            const res = await fetch(`/api/ctf/sessions/${encodeURIComponent(sessionId)}/reset`, {
+                method: 'POST',
+                headers,
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data?.success || !data?.session) {
+                throw new Error(data?.error || 'Impossible de réinitialiser la session.');
+            }
+            setRoom((previous) => previous ? { ...previous, labSession: data.session } : previous);
+            navigateToTask(1);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Erreur réinitialisation de session.');
+        } finally {
+            setSubmitting(false);
+        }
+    }, [getHeaders, navigateToTask, room?.labSession?.sessionId]);
+
+    const terminateSession = useCallback(async () => {
+        const headers = getHeaders();
+        const sessionId = room?.labSession?.sessionId;
+        if (!headers || !sessionId) return;
+
+        try {
+            setSubmitting(true);
+            setError(null);
+            const res = await fetch(`/api/ctf/sessions/${encodeURIComponent(sessionId)}`, {
+                method: 'DELETE',
+                headers,
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data?.success || !data?.session) {
+                throw new Error(data?.error || 'Impossible d\'arrêter la session.');
+            }
+            setRoom((previous) => previous ? { ...previous, labSession: data.session } : previous);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Erreur arrêt de session.');
+        } finally {
+            setSubmitting(false);
+        }
+    }, [getHeaders, room?.labSession?.sessionId]);
+
+    const advanceTask = useCallback(async () => {
+        const headers = getHeaders();
+        if (!headers) return;
+        try {
+            setSubmitting(true);
+            setError(null);
             const res = await fetch(`/api/ctf/challenges/${encodeURIComponent(normalizedCode)}/step/next`, {
                 method: 'POST',
                 headers,
             });
-
             const data = await res.json().catch(() => ({}));
-            if (!res.ok || !data?.success) {
-                throw new Error(data?.error || 'Impossible d’avancer l’étape guidée.');
+            if (!res.ok || !data?.success) throw new Error(data?.error || 'Impossible d\'avancer.');
+            await fetchRoom();
+            // Go to next task
+            const nextStep = (room?.currentGuidedStep || activeTask) + 1;
+            const total = room?.totalSteps || 0;
+            if (nextStep > total) {
+                // Move to flag task
+                navigateToTask(total + 1);
+            } else {
+                navigateToTask(nextStep);
             }
-
-            await fetchChallenge('GUIDED');
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Erreur lors de l’avancement.');
+            setError(err instanceof Error ? err.message : 'Erreur avancement.');
         } finally {
             setSubmitting(false);
         }
-    }, [fetchChallenge, getHeaders, normalizedCode]);
+    }, [activeTask, fetchRoom, getHeaders, navigateToTask, normalizedCode, room?.currentGuidedStep, room?.totalSteps]);
 
-    const unlockHint = useCallback(async (hintNumber: number) => {
+    const submitStepAnswer = useCallback(async () => {
         const headers = getHeaders();
-        if (!headers || !normalizedCode) return;
+        if (!headers || !room || room.workflowMode !== 'TASK_VALIDATION') return;
+
+        const stepNumber = room.currentGuidedStep || activeTask || 1;
+        const answer = (stepAnswers[stepNumber] || '').trim();
+        if (!answer) return;
 
         try {
             setSubmitting(true);
             setError(null);
+            setStepResult(null);
 
+            const res = await fetch(
+                `/api/ctf/challenges/${encodeURIComponent(normalizedCode)}/step/${stepNumber}/submit`,
+                {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ answer }),
+                }
+            );
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data?.success || !data?.result) {
+                throw new Error(data?.error || 'Step validation failed.');
+            }
+
+            const result = data.result as {
+                isCorrect: boolean;
+                completed: boolean;
+                message?: string;
+                currentGuidedStep?: number;
+            };
+
+            if (!result.isCorrect) {
+                setStepResult({
+                    ok: false,
+                    message: result.message || 'Incorrect answer. Try again.',
+                });
+                await fetchRoom();
+                return;
+            }
+
+            setStepResult({
+                ok: true,
+                message: result.message || 'Correct answer.',
+            });
+            await fetchRoom();
+
+            if (result.completed) {
+                const finalTask = Math.max(room.totalSteps || stepNumber, stepNumber);
+                navigateToTask(finalTask);
+                return;
+            }
+
+            const nextStep = Math.max(stepNumber + 1, Number(result.currentGuidedStep || stepNumber + 1));
+            navigateToTask(nextStep);
+        } catch (err) {
+            setStepResult({
+                ok: false,
+                message: err instanceof Error ? err.message : 'Step validation error.',
+            });
+        } finally {
+            setSubmitting(false);
+        }
+    }, [activeTask, fetchRoom, getHeaders, navigateToTask, normalizedCode, room, stepAnswers]);
+
+    const unlockHint = useCallback(async (hintNumber: number) => {
+        const headers = getHeaders();
+        if (!headers) return;
+        try {
+            setSubmitting(true);
+            setHintError(null);
             const res = await fetch(`/api/ctf/challenges/${encodeURIComponent(normalizedCode)}/hint/${hintNumber}`, {
                 method: 'POST',
                 headers,
             });
-
             const data = await res.json().catch(() => ({}));
-            if (!res.ok || !data?.success) {
-                throw new Error(data?.error || 'Impossible de débloquer cet indice.');
-            }
-
-            await fetchChallenge();
+            if (!res.ok || !data?.success) throw new Error(data?.error || 'Impossible de déverrouiller.');
+            await fetchRoom();
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Erreur lors du déblocage.');
+            setHintError(err instanceof Error ? err.message : 'Erreur déverrouillage.');
         } finally {
             setSubmitting(false);
         }
-    }, [fetchChallenge, getHeaders, normalizedCode]);
+    }, [fetchRoom, getHeaders, normalizedCode]);
 
     const submitFlag = useCallback(async () => {
         const headers = getHeaders();
-        if (!headers || !normalizedCode) return;
-        if (!flagInput.trim()) return;
-
+        if (!headers || !flagInput.trim()) return;
         try {
             setSubmitting(true);
-            setSubmitResult(null);
+            setFlagResult(null);
             setError(null);
-
             const res = await fetch(`/api/ctf/challenges/${encodeURIComponent(normalizedCode)}/submit`, {
                 method: 'POST',
                 headers,
-                body: JSON.stringify({ submittedFlag: flagInput.trim(), mode, learnerProfile }),
+                body: JSON.stringify({ submittedFlag: flagInput.trim(), mode: 'GUIDED', learnerProfile: 'INTERMEDIATE' }),
             });
-
             const data = await res.json().catch(() => ({}));
-            if (!res.ok || !data?.success || !data?.result) {
-                throw new Error(data?.error || 'Soumission impossible.');
-            }
+            if (!res.ok || !data?.success || !data?.result) throw new Error(data?.error || 'Soumission impossible.');
 
             if (data.result.isCorrect) {
-                setSubmitResult({
-                    ok: true,
-                    message: data.result.alreadySolved ? 'Déjà résolu. Bravo.' : 'Flag correct. Challenge résolu.',
-                    pointsAwarded: data.result.pointsAwarded,
-                    axisScores: data.result.axisScores,
-                    feedback: data.result.feedback || [],
-                    debriefRequired: Boolean(data.result.debriefRequired),
-                });
-                await fetchChallenge();
-                if (!data.result.debriefRequired && !data.result.alreadySolved) {
-                    setShowLearningModal(true);
-                } else if (!data.result.debriefRequired) {
-                    router.push(`${APP_URLS.studentCtf}/${encodeURIComponent(normalizedCode)}/remediation`);
-                }
+                setFlagResult({ ok: true, message: data.result.alreadySolved ? 'Already solved!' : 'Correct flag!', points: data.result.pointsAwarded });
+                await fetchRoom();
             } else {
-                setSubmitResult({
-                    ok: false,
-                    message: data.result.message || 'Flag incorrect. Réessayez.',
-                    axisScores: data.result.axisScores,
-                    feedback: data.result.feedback || [],
-                });
+                setFlagResult({ ok: false, message: data.result.message || 'Wrong flag. Try again.' });
             }
         } catch (err) {
-            setSubmitResult({ ok: false, message: err instanceof Error ? err.message : 'Erreur lors de la soumission.' });
+            setFlagResult({ ok: false, message: err instanceof Error ? err.message : 'Submission error.' });
         } finally {
             setSubmitting(false);
         }
-    }, [fetchChallenge, flagInput, getHeaders, learnerProfile, mode, normalizedCode, router]);
+    }, [fetchRoom, flagInput, getHeaders, normalizedCode]);
 
-    const submitLearningCheck = useCallback(async () => {
-        const headers = getHeaders();
-        if (headers && normalizedCode) {
-            try {
-                await fetch(`/api/ctf/challenges/${encodeURIComponent(normalizedCode)}/learning-check`, {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify(learningAnswers),
-                });
-            } catch { /* ignore — redirect anyway */ }
-        }
-        setShowLearningModal(false);
-        router.push(`${APP_URLS.studentCtf}/${encodeURIComponent(normalizedCode)}/remediation`);
-    }, [getHeaders, learningAnswers, normalizedCode, router]);
-
-    const submitDebrief = useCallback(async () => {
-        const headers = getHeaders();
-        if (!headers || !normalizedCode) return;
-
-        const mitigationPriorities = debriefInput
-            .split('\n')
-            .map((line) => line.trim())
-            .filter(Boolean);
-
-        const payload = {
-            rootCause: debriefDraft.rootCause || '',
-            impactSummary: debriefDraft.impactSummary || '',
-            mitigationPriorities,
-            evidenceSummary: debriefDraft.evidenceSummary || '',
-        };
-
+    const copyCommand = useCallback(async (cmd: string) => {
         try {
-            setDebriefSaving(true);
-            setDebriefMessage(null);
-            setError(null);
+            await navigator.clipboard.writeText(cmd);
+            setCopiedCmd(true);
+            window.setTimeout(() => setCopiedCmd(false), 1500);
+        } catch { /* ignore */ }
+    }, []);
 
-            const res = await fetch(`/api/ctf/challenges/${encodeURIComponent(normalizedCode)}/debrief`, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify(payload),
-            });
-
-            const data = await res.json().catch(() => ({}));
-            if (!res.ok || !data?.success) {
-                throw new Error(data?.error || 'Debrief submission failed.');
-            }
-
-            setDebriefMessage('Debrief enregistre. Le scoring multi-axe est mis a jour.');
-            await fetchChallenge();
-        } catch (err) {
-            setDebriefMessage(err instanceof Error ? err.message : 'Erreur lors de la soumission du debrief.');
-        } finally {
-            setDebriefSaving(false);
+    useEffect(() => {
+        if (room?.labSession?.status !== 'RUNNING') {
+            return;
         }
-    }, [debriefDraft.evidenceSummary, debriefDraft.impactSummary, debriefDraft.rootCause, debriefInput, fetchChallenge, getHeaders, normalizedCode]);
 
-    const viewModel = useMemo(() => {
-        const status: CtfStatus = challenge?.status || 'UNLOCKED';
-        const statusInfo = statusMeta(status);
-        const difficultyInfo =
-            DIFFICULTY_PILL[challenge?.difficulty || ''] || { label: challenge?.difficulty || 'N/A', tone: 'slate' as const };
+        const interval = window.setInterval(() => {
+            void refreshLabSession();
+        }, 15_000);
 
-        const guidedSteps = challenge?.guidedSteps || [];
-        const totalSteps = Math.max(0, Number(challenge?.totalSteps || guidedSteps.length || 0));
-        const currentGuidedStep = Math.max(1, Number(challenge?.currentGuidedStep || guidedSteps.length || 1));
-        const activeStepNumber = status === 'COMPLETED' ? totalSteps : currentGuidedStep;
+        return () => window.clearInterval(interval);
+    }, [refreshLabSession, room?.labSession?.sessionId, room?.labSession?.status]);
 
-        const hints = challenge?.hints || [];
+    // ─── Derived view values ──────────────────────────────────────────────────
+
+    const vm = useMemo(() => {
+        if (!room) return null;
+        const status = room.status;
+        const isCompleted = status === 'COMPLETED';
+        const isInProgress = status === 'IN_PROGRESS';
+        const isUnlocked = status === 'UNLOCKED';
+        const isLocked = status === 'LOCKED';
+        const workflowMode: WorkflowMode = room.workflowMode === 'TASK_VALIDATION' ? 'TASK_VALIDATION' : 'FLAG_ONLY';
+        const isTaskValidationWorkflow = workflowMode === 'TASK_VALIDATION';
+
+        const steps = room.guidedSteps || [];
+        const totalSteps = Math.max(steps.length, room.totalSteps || 0);
+        const currentStep = room.currentGuidedStep || (isCompleted ? totalSteps : 1);
+        const progressPct = totalSteps > 0
+            ? isCompleted ? 100 : Math.round(((currentStep - 1) / totalSteps) * 100)
+            : 0;
+
+        const labSession = room.labSession || null;
+        const machineIp = labSession?.machineIp || getMachineIp(room.targetService);
+        const sessionStatus = labSession?.status || 'STOPPED';
+        const sessionExpiresAtMs = labSession?.expiresAt ? new Date(labSession.expiresAt).getTime() : 0;
+        const sessionRemainingSec = sessionExpiresAtMs > 0
+            ? Math.max(0, Math.floor((sessionExpiresAtMs - nowMs) / 1000))
+            : Math.max(0, Number(labSession?.timeRemainingSec || 0));
+        const hasRunningSession = sessionStatus === 'RUNNING' && sessionRemainingSec > 0;
+        const canExtendSession = Boolean(labSession?.canExtend && hasRunningSession);
+        const rawAttackboxPath = labSession?.attackboxPath || '';
+        const token = localStorage.getItem('token') || '';
+        const attackboxPath = rawAttackboxPath && token
+            ? `${APP_URLS.labProxy.replace(/\/+$/, '')}${rawAttackboxPath.startsWith('/') ? rawAttackboxPath : `/${rawAttackboxPath}`}?token=${encodeURIComponent(token)}`
+            : rawAttackboxPath || APP_URLS.ctfAttackbox;
+        const showFlagTask = !isTaskValidationWorkflow;
+        const flagTaskIndex = totalSteps + 1;
+        const selectedTask = showFlagTask
+            ? activeTask
+            : Math.max(1, Math.min(activeTask || 1, Math.max(totalSteps, 1)));
+        const isFlagTask = showFlagTask && selectedTask === flagTaskIndex;
+
+        // Current step data
+        const activeStepData = steps.find((s) => s.stepNumber === selectedTask) || null;
+        const isTaskDone = isCompleted || selectedTask < currentStep;
+        const isTaskActive = !isCompleted && selectedTask === currentStep;
+        const isTaskFuture = !isCompleted && selectedTask > currentStep;
+
+        const hints = room.hints || [];
+        const activeHints = hints; // show all hints in the flag task
+
+        const diff = DIFFICULTY_STYLES[room.difficulty] || { label: room.difficulty, tone: 'slate' as const };
+        const catLabel = CATEGORY_LABELS[room.category] || room.category;
 
         return {
-            status,
-            statusInfo,
-            difficultyInfo,
-            categoryLabel: CATEGORY_LABELS[challenge?.category || ''] || challenge?.category || 'N/A',
-            totalSteps,
-            activeStepNumber,
-            guidedSteps,
-            hints,
+            status, isCompleted, isInProgress, isUnlocked, isLocked,
+            workflowMode, isTaskValidationWorkflow, showFlagTask,
+            steps, totalSteps, currentStep, progressPct, selectedTask,
+            machineIp, flagTaskIndex, isFlagTask,
+            labSession, sessionStatus, sessionRemainingSec, hasRunningSession, canExtendSession, attackboxPath,
+            activeStepData, isTaskDone, isTaskActive, isTaskFuture,
+            hints, activeHints,
+            diff, catLabel,
         };
-    }, [challenge]);
+    }, [room, activeTask, nowMs]);
+
+    // ─── Loading / error states ───────────────────────────────────────────────
 
     if (authLoading || loading) {
         return (
             <CoursePageShell
-                title="Chargement du challenge..."
-                description="Preparation du contenu CTF et de votre progression."
-                icon={<Beaker className="h-8 w-8 text-emerald-300" />}
+                title="Chargement..."
+                icon={<Shield className="h-7 w-7 text-orange-300" />}
                 crumbs={[
                     { label: 'Mon Parcours', href: '/student' },
                     { label: 'Security Labs', href: APP_URLS.studentCtf },
-                    { label: 'Chargement' },
+                    { label: '...' },
                 ]}
                 backHref={APP_URLS.studentCtf}
-                backLabel="Retour aux challenges"
+                backLabel="Security Labs"
             >
                 <CourseCard className="p-8">
                     <div className="flex items-center gap-3 text-slate-300">
-                        <RefreshCw className="h-5 w-5 animate-spin text-emerald-400" />
-                        <span className="text-sm">Chargement...</span>
+                        <RefreshCw className="h-5 w-5 animate-spin text-orange-400" />
+                        <span className="text-sm">Chargement de la room...</span>
                     </div>
                     <div className="mt-6 space-y-3 animate-pulse">
                         <div className="h-3 w-2/3 rounded bg-slate-800/70" />
@@ -558,38 +670,32 @@ export default function CtfChallengeDetailPage({ params }: { params: Promise<{ c
         );
     }
 
-    if (!challenge) {
+    if (!room || !vm) {
         return (
             <CoursePageShell
-                title="Challenge introuvable"
-                description={error || 'Le challenge demande est introuvable.'}
-                icon={<AlertCircle className="h-8 w-8 text-red-200" />}
+                title="Room introuvable"
+                description={error || 'Cette room est introuvable.'}
+                icon={<AlertCircle className="h-7 w-7 text-red-300" />}
                 crumbs={[
                     { label: 'Mon Parcours', href: '/student' },
                     { label: 'Security Labs', href: APP_URLS.studentCtf },
                     { label: 'Erreur' },
                 ]}
                 backHref={APP_URLS.studentCtf}
-                backLabel="Retour aux challenges"
+                backLabel="Security Labs"
             >
-                <CourseCard className="border border-red-500/20 bg-red-500/5 p-6 md:p-8">
+                <CourseCard className="border border-red-500/20 bg-red-500/5 p-6">
                     <div className="flex items-start gap-3">
-                        <AlertCircle className="mt-0.5 h-5 w-5 text-red-300" />
-                        <div className="min-w-0">
-                            <h2 className="text-lg font-semibold text-white">Impossible de charger le challenge</h2>
-                            <p className="mt-1 text-sm text-red-100/90">{error || 'Erreur inconnue.'}</p>
-                            <div className="mt-4 flex flex-wrap items-center gap-2">
-                                <button
-                                    onClick={() => void fetchChallenge()}
-                                    className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold"
-                                >
-                                    Reessayer
+                        <AlertCircle className="h-5 w-5 text-red-300 mt-0.5 flex-shrink-0" />
+                        <div>
+                            <p className="font-semibold text-white">Impossible de charger la room</p>
+                            <p className="mt-1 text-sm text-red-100/80">{error || 'Erreur inconnue.'}</p>
+                            <div className="mt-4 flex gap-2">
+                                <button onClick={() => void fetchRoom()} className="px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white text-sm font-semibold">
+                                    Réessayer
                                 </button>
-                                <Link
-                                    href={APP_URLS.studentCtf}
-                                    className="px-4 py-2.5 rounded-xl border border-white/10 bg-slate-900/40 text-sm font-semibold hover:bg-slate-900/60"
-                                >
-                                    Retour aux challenges
+                                <Link href={APP_URLS.studentCtf} className="px-4 py-2 rounded-xl border border-white/10 bg-slate-900/40 text-sm font-semibold hover:bg-slate-900/60">
+                                    Retour
                                 </Link>
                             </div>
                         </div>
@@ -599,737 +705,829 @@ export default function CtfChallengeDetailPage({ params }: { params: Promise<{ c
         );
     }
 
-    const isLocked = viewModel.status === 'LOCKED';
-    const isUnlocked = viewModel.status === 'UNLOCKED';
-    const isInProgress = viewModel.status === 'IN_PROGRESS';
-    const isCompleted = viewModel.status === 'COMPLETED';
-    const showGuided = mode === 'GUIDED';
+    // ─── Aside (task list + machine panel) ───────────────────────────────────
 
     const aside = (
-        <div className="space-y-4">
-            <CourseCard className="p-4">
-                <p className="text-[11px] text-slate-500 font-semibold uppercase tracking-[0.2em] mb-3">
-                    Mode
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                    {(['GUIDED', 'FREE'] as const).map((m) => {
-                        const active = mode === m;
+        <div className="space-y-3">
+            {/* Task navigation */}
+            <CourseCard className="p-0 overflow-hidden">
+                <div className="px-4 py-3 border-b border-white/8">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">Tasks</p>
+                </div>
+                <div className="py-1">
+                    {vm.steps.map((step) => {
+                        const isDone = vm.isCompleted || step.stepNumber < vm.currentStep;
+                        const isActive = !vm.isCompleted && step.stepNumber === vm.currentStep;
+                        const isFuture = !vm.isCompleted && step.stepNumber > vm.currentStep;
+                        const isSelected = vm.selectedTask === step.stepNumber;
+
                         return (
                             <button
-                                key={m}
-                                onClick={() => {
-                                    setMode(m);
-                                    void fetchChallenge(m, learnerProfile);
-                                }}
-                                className={`px-3 py-2 rounded-xl text-sm font-semibold border transition ${active
-                                        ? 'bg-white text-slate-950 border-white/10'
-                                        : 'bg-slate-950/40 border-white/10 text-slate-200 hover:bg-white/5'
-                                    }`}
+                                key={step.stepNumber}
+                                onClick={() => !isFuture && navigateToTask(step.stepNumber)}
+                                disabled={isFuture}
+                                className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
+                                    isSelected
+                                        ? 'bg-orange-500/10 border-r-2 border-orange-400'
+                                        : 'hover:bg-white/4'
+                                } ${isFuture ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
                             >
-                                {m === 'GUIDED' ? 'Guide' : 'Libre'}
+                                <div className={`h-5 w-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-black ${
+                                    isDone ? 'bg-emerald-500 text-slate-950' :
+                                    isActive ? 'bg-orange-500 text-slate-950' :
+                                    'bg-slate-800 text-slate-500 border border-slate-700'
+                                }`}>
+                                    {isDone ? <CheckCircle2 size={11} /> : step.stepNumber}
+                                </div>
+                                <span className={`text-xs font-medium truncate ${
+                                    isDone ? 'text-emerald-300' :
+                                    isActive ? 'text-orange-200' :
+                                    isFuture ? 'text-slate-600' :
+                                    'text-slate-300'
+                                }`}>
+                                    {step.stepTitle}
+                                </span>
                             </button>
                         );
                     })}
-                </div>
-                <div className="mt-4">
-                    <p className="text-[11px] text-slate-500 font-semibold uppercase tracking-[0.2em] mb-2">
-                        Profil
-                    </p>
-                    <div className="grid grid-cols-3 gap-2">
-                        {(challenge?.adaptiveProfiles || ['NOVICE', 'INTERMEDIATE', 'ADVANCED']).map((profile) => {
-                            const active = learnerProfile === profile;
-                            return (
-                                <button
-                                    key={profile}
-                                    onClick={() => {
-                                        setLearnerProfile(profile);
-                                        void fetchChallenge(mode, profile);
-                                    }}
-                                    className={`px-2 py-2 rounded-xl text-xs font-semibold border transition ${active
-                                        ? 'bg-cyan-400 text-slate-950 border-cyan-300/60'
-                                        : 'bg-slate-950/40 border-white/10 text-slate-200 hover:bg-white/5'
-                                        }`}
-                                >
-                                    {profile === 'INTERMEDIATE' ? 'INTER' : profile}
-                                </button>
-                            );
-                        })}
-                    </div>
-                    {challenge?.adaptivePathNotes?.[learnerProfile] && (
-                        <p className="mt-2 text-xs text-slate-400 leading-relaxed">
-                            {challenge.adaptivePathNotes[learnerProfile]}
-                        </p>
+
+                    {/* Flag task */}
+                    {vm.showFlagTask && vm.totalSteps > 0 && (
+                        <>
+                            <div className="mx-4 my-1 border-t border-white/5" />
+                            <button
+                                onClick={() => (vm.isCompleted || vm.currentStep >= vm.totalSteps) && navigateToTask(vm.flagTaskIndex)}
+                                disabled={!vm.isCompleted && vm.currentStep < vm.totalSteps}
+                                className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
+                                    vm.selectedTask === vm.flagTaskIndex
+                                        ? 'bg-amber-500/10 border-r-2 border-amber-400'
+                                        : 'hover:bg-white/4'
+                                } ${!vm.isCompleted && vm.currentStep < vm.totalSteps ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
+                            >
+                                <div className={`h-5 w-5 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                    vm.isCompleted ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 border border-slate-700'
+                                }`}>
+                                    {vm.isCompleted ? <Trophy size={11} /> : <Flag size={10} className="text-slate-500" />}
+                                </div>
+                                <span className={`text-xs font-medium ${vm.isCompleted ? 'text-amber-300' : 'text-slate-500'}`}>
+                                    Find the Flag
+                                </span>
+                            </button>
+                        </>
                     )}
-                </div>
-                {challenge.prerequisiteChallengeCode && (
-                    <div className="mt-4 text-sm text-slate-400">
-                        Prerequis: <span className="font-mono text-slate-200">{challenge.prerequisiteChallengeCode}</span>
-                    </div>
-                )}
-                <div className="mt-3 text-xs text-slate-500">
-                    Essais rates: <span className="font-mono text-slate-300">{challenge.failedAttempts || 0}</span>
                 </div>
             </CourseCard>
 
+            {/* Machine panel */}
             <CourseCard className="p-4">
-                <p className="text-[11px] text-slate-500 font-semibold uppercase tracking-[0.2em] mb-3">
-                    Actions
-                </p>
+                <div className="flex items-center gap-2 mb-3">
+                    <Monitor size={14} className="text-cyan-300" />
+                    <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">Machine cible</p>
+                </div>
                 <div className="space-y-2">
+                    <div className="rounded-lg bg-slate-950/60 border border-white/8 px-3 py-2">
+                        <p className="text-[10px] text-slate-500 mb-0.5">Service</p>
+                        <p className="text-xs font-mono text-cyan-200">{room.targetService}</p>
+                    </div>
+                    <div className="rounded-lg bg-slate-950/60 border border-white/8 px-3 py-2">
+                        <p className="text-[10px] text-slate-500 mb-0.5">Session</p>
+                        <p className={`text-xs font-semibold ${
+                            vm.sessionStatus === 'RUNNING' ? 'text-emerald-300'
+                                : vm.sessionStatus === 'PROVISIONING' ? 'text-amber-300'
+                                    : vm.sessionStatus === 'FAILED' ? 'text-rose-300'
+                                        : 'text-slate-300'
+                        }`}>
+                            {vm.sessionStatus}
+                        </p>
+                    </div>
+                    <div className="rounded-lg bg-slate-950/60 border border-white/8 px-3 py-2">
+                        <p className="text-[10px] text-slate-500 mb-0.5">IP / Host</p>
+                        <p className="text-xs font-mono text-emerald-300">{vm.machineIp}</p>
+                    </div>
+                    <div className="rounded-lg bg-slate-950/60 border border-white/8 px-3 py-2">
+                        <p className="text-[10px] text-slate-500 mb-0.5">Temps restant</p>
+                        <p className="text-xs font-mono text-amber-200">
+                            {vm.labSession ? formatRemainingTime(vm.sessionRemainingSec) : '--:--'}
+                        </p>
+                    </div>
+                </div>
+                <div className="mt-3 space-y-2">
                     <Link
                         href={`${APP_URLS.studentCtf}/${encodeURIComponent(normalizedCode)}/terminal`}
-                        className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-slate-950/50 border border-white/10 text-sm font-semibold text-slate-200 hover:bg-slate-950 hover:border-white/20 transition"
+                        className={`w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-white text-xs font-bold transition-colors ${
+                            vm.hasRunningSession
+                                ? 'bg-cyan-600 hover:bg-cyan-500'
+                                : 'bg-slate-700/70 hover:bg-slate-700'
+                        }`}
                     >
-                        <Terminal className="h-4 w-4 text-cyan-300" />
-                        Ouvrir AttackBox
+                        <Terminal size={13} />
+                        Open AttackBox
                     </Link>
+                    <a
+                        href={vm.attackboxPath}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl border border-white/10 bg-slate-900/40 hover:bg-slate-900/60 text-xs font-semibold text-slate-300 transition-colors"
+                    >
+                        <ExternalLink size={12} />
+                        AttackBox (onglet)
+                    </a>
+                    {vm.hasRunningSession ? (
+                        <>
+                            <button
+                                onClick={() => void extendSession()}
+                                disabled={submitting || !vm.canExtendSession}
+                                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white text-xs font-semibold transition-colors"
+                            >
+                                {submitting ? <RefreshCw size={12} className="animate-spin" /> : <ArrowRight size={12} />}
+                                Extend +60m
+                            </button>
+                            <button
+                                onClick={() => void resetSession()}
+                                disabled={submitting}
+                                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl border border-white/10 bg-slate-900/40 hover:bg-slate-900/60 disabled:opacity-50 text-xs font-semibold text-slate-200 transition-colors"
+                            >
+                                {submitting ? <RefreshCw size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+                                Reset Machine
+                            </button>
+                            <button
+                                onClick={() => void terminateSession()}
+                                disabled={submitting}
+                                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl border border-rose-400/30 bg-rose-500/10 hover:bg-rose-500/20 disabled:opacity-50 text-xs font-semibold text-rose-200 transition-colors"
+                            >
+                                {submitting ? <RefreshCw size={12} className="animate-spin" /> : <AlertCircle size={12} />}
+                                Terminate
+                            </button>
+                        </>
+                    ) : (
+                        <button
+                            onClick={() => void startRoom()}
+                            disabled={submitting}
+                            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 disabled:opacity-60 text-white text-xs font-semibold transition-colors"
+                        >
+                            {submitting ? <RefreshCw size={12} className="animate-spin" /> : <Zap size={12} />}
+                            Start Machine
+                        </button>
+                    )}
+                </div>
+            </CourseCard>
+
+            {/* Quick links */}
+            <CourseCard className="p-3">
+                <div className="space-y-1">
                     <Link
                         href={APP_URLS.studentCtfLeaderboard}
-                        className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-slate-950/50 border border-white/10 text-sm font-semibold text-slate-200 hover:bg-slate-950 hover:border-white/20 transition"
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 text-xs text-slate-400 hover:text-slate-200 transition-colors"
                     >
-                        <Trophy className="h-4 w-4 text-amber-300" />
+                        <Trophy size={12} className="text-amber-300" />
                         Leaderboard
                     </Link>
-                    <Link
-                        href={APP_URLS.studentCtf}
-                        className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-slate-950/50 border border-white/10 text-sm font-semibold text-slate-200 hover:bg-slate-950 hover:border-white/20 transition"
-                    >
-                        <ArrowLeft className="h-4 w-4" />
-                        Retour
-                    </Link>
-                    {challenge?.relatedWorkshopPath && (
+                    {room.relatedWorkshopPath && (
                         <Link
-                            href={challenge.relatedWorkshopPath}
-                            className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-sm font-semibold text-indigo-200 hover:bg-indigo-500/15 hover:border-indigo-500/30 transition"
+                            href={room.relatedWorkshopPath}
+                            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 text-xs text-slate-400 hover:text-slate-200 transition-colors"
                         >
-                            <BookOpen className="h-4 w-4 text-indigo-300" />
+                            <BookOpen size={12} className="text-indigo-300" />
                             Revoir la théorie
                         </Link>
                     )}
+                    <Link
+                        href={`${APP_URLS.studentCtf}/${encodeURIComponent(normalizedCode)}/remediation`}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 text-xs text-slate-400 hover:text-slate-200 transition-colors"
+                    >
+                        <Shield size={12} className="text-emerald-300" />
+                        Remédiation
+                    </Link>
                 </div>
             </CourseCard>
         </div>
     );
 
-    const learningModal = showLearningModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-sm p-4">
-            <div className="w-full max-w-lg rounded-2xl border border-emerald-500/20 bg-slate-900 p-8 shadow-2xl">
-                <div className="flex items-center gap-3 mb-1">
-                    <CheckCircle2 className="h-8 w-8 text-emerald-400 flex-shrink-0" />
-                    <h2 className="text-xl font-black text-white">Qu&apos;as-tu appris ?</h2>
-                </div>
-                <p className="text-sm text-slate-400 mb-6 ml-11">3 questions rapides pour consolider ton apprentissage.</p>
+    // ─── Main content ─────────────────────────────────────────────────────────
 
-                <div className="space-y-5">
-                    <div>
-                        <p className="text-sm font-semibold text-slate-200 mb-2">1. Type de vulnérabilité exploitée ?</p>
-                        <div className="grid grid-cols-2 gap-2">
-                            {["Contrôle d'accès brisé", 'Faiblesse cryptographique', 'Injection / manipulation', 'Mauvaise configuration'].map((opt) => (
-                                <button key={opt} onClick={() => setLearningAnswers((prev) => ({ ...prev, vulnerabilityType: opt }))}
-                                    className={`px-3 py-2 rounded-xl text-xs font-semibold border transition text-left ${learningAnswers.vulnerabilityType === opt ? 'bg-cyan-500 text-slate-950 border-cyan-400' : 'bg-slate-800 border-white/10 text-slate-300 hover:bg-slate-700'}`}>
-                                    {opt}
-                                </button>
-                            ))}
+    // Locked state
+    if (vm.isLocked) {
+        return (
+            <CoursePageShell
+                title={room.title}
+                description={room.description}
+                icon={<Lock className="h-7 w-7 text-slate-400" />}
+                crumbs={[
+                    { label: 'Mon Parcours', href: '/student' },
+                    { label: 'Security Labs', href: APP_URLS.studentCtf },
+                    { label: room.code },
+                ]}
+                backHref={APP_URLS.studentCtf}
+                backLabel="Security Labs"
+                meta={
+                    <>
+                        <CoursePill tone="slate">{room.code}</CoursePill>
+                        <CoursePill tone={vm.diff.tone}>{vm.diff.label}</CoursePill>
+                        <CoursePill tone="slate">{vm.catLabel}</CoursePill>
+                        <CoursePill tone="slate">Locked</CoursePill>
+                    </>
+                }
+            >
+                <CourseCard className="border border-amber-500/20 bg-amber-500/5 p-8">
+                    <div className="flex items-start gap-4">
+                        <Lock className="h-6 w-6 text-amber-300 mt-0.5 flex-shrink-0" />
+                        <div>
+                            <h2 className="text-xl font-bold text-white">Room verrouillée</h2>
+                            <p className="mt-2 text-sm text-slate-300">
+                                Terminez le prérequis <span className="font-mono text-amber-200">{room.prerequisiteChallengeCode}</span> pour débloquer cette room.
+                            </p>
+                            <div className="mt-5">
+                                <Link href={APP_URLS.studentCtf} className="px-5 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white text-sm font-semibold inline-flex items-center gap-2">
+                                    Voir toutes les rooms
+                                </Link>
+                            </div>
                         </div>
                     </div>
-
-                    <div>
-                        <p className="text-sm font-semibold text-slate-200 mb-2">2. Impact réel si en production ?</p>
-                        <div className="grid grid-cols-3 gap-2">
-                            {['Fraude financière directe', 'Fuite de données sensibles', 'Perturbation de service'].map((opt) => (
-                                <button key={opt} onClick={() => setLearningAnswers((prev) => ({ ...prev, businessImpact: opt }))}
-                                    className={`px-3 py-2 rounded-xl text-xs font-semibold border transition text-center ${learningAnswers.businessImpact === opt ? 'bg-amber-500 text-slate-950 border-amber-400' : 'bg-slate-800 border-white/10 text-slate-300 hover:bg-slate-700'}`}>
-                                    {opt}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div>
-                        <p className="text-sm font-semibold text-slate-200 mb-2">3. Fix le plus urgent ?</p>
-                        <div className="grid grid-cols-3 gap-2">
-                            {['Rotation des clés', 'Validation stricte des inputs', 'Audit et monitoring'].map((opt) => (
-                                <button key={opt} onClick={() => setLearningAnswers((prev) => ({ ...prev, fixPriority: opt }))}
-                                    className={`px-3 py-2 rounded-xl text-xs font-semibold border transition text-center ${learningAnswers.fixPriority === opt ? 'bg-emerald-500 text-slate-950 border-emerald-400' : 'bg-slate-800 border-white/10 text-slate-300 hover:bg-slate-700'}`}>
-                                    {opt}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                <div className="mt-6 flex gap-3">
-                    <button
-                        onClick={() => void submitLearningCheck()}
-                        className="flex-1 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm"
-                    >
-                        Valider et voir la remédiation →
-                    </button>
-                    <button
-                        onClick={() => void submitLearningCheck()}
-                        className="px-4 py-3 rounded-xl border border-white/10 text-slate-400 hover:text-white text-sm"
-                    >
-                        Passer
-                    </button>
-                </div>
-            </div>
-        </div>
-    ) : null;
+                </CourseCard>
+            </CoursePageShell>
+        );
+    }
 
     return (
-        <>
-        {learningModal}
         <CoursePageShell
-            title={challenge.title}
-            description={challenge.description}
-            icon={<Beaker className="h-8 w-8 text-emerald-300" />}
+            title={room.title}
+            description={room.description}
+            icon={<Shield className="h-7 w-7 text-orange-300" />}
             crumbs={[
                 { label: 'Mon Parcours', href: '/student' },
                 { label: 'Security Labs', href: APP_URLS.studentCtf },
-                { label: challenge.code },
+                { label: room.code },
             ]}
             backHref={APP_URLS.studentCtf}
-            backLabel="Retour aux challenges"
+            backLabel="Security Labs"
             meta={
                 <>
-                    <CoursePill tone="slate">{challenge.code}</CoursePill>
-                    <CoursePill tone={viewModel.difficultyInfo.tone}>{viewModel.difficultyInfo.label}</CoursePill>
-                    <CoursePill tone="slate">{viewModel.categoryLabel}</CoursePill>
-                    <CoursePill tone="slate">{challenge.points} pts</CoursePill>
-                    <CoursePill tone={viewModel.statusInfo.tone}>
-                        {viewModel.statusInfo.icon}
-                        {viewModel.statusInfo.label}
-                    </CoursePill>
-                    <CoursePill tone="slate">~{challenge.estimatedMinutes} min</CoursePill>
+                    <CoursePill tone="slate">{room.code}</CoursePill>
+                    <CoursePill tone={vm.diff.tone}>{vm.diff.label}</CoursePill>
+                    <CoursePill tone="slate">{vm.catLabel}</CoursePill>
+                    <CoursePill tone="slate">{room.points} pts</CoursePill>
+                    <CoursePill tone="slate">~{room.estimatedMinutes} min</CoursePill>
+                    {vm.isCompleted && (
+                        <CoursePill tone="emerald">
+                            <CheckCircle2 className="h-3.5 w-3.5" /> Completed
+                        </CoursePill>
+                    )}
+                    {vm.isInProgress && (
+                        <CoursePill tone="amber">
+                            <Flame className="h-3.5 w-3.5" /> In Progress
+                        </CoursePill>
+                    )}
                 </>
             }
             headerFooter={
-                showGuided && (isInProgress || isCompleted) ? (
+                vm.totalSteps > 0 && (vm.isInProgress || vm.isCompleted) ? (
                     <div className="flex items-center gap-3">
-                        <div className="h-2 flex-1 bg-slate-800/70 rounded-full overflow-hidden">
+                        <div className="h-1.5 flex-1 rounded-full bg-slate-800 overflow-hidden">
                             <div
-                                className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-cyan-400 transition-all duration-700"
-                                style={{
-                                    width: `${viewModel.totalSteps > 0 ? Math.round((viewModel.activeStepNumber / viewModel.totalSteps) * 100) : 0}%`,
-                                }}
+                                className={`h-full rounded-full transition-all duration-700 ${vm.isCompleted ? 'bg-emerald-500' : 'bg-orange-400'}`}
+                                style={{ width: `${vm.progressPct}%` }}
                             />
                         </div>
-                        <span className="text-xs font-mono text-emerald-200">
-                            {viewModel.activeStepNumber}/{Math.max(1, viewModel.totalSteps)}
+                        <span className="text-xs font-mono text-slate-400">
+                            {vm.isCompleted ? vm.totalSteps : vm.currentStep - 1}/{vm.totalSteps} tasks
                         </span>
                     </div>
                 ) : null
             }
             actions={
                 <button
-                    onClick={() => void fetchChallenge()}
-                    className={`px-4 py-2.5 rounded-xl border border-white/10 bg-slate-900/40 hover:bg-slate-900/60 text-sm font-semibold inline-flex items-center gap-2 ${refreshing ? 'opacity-70' : ''
-                        }`}
+                    onClick={() => void fetchRoom()}
+                    disabled={refreshing}
+                    className={`px-3 py-2 rounded-xl border border-white/10 bg-slate-900/40 hover:bg-slate-900/60 text-sm inline-flex items-center gap-2 transition-colors ${refreshing ? 'opacity-60' : ''}`}
                 >
                     <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-                    Actualiser
                 </button>
             }
             aside={aside}
         >
-            <div className="space-y-6">
+            <div className="space-y-5">
+                {/* Error banner */}
                 {error && (
-                    <CourseCard className="border border-red-500/20 bg-red-500/5 p-4 md:p-5">
+                    <CourseCard className="border border-red-500/20 bg-red-500/5 p-4">
                         <div className="flex items-start gap-3">
-                            <AlertCircle className="mt-0.5 h-5 w-5 text-red-300" />
+                            <AlertCircle className="h-4 w-4 text-red-300 mt-0.5 flex-shrink-0" />
                             <p className="text-sm text-red-100/90">{error}</p>
                         </div>
                     </CourseCard>
                 )}
 
-                {(challenge.missionBrief || (challenge.incidentArtifacts || []).length > 0) && (
-                    <CourseCard className="p-6 md:p-8">
-                        <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                            <BookOpen className="h-5 w-5 text-cyan-300" />
-                            Mission brief & incident artifacts
-                        </h2>
-                        {challenge.missionBrief && (
-                            <div className="mt-4 grid gap-3 md:grid-cols-2">
-                                <div className="rounded-xl border border-white/10 bg-slate-950/40 p-4">
-                                    <p className="text-xs text-slate-500 uppercase tracking-wider">Role</p>
-                                    <p className="mt-1 text-sm text-slate-200">{challenge.missionBrief.role}</p>
-                                </div>
-                                <div className="rounded-xl border border-white/10 bg-slate-950/40 p-4">
-                                    <p className="text-xs text-slate-500 uppercase tracking-wider">Business context</p>
-                                    <p className="mt-1 text-sm text-slate-200">{challenge.missionBrief.businessContext}</p>
-                                </div>
-                                <div className="rounded-xl border border-white/10 bg-slate-950/40 p-4 md:col-span-2">
-                                    <p className="text-xs text-slate-500 uppercase tracking-wider">Incident trigger</p>
-                                    <p className="mt-1 text-sm text-slate-200">{challenge.missionBrief.incidentTrigger}</p>
-                                </div>
-                                <div className="rounded-xl border border-white/10 bg-slate-950/40 p-4">
-                                    <p className="text-xs text-slate-500 uppercase tracking-wider">Objective</p>
-                                    <p className="mt-1 text-sm text-slate-200">{challenge.missionBrief.objective}</p>
-                                </div>
-                                <div className="rounded-xl border border-white/10 bg-slate-950/40 p-4">
-                                    <p className="text-xs text-slate-500 uppercase tracking-wider">Success criteria</p>
-                                    <p className="mt-1 text-sm text-slate-200">{challenge.missionBrief.successCriteria}</p>
-                                </div>
+                {/* UNLOCKED → Start */}
+                {vm.isUnlocked && (
+                    <CourseCard className="p-8">
+                        <div className="flex items-start gap-4">
+                            <div className="h-12 w-12 rounded-2xl bg-orange-500/15 border border-orange-500/25 flex items-center justify-center flex-shrink-0">
+                                <Zap size={22} className="text-orange-300" />
                             </div>
-                        )}
-
-                        {(challenge.incidentArtifacts || []).length > 0 && (
-                            <div className="mt-5 space-y-3">
-                                {(challenge.incidentArtifacts || []).slice(0, 3).map((artifact) => (
-                                    <div key={artifact.artifactId} className="rounded-xl border border-white/10 bg-slate-950/40 p-4">
-                                        <div className="flex items-center justify-between gap-3">
-                                            <p className="text-sm font-semibold text-white">{artifact.title}</p>
-                                            <span className="text-[11px] font-semibold text-cyan-200 bg-cyan-500/10 border border-cyan-500/20 px-2 py-1 rounded-full">
-                                                {artifact.artifactType}
-                                            </span>
-                                        </div>
-                                        <p className="mt-1 text-sm text-slate-300">{artifact.description}</p>
-                                        <pre className="mt-3 rounded-lg border border-white/10 bg-slate-950/70 p-3 text-[11px] text-cyan-100 overflow-auto whitespace-pre-wrap">
-                                            {artifact.sample}
-                                        </pre>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </CourseCard>
-                )}
-
-                {challenge.proofRubric && (
-                    <CourseCard className="p-6 md:p-8">
-                        <h2 className="text-lg font-bold text-white">Proof rubric (technique + communication)</h2>
-                        <p className="mt-1 text-xs text-slate-400">
-                            Score minimum attendu: {challenge.proofRubric.passingScore}/100
-                        </p>
-                        <div className="mt-4 grid gap-4 md:grid-cols-2">
-                            <div className="rounded-xl border border-white/10 bg-slate-950/40 p-4">
-                                <p className="text-xs uppercase tracking-wider text-slate-500">Technique</p>
-                                <ul className="mt-2 space-y-2 text-sm text-slate-300">
-                                    {(challenge.proofRubric.technical || []).map((item) => (
-                                        <li key={`${item.criterion}-${item.weight}`} className="flex items-start justify-between gap-2">
-                                            <span>{item.criterion}</span>
-                                            <span className="font-mono text-cyan-200">{item.weight}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                            <div className="rounded-xl border border-white/10 bg-slate-950/40 p-4">
-                                <p className="text-xs uppercase tracking-wider text-slate-500">Communication</p>
-                                <ul className="mt-2 space-y-2 text-sm text-slate-300">
-                                    {(challenge.proofRubric.communication || []).map((item) => (
-                                        <li key={`${item.criterion}-${item.weight}`} className="flex items-start justify-between gap-2">
-                                            <span>{item.criterion}</span>
-                                            <span className="font-mono text-cyan-200">{item.weight}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        </div>
-                    </CourseCard>
-                )}
-
-                {isLocked && (
-                    <CourseCard className="p-6 md:p-8 border border-amber-500/20 bg-amber-500/5">
-                        <div className="flex items-start gap-3">
-                            <Lock className="mt-0.5 h-5 w-5 text-amber-300" />
-                            <div className="min-w-0">
-                                <h2 className="text-lg font-bold text-white">Challenge verrouille</h2>
-                                <p className="mt-1 text-sm text-slate-300">
-                                    Terminez le prerequis pour le debloquer.
+                            <div className="flex-1 min-w-0">
+                                <h2 className="text-xl font-black text-white">Ready to start?</h2>
+                                <p className="mt-2 text-sm text-slate-300 leading-relaxed">
+                                    {room.description}
                                 </p>
-                                {challenge.prerequisiteChallengeCode && (
-                                    <p className="mt-3 text-sm text-slate-400">
-                                        Prerequis: <span className="font-mono text-slate-200">{challenge.prerequisiteChallengeCode}</span>
-                                    </p>
-                                )}
-                                <div className="mt-4 flex flex-wrap items-center gap-2">
-                                    <Link
-                                        href={APP_URLS.studentCtf}
-                                        className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold"
-                                    >
-                                        Voir les challenges
-                                    </Link>
-                                </div>
-                            </div>
-                        </div>
-                    </CourseCard>
-                )}
-
-                {isUnlocked && (
-                    <CourseCard className="p-6 md:p-8">
-                        <h2 className="text-xl font-black tracking-tight text-white">Pret a commencer</h2>
-                        <p className="mt-2 text-sm text-slate-300 leading-relaxed">
-                            Choisissez un mode, ouvrez l AttackBox, puis demarrez le challenge.
-                        </p>
-                        <div className="mt-5 flex flex-wrap items-center gap-2">
-                            <Link
-                                href={`${APP_URLS.studentCtf}/${encodeURIComponent(normalizedCode)}/terminal`}
-                                className="px-4 py-2.5 rounded-xl border border-white/10 bg-slate-900/40 hover:bg-slate-900/60 text-sm font-semibold inline-flex items-center gap-2"
-                            >
-                                <Terminal className="h-4 w-4 text-cyan-300" />
-                                Ouvrir AttackBox
-                            </Link>
-                            <button
-                                onClick={() => void startChallenge()}
-                                disabled={submitting}
-                                className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white text-sm font-semibold inline-flex items-center gap-2 shadow-lg shadow-emerald-900/20"
-                            >
-                                <Play className="h-4 w-4" />
-                                {submitting ? 'Demarrage...' : 'Demarrer'}
-                            </button>
-                        </div>
-                    </CourseCard>
-                )}
-
-                {(isInProgress || isCompleted) && showGuided && (
-                    <CourseCard className="p-6 md:p-8">
-                        <div className="flex items-start justify-between gap-4 flex-wrap">
-                            <div>
-                                <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                                    <Terminal className="h-5 w-5 text-cyan-300" />
-                                    Etapes guidees
-                                </h2>
-                                <p className="mt-1 text-sm text-slate-400">
-                                    Avancez une etape a la fois. Les commandes affichees sont adaptees au lab.
-                                </p>
-                            </div>
-                            {!isCompleted && (
-                                <button
-                                    onClick={() => void advanceGuidedStep()}
-                                    disabled={submitting}
-                                    className="px-4 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-60 text-white text-sm font-semibold inline-flex items-center gap-2"
-                                >
-                                    <RefreshCw className={`h-4 w-4 ${submitting ? 'animate-spin' : ''}`} />
-                                    Etape suivante
-                                </button>
-                            )}
-                        </div>
-
-                        {/* Horizontal step timeline */}
-                        {viewModel.guidedSteps.length > 0 && (
-                            <div className="mt-5 overflow-x-auto">
-                                <div className="flex items-center gap-0 min-w-max pb-1">
-                                    {viewModel.guidedSteps.map((step, idx) => {
-                                        const isDone = isCompleted || step.stepNumber < viewModel.activeStepNumber;
-                                        const isActive = !isCompleted && step.stepNumber === viewModel.activeStepNumber;
-                                        return (
-                                            <div key={step.stepNumber} className="flex items-center">
-                                                <div className={`flex flex-col items-center gap-1`}>
-                                                    <div className={`h-8 w-8 rounded-xl flex items-center justify-center text-xs font-black transition-all ${isDone ? 'bg-emerald-500 text-slate-950' : isActive ? 'bg-cyan-500 text-slate-950 ring-2 ring-cyan-300/40' : 'bg-slate-800 text-slate-500'}`}>
-                                                        {isDone ? <CheckCircle2 className="h-4 w-4" /> : step.stepNumber}
-                                                    </div>
-                                                    <span className={`text-[10px] font-semibold max-w-[60px] text-center leading-tight ${isDone ? 'text-emerald-300' : isActive ? 'text-cyan-300' : 'text-slate-600'}`}>
-                                                        {step.stepTitle.split(' ').slice(0, 2).join(' ')}
-                                                    </span>
-                                                </div>
-                                                {idx < viewModel.guidedSteps.length - 1 && (
-                                                    <div className={`h-0.5 w-8 mx-1 rounded-full transition-all ${isDone ? 'bg-emerald-500' : 'bg-slate-700'}`} />
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                    <div className="flex items-center ml-0">
-                                        <div className={`h-0.5 w-8 mx-1 rounded-full ${isCompleted ? 'bg-emerald-500' : 'bg-slate-700'}`} />
-                                        <div className={`flex flex-col items-center gap-1`}>
-                                            <div className={`h-8 w-14 rounded-xl flex items-center justify-center text-xs font-black ${isCompleted ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 border border-dashed border-slate-600 text-slate-500'}`}>
-                                                {isCompleted ? <Trophy className="h-4 w-4" /> : 'Flag'}
-                                            </div>
-                                            <span className={`text-[10px] font-semibold ${isCompleted ? 'text-amber-300' : 'text-slate-600'}`}>Flag</span>
-                                        </div>
+                                {room.learningObjectives.length > 0 && (
+                                    <div className="mt-4">
+                                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">What you&apos;ll learn</p>
+                                        <ul className="space-y-1">
+                                            {room.learningObjectives.map((obj, i) => (
+                                                <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
+                                                    <ChevronRight size={14} className="text-orange-400 flex-shrink-0 mt-0.5" />
+                                                    {obj}
+                                                </li>
+                                            ))}
+                                        </ul>
                                     </div>
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="mt-6 space-y-3">
-                            {viewModel.guidedSteps.length > 0 ? (
-                                viewModel.guidedSteps.map((step) => {
-                                    const isActive = !isCompleted && step.stepNumber === viewModel.activeStepNumber;
-                                    const isDone = isCompleted || step.stepNumber < viewModel.activeStepNumber;
-                                    return (
-                                        <div
-                                            key={step.stepNumber}
-                                            className={`rounded-2xl border p-5 transition ${isDone
-                                                    ? 'bg-emerald-500/5 border-emerald-500/15'
-                                                    : isActive
-                                                        ? 'bg-cyan-500/5 border-cyan-500/20'
-                                                        : 'bg-slate-950/40 border-white/10'
-                                                }`}
-                                        >
-                                            <div className="flex items-start gap-3">
-                                                <div
-                                                    className={`h-9 w-9 rounded-xl flex items-center justify-center text-sm font-black ${isDone ? 'bg-emerald-500 text-slate-950' : isActive ? 'bg-cyan-500 text-slate-950' : 'bg-slate-800 text-slate-200'
-                                                        }`}
-                                                >
-                                                    {isDone ? <CheckCircle2 className="h-5 w-5" /> : step.stepNumber}
-                                                </div>
-                                                <div className="min-w-0 flex-1">
-                                                    <p className="text-sm font-semibold text-white">{step.stepTitle}</p>
-                                                    <p className="mt-1 text-sm text-slate-300 leading-relaxed">{step.stepDescription}</p>
-
-                                                    {step.commandTemplate && (
-                                                        <pre className="mt-3 rounded-xl border border-white/10 bg-slate-950/60 p-3 text-xs text-emerald-200 overflow-auto whitespace-pre-wrap">
-                                                            {step.commandTemplate}
-                                                        </pre>
-                                                    )}
-
-                                                    {step.adaptiveGuidance && (
-                                                        <div className="mt-3 rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-3">
-                                                            <p className="text-xs font-semibold text-cyan-200 uppercase tracking-wider">
-                                                                Guidance {step.adaptiveGuidance.learnerProfile}
-                                                            </p>
-                                                            <p className="mt-1 text-xs text-slate-200">{step.adaptiveGuidance.focus}</p>
-                                                            <ul className="mt-2 space-y-1 text-xs text-slate-300">
-                                                                {step.adaptiveGuidance.checklist.map((item) => (
-                                                                    <li key={item} className="flex items-start gap-2">
-                                                                        <span className="mt-1 h-1.5 w-1.5 rounded-full bg-cyan-300 flex-shrink-0" />
-                                                                        <span>{item}</span>
-                                                                    </li>
-                                                                ))}
-                                                            </ul>
-                                                            <p className="mt-2 text-[11px] text-cyan-100">Success signal: {step.adaptiveGuidance.successSignal}</p>
-                                                        </div>
-                                                    )}
-
-                                                    {isActive && step.hintText && (
-                                                        <div className="mt-3 text-xs text-amber-200 flex items-start gap-2">
-                                                            <Lightbulb className="h-4 w-4 text-amber-300 mt-0.5 flex-shrink-0" />
-                                                            <p className="leading-relaxed">{step.hintText}</p>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })
-                            ) : (
-                                <p className="text-sm text-slate-400">Aucune etape disponible pour le moment.</p>
-                            )}
-                        </div>
-                    </CourseCard>
-                )}
-
-                {(isInProgress || isCompleted) && mode === 'FREE' && (
-                    <CourseCard className="p-6 md:p-8">
-                        <h2 className="text-lg font-bold text-white">Mode libre</h2>
-                        <p className="mt-2 text-sm text-slate-300 leading-relaxed">
-                            {challenge.freeModeDescription || 'Objectif: resoudre le challenge en autonomie, puis soumettre le flag.'}
-                        </p>
-                        <div className="mt-4 rounded-xl border border-white/10 bg-slate-950/40 p-4 text-sm text-slate-300">
-                            <p className="font-semibold text-white mb-2">Cible</p>
-                            <p className="font-mono text-xs text-slate-200 whitespace-pre-wrap">{challenge.targetEndpoint}</p>
-                            <p className="mt-2 text-xs text-slate-500">Service: {challenge.targetService}</p>
-                        </div>
-                    </CourseCard>
-                )}
-
-                {(isInProgress || isCompleted) && viewModel.hints.length > 0 && (
-                    <CourseCard className="p-6 md:p-8">
-                        <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                            <Lightbulb className="h-5 w-5 text-amber-300" />
-                            Indices
-                        </h2>
-                        <div className="mt-5 space-y-2">
-                            {viewModel.hints.map((hint) => (
-                                <div
-                                    key={hint.hintNumber}
-                                    className="rounded-2xl border border-white/10 bg-slate-950/40 p-4"
-                                >
-                                    <div className="flex items-center justify-between gap-3">
-                                        <p className="text-sm font-semibold text-white">Indice {hint.hintNumber}</p>
-                                        {hint.unlocked ? (
-                                            <span className="text-xs font-semibold text-emerald-300">Debloque</span>
-                                        ) : (
-                                            <button
-                                                onClick={() => void unlockHint(hint.hintNumber)}
-                                                disabled={submitting || hint.eligible === false}
-                                                className="px-3 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-200 text-xs font-semibold hover:bg-amber-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                                            >
-                                                Debloquer (-{hint.costPoints} pts)
-                                            </button>
-                                        )}
-                                    </div>
-                                    {!hint.unlocked && hint.lockedReason && (
-                                        <p className="mt-2 text-xs text-amber-100/80">{hint.lockedReason}</p>
-                                    )}
-                                    {!hint.unlocked && hint.unlockPolicy && (
-                                        <p className="mt-1 text-[11px] text-slate-500">
-                                            Seuil: {hint.unlockPolicy.minMinutes} min ou {hint.unlockPolicy.minFailedAttempts} essais rates
-                                            {typeof hint.unlockPolicy.requiredPreviousHint === 'number' ? `, apres indice ${hint.unlockPolicy.requiredPreviousHint}` : ''}
-                                            . Actuel: {hint.unlockPolicy.elapsedMinutes} min / {hint.unlockPolicy.failedAttempts} essais.
-                                        </p>
-                                    )}
-                                    {hint.unlocked && hint.hintText && (
-                                        <p className="mt-2 text-sm text-slate-300 leading-relaxed">{hint.hintText}</p>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    </CourseCard>
-                )}
-
-                {(isInProgress || isCompleted) && (
-                    <CourseCard className="p-6 md:p-8">
-                        <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                            <Send className="h-5 w-5 text-cyan-300" />
-                            Soumettre le flag
-                        </h2>
-
-                        {submitResult && (
-                            <div
-                                className={`mt-4 rounded-2xl border p-4 text-sm ${submitResult.ok
-                                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-100'
-                                        : 'bg-rose-500/10 border-rose-500/20 text-rose-100'
-                                    }`}
-                            >
-                                <p className="font-semibold">
-                                    {submitResult.ok ? 'Succes' : 'Erreur'}: {submitResult.message}
-                                    {typeof submitResult.pointsAwarded === 'number' && submitResult.ok && (
-                                        <span className="ml-2 font-mono text-emerald-200">+{submitResult.pointsAwarded} pts</span>
-                                    )}
-                                </p>
-                                {submitResult.axisScores && (
-                                    <p className="mt-2 text-xs text-slate-200/90">
-                                        Score multi-axe - Temps: {submitResult.axisScores.time}, Preuves: {submitResult.axisScores.proof},
-                                        Patch: {submitResult.axisScores.patch}, Total: {submitResult.axisScores.total}
-                                    </p>
                                 )}
-                                {(submitResult.feedback || []).length > 0 && (
-                                    <ul className="mt-2 space-y-1 text-xs">
-                                        {(submitResult.feedback || []).map((item) => (
-                                            <li key={`${item.code}-${item.message}`} className="text-slate-200/90">
-                                                [{item.code}] {item.message}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
-                                {submitResult.debriefRequired && (
-                                    <p className="mt-2 text-xs text-cyan-100">
-                                        Debrief obligatoire: completez le formulaire ci-dessous pour finaliser le score.
-                                    </p>
-                                )}
-                            </div>
-                        )}
-
-                        {!isCompleted ? (
-                            <div className="mt-4 flex flex-col sm:flex-row gap-2">
-                                <input
-                                    type="text"
-                                    value={flagInput}
-                                    onChange={(event) => setFlagInput(event.target.value)}
-                                    placeholder="PMP{...}"
-                                    className="flex-1 px-4 py-3 rounded-xl bg-slate-950/40 border border-white/10 text-sm font-mono text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
-                                    onKeyDown={(event) => {
-                                        if (event.key === 'Enter') {
-                                            void submitFlag();
-                                        }
-                                    }}
-                                />
-                                <button
-                                    onClick={() => void submitFlag()}
-                                    disabled={submitting || !flagInput.trim()}
-                                    className="px-5 py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 disabled:opacity-50 text-white text-sm font-bold inline-flex items-center justify-center gap-2"
-                                >
-                                    {submitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                                    Soumettre
-                                </button>
-                            </div>
-                        ) : (
-                            <div className="mt-6 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-6 text-center">
-                                <CheckCircle2 className="h-10 w-10 text-emerald-300 mx-auto" />
-                                <p className="mt-2 text-emerald-100 font-bold">Challenge resolu</p>
-                                <div className="mt-4 flex flex-wrap justify-center gap-2">
+                                <div className="mt-6 flex flex-wrap items-center gap-3">
                                     <Link
-                                        href={`${APP_URLS.studentCtf}/${encodeURIComponent(normalizedCode)}/remediation`}
-                                        className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold"
+                                        href={`${APP_URLS.studentCtf}/${encodeURIComponent(normalizedCode)}/terminal`}
+                                        className="px-4 py-2.5 rounded-xl border border-white/10 bg-slate-900/40 hover:bg-slate-900/60 text-sm font-semibold inline-flex items-center gap-2"
                                     >
-                                        Voir la remediation
+                                        <Terminal size={15} className="text-cyan-300" />
+                                        Open AttackBox
                                     </Link>
-                                    <Link
-                                        href={APP_URLS.studentCtf}
-                                        className="px-4 py-2.5 rounded-xl border border-white/10 bg-slate-900/40 hover:bg-slate-900/60 text-sm font-semibold"
+                                    <button
+                                        onClick={() => void startRoom()}
+                                        disabled={submitting}
+                                        className="px-5 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 disabled:opacity-60 text-white text-sm font-bold inline-flex items-center gap-2 shadow-lg shadow-orange-900/30"
                                     >
-                                        Retour au dashboard
-                                    </Link>
+                                        {submitting ? <RefreshCw size={15} className="animate-spin" /> : <Zap size={15} />}
+                                        {submitting ? 'Starting...' : 'Start Room'}
+                                    </button>
                                 </div>
                             </div>
-                        )}
+                        </div>
                     </CourseCard>
                 )}
 
-                {isCompleted && (
-                    <CourseCard className="p-6 md:p-8">
-                        <h2 className="text-lg font-bold text-white">Debrief obligatoire</h2>
-                        <p className="mt-1 text-sm text-slate-400">
-                            Completez le debrief (cause racine, impact, mitigation priorisee, preuves) pour finaliser votre score multi-axe.
-                        </p>
+                {/* Active task content (IN_PROGRESS or COMPLETED) */}
+                {(vm.isInProgress || vm.isCompleted) && !vm.isFlagTask && vm.activeStepData && (
+                    <TaskCard
+                        step={vm.activeStepData}
+                        machineIp={vm.machineIp}
+                        isDone={vm.isTaskDone}
+                        isActive={vm.isTaskActive}
+                        isFuture={vm.isTaskFuture}
+                        isCompleted={vm.isCompleted}
+                        totalSteps={vm.totalSteps}
+                        submitting={submitting}
+                        workflowMode={vm.workflowMode}
+                        onAdvance={advanceTask}
+                        stepAnswer={stepAnswers[vm.activeStepData.stepNumber] || ''}
+                        onStepAnswerChange={(value) => setStepAnswers((prev) => ({
+                            ...prev,
+                            [vm.activeStepData!.stepNumber]: value,
+                        }))}
+                        onSubmitAnswer={submitStepAnswer}
+                        stepResult={stepResult}
+                        onCopy={copyCommand}
+                        copiedCmd={copiedCmd}
+                    />
+                )}
 
-                        <div className="mt-4 grid gap-3">
-                            <label className="text-sm text-slate-300">
-                                Cause racine
-                                <textarea
-                                    value={debriefDraft.rootCause || ''}
-                                    onChange={(event) => setDebriefDraft((prev) => ({ ...prev, rootCause: event.target.value }))}
-                                    className="mt-1 w-full min-h-[110px] px-3 py-2 rounded-xl bg-slate-950/40 border border-white/10 text-sm text-slate-100"
-                                    placeholder={challenge.debriefTemplate?.rootCausePrompt || 'Expliquez le controle qui a echoue.'}
-                                />
-                            </label>
-                            <label className="text-sm text-slate-300">
-                                Impact
-                                <textarea
-                                    value={debriefDraft.impactSummary || ''}
-                                    onChange={(event) => setDebriefDraft((prev) => ({ ...prev, impactSummary: event.target.value }))}
-                                    className="mt-1 w-full min-h-[110px] px-3 py-2 rounded-xl bg-slate-950/40 border border-white/10 text-sm text-slate-100"
-                                    placeholder={challenge.debriefTemplate?.impactPrompt || 'Impact business et securite.'}
-                                />
-                            </label>
-                            <label className="text-sm text-slate-300">
-                                Mitigations priorisees (une ligne par action)
-                                <textarea
-                                    value={debriefInput}
-                                    onChange={(event) => setDebriefInput(event.target.value)}
-                                    className="mt-1 w-full min-h-[100px] px-3 py-2 rounded-xl bg-slate-950/40 border border-white/10 text-sm text-slate-100"
-                                    placeholder={challenge.debriefTemplate?.mitigationPrompt || 'Action 1 ...\\nAction 2 ...'}
-                                />
-                            </label>
-                            <label className="text-sm text-slate-300">
-                                Preuves
-                                <textarea
-                                    value={debriefDraft.evidenceSummary || ''}
-                                    onChange={(event) => setDebriefDraft((prev) => ({ ...prev, evidenceSummary: event.target.value }))}
-                                    className="mt-1 w-full min-h-[110px] px-3 py-2 rounded-xl bg-slate-950/40 border border-white/10 text-sm text-slate-100"
-                                    placeholder={challenge.debriefTemplate?.evidencePrompt || 'Referencez commandes, logs et verification avant/apres.'}
-                                />
-                            </label>
-                        </div>
+                {/* Hints — shown on active task */}
+                {(vm.isInProgress || vm.isCompleted) && !vm.isFlagTask && vm.isTaskActive && vm.hints.length > 0 && (
+                    <HintsCard
+                        hints={vm.hints}
+                        submitting={submitting}
+                        hintError={hintError}
+                        onUnlock={unlockHint}
+                    />
+                )}
 
-                        {(challenge.debriefTemplate?.checklist || []).length > 0 && (
-                            <ul className="mt-3 space-y-1 text-xs text-slate-400">
-                                {(challenge.debriefTemplate?.checklist || []).map((item) => (
-                                    <li key={item}>- {item}</li>
-                                ))}
-                            </ul>
-                        )}
+                {/* Flag task */}
+                {(vm.isInProgress || vm.isCompleted) && vm.showFlagTask && vm.isFlagTask && (
+                    <FlagTaskCard
+                        room={room}
+                        machineIp={vm.machineIp}
+                        isCompleted={vm.isCompleted}
+                        flagInput={flagInput}
+                        setFlagInput={setFlagInput}
+                        flagResult={flagResult}
+                        submitting={submitting}
+                        onSubmit={submitFlag}
+                        normalizedCode={normalizedCode}
+                        hints={vm.hints}
+                        onUnlockHint={unlockHint}
+                        hintError={hintError}
+                    />
+                )}
 
-                        {debriefMessage && (
-                            <div className="mt-4 rounded-xl border border-cyan-500/20 bg-cyan-500/5 px-4 py-3 text-sm text-cyan-100">
-                                {debriefMessage}
+                {/* Completed room — full completion card */}
+                {vm.isCompleted && (vm.isFlagTask || vm.isTaskValidationWorkflow) && (
+                    <CourseCard className="p-8 border border-emerald-500/20 bg-emerald-500/5">
+                        <div className="text-center">
+                            <div className="h-16 w-16 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center mx-auto mb-4">
+                                <Trophy size={32} className="text-amber-300" />
                             </div>
-                        )}
-
-                        <div className="mt-4">
-                            <button
-                                onClick={() => void submitDebrief()}
-                                disabled={debriefSaving}
-                                className="px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-60 text-white text-sm font-semibold inline-flex items-center gap-2"
-                            >
-                                {debriefSaving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                                {debriefSaving ? 'Enregistrement...' : 'Soumettre le debrief'}
-                            </button>
+                            <h2 className="text-2xl font-black text-white">Room Completed!</h2>
+                            <p className="mt-2 text-sm text-slate-300">
+                                You&apos;ve successfully compromised the target and captured the flag.
+                            </p>
+                            <div className="mt-6 flex flex-wrap justify-center gap-3">
+                                <Link
+                                    href={`${APP_URLS.studentCtf}/${encodeURIComponent(normalizedCode)}/remediation`}
+                                    className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold inline-flex items-center gap-2"
+                                >
+                                    <Shield size={15} />
+                                    View Remediation
+                                </Link>
+                                <Link
+                                    href={APP_URLS.studentCtf}
+                                    className="px-5 py-2.5 rounded-xl border border-white/10 bg-slate-900/40 hover:bg-slate-900/60 text-sm font-semibold inline-flex items-center gap-2"
+                                >
+                                    All Rooms
+                                </Link>
+                            </div>
                         </div>
                     </CourseCard>
                 )}
             </div>
         </CoursePageShell>
-        </>
+    );
+}
+
+// ─── TaskCard ─────────────────────────────────────────────────────────────────
+
+function TaskCard({
+    step,
+    machineIp,
+    isDone,
+    isActive,
+    isFuture,
+    isCompleted,
+    totalSteps,
+    submitting,
+    workflowMode,
+    onAdvance,
+    stepAnswer,
+    onStepAnswerChange,
+    onSubmitAnswer,
+    stepResult,
+    onCopy,
+    copiedCmd,
+}: {
+    step: GuidedStep;
+    machineIp: string;
+    isDone: boolean;
+    isActive: boolean;
+    isFuture: boolean;
+    isCompleted: boolean;
+    totalSteps: number;
+    submitting: boolean;
+    workflowMode: WorkflowMode;
+    onAdvance: () => void;
+    stepAnswer: string;
+    onStepAnswerChange: (value: string) => void;
+    onSubmitAnswer: () => void;
+    stepResult: { ok: boolean; message: string } | null;
+    onCopy: (cmd: string) => void;
+    copiedCmd: boolean;
+}) {
+    const processedCmd = step.commandTemplate ? substituteIp(step.commandTemplate, machineIp) : null;
+    const processedDesc = substituteIp(step.stepDescription, machineIp);
+    const expectsLongAnswer = step.stepType === 'EXPLANATION';
+
+    return (
+        <CourseCard className={`p-6 md:p-8 transition-all ${
+            isDone ? 'border-emerald-500/15 bg-emerald-500/3' :
+            isActive ? 'border-orange-500/20' :
+            isFuture ? 'border-white/5 opacity-60' :
+            ''
+        }`}>
+            {/* Task header */}
+            <div className="flex items-start gap-4 mb-5">
+                <div className={`h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 text-sm font-black ${
+                    isDone ? 'bg-emerald-500 text-slate-950' :
+                    isActive ? 'bg-orange-500 text-slate-950' :
+                    'bg-slate-800 text-slate-300'
+                }`}>
+                    {isDone ? <CheckCircle2 size={18} /> : step.stepNumber}
+                </div>
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <h2 className="text-lg font-bold text-white">{step.stepTitle}</h2>
+                        {isDone && !isCompleted && (
+                            <span className="text-xs text-emerald-300 font-semibold">Done</span>
+                        )}
+                        {isActive && (
+                            <span className="text-xs text-orange-300 font-semibold bg-orange-500/10 border border-orange-500/20 px-2 py-0.5 rounded-full">
+                                Current task
+                            </span>
+                        )}
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500 font-semibold uppercase tracking-wider">
+                        Task {step.stepNumber} / {totalSteps}
+                    </p>
+                </div>
+            </div>
+
+            {/* Instructions */}
+            <div className="prose prose-invert prose-sm max-w-none">
+                <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{processedDesc}</p>
+            </div>
+
+            {/* Command template */}
+            {processedCmd && (
+                <div className="mt-5">
+                    <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Command</p>
+                        <button
+                            onClick={() => onCopy(processedCmd)}
+                            className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors"
+                        >
+                            <Copy size={12} />
+                            {copiedCmd ? 'Copied!' : 'Copy'}
+                        </button>
+                    </div>
+                    <pre className="rounded-xl border border-white/10 bg-slate-950/70 px-4 py-3.5 text-sm text-emerald-200 overflow-x-auto whitespace-pre-wrap leading-relaxed font-mono">
+                        {processedCmd}
+                    </pre>
+                </div>
+            )}
+
+            {/* Expected output */}
+            {step.expectedOutput && (
+                <div className="mt-4">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Expected Output</p>
+                    <pre className="rounded-xl border border-white/8 bg-slate-950/40 px-4 py-3 text-xs text-slate-400 overflow-x-auto whitespace-pre-wrap font-mono">
+                        {substituteIp(step.expectedOutput, machineIp)}
+                    </pre>
+                </div>
+            )}
+
+            {/* Step hint */}
+            {step.hintText && isActive && (
+                <div className="mt-4 flex items-start gap-2 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
+                    <Lightbulb size={14} className="text-amber-300 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-amber-200 leading-relaxed">{substituteIp(step.hintText, machineIp)}</p>
+                </div>
+            )}
+
+            {/* Task answer validation */}
+            {isActive && !isCompleted && workflowMode === 'TASK_VALIDATION' && (
+                <div className="mt-6 space-y-3">
+                    {stepResult && (
+                        <div className={`rounded-xl border px-4 py-3 text-sm ${
+                            stepResult.ok
+                                ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-100'
+                                : 'bg-red-500/10 border-red-500/25 text-red-100'
+                        }`}>
+                            <p className="font-semibold flex items-center gap-2">
+                                {stepResult.ok ? <CheckCircle2 size={15} /> : <AlertCircle size={15} />}
+                                {stepResult.message}
+                            </p>
+                        </div>
+                    )}
+                    <div className="flex flex-col sm:flex-row gap-2">
+                        {expectsLongAnswer ? (
+                            <textarea
+                                value={stepAnswer}
+                                onChange={(e) => onStepAnswerChange(e.target.value)}
+                                placeholder="Enter your answer"
+                                className="flex-1 min-h-[132px] px-4 py-3 rounded-xl bg-slate-950/50 border border-white/10 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-orange-500/30"
+                            />
+                        ) : (
+                            <input
+                                type="text"
+                                value={stepAnswer}
+                                onChange={(e) => onStepAnswerChange(e.target.value)}
+                                placeholder="Enter your answer"
+                                className="flex-1 px-4 py-3 rounded-xl bg-slate-950/50 border border-white/10 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-orange-500/30"
+                                onKeyDown={(e) => e.key === 'Enter' && onSubmitAnswer()}
+                            />
+                        )}
+                        <button
+                            onClick={onSubmitAnswer}
+                            disabled={submitting || !stepAnswer.trim()}
+                            className="px-5 py-3 rounded-xl bg-orange-600 hover:bg-orange-500 disabled:opacity-60 text-white text-sm font-bold inline-flex items-center justify-center gap-2 shadow-lg shadow-orange-900/20"
+                        >
+                            {submitting ? <RefreshCw size={14} className="animate-spin" /> : <Send size={14} />}
+                            Verify
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Manual progression (legacy rooms) */}
+            {isActive && !isCompleted && workflowMode === 'FLAG_ONLY' && (
+                <div className="mt-6 flex items-center gap-3">
+                    <button
+                        onClick={onAdvance}
+                        disabled={submitting}
+                        className="px-5 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 disabled:opacity-60 text-white text-sm font-bold inline-flex items-center gap-2 shadow-lg shadow-orange-900/20"
+                    >
+                        {submitting ? <RefreshCw size={14} className="animate-spin" /> : <ArrowRight size={14} />}
+                        {submitting ? 'Loading...' : 'Mark Complete & Next'}
+                    </button>
+                </div>
+            )}
+        </CourseCard>
+    );
+}
+
+// ─── HintsCard ────────────────────────────────────────────────────────────────
+
+function HintsCard({
+    hints,
+    submitting,
+    hintError,
+    onUnlock,
+}: {
+    hints: HintInfo[];
+    submitting: boolean;
+    hintError: string | null;
+    onUnlock: (n: number) => void;
+}) {
+    const [open, setOpen] = useState(false);
+
+    return (
+        <CourseCard className="p-5">
+            <button
+                onClick={() => setOpen((v) => !v)}
+                className="w-full flex items-center justify-between"
+            >
+                <div className="flex items-center gap-2">
+                    <Lightbulb size={16} className="text-amber-300" />
+                    <span className="text-sm font-bold text-white">Hints</span>
+                    <span className="text-xs text-slate-500">
+                        ({hints.filter((h) => h.unlocked).length}/{hints.length} unlocked)
+                    </span>
+                </div>
+                <ChevronRight size={16} className={`text-slate-500 transition-transform ${open ? 'rotate-90' : ''}`} />
+            </button>
+
+            {open && (
+                <div className="mt-4 space-y-2">
+                    {hintError && (
+                        <p className="text-xs text-red-300 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{hintError}</p>
+                    )}
+                    {hints.map((hint) => (
+                        <div key={hint.hintNumber} className="rounded-xl border border-white/8 bg-slate-950/40 p-4">
+                            <div className="flex items-center justify-between gap-3">
+                                <p className="text-sm font-semibold text-white">Hint {hint.hintNumber}</p>
+                                {hint.unlocked ? (
+                                    <span className="text-xs text-emerald-300 font-semibold">Unlocked</span>
+                                ) : (
+                                    <button
+                                        onClick={() => onUnlock(hint.hintNumber)}
+                                        disabled={submitting || hint.eligible === false}
+                                        className="px-3 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-200 text-xs font-semibold hover:bg-amber-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        Unlock (−{hint.costPoints} pts)
+                                    </button>
+                                )}
+                            </div>
+                            {!hint.unlocked && hint.lockedReason && (
+                                <p className="mt-1.5 text-xs text-amber-100/70">{hint.lockedReason}</p>
+                            )}
+                            {!hint.unlocked && hint.unlockPolicy && (
+                                <p className="mt-1 text-[11px] text-slate-500">
+                                    Disponible après {hint.unlockPolicy.minMinutes} min ou {hint.unlockPolicy.minFailedAttempts} essais.
+                                    Actuel: {hint.unlockPolicy.elapsedMinutes} min / {hint.unlockPolicy.failedAttempts} essais.
+                                </p>
+                            )}
+                            {hint.unlocked && hint.hintText && (
+                                <p className="mt-2 text-sm text-slate-300 leading-relaxed">{hint.hintText}</p>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </CourseCard>
+    );
+}
+
+// ─── FlagTaskCard ─────────────────────────────────────────────────────────────
+
+function FlagTaskCard({
+    room,
+    machineIp,
+    isCompleted,
+    flagInput,
+    setFlagInput,
+    flagResult,
+    submitting,
+    onSubmit,
+    normalizedCode,
+    hints,
+    onUnlockHint,
+    hintError,
+}: {
+    room: RoomDetail;
+    machineIp: string;
+    isCompleted: boolean;
+    flagInput: string;
+    setFlagInput: (v: string) => void;
+    flagResult: { ok: boolean; message: string; points?: number } | null;
+    submitting: boolean;
+    onSubmit: () => void;
+    normalizedCode: string;
+    hints: HintInfo[];
+    onUnlockHint: (n: number) => void;
+    hintError: string | null;
+}) {
+    return (
+        <CourseCard className={`p-6 md:p-8 ${isCompleted ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-amber-500/15'}`}>
+            {/* Header */}
+            <div className="flex items-start gap-4 mb-6">
+                <div className={`h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                    isCompleted ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 border border-amber-500/30'
+                }`}>
+                    {isCompleted ? <Trophy size={18} /> : <Flag size={16} className="text-amber-300" />}
+                </div>
+                <div>
+                    <h2 className="text-lg font-bold text-white">Find the Flag</h2>
+                    <p className="mt-1 text-sm text-slate-400">
+                        Submit the flag you found in the target system.
+                    </p>
+                </div>
+            </div>
+
+            {/* Instructions */}
+            <div className="mb-5 rounded-xl border border-white/8 bg-slate-950/40 p-4">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Target Info</p>
+                <div className="space-y-1">
+                    <p className="text-sm font-mono text-cyan-200">
+                        {substituteIp(room.targetEndpoint, machineIp)}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                        Service: <span className="text-slate-300">{room.targetService}</span>
+                        {' · '}Machine IP: <span className="font-mono text-emerald-300">{machineIp}</span>
+                    </p>
+                </div>
+            </div>
+
+            {/* Flag format hint */}
+            <div className="mb-5 flex items-center gap-2 text-xs text-slate-500">
+                <Flag size={12} className="text-amber-300" />
+                Flag format: <span className="font-mono text-amber-200">PMP&#123;...&#125;</span>
+                {' '}or check <span className="font-mono text-slate-300">user.txt</span> / <span className="font-mono text-slate-300">root.txt</span>
+            </div>
+
+            {/* Submission result */}
+            {flagResult && (
+                <div className={`mb-4 rounded-xl border p-4 ${
+                    flagResult.ok
+                        ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-100'
+                        : 'bg-red-500/10 border-red-500/25 text-red-100'
+                }`}>
+                    <p className="text-sm font-semibold flex items-center gap-2">
+                        {flagResult.ok ? <CheckCircle2 size={15} /> : <AlertCircle size={15} />}
+                        {flagResult.message}
+                        {flagResult.ok && typeof flagResult.points === 'number' && (
+                            <span className="ml-auto font-mono text-emerald-300">+{flagResult.points} pts</span>
+                        )}
+                    </p>
+                </div>
+            )}
+
+            {/* Input */}
+            {!isCompleted ? (
+                <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                        type="text"
+                        value={flagInput}
+                        onChange={(e) => setFlagInput(e.target.value)}
+                        placeholder="PMP{...}"
+                        className="flex-1 px-4 py-3 rounded-xl bg-slate-950/50 border border-white/10 text-sm font-mono text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+                        onKeyDown={(e) => e.key === 'Enter' && onSubmit()}
+                    />
+                    <button
+                        onClick={onSubmit}
+                        disabled={submitting || !flagInput.trim()}
+                        className="px-5 py-3 rounded-xl bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white text-sm font-bold inline-flex items-center justify-center gap-2"
+                    >
+                        {submitting ? <RefreshCw size={14} className="animate-spin" /> : <Send size={14} />}
+                        Submit Flag
+                    </button>
+                </div>
+            ) : (
+                <div className="flex flex-wrap gap-3">
+                    <Link
+                        href={`${APP_URLS.studentCtf}/${encodeURIComponent(normalizedCode)}/remediation`}
+                        className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold inline-flex items-center gap-2"
+                    >
+                        <Shield size={14} /> View Remediation
+                    </Link>
+                    <Link
+                        href={APP_URLS.studentCtfLeaderboard}
+                        className="px-5 py-2.5 rounded-xl border border-white/10 bg-slate-900/40 hover:bg-slate-900/60 text-sm font-semibold inline-flex items-center gap-2"
+                    >
+                        <Trophy size={14} className="text-amber-300" /> Leaderboard
+                    </Link>
+                </div>
+            )}
+
+            {/* Hints on flag task */}
+            {hints.length > 0 && !isCompleted && (
+                <div className="mt-5 pt-5 border-t border-white/5">
+                    <HintsCard hints={hints} submitting={submitting} hintError={hintError} onUnlock={onUnlockHint} />
+                </div>
+            )}
+        </CourseCard>
     );
 }

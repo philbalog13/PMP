@@ -1,0 +1,4 @@
+﻿Invoice: 94712
+Beneficiary: Delta Procurement SARL
+New IBAN: FR76 3000 4000 5000 6000 7000 890
+Validation contact: transfer.office@consult-secure-pay.com

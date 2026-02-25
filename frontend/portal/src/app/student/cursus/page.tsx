@@ -2,7 +2,6 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useAuth } from '../../auth/useAuth';
 import {
     BookOpen, Clock, ChevronRight, ArrowRight,
@@ -133,7 +132,9 @@ export default function CursusListPage() {
                     <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
                         <div className="flex items-center gap-6">
                             <div className="shrink-0 animate-pulse-slow">
-                                <Image src="/icons/student_hacker_icon.png" alt="Student Profile" width={80} height={80} className="rounded-full shadow-2xl border-2 border-emerald-500/20 drop-shadow-[0_0_15px_rgba(16,185,129,0.4)]" />
+                                <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30">
+                                    <BookOpen size={32} className="text-emerald-400" />
+                                </div>
                             </div>
                             <div>
                                 <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-xs font-semibold mb-4">

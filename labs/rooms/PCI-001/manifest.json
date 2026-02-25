@@ -1,0 +1,15 @@
+﻿{
+  "roomCode": "PCI-001",
+  "title": "PCI-DSS Showdown",
+  "ttlMinutes": 120,
+  "maxExtensionMinutes": 60,
+  "hybrid": true,
+  "entryTarget": "pci-web",
+  "targets": [
+    { "name": "pci-web", "image": "pmp-ctf-pci001-web", "internalPort": 8080 }
+  ],
+  "tasks": [
+    { "taskId": "PCI-001-T1", "hasMachine": true, "questionType": "QUIZ", "requiresFlag": false },
+    { "taskId": "PCI-001-T2", "hasMachine": true, "questionType": "FLAG", "requiresFlag": true }
+  ]
+}

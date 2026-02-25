@@ -105,7 +105,8 @@ export default function ModuleContentPage() {
     const [module_, setModule] = useState<ModuleInfo | null>(null);
     const [chapters, setChapters] = useState<Chapter[]>([]);
     const [quiz, setQuiz] = useState<Quiz | null>(null);
-    const [exercise, setExercise] = useState<Exercise | null>(null);
+    const [exercises, setExercises] = useState<Exercise[]>([]);
+    const [activeExercise, setActiveExercise] = useState(0);
     const [completedIds, setCompletedIds] = useState<string[]>([]);
     const [activeChapter, setActiveChapter] = useState(0);
     const [activeTab, setActiveTab] = useState<'theory' | 'quiz' | 'exercise'>('theory');
@@ -173,12 +174,15 @@ export default function ModuleContentPage() {
 
                 const nextChapters: Chapter[] = data.chapters || [];
                 const nextQuiz: Quiz | null = data.quiz || null;
-                const nextExercise: Exercise | null = data.exercise || null;
+                const nextExercises: Exercise[] = Array.isArray(data.exercises)
+                    ? data.exercises
+                    : (data.exercise ? [data.exercise] : []);
 
                 setModule(data.module || null);
                 setChapters(nextChapters);
                 setQuiz(nextQuiz);
-                setExercise(nextExercise);
+                setExercises(nextExercises);
+                setActiveExercise(0);
                 setCompletedIds(data.completedChapterIds || []);
                 setActiveChapter(0);
                 setQuizResult(null);
@@ -187,12 +191,12 @@ export default function ModuleContentPage() {
                 if (nextChapters.length === 0) {
                     if (nextQuiz) {
                         setActiveTab('quiz');
-                    } else if (nextExercise) {
+                    } else if (nextExercises.length > 0) {
                         setActiveTab('exercise');
                     }
                 }
 
-                if (!data.module || (nextChapters.length === 0 && !nextQuiz && !nextExercise)) {
+                if (!data.module || (nextChapters.length === 0 && !nextQuiz && nextExercises.length === 0)) {
                     setError('Ce module ne contient pas encore de contenu publiable.');
                 }
             } catch (err) {
@@ -238,6 +242,12 @@ export default function ModuleContentPage() {
         }
     }, [scrollProgress, activeChapter, activeTab, chapters, completedIds, markChapterComplete]);
 
+    useEffect(() => {
+        setExerciseAnswer('');
+        setExerciseResult(null);
+        setExerciseSolution(null);
+    }, [activeExercise, exercises.length]);
+
     const submitQuiz = async () => {
         if (!quiz) return;
         setSubmitting(true);
@@ -269,12 +279,13 @@ export default function ModuleContentPage() {
     };
 
     const submitExercise = async () => {
-        if (!exercise || !exerciseAnswer.trim()) return;
+        const currentExercise = exercises[activeExercise];
+        if (!currentExercise || !exerciseAnswer.trim()) return;
         setSubmitting(true);
         try {
             const token = localStorage.getItem('token');
             if (!token) return;
-            const res = await fetch(`/api/cursus/${cursusId}/exercise/${exercise.id}/submit`, {
+            const res = await fetch(`/api/cursus/${cursusId}/exercise/${currentExercise.id}/submit`, {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ answerText: exerciseAnswer }),
@@ -287,12 +298,13 @@ export default function ModuleContentPage() {
     };
 
     const loadExerciseSolution = async () => {
-        if (!exercise) return;
+        const currentExercise = exercises[activeExercise];
+        if (!currentExercise) return;
         setLoadingSolution(true);
         try {
             const token = localStorage.getItem('token');
             if (!token) return;
-            const res = await fetch(`/api/cursus/${cursusId}/exercise/${exercise.id}/solution`, {
+            const res = await fetch(`/api/cursus/${cursusId}/exercise/${currentExercise.id}/solution`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (!res.ok) throw new Error('Not eligible');
@@ -375,6 +387,7 @@ export default function ModuleContentPage() {
     }
 
     const currentChapter = chapters[activeChapter];
+    const currentExercise = exercises[activeExercise] || null;
     const completedPercent = chapters.length > 0
         ? Math.round((completedIds.length / chapters.length) * 100)
         : 0;
@@ -389,7 +402,7 @@ export default function ModuleContentPage() {
                     {[
                         { key: 'theory' as const, label: 'Théorie', icon: <BookOpen size={16} /> },
                         ...(quiz ? [{ key: 'quiz' as const, label: 'Quiz', icon: <FileQuestion size={16} /> }] : []),
-                        ...(exercise ? [{ key: 'exercise' as const, label: 'Exercice', icon: <Code2 size={16} /> }] : []),
+                        ...(exercises.length > 0 ? [{ key: 'exercise' as const, label: 'Exercice', icon: <Code2 size={16} /> }] : []),
                     ].map((tab) => (
                         <button
                             key={tab.key}
@@ -642,7 +655,7 @@ export default function ModuleContentPage() {
                                             Aller au quiz
                                         </button>
                                     )}
-                                    {exercise && (
+                                    {exercises.length > 0 && (
                                         <button
                                             onClick={() => setActiveTab('exercise')}
                                             className="px-3 py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-sm"
@@ -765,22 +778,39 @@ export default function ModuleContentPage() {
                 )}
 
                 {/* ===== EXERCISE TAB ===== */}
-                {activeTab === 'exercise' && exercise && (
+                {activeTab === 'exercise' && currentExercise && (
                     <CourseCard className="p-6 md:p-8">
                         <h2 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
-                            <Code2 size={20} className="text-cyan-400" /> {exercise.title}
+                            <Code2 size={20} className="text-cyan-400" /> {currentExercise.title}
                         </h2>
+                        {exercises.length > 1 && (
+                            <div className="mb-4 flex flex-wrap items-center gap-2">
+                                {exercises.map((ex, idx) => (
+                                    <button
+                                        key={ex.id}
+                                        onClick={() => setActiveExercise(idx)}
+                                        className={`px-2.5 py-1 rounded-md text-xs border transition-colors ${
+                                            idx === activeExercise
+                                                ? 'bg-cyan-500/20 border-cyan-500/30 text-cyan-200'
+                                                : 'bg-slate-900/50 border-white/10 text-slate-400 hover:text-slate-200'
+                                        }`}
+                                    >
+                                        Exercice {idx + 1}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                         <div className="flex gap-3 mb-5 flex-wrap">
                             <span className="px-2.5 py-1 rounded-md bg-cyan-500/10 text-cyan-400 text-xs font-medium border border-cyan-500/15">
-                                {exercise.type}
+                                {currentExercise.type}
                             </span>
                             <span className="text-xs text-slate-500 flex items-center gap-1">
-                                <Clock size={11} /> ~{exercise.estimated_minutes} min
+                                <Clock size={11} /> ~{currentExercise.estimated_minutes} min
                             </span>
                         </div>
 
                         <p className="text-slate-300 text-sm leading-relaxed mb-6">
-                            {exercise.description}
+                            {currentExercise.description}
                         </p>
 
                         {/* Instructions */}
@@ -788,7 +818,7 @@ export default function ModuleContentPage() {
                             <Sparkles size={14} className="text-amber-400" /> Instructions
                         </h3>
                         <div className="space-y-2 mb-6">
-                            {exercise.instructions.map((inst, i) => (
+                            {currentExercise.instructions.map((inst, i) => (
                                 <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-slate-800/30 border border-white/5 text-sm text-slate-300">
                                     <span className="w-6 h-6 rounded-full bg-emerald-500/10 border border-emerald-500/15 text-emerald-400 font-semibold flex items-center justify-center flex-shrink-0 text-xs">
                                         {i + 1}
@@ -799,13 +829,13 @@ export default function ModuleContentPage() {
                         </div>
 
                         {/* Hints */}
-                        {exercise.hints && exercise.hints.length > 0 && (
+                        {currentExercise.hints && currentExercise.hints.length > 0 && (
                             <div className="rounded-xl bg-amber-500/5 border border-amber-500/10 p-5 mb-5">
                                 <p className="text-amber-400 text-sm font-semibold mb-3 flex items-center gap-2">
                                     <Lightbulb size={15} /> Indices
                                 </p>
                                 <ul className="space-y-1.5 text-sm text-slate-400 leading-relaxed">
-                                    {exercise.hints.map((h, i) => (
+                                    {currentExercise.hints.map((h, i) => (
                                         <li key={i} className="flex items-start gap-2">
                                             <span className="text-amber-500 mt-1.5">&#8226;</span>
                                             <span>{h}</span>
@@ -888,7 +918,7 @@ export default function ModuleContentPage() {
                     </CourseCard>
                 )}
 
-                {activeTab === 'exercise' && !exercise && (
+                {activeTab === 'exercise' && !currentExercise && (
                     <CourseCard className="p-6 md:p-8">
                         <p className="text-sm text-slate-400">Aucun exercice n&apos;est disponible pour ce module.</p>
                     </CourseCard>

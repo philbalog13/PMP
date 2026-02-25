@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -10,8 +10,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../auth/useAuth';
 import { isOnboardingDoneLocally, markOnboardingDoneLocally } from '../../lib/onboarding';
+import { FIRST_CTF_ROOM_CODE } from '../../lib/ctf-code-map';
 
-/* ── Types ──────────────────────────────────────────────────────── */
+/* â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 interface WorkshopProgress {
     workshop_id: string;
@@ -54,14 +55,14 @@ interface LeaderboardEntry {
     workshops_completed: number;
 }
 
-/* ── Workshop metadata for icons/colors ─────────────────────────── */
+/* â”€â”€ Workshop metadata for icons/colors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 const WORKSHOP_META: Record<string, { icon: typeof BookOpen; color: string; difficulty: string; duration: string }> = {
-    'intro': { icon: BookOpen, color: 'blue', difficulty: 'Débutant', duration: '45 min' },
-    'iso8583': { icon: Code, color: 'purple', difficulty: 'Intermédiaire', duration: '1h 30min' },
-    'hsm-keys': { icon: Terminal, color: 'amber', difficulty: 'Avancé', duration: '2h' },
-    '3ds-flow': { icon: Zap, color: 'emerald', difficulty: 'Avancé', duration: '1h' },
-    'fraud-detection': { icon: Shield, color: 'red', difficulty: 'Intermédiaire', duration: '1h 15min' },
+    'intro': { icon: BookOpen, color: 'blue', difficulty: 'DÃ©butant', duration: '45 min' },
+    'iso8583': { icon: Code, color: 'purple', difficulty: 'IntermÃ©diaire', duration: '1h 30min' },
+    'hsm-keys': { icon: Terminal, color: 'amber', difficulty: 'AvancÃ©', duration: '2h' },
+    '3ds-flow': { icon: Zap, color: 'emerald', difficulty: 'AvancÃ©', duration: '1h' },
+    'fraud-detection': { icon: Shield, color: 'red', difficulty: 'IntermÃ©diaire', duration: '1h 15min' },
     'emv': { icon: Beaker, color: 'indigo', difficulty: 'Expert', duration: '3h' },
 };
 
@@ -70,10 +71,10 @@ const BADGE_ICONS: Record<string, string> = {
     'book-open': '\u{1F4D6}', 'graduation-cap': '\u{1F393}', 'zap': '\u26A1', 'flame': '\u{1F525}',
 };
 
-/* ── Workshop ordering ───────────────────────────────────────────── */
+/* â”€â”€ Workshop ordering â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const WORKSHOP_ORDER = ['intro', 'iso8583', 'hsm-keys', '3ds-flow', 'fraud-detection', 'emv'];
 
-/* ── Main Component ───────────────────────────────────────────────── */
+/* â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 export default function StudentDashboard() {
     const { user, isLoading } = useAuth(true);
@@ -210,7 +211,7 @@ export default function StudentDashboard() {
         };
     }, [isLoading, refreshData, router, user]);
 
-    /* ── Computed values ──────────────────────────────────────────── */
+    /* â”€â”€ Computed values â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
     const computed = useMemo(() => {
         const totalXP = stats?.totalXP ?? 0;
@@ -231,7 +232,7 @@ export default function StudentDashboard() {
         return { totalXP, completedCount, totalWorkshops, avgScore, badgesEarned, overallProgress, inProgressWorkshop, myRank };
     }, [stats, workshops, leaderboard, user]);
 
-    /* ── Determine locked workshops ──────────────────────────────── */
+    /* â”€â”€ Determine locked workshops â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
     const workshopStatuses = useMemo(() => {
         const statuses: Record<string, 'completed' | 'in-progress' | 'not-started' | 'locked'> = {};
         let previousCompleted = true;
@@ -253,7 +254,7 @@ export default function StudentDashboard() {
         return statuses;
     }, [workshops]);
 
-    /* ── Loading ───────────────────────────────────────────────────── */
+    /* â”€â”€ Loading â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
     if (isLoading || dataLoading) {
         return (
@@ -273,7 +274,7 @@ export default function StudentDashboard() {
                 <div className="text-xs text-slate-500 mb-6">
                     <Link href="/" className="hover:text-emerald-400">Accueil</Link>
                     <ChevronRight size={12} className="inline mx-1" />
-                    <span className="text-emerald-400">Espace Étudiant</span>
+                    <span className="text-emerald-400">Espace Ã‰tudiant</span>
                 </div>
 
                 {/* Header */}
@@ -281,7 +282,7 @@ export default function StudentDashboard() {
                     <div>
                         <div className="flex items-center gap-3 mb-3">
                             <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-xs font-medium">
-                                <GraduationCap size={14} /> Parcours Monétique
+                                <GraduationCap size={14} /> Parcours MonÃ©tique
                             </div>
                             {computed.overallProgress > 0 && (
                                 <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-800 border border-white/10 rounded-full text-xs font-mono">
@@ -293,10 +294,10 @@ export default function StudentDashboard() {
                             )}
                         </div>
                         <h1 className="text-3xl font-bold text-white mb-2">
-                            Bonjour, {user?.firstName || 'Étudiant'}
+                            Bonjour, {user?.firstName || 'Ã‰tudiant'}
                         </h1>
                         <p className="text-slate-400">
-                            Suivez votre progression et validez vos compétences en monétique.
+                            Suivez votre progression et validez vos compÃ©tences en monÃ©tique.
                         </p>
                     </div>
                     <button
@@ -396,8 +397,8 @@ export default function StudentDashboard() {
                                     <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-8">
                                         <h3 className="text-xl font-bold mb-6">Statistiques Quiz</h3>
                                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                            <MiniStat label="Total passés" value={stats.quizzes.total} />
-                                            <MiniStat label="Réussis" value={stats.quizzes.passed} />
+                                            <MiniStat label="Total passÃ©s" value={stats.quizzes.total} />
+                                            <MiniStat label="RÃ©ussis" value={stats.quizzes.passed} />
                                             <MiniStat label="Score moyen" value={`${stats.quizzes.avgScore}%`} />
                                             <MiniStat label="Meilleur score" value={`${stats.quizzes.bestScore}%`} />
                                         </div>
@@ -405,7 +406,7 @@ export default function StudentDashboard() {
                                             <div className="mt-6 p-4 bg-slate-900/50 rounded-xl flex items-center gap-3">
                                                 <Clock className="text-slate-400" size={18} />
                                                 <span className="text-sm text-slate-400">
-                                                    Temps total d&apos;étude : <strong className="text-white">{stats.workshops.totalTime} min</strong>
+                                                    Temps total d&apos;Ã©tude : <strong className="text-white">{stats.workshops.totalTime} min</strong>
                                                 </span>
                                             </div>
                                         )}
@@ -430,12 +431,12 @@ export default function StudentDashboard() {
                                         <div className="text-xs text-amber-400/60 mb-1">+{badge.xp} XP</div>
                                         {badge.earned && badge.earnedAt && (
                                             <div className="text-xs text-emerald-400">
-                                                Débloqué le {new Date(badge.earnedAt).toLocaleDateString('fr-FR')}
+                                                DÃ©bloquÃ© le {new Date(badge.earnedAt).toLocaleDateString('fr-FR')}
                                             </div>
                                         )}
                                         {!badge.earned && (
                                             <div className="flex items-center gap-1 text-xs text-slate-600">
-                                                <Lock size={12} /> Verrouillé
+                                                <Lock size={12} /> VerrouillÃ©
                                             </div>
                                         )}
                                     </div>
@@ -459,7 +460,7 @@ export default function StudentDashboard() {
                                 </div>
                                 <h3 className="text-xl font-bold mb-2">{computed.inProgressWorkshop.title}</h3>
                                 <p className="text-sm text-slate-400 mb-4">
-                                    Vous êtes à {computed.inProgressWorkshop.progress_percent}% — Continuez là où vous vous êtes arrêté.
+                                    Vous Ãªtes Ã  {computed.inProgressWorkshop.progress_percent}% â€” Continuez lÃ  oÃ¹ vous vous Ãªtes arrÃªtÃ©.
                                 </p>
                                 <div className="h-2 bg-slate-800 rounded-full overflow-hidden mb-4">
                                     <div className="h-full bg-emerald-500" style={{ width: `${computed.inProgressWorkshop.progress_percent}%` }} />
@@ -475,14 +476,14 @@ export default function StudentDashboard() {
 
                         {/* Quick Actions */}
                         <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
-                            <h3 className="font-bold mb-4">Accès Rapide</h3>
+                            <h3 className="font-bold mb-4">AccÃ¨s Rapide</h3>
                             <div className="space-y-2">
                                 <QuickAction href="/student/cursus" icon={<GraduationCap size={18} />} label="Mes Cursus" />
                                 <QuickAction href="/student/quizzes" icon={<Target size={18} />} label="Mes Quiz" />
                                 <QuickAction href="/student/progress" icon={<BarChart3 size={18} />} label="Ma Progression" />
                                 <QuickAction href="/student/badges" icon={<Award size={18} />} label="Mes Badges" />
                                 <QuickAction href="/student/transactions" icon={<History size={18} />} label="Transactions" />
-                                <QuickAction href="/student/defense" icon={<Shield size={18} />} label="Sandbox Défense" />
+                                <QuickAction href="/student/defense" icon={<Shield size={18} />} label="Sandbox DÃ©fense" />
                             </div>
                         </div>
 
@@ -525,7 +526,7 @@ export default function StudentDashboard() {
     );
 }
 
-/* ── Sub-components ───────────────────────────────────────────────── */
+/* â”€â”€ Sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 function StatCard({ icon, label, value, suffix, color }: { icon: React.ReactNode; label: string; value: string | number; suffix?: string; color: string }) {
     const colors: Record<string, string> = {
@@ -603,9 +604,9 @@ function WorkshopCard({ workshop, displayStatus, number }: { workshop: WorkshopP
                         <div>
                             <div className="flex items-center gap-2 mb-1">
                                 <span className="text-xs text-slate-500 font-mono">#{number}</span>
-                                <span className={`text-xs px-2 py-0.5 rounded-full ${meta.difficulty === 'Débutant' ? 'bg-green-500/10 text-green-400' :
-                                    meta.difficulty === 'Intermédiaire' ? 'bg-blue-500/10 text-blue-400' :
-                                        meta.difficulty === 'Avancé' ? 'bg-amber-500/10 text-amber-400' :
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${meta.difficulty === 'DÃ©butant' ? 'bg-green-500/10 text-green-400' :
+                                    meta.difficulty === 'IntermÃ©diaire' ? 'bg-blue-500/10 text-blue-400' :
+                                        meta.difficulty === 'AvancÃ©' ? 'bg-amber-500/10 text-amber-400' :
                                             'bg-purple-500/10 text-purple-400'
                                     }`}>
                                     {meta.difficulty}
@@ -648,7 +649,7 @@ function WorkshopCard({ workshop, displayStatus, number }: { workshop: WorkshopP
                         {isLocked ? (
                             <div className="flex items-center gap-2 text-sm text-slate-600">
                                 <Lock size={14} />
-                                Complétez l&apos;atelier précédent pour débloquer
+                                ComplÃ©tez l&apos;atelier prÃ©cÃ©dent pour dÃ©bloquer
                             </div>
                         ) : (
                             <>
@@ -697,30 +698,30 @@ function NextStepBanner({
 }) {
     let href = '/student/cursus';
     let label = 'Commencer le Cursus';
-    let sublabel = 'Démarrez votre parcours monétique';
+    let sublabel = 'DÃ©marrez votre parcours monÃ©tique';
     let tone: 'emerald' | 'amber' | 'cyan' = 'emerald';
 
     if (inProgressWorkshop) {
         href = `/student/theory/${inProgressWorkshop.workshop_id}`;
-        label = `Continuer — ${inProgressWorkshop.title}`;
-        sublabel = `${inProgressWorkshop.progress_percent || 0}% complété`;
+        label = `Continuer â€” ${inProgressWorkshop.title}`;
+        sublabel = `${inProgressWorkshop.progress_percent || 0}% complÃ©tÃ©`;
         tone = 'amber';
     } else if (ctfSolved === 0) {
-        href = '/student/ctf';
+        href = `/student/ctf/${FIRST_CTF_ROOM_CODE}`;
         label = 'Lancer ton premier challenge CTF';
-        sublabel = 'HSM-001 — Le Coffre Ouvert · BEGINNER · 100 pts';
+        sublabel = 'PAY-001 - The Unsecured Payment Terminal - BEGINNER - 150 pts';
         tone = 'cyan';
     } else {
         const nextWorkshop = workshops.find(w => w.status === 'NOT_STARTED');
         if (nextWorkshop) {
             href = `/student/theory/${nextWorkshop.workshop_id}`;
-            label = `Commencer — ${nextWorkshop.title}`;
+            label = `Commencer â€” ${nextWorkshop.title}`;
             sublabel = 'Prochain atelier du parcours';
             tone = 'emerald';
         } else {
             href = '/student/ctf';
-            label = 'Explorer les challenges avancés';
-            sublabel = `${ctfSolved} challenge${ctfSolved > 1 ? 's' : ''} résolu${ctfSolved > 1 ? 's' : ''} — continue !`;
+            label = 'Explorer les challenges avancÃ©s';
+            sublabel = `${ctfSolved} challenge${ctfSolved > 1 ? 's' : ''} rÃ©solu${ctfSolved > 1 ? 's' : ''} â€” continue !`;
             tone = 'cyan';
         }
     }
@@ -746,7 +747,7 @@ function NextStepBanner({
                     <Sparkles size={20} />
                 </div>
                 <div>
-                    <p className="text-[11px] text-slate-500 uppercase tracking-widest font-medium mb-0.5">Prochaine étape recommandée</p>
+                    <p className="text-[11px] text-slate-500 uppercase tracking-widest font-medium mb-0.5">Prochaine Ã©tape recommandÃ©e</p>
                     <p className={`font-bold text-sm md:text-base ${textColors[tone]}`}>{label}</p>
                     <p className="text-xs text-slate-500 mt-0.5">{sublabel}</p>
                 </div>
@@ -755,3 +756,4 @@ function NextStepBanner({
         </Link>
     );
 }
+

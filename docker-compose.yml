@@ -113,6 +113,7 @@ services:
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: pmp-pgadmin
+    profiles: ["dev"]
     restart: unless-stopped
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
@@ -145,6 +146,92 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:latest
+    container_name: pmp-docker-socket-proxy
+    restart: unless-stopped
+    environment:
+      - CONTAINERS=1
+      - IMAGES=1
+      - NETWORKS=1
+      - INFO=1
+      - VERSION=1
+      - POST=1
+      - DELETE=1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - monetic-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  lab-orchestrator:
+    build:
+      context: .
+      dockerfile: backend/lab-orchestrator/Dockerfile
+    container_name: pmp-lab-orchestrator
+    restart: unless-stopped
+    environment:
+      - PORT=8098
+      - LAB_ORCHESTRATOR_SECRET=${LAB_ORCHESTRATOR_SECRET}
+      - DOCKER_PROXY_URL=http://docker-socket-proxy:2375
+      - LAB_ENABLE_DOCKER_ACTIONS=${LAB_ENABLE_DOCKER_ACTIONS:-true}
+      - LAB_ACCESS_PROXY_BASE_PATH=${LAB_ACCESS_PROXY_BASE_PATH:-/lab}
+      - LAB_ATTACKBOX_CONTAINER_NAME=${LAB_ATTACKBOX_CONTAINER_NAME:-pmp-ctf-attackbox}
+      - LAB_ATTACKBOX_CONTAINER_IMAGE=${LAB_ATTACKBOX_CONTAINER_IMAGE:-pmp-ctf-attackbox}
+    ports:
+      - "8098:8098"
+    networks:
+      - monetic-network
+    depends_on:
+      - docker-socket-proxy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8098/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  lab-access-proxy:
+    build:
+      context: .
+      dockerfile: backend/lab-access-proxy/Dockerfile
+    container_name: pmp-lab-access-proxy
+    restart: unless-stopped
+    environment:
+      - PORT=8099
+      - API_GATEWAY_URL=http://api-gateway:8000
+      - LAB_ACCESS_PROXY_BASE_PATH=${LAB_ACCESS_PROXY_BASE_PATH:-/lab}
+      - LAB_INTERNAL_PROXY_SECRET=${LAB_INTERNAL_PROXY_SECRET}
+      - INTERNAL_HSM_SECRET=${INTERNAL_HSM_SECRET}
+      - JWT_SECRET=${JWT_SECRET}
+      - LAB_PROXY_CACHE_TTL_MS=${LAB_PROXY_CACHE_TTL_MS:-15000}
+    ports:
+      - "8099:8099"
+    networks:
+      - monetic-network
+    depends_on:
+      - api-gateway
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8099/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   # ============================================
   # FRONTEND SERVICES
   # ============================================
@@ -152,6 +239,7 @@ services:
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.17.9
     container_name: pmp-elasticsearch
+    profiles: ["monitoring"]
     environment:
       - node.name=elasticsearch
       - cluster.name=es-docker-cluster
@@ -177,6 +265,7 @@ services:
   kibana:
     image: docker.elastic.co/kibana/kibana:7.17.9
     container_name: pmp-kibana
+    profiles: ["monitoring"]
     ports:
       - "5601:5601"
     environment:
@@ -194,6 +283,7 @@ services:
       args:
         - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
         - INTERNAL_API_URL=http://api-gateway:8000
+        - INTERNAL_LAB_PROXY_URL=http://lab-access-proxy:8099
         - NEXT_PUBLIC_PORTAL_URL=${NEXT_PUBLIC_PORTAL_URL:-http://localhost:3000}
         - NEXT_PUBLIC_TPE_URL=${NEXT_PUBLIC_TPE_URL:-http://localhost:3001}
         - NEXT_PUBLIC_USER_CARDS_URL=${NEXT_PUBLIC_USER_CARDS_URL:-http://localhost:3004}
@@ -208,6 +298,7 @@ services:
       - PORT=3000
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
       - INTERNAL_API_URL=http://api-gateway:8000
+      - INTERNAL_LAB_PROXY_URL=http://lab-access-proxy:8099
       - NEXT_PUBLIC_PORTAL_URL=${NEXT_PUBLIC_PORTAL_URL:-http://localhost:3000}
       - NEXT_PUBLIC_TPE_URL=${NEXT_PUBLIC_TPE_URL:-http://localhost:3001}
       - NEXT_PUBLIC_USER_CARDS_URL=${NEXT_PUBLIC_USER_CARDS_URL:-http://localhost:3004}
@@ -220,6 +311,7 @@ services:
       - monetic-network
     depends_on:
       - api-gateway
+      - lab-access-proxy
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
       interval: 30s
@@ -240,6 +332,7 @@ services:
       context: .
       dockerfile: docker/ctf-attackbox/Dockerfile
     container_name: pmp-ctf-attackbox
+    profiles: ["ctf"]
     restart: unless-stopped
     environment:
       - WETTY_HOST=0.0.0.0
@@ -248,8 +341,6 @@ services:
       - CTF_FLAG_SECRET=${CTF_FLAG_SECRET:-pmp_ctf_default_secret_change_in_prod}
     ports:
       - "7681:7681"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       monetic-network: {}
       ctf-target-net:
@@ -260,8 +351,6 @@ services:
       - NET_ADMIN
       - NET_RAW
       - NET_BROADCAST
-    sysctls:
-      - net.ipv4.conf.all.promiscuous=1
     depends_on:
       - api-gateway
       - hsm-simulator
@@ -340,6 +429,7 @@ services:
       context: ./backend/monitoring-service
       dockerfile: Dockerfile
     container_name: pmp-monitoring-service
+    profiles: ["monitoring"]
     restart: unless-stopped
     user: "node:node"
     environment:
@@ -500,6 +590,7 @@ services:
       context: ./frontend
       dockerfile: monitoring-dashboard/Dockerfile
     container_name: pmp-monitoring-dashboard
+    profiles: ["monitoring"]
     restart: unless-stopped
     ports:
       - "3082:3000"
@@ -545,6 +636,19 @@ services:
       - INTERNAL_HSM_SECRET=${INTERNAL_HSM_SECRET}
       - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS}
       - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS}
+      - LAB_MAX_ACTIVE_SESSIONS=${LAB_MAX_ACTIVE_SESSIONS:-20}
+      - LAB_DEFAULT_TTL_MINUTES=${LAB_DEFAULT_TTL_MINUTES:-120}
+      - LAB_EXTENSION_MINUTES=${LAB_EXTENSION_MINUTES:-60}
+      - LAB_MAX_EXTENSIONS=${LAB_MAX_EXTENSIONS:-1}
+      - LAB_MAINTENANCE_INTERVAL_MS=${LAB_MAINTENANCE_INTERVAL_MS:-30000}
+      - LAB_RECONCILE_INTERVAL_MS=${LAB_RECONCILE_INTERVAL_MS:-120000}
+      - LAB_PROVISIONING_TIMEOUT_MINUTES=${LAB_PROVISIONING_TIMEOUT_MINUTES:-10}
+      - LAB_NETWORK_BASE_CIDR=${LAB_NETWORK_BASE_CIDR:-10.60.0.0/16}
+      - LAB_NETWORK_SUBNET_PREFIX=${LAB_NETWORK_SUBNET_PREFIX:-28}
+      - LAB_ORCHESTRATOR_URL=http://lab-orchestrator:8098
+      - LAB_ORCHESTRATOR_SECRET=${LAB_ORCHESTRATOR_SECRET}
+      - LAB_ACCESS_PROXY_BASE_PATH=${LAB_ACCESS_PROXY_BASE_PATH:-/lab}
+      - LAB_INTERNAL_PROXY_SECRET=${LAB_INTERNAL_PROXY_SECRET}
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - CARD_SERVICE_URL=http://sim-card-service:8001
       - POS_SERVICE_URL=http://sim-pos-service:8002
@@ -564,6 +668,7 @@ services:
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
       - REDIS_PASSWORD=${REDIS_PASSWORD}
       - CTF_FLAG_SECRET=${CTF_FLAG_SECRET:-pmp_ctf_default_secret_change_in_prod}
+      - CORS_ORIGIN=${CORS_ORIGIN}
     ports:
       - "8000:8000"
     networks:
@@ -580,6 +685,8 @@ services:
       sim-pos-service:
         condition: service_started
       sim-acquirer-service:
+        condition: service_started
+      lab-orchestrator:
         condition: service_started
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8000/health"]
@@ -1251,6 +1358,7 @@ services:
     depends_on:
       - api-gateway
       - client-interface
+      - lab-access-proxy
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/health"]
       interval: 10s
@@ -1291,6 +1399,7 @@ services:
   prometheus:
     image: prom/prometheus:latest
     container_name: pmp-prometheus
+    profiles: ["monitoring"]
     restart: unless-stopped
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -1327,6 +1436,7 @@ services:
   grafana:
     image: grafana/grafana:latest
     container_name: pmp-grafana
+    profiles: ["monitoring"]
     restart: unless-stopped
     environment:
       - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER}

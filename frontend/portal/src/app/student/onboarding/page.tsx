@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -14,19 +14,20 @@ import {
     CheckCircle2,
 } from 'lucide-react';
 import { markOnboardingDoneLocally } from '../../../lib/onboarding';
+import { FIRST_CTF_ROOM_CODE } from '../../../lib/ctf-code-map';
 
-const STEPS = ['Bienvenue', 'Ton profil', 'Comment ça marche', 'Premier défi'] as const;
+const STEPS = ['Bienvenue', 'Ton profil', 'Comment Ã§a marche', 'Premier dÃ©fi'] as const;
 
 const LEVELS = [
-    { value: 'NOVICE', label: 'Débutant', desc: 'Première approche des systèmes de paiement' },
-    { value: 'INTERMEDIATE', label: 'Intermédiaire', desc: 'Quelques notions de sécurité ou de monétique' },
-    { value: 'ADVANCED', label: 'Avancé', desc: 'Expérience confirmée en sécurité ou systèmes bancaires' },
+    { value: 'NOVICE', label: 'DÃ©butant', desc: 'PremiÃ¨re approche des systÃ¨mes de paiement' },
+    { value: 'INTERMEDIATE', label: 'IntermÃ©diaire', desc: 'Quelques notions de sÃ©curitÃ© ou de monÃ©tique' },
+    { value: 'ADVANCED', label: 'AvancÃ©', desc: 'ExpÃ©rience confirmÃ©e en sÃ©curitÃ© ou systÃ¨mes bancaires' },
 ];
 
 const OBJECTIVES = [
     { value: 'CERTIFICATION_PCI', label: 'Certification PCI DSS', Icon: Shield },
     { value: 'RED_TEAM', label: 'Red Team / Pentest paiements', Icon: Zap },
-    { value: 'BUSINESS_UNDERSTANDING', label: 'Comprendre la monétique', Icon: BookOpen },
+    { value: 'BUSINESS_UNDERSTANDING', label: 'Comprendre la monÃ©tique', Icon: BookOpen },
     { value: 'FINTECH_CAREER', label: 'Reconversion Fintech', Icon: Target },
 ];
 
@@ -34,14 +35,14 @@ const HOW_ITEMS = [
     {
         color: 'bg-blue-500',
         Icon: BookOpen,
-        label: 'Cursus (Théorie)',
-        desc: 'Des chapitres courts sur EMV, 3DS, HSM, PCI DSS — chaque module se termine par un quiz.',
+        label: 'Cursus (ThÃ©orie)',
+        desc: 'Des chapitres courts sur EMV, 3DS, HSM, PCI DSS â€” chaque module se termine par un quiz.',
     },
     {
         color: 'bg-emerald-500',
         Icon: Beaker,
         label: 'CTF Labs (Hacking)',
-        desc: 'Exploite de vraies vulnérabilités sur un simulateur bancaire complet. Mode guidé ou libre.',
+        desc: 'Exploite de vraies vulnÃ©rabilitÃ©s sur un simulateur bancaire complet. Mode guidÃ© ou libre.',
     },
     {
         color: 'bg-amber-500',
@@ -107,7 +108,7 @@ export default function OnboardingPage() {
 
             <div className="w-full max-w-md">
 
-                {/* ── STEP 0 — Bienvenue ─────────────────────────────────── */}
+                {/* â”€â”€ STEP 0 â€” Bienvenue â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
                 {step === 0 && (
                     <div className="space-y-8 text-center">
                         <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-500 to-cyan-500 shadow-2xl shadow-emerald-900/40 mx-auto">
@@ -119,9 +120,9 @@ export default function OnboardingPage() {
                                 Learn by Hacking.
                             </h1>
                             <p className="text-slate-300 leading-relaxed text-lg">
-                                Tu apprends la sécurité des paiements en{' '}
+                                Tu apprends la sÃ©curitÃ© des paiements en{' '}
                                 <strong className="text-white">attaquant de vrais simulateurs bancaires</strong>.
-                                Chaque vulnérabilité exploitée, tu dois ensuite la corriger.
+                                Chaque vulnÃ©rabilitÃ© exploitÃ©e, tu dois ensuite la corriger.
                             </p>
                         </div>
 
@@ -149,19 +150,19 @@ export default function OnboardingPage() {
                                 onClick={() => void saveAndRedirect('/student')}
                                 className="text-xs text-slate-500 hover:text-slate-400 transition w-full py-2"
                             >
-                                Passer l'introduction →
+                                Passer l&apos;introduction â†’
                             </button>
                         </div>
                     </div>
                 )}
 
-                {/* ── STEP 1 — Profil ────────────────────────────────────── */}
+                {/* â”€â”€ STEP 1 â€” Profil â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
                 {step === 1 && (
                     <div className="space-y-6">
                         <div className="text-center">
-                            <p className="text-xs text-emerald-400 font-semibold uppercase tracking-[0.2em] mb-2">Étape 2 / 4</p>
+                            <p className="text-xs text-emerald-400 font-semibold uppercase tracking-[0.2em] mb-2">Ã‰tape 2 / 4</p>
                             <h2 className="text-2xl font-black text-white mb-1">Ton profil</h2>
-                            <p className="text-slate-400 text-sm">On adapte les labs et les indices à ton niveau.</p>
+                            <p className="text-slate-400 text-sm">On adapte les labs et les indices Ã  ton niveau.</p>
                         </div>
 
                         <div className="space-y-2">
@@ -217,13 +218,13 @@ export default function OnboardingPage() {
                     </div>
                 )}
 
-                {/* ── STEP 2 — Comment ça marche ─────────────────────────── */}
+                {/* â”€â”€ STEP 2 â€” Comment Ã§a marche â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
                 {step === 2 && (
                     <div className="space-y-6">
                         <div className="text-center">
-                            <p className="text-xs text-emerald-400 font-semibold uppercase tracking-[0.2em] mb-2">Étape 3 / 4</p>
-                            <h2 className="text-2xl font-black text-white mb-1">Comment ça marche</h2>
-                            <p className="text-slate-400 text-sm">Trois modes d'apprentissage complémentaires.</p>
+                            <p className="text-xs text-emerald-400 font-semibold uppercase tracking-[0.2em] mb-2">Ã‰tape 3 / 4</p>
+                            <h2 className="text-2xl font-black text-white mb-1">Comment Ã§a marche</h2>
+                            <p className="text-slate-400 text-sm">Trois modes d&apos;apprentissage complÃ©mentaires.</p>
                         </div>
 
                         <div className="space-y-3">
@@ -234,7 +235,7 @@ export default function OnboardingPage() {
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-2 mb-0.5">
-                                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Étape {i + 1}</span>
+                                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Ã‰tape {i + 1}</span>
                                         </div>
                                         <p className="font-semibold text-white text-sm">{label}</p>
                                         <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{desc}</p>
@@ -246,8 +247,8 @@ export default function OnboardingPage() {
                         <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4">
                             <p className="text-xs text-cyan-300 font-semibold uppercase tracking-wider mb-1">Le cycle Learn by Hacking</p>
                             <p className="text-sm text-slate-300 leading-relaxed">
-                                Théorie → Exploitation → Débrief → Patch → Vérification.
-                                Chaque challenge t'oblige à comprendre <em>pourquoi</em> la vulnérabilité existe.
+                                ThÃ©orie â†’ Exploitation â†’ DÃ©brief â†’ Patch â†’ VÃ©rification.
+                                Chaque challenge t&apos;oblige Ã  comprendre <em>pourquoi</em> la vulnÃ©rabilitÃ© existe.
                             </p>
                         </div>
 
@@ -255,12 +256,12 @@ export default function OnboardingPage() {
                             onClick={() => setStep(3)}
                             className="w-full py-4 rounded-xl bg-gradient-to-r from-emerald-600 to-cyan-600 text-white font-bold text-base hover:from-emerald-500 hover:to-cyan-500 transition flex items-center justify-center gap-2"
                         >
-                            J'ai compris <ChevronRight className="h-4 w-4" />
+                            J&apos;ai compris <ChevronRight className="h-4 w-4" />
                         </button>
                     </div>
                 )}
 
-                {/* ── STEP 3 — Premier défi ──────────────────────────────── */}
+                {/* â”€â”€ STEP 3 â€” Premier dÃ©fi â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
                 {step === 3 && (
                     <div className="text-center space-y-7">
                         <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-red-500 to-amber-500 shadow-2xl shadow-red-900/40 mx-auto">
@@ -269,35 +270,35 @@ export default function OnboardingPage() {
 
                         <div>
                             <p className="text-xs text-amber-400 font-semibold uppercase tracking-[0.2em] mb-2">Ton premier hack</p>
-                            <h2 className="text-2xl font-black text-white mb-3">HSM-001 : Le Coffre Ouvert</h2>
+                            <h2 className="text-2xl font-black text-white mb-3">{FIRST_CTF_ROOM_CODE} : The Unsecured Payment Terminal</h2>
                             <p className="text-slate-300 text-sm leading-relaxed">
-                                Le simulateur HSM expose ses clés cryptographiques sans aucune authentification.
-                                Ton objectif : <strong className="text-white">trouver le flag</strong> caché dans la réponse de l'API.
+                                Le terminal de paiement envoie des transactions en clair et expose une surface admin vulnÃ©rable.
+                                Ton objectif : <strong className="text-white">capturer le premier flag</strong> dans ce flux.
                             </p>
                         </div>
 
                         <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-left space-y-2">
                             <p className="text-xs text-amber-300 font-semibold uppercase tracking-wider">Ta cible</p>
                             <p className="text-sm text-emerald-200 font-mono bg-slate-950/60 rounded-lg px-3 py-2">
-                                GET http://hsm-simulator:8011/hsm/keys
+                                POST http://pos-terminal:8081/transactions/process
                             </p>
-                            <p className="text-xs text-slate-500">Aucune authentification requise — c'est exactement le bug.</p>
+                            <p className="text-xs text-slate-500">Observe le trafic et valide l&apos;exposition de donnÃ©es sensibles.</p>
                         </div>
 
                         <div className="space-y-3">
                             <button
-                                onClick={() => void saveAndRedirect('/student/ctf/HSM-001')}
+                                onClick={() => void saveAndRedirect(`/student/ctf/${FIRST_CTF_ROOM_CODE}`)}
                                 disabled={saving}
                                 className="w-full py-4 rounded-xl bg-gradient-to-r from-red-600 to-amber-600 text-white font-bold text-base hover:from-red-500 hover:to-amber-500 disabled:opacity-60 transition flex items-center justify-center gap-2 shadow-lg shadow-red-900/30"
                             >
-                                {saving ? 'Démarrage…' : 'Lancer mon premier lab →'}
+                                {saving ? 'DÃ©marrageâ€¦' : 'Lancer mon premier lab â†’'}
                             </button>
                             <button
                                 onClick={() => void saveAndRedirect('/student')}
                                 disabled={saving}
                                 className="text-xs text-slate-500 hover:text-slate-400 transition w-full py-2"
                             >
-                                Aller au dashboard d'abord →
+                                Aller au dashboard d&apos;abord â†’
                             </button>
                         </div>
                     </div>
@@ -306,3 +307,4 @@ export default function OnboardingPage() {
         </div>
     );
 }
+

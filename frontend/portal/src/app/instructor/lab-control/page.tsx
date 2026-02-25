@@ -569,13 +569,13 @@ export default function LabControlPage() {
                     <div className="space-y-3">
                         <CtfToggleRow
                             title="allowReplay"
-                            description="Autorise le rejeu d'une meme transaction (REPLAY-001)."
+                            description="Autorise le rejeu d'une meme transaction (room PAY-001)."
                             enabled={ctfVulnerabilities.allowReplay}
                             onToggle={() => setCtfVulnerabilities((prev) => ({ ...prev, allowReplay: !prev.allowReplay }))}
                         />
                         <CtfToggleRow
                             title="weakKeysEnabled"
-                            description="Active des cles faibles/predictibles (HSM-002)."
+                            description="Active des cles faibles/predictibles (room PCI-001)."
                             enabled={ctfVulnerabilities.weakKeysEnabled}
                             onToggle={() => setCtfVulnerabilities((prev) => ({ ...prev, weakKeysEnabled: !prev.weakKeysEnabled }))}
                         />
@@ -587,7 +587,7 @@ export default function LabControlPage() {
                         />
                         <CtfToggleRow
                             title="keyLeakInLogs"
-                            description="Journalise du materiel sensible dans les logs (HSM-003)."
+                            description="Journalise du materiel sensible dans les logs (room PAY-001)."
                             enabled={ctfVulnerabilities.keyLeakInLogs}
                             onToggle={() => setCtfVulnerabilities((prev) => ({ ...prev, keyLeakInLogs: !prev.keyLeakInLogs }))}
                         />

@@ -1,0 +1,12 @@
+services:
+  pci-web:
+    build: ./web
+    image: pmp-ctf-pci001-web
+    ports:
+      - "18081:8080"
+    networks:
+      - pci001-net
+
+networks:
+  pci001-net:
+    driver: bridge

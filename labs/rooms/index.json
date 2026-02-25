@@ -1,0 +1,35 @@
+﻿{
+  "version": 1,
+  "rooms": [
+    {
+      "roomCode": "PAY-001",
+      "path": "labs/rooms/PAY-001",
+      "machineBacked": true,
+      "images": ["pmp-ctf-pay001-pos", "pmp-ctf-pay001-bank"]
+    },
+    {
+      "roomCode": "PCI-001",
+      "path": "labs/rooms/PCI-001",
+      "machineBacked": true,
+      "images": ["pmp-ctf-pci001-web"]
+    },
+    {
+      "roomCode": "SOC-001",
+      "path": "labs/rooms/SOC-001",
+      "machineBacked": false,
+      "images": []
+    },
+    {
+      "roomCode": "API-001",
+      "path": "labs/rooms/API-001",
+      "machineBacked": true,
+      "images": ["pmp-ctf-api001"]
+    },
+    {
+      "roomCode": "DORA-001",
+      "path": "labs/rooms/DORA-001",
+      "machineBacked": true,
+      "images": ["pmp-ctf-dora001-frontend", "pmp-ctf-dora001-backend", "pmp-ctf-dora001-core"]
+    }
+  ]
+}

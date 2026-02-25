@@ -12,6 +12,7 @@ export const APP_URLS = {
     hsm: process.env.NEXT_PUBLIC_HSM_URL || 'http://localhost:3081',
     monitoring: process.env.NEXT_PUBLIC_MONITORING_URL || 'http://localhost:3082',
     ctfAttackbox: process.env.NEXT_PUBLIC_CTF_ATTACKBOX_URL || 'http://localhost:7681',
+    labProxy: process.env.NEXT_PUBLIC_LAB_PROXY_URL || 'http://localhost:8099',
     studentCtf: '/student/ctf',
     studentCtfLeaderboard: '/student/ctf/leaderboard',
     instructorCtf: '/instructor/ctf',

@@ -1,0 +1,222 @@
+services:
+  postgres:
+    mem_limit: 768m
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+        reservations:
+          memory: 256M
+
+  redis:
+    mem_limit: 192m
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+        reservations:
+          memory: 64M
+
+  portal:
+    mem_limit: 192m
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+        reservations:
+          memory: 96M
+
+  api-gateway:
+    mem_limit: 256m
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  sim-card-service:
+    mem_limit: 256m
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  sim-pos-service:
+    mem_limit: 192m
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+        reservations:
+          memory: 96M
+
+  sim-acquirer-service:
+    mem_limit: 256m
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  sim-network-switch:
+    mem_limit: 192m
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+        reservations:
+          memory: 96M
+
+  sim-issuer-service:
+    mem_limit: 256m
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  sim-auth-engine:
+    mem_limit: 256m
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  sim-fraud-detection:
+    mem_limit: 192m
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+        reservations:
+          memory: 96M
+
+  crypto-service:
+    mem_limit: 192m
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+        reservations:
+          memory: 96M
+
+  hsm-simulator:
+    mem_limit: 128m
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+
+  key-management:
+    mem_limit: 192m
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+        reservations:
+          memory: 96M
+
+  acs-simulator:
+    profiles: ["extensions"]
+    mem_limit: 192m
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+        reservations:
+          memory: 96M
+
+  tokenization-service:
+    profiles: ["extensions"]
+    mem_limit: 192m
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+        reservations:
+          memory: 96M
+
+  directory-server:
+    profiles: ["extensions"]
+    mem_limit: 192m
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+        reservations:
+          memory: 96M
+
+  client-interface:
+    mem_limit: 192m
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+        reservations:
+          memory: 96M
+
+  user-cards-web:
+    profiles: ["ui-extra"]
+    mem_limit: 192m
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+        reservations:
+          memory: 96M
+
+  hsm-web:
+    profiles: ["ui-extra"]
+    mem_limit: 192m
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+        reservations:
+          memory: 96M
+
+  threeds-challenge-ui:
+    profiles: ["ui-extra"]
+    mem_limit: 96m
+    deploy:
+      resources:
+        limits:
+          memory: 96M
+        reservations:
+          memory: 48M
+
+  nginx:
+    mem_limit: 128m
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+
+  elasticsearch:
+    mem_limit: 768m
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+        reservations:
+          memory: 256M
+
+  kibana:
+    mem_limit: 384m
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+        reservations:
+          memory: 128M

@@ -2,6 +2,7 @@ import app from './app';
 import { config } from './config';
 import { logger } from './utils/logger';
 import { tokenBlacklist } from './services/tokenBlacklist.service';
+import { startLabMaintenanceLoop, stopLabMaintenanceLoop } from './services/ctfLab.service';
 
 const PORT = config.port;
 
@@ -10,6 +11,8 @@ let server: ReturnType<typeof app.listen>;
 
 const gracefulShutdown = async (signal: string) => {
     logger.info(`${signal} received, starting graceful shutdown`);
+
+    stopLabMaintenanceLoop();
 
     // Close token blacklist service
     await tokenBlacklist.close();
@@ -36,6 +39,7 @@ server = app.listen(PORT, async () => {
 
     // Initialize security services
     await tokenBlacklist.init();
+    startLabMaintenanceLoop();
 
     logger.info('📋 Routing table:', {
         cards: 'POST /api/cards → sim-card-service:8001',

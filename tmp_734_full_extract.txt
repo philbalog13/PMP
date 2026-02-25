@@ -1,0 +1,1082 @@
+
+
+=================================== PAGE 1 ===================================
+Principes du paiement
+Module 734-2 - UE Paiements électroniques
+Expert(e) en Monétique et Transactions Sécurisées
+Responsable : Georges Balog
+Semestre 5
+
+=================================== PAGE 2 ===================================
+Table des matières
+Introduction générale 4
+1 Définitions et concepts fondamentaux 5
+1.1 Introduction . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+1.2 Les acteurs de la relation de paiement . . . . . . . . . . . . . . . . . . . . . 5
+1.2.1 Le porteur . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+1.2.2 La carte . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+1.2.3 L’émetteur . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+1.2.4 L’accepteur . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+1.2.5 L’acquéreur . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+1.2.6 Le schéma de carte . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+1.2.7 Les autres acteurs . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7
+1.3 Typologie des moyens de paiement . . . . . . . . . . . . . . . . . . . . . . 7
+1.4 Concepts associés . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+1.4.1 Autorisation, clearing et settlement . . . . . . . . . . . . . . . . . . 8
+1.4.2 Commissions . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+1.4.3 Schémas de responsabilité . . . . . . . . . . . . . . . . . . . . . . . 8
+1.5 Résumé du chapitre . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+1.6 Questions de révision . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 9
+2 Le modèle interbancaire 10
+2.1 Organisation des établissements financiers . . . . . . . . . . . . . . . . . . 10
+2.1.1 Les groupements nationaux : l’exemple du GIE Cartes Bancaires . . 10
+2.1.2 Les groupements internationaux . . . . . . . . . . . . . . . . . . . . 10
+2.2 Notion de schéma carte . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 11
+2.2.1 Exemple : co-badgeage CB/Visa . . . . . . . . . . . . . . . . . . . . 11
+2.3 Introduction à EMV . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 11
+2.3.1 Principes de base . . . . . . . . . . . . . . . . . . . . . . . . . . . . 11
+2.3.2 Cryptographie EMV . . . . . . . . . . . . . . . . . . . . . . . . . . 12
+2.3.3 Les modes d’autorisation . . . . . . . . . . . . . . . . . . . . . . . . 12
+2.3.4 Le sans contact EMV . . . . . . . . . . . . . . . . . . . . . . . . . . 12
+2.4 Les flux interbancaires . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+2.4.1 ISO 8583 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+2.4.2 ISO 20022 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+2.5 Résumé . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+1
+
+=================================== PAGE 3 ===================================
+Principes du paiement TABLE DES MATIÈRES
+3 Histoire et géographie de la monétique 14
+3.1 Des origines à nos jours . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 14
+3.1.1 Années 1950 : l’invention de la carte de crédit . . . . . . . . . . . . 14
+3.1.2 Années 1960 : premiers pas en France . . . . . . . . . . . . . . . . . 14
+3.1.3 Années 1970 : la bande magnétique s’impose . . . . . . . . . . . . . 14
+3.1.4 Années 1980 : naissance du GIE CB . . . . . . . . . . . . . . . . . . 14
+3.1.5 Années 1990 : EMV et Internet . . . . . . . . . . . . . . . . . . . . 14
+3.1.6 Années 2000 : migration EMV et SEPA . . . . . . . . . . . . . . . . 15
+3.1.7 Années 2010 : sans contact et mobile . . . . . . . . . . . . . . . . . 15
+3.1.8 Années 2020 : instantanéité et tokenisation . . . . . . . . . . . . . . 15
+3.2 Géographie des paiements . . . . . . . . . . . . . . . . . . . . . . . . . . . 15
+3.2.1 Niveau régional : pôle TES . . . . . . . . . . . . . . . . . . . . . . . 15
+3.2.2 Niveau national : spécificités françaises . . . . . . . . . . . . . . . . 15
+3.2.3 Niveau européen : le SEPA . . . . . . . . . . . . . . . . . . . . . . . 15
+3.2.4 Niveau mondial : la domination américaine . . . . . . . . . . . . . . 15
+3.3 Enjeux actuels . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 16
+4 Sécurité et fraude 17
+4.1 Généralités sur la sécurité des paiements . . . . . . . . . . . . . . . . . . . 17
+4.2 Les dispositifs de sécurité de la carte . . . . . . . . . . . . . . . . . . . . . 17
+4.2.1 La puce EMV . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 17
+4.2.2 Le code PIN . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 17
+4.2.3 Le cryptogramme visuel (CVV/CVC) . . . . . . . . . . . . . . . . . 17
+4.2.4 La tokenisation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+4.2.5 Le 3-D Secure . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+4.3 La fraude : typologie et chiffres . . . . . . . . . . . . . . . . . . . . . . . . 18
+4.3.1 Fraude à la carte non présente (CNP) . . . . . . . . . . . . . . . . . 18
+4.3.2 Contrefaçon . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+4.3.3 Perte ou vol . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+4.3.4 Usurpation d’identité . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+4.3.5 Fraude interne . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 19
+4.4 Les contre-mesures et la régulation . . . . . . . . . . . . . . . . . . . . . . 19
+4.4.1 La norme PCI DSS . . . . . . . . . . . . . . . . . . . . . . . . . . . 19
+4.4.2 La DSP2 et l’authentification forte . . . . . . . . . . . . . . . . . . 19
+4.4.3 L’analyse comportementale . . . . . . . . . . . . . . . . . . . . . . 19
+4.5 Résumé . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 20
+5 Le dispositif industriel 21
+5.1 Les industriels . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 21
+5.1.1 Fabricants de cartes . . . . . . . . . . . . . . . . . . . . . . . . . . 21
+5.1.2 Fabricants de terminaux de paiement (TPE) . . . . . . . . . . . . . 21
+5.1.3 Processeurs techniques . . . . . . . . . . . . . . . . . . . . . . . . . 21
+5.1.4 Prestataires de services de paiement (PSP) . . . . . . . . . . . . . . 22
+5.2 Architectures techniques . . . . . . . . . . . . . . . . . . . . . . . . . . . . 22
+5.2.1 Le système d’autorisation . . . . . . . . . . . . . . . . . . . . . . . 22
+5.2.2 La compensation (clearing) . . . . . . . . . . . . . . . . . . . . . . 22
+5.2.3 Le règlement (settlement) . . . . . . . . . . . . . . . . . . . . . . . 22
+5.3 La chaîne monétique détaillée . . . . . . . . . . . . . . . . . . . . . . . . . 22
+5.4 Les défis industriels . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 23
+2
+
+=================================== PAGE 4 ===================================
+Principes du paiement TABLE DES MATIÈRES
+6 Architectures des e-paiements : le modèle à 15 coins 24
+6.1 Limites du modèle à 4 coins . . . . . . . . . . . . . . . . . . . . . . . . . . 24
+6.2 Le modèle à 15 coins . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 24
+6.2.1 Les 15 rôles identifiés . . . . . . . . . . . . . . . . . . . . . . . . . . 24
+6.2.2 Exemple d’une transaction en ligne complexe . . . . . . . . . . . . . 25
+6.3 Impact sur les responsabilités . . . . . . . . . . . . . . . . . . . . . . . . . 25
+6.4 Conclusion . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 26
+7 Les instruments de paiement du SEPA 27
+7.1 Le SEPA : principes et périmètre . . . . . . . . . . . . . . . . . . . . . . . 27
+7.2 SEPA Credit Transfer (SCT) . . . . . . . . . . . . . . . . . . . . . . . . . . 27
+7.2.1 Le virement instantané (SCT Inst) . . . . . . . . . . . . . . . . . . 27
+7.3 SEPA Direct Debit (SDD) . . . . . . . . . . . . . . . . . . . . . . . . . . . 28
+7.3.1 Exemple de prélèvement SEPA . . . . . . . . . . . . . . . . . . . . 28
+7.4 SEPA Cards Framework (SCF) et projet Nexo . . . . . . . . . . . . . . . . 28
+7.4.1 L’avenir de la carte en Europe . . . . . . . . . . . . . . . . . . . . . 28
+7.5 Résumé . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 29
+8 Les futurs des paiements électroniques 30
+8.1 Tendances technologiques . . . . . . . . . . . . . . . . . . . . . . . . . . . 30
+8.1.1 Paiement mobile et NFC . . . . . . . . . . . . . . . . . . . . . . . . 30
+8.1.2 Paiement instantané . . . . . . . . . . . . . . . . . . . . . . . . . . 30
+8.1.3 Cryptomonnaies et stablecoins . . . . . . . . . . . . . . . . . . . . . 30
+8.1.4 Monnaies numériques de banque centrale (MNBC) . . . . . . . . . 30
+8.1.5 Intelligence artificielle et analyse de données . . . . . . . . . . . . . 31
+8.2 Évolutions réglementaires . . . . . . . . . . . . . . . . . . . . . . . . . . . 31
+8.3 Impact sur les acteurs . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 31
+8.4 Les métiers de la monétique de demain . . . . . . . . . . . . . . . . . . . . 31
+9 Applications pratiques 32
+9.1 Visite de la Plateforme Monétique Pédagogique . . . . . . . . . . . . . . . 32
+9.2 Études de cas . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 32
+9.2.1 Cas n°1 : Mise en place d’une solution de paiement pour un site
+e-commerce . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 32
+9.2.2 Cas n°2 : Analyse d’un incident de fraude . . . . . . . . . . . . . . . 32
+9.2.3 Cas n°3 : Conception d’un nouveau moyen de paiement . . . . . . . 33
+9.3 Exercices pratiques . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 33
+Conclusion générale 34
+Annexes 36
+3
+
+=================================== PAGE 5 ===================================
+Introduction générale
+Le secteur des paiements électroniques est en pleine mutation. Chaque jour, des mil-
+liards de transactions sont réalisées à travers le monde, mobilisant une infrastructure
+technique, juridique et organisationnelle d’une grande complexité. Que ce soit pour payer
+un café avec son smartphone, effectuer un achat en ligne ou transférer de l’argent à un
+proche, les citoyens européens utilisent des instruments de paiement dont ils ignorent
+souvent les rouages.
+Ce module, intituléPrincipes du paiement, constitue le socle de connaissances né-
+cessaire à tout professionnel souhaitant évoluer dans le domaine de la monétique et des
+transactions sécurisées. Pendant 40 heures, nous allons explorer en profondeur les concepts
+fondamentaux, les acteurs, les technologies, la sécurité, la régulation et les perspectives
+d’avenir des paiements électroniques.
+L’approche pédagogique privilégie la mise en situation concrète : chaque notion théo-
+rique sera illustrée par des exemples réels, des cas d’usage issus de l’industrie, et des
+retours d’expérience d’experts. Des études de cas permettront de simuler des situations
+professionnelles typiques (mise en place d’une solution de paiement pour un commerçant,
+analyse d’un incident de fraude, conception d’une architecture technique, etc.).
+À l’issue de ce module, vous serez capable de :
+— Maîtriser le vocabulaire spécialisé et les concepts clés de la monétique.
+— Identifier les rôles et responsabilités de chaque acteur d’une chaîne de paiement.
+— Comprendre les mécanismes de sécurité qui protègent les transactions.
+— Analyser une architecture de paiement électronique (traditionnelle et moderne).
+— Situer les enjeux européens (SEPA, DSP2) et les tendances d’avenir.
+Le support de cours que vous tenez entre les mains est conçu pour être à la fois une
+référence théorique et un guide pratique. Il est structuré en huit chapitres, chacun corres-
+pondant à une session de cours d’environ 5 heures, complétés par des travaux pratiques
+et une visite technique.
+Bonne lecture et bon apprentissage.
+4
+
+=================================== PAGE 6 ===================================
+1. Définitionsetconceptsfondamentaux
+Objectifs d’apprentissage
+— Acquérir le vocabulaire de base de la monétique.
+— Distinguer les différents acteurs d’une transaction.
+— Comprendre les typologies de cartes et de moyens de paiement.
+— Savoir décrire une transaction simple en identifiant chaque rôle.
+1.1 Introduction
+Lamonétiqueestl’ensembledestechniquesetservicesliésauxpaiementsélectroniques.
+Elleenglobelescartes,lesterminaux,lesréseaux,lesprotocolesetlesrèglesquipermettent
+de réaliser une transaction en toute sécurité. Avant d’étudier les architectures complexes,
+il est essentiel de maîtriser le vocabulaire de base.
+1.2 Les acteurs de la relation de paiement
+Une transaction de paiement met en relation plusieurs parties prenantes, chacune
+ayant un rôle spécifique. La figure 1.1 illustre les acteurs principaux.
+Porteur
+Émetteur Accepteur
+AcquéreurSchéma
+utilise achète chez
+remet les transactionséchange avec
+échange avec
+compensation
+Figure 1.1– Les acteurs principaux d’une transaction par carte
+5
+
+=================================== PAGE 7 ===================================
+Principes du paiement CHAPITRE 1. DÉFINITIONS ET CONCEPTS FONDAMENTAUX
+1.2.1 Le porteur
+Leporteurest la personne physique ou morale qui détient un moyen de paiement
+(carte, compte, etc.) et l’utilise pour régler une transaction. Il est lié à son établissement
+financier par un contrat. Par exemple, M. Dupont, client de la Banque A, possède une
+carte Visa Premier.
+1.2.2 La carte
+Lacarteest l’instrument de paiement matérialisé (ou virtualisé) qui porte les données
+nécessaires à la transaction. Elle peut être :
+—Physique: support plastique avec puce, piste magnétique, hologramme, numéro
+gravé.
+—Virtuelle: stockée dans un portefeuille électronique (smartphone) ou générée pour
+un usage unique.
+Les principales données d’une carte sont :
+—PAN(Primary Account Number) : numéro à 16 chiffres (généralement), structuré
+selon la norme ISO/IEC 7812 (IIN : 6 premiers chiffres identifiant l’émetteur, puis
+le numéro de compte, et un chiffre de contrôle).
+—Date d’expiration: mois/année.
+—CVV/CVC: cryptogramme visuel à 3 chiffres (au dos) pour les paiements en ligne.
+—Nom du porteur.
+1.2.3 L’émetteur
+L’émetteurest la banque ou l’institution financière qui a délivré la carte au porteur.
+Il gère le compte associé, autorise ou refuse les transactions en fonction du solde ou du
+crédit, et assume la responsabilité de la sécurisation. En France, les émetteurs sont souvent
+des banques de réseau (BNP Paribas, Société Générale, Crédit Agricole, etc.).
+1.2.4 L’accepteur
+L’accepteurestlecommerçantouprestatairequiacceptelepaiementparcarte.Ildoit
+être équipé d’un terminal de paiement électronique (TPE) ou d’une solution de paiement
+en ligne. Il signe un contrat avec un acquéreur et s’engage à respecter les règles du schéma
+(ne pas surfacturer, ne pas fixer de montant minimum, etc.).
+1.2.5 L’acquéreur
+L’acquéreurest la banque du commerçant. Il lui fournit le TPE, collecte les tran-
+sactions, les transmet au réseau interbancaire, et crédite le compte du commerçant après
+déduction des commissions. L’acquéreur assume le risque de défaillance du commerçant.
+1.2.6 Le schéma de carte
+Leschéma de carte(Visa, Mastercard, CB, American Express) définit les règles
+techniques et commerciales. Il assure l’interopérabilité entre émetteurs et acquéreurs. Par
+6
+
+=================================== PAGE 8 ===================================
+Principes du paiement CHAPITRE 1. DÉFINITIONS ET CONCEPTS FONDAMENTAUX
+exemple, une carte Visa émise par la Banque A peut être utilisée chez un commerçant
+dont la banque acquéreuse est la Banque B, grâce au réseau Visa.
+1.2.7 Les autres acteurs
+D’autres acteurs interviennent de plus en plus :
+—Processeur technique: société qui gère pour le compte d’un émetteur ou d’un
+acquéreur l’infrastructure d’autorisation et de compensation (ex. Worldline, TSYS).
+—PSP (Payment Service Provider): prestataire de services de paiement qui offre
+une interface unique aux commerçants pour accepter plusieurs moyens de paiement
+(ex. Stripe, Adyen).
+—TPP (Third Party Provider): introduit par la DSP2, il peut initier un paiement
+(PISP) ou agréger des informations de comptes (AISP).
+Transaction simple chez un boulanger :
+Mme Martin achète une baguette pour 1,20€avec sa carte bancaire CB chez
+le boulanger "Au Pain Quotidien".
+1. Mme Martin (porteur) présente sa carte CB (émise par sa banque, le
+Crédit Mutuel).
+2. Le boulanger (accepteur) utilise son TPE fourni par sa banque, la BNP
+Paribas (acquéreur).
+3. Le TPE envoie une demande d’autorisation à l’acquéreur (BNP).
+4. BNP transmet la demande au réseau CB (schéma).
+5. CB route la demande vers l’émetteur (Crédit Mutuel).
+6. Crédit Mutuel vérifie le solde et le plafond, puis autorise la transaction.
+7. La réponse (OK) revient par le même chemin jusqu’au TPE, qui imprime
+le ticket.
+8. En fin de journée, le boulanger transmet ses transactions à BNP.
+9. BNP et Crédit Mutuel échangent les données via le système de compen-
+sation de CB.
+10. Le règlement intervient : le compte de Mme Martin est débité de 1,20€,
+celui du boulanger est crédité de 1,20€moins la commission.
+1.3 Typologie des moyens de paiement
+Outre la carte, il existe d’autres instruments :
+—Virement: ordre de transfert de fonds d’un compte à un autre.
+—Prélèvement: autorisation donnée à un créancier de prélever des fonds sur le
+compte du débiteur.
+—Chèque: ordre écrit de payer une somme (en déclin en Europe).
+—Monnaie électronique: valeur monétaire stockée sur un support (porte-monnaie
+électronique, carte prépayée).
+—Cryptomonnaie: monnaie virtuelle décentralisée (bitcoin, ethereum).
+7
+
+=================================== PAGE 9 ===================================
+Principes du paiement CHAPITRE 1. DÉFINITIONS ET CONCEPTS FONDAMENTAUX
+1.4 Concepts associés
+1.4.1 Autorisation, clearing et settlement
+—Autorisation: demande en temps réel (ou quasi-réel) pour vérifier la validité de la
+transaction. Elle peut être online (connexion à l’émetteur) ou offline (décision prise
+par la carte ou le terminal selon des règles).
+—Clearing(compensation) : échange des données de transaction entre émetteurs et
+acquéreurs pour déterminer les positions nettes. Cela se fait généralement en fin de
+journée par lots.
+—Settlement(règlement) : transfert effectif des fonds entre banques, souvent via un
+compte à la banque centrale.
+1.4.2 Commissions
+—Commission d’interchange: payée par l’acquéreur à l’émetteur, fixée par le
+schéma (plafonnée par la régulation européenne à 0,2% pour les cartes de débit
+et 0,3% pour les cartes de crédit).
+—MSC (Merchant Service Charge): commission totale prélevée par l’acquéreur
+sur le commerçant, incluant l’interchange, les frais du schéma et la marge de l’ac-
+quéreur.
+—Frais de réseau: payés au schéma (Visa, Mastercard) par les émetteurs et acqué-
+reurs.
+1.4.3 Schémas de responsabilité
+En cas de fraude ou de litige, la responsabilité est répartie entre les acteurs selon
+les règles. Par exemple, en cas de transaction non autorisée, le porteur est généralement
+remboursé par l’émetteur (sauf négligence grave). En cas de fraude à la carte non présente,
+le commerçant peut être tenu pour responsable si l’authentification 3-D Secure n’a pas
+été utilisée.
+1.5 Résumé du chapitre
+Ce premier chapitre a posé les bases terminologiques. Nous savons maintenant dis-
+tinguer les rôles : porteur, émetteur, accepteur, acquéreur, schéma. Nous avons vu un
+exemple concret de transaction. Les notions d’autorisation, clearing et settlement sont
+essentielles pour la suite.
+Résumé du chapitre
+Points clés :
+— Le porteur utilise une carte émise par son émetteur chez un accepteur
+(commerçant) dont la banque est l’acquéreur.
+— Le schéma de carte assure l’interopérabilité.
+— Une transaction passe par l’autorisation (temps réel), puis la compensa-
+tion (échange de données) et enfin le règlement (transfert de fonds).
+— Des commissions rémunèrent les acteurs.
+8
+
+=================================== PAGE 10 ===================================
+Principes du paiement CHAPITRE 1. DÉFINITIONS ET CONCEPTS FONDAMENTAUX
+1.6 Questions de révision
+1. Quels sont les cinq acteurs principaux d’une transaction par carte?
+2. Expliquez la différence entre émetteur et acquéreur.
+3. Que signifie le sigle PAN?
+4. Décrivez brièvement les étapes d’une transaction depuis la présentation de la carte
+jusqu’au crédit du compte commerçant.
+5. Quelle est la fonction de la commission d’interchange?
+9
+
+=================================== PAGE 11 ===================================
+2. Le modèle interbancaire
+Objectifs d’apprentissage
+— Comprendre l’organisation des banques et des groupements.
+— Distinguer les différents schémas de cartes (ouverts, fermés).
+— Maîtriser le fonctionnement d’EMV.
+— Savoir décrire les flux interbancaires.
+2.1 Organisation des établissements financiers
+Les banques ne sont pas des îlots isolés. Elles doivent coopérer pour que les clients
+puissent payer chez n’importe quel commerçant, quelle que soit leur banque. Cette coopé-
+ration se matérialise par des groupements nationaux et internationaux.
+2.1.1 Les groupements nationaux : l’exemple du GIE Cartes Ban-
+caires
+En France, le Groupement des Cartes Bancaires (CB) a été créé en 1984 sous forme
+de GIE (Groupement d’Intérêt Économique). Il regroupe la quasi-totalité des banques
+françaises. Ses missions :
+— Définir les spécifications techniques communes (format des données, protocoles).
+— Gérer le système d’autorisation et de compensation.
+— Assurer la marque CB et sa promotion.
+— Négocier avec les schémas internationaux.
+Le GIE CB est un acteur majeur : en 2023, plus de 15 milliards de transactions ont été
+traitées via le système CB. Les banques membres partagent les coûts et les risques.
+2.1.2 Les groupements internationaux
+Au niveau mondial, Visa et Mastercard dominent. Ce sont des sociétés cotées en
+bourse (depuis 2008 pour Visa, 2006 pour Mastercard). Elles fonctionnent sur un modèle
+de réseau ouvert : toute banque peut devenir membre (émetteur ou acquéreur) en payant
+des droits d’entrée et en respectant les règles.
+American Express et Discover sont des réseaux fermés (ou "three-party schemes") : ils
+sontàlafoisémetteursetacquéreurs.Cependant,souslapressionréglementaire,American
+Express a ouvert son réseau à des banques partenaires pour l’émission de cartes.
+10
+
+=================================== PAGE 12 ===================================
+Principes du paiement CHAPITRE 2. LE MODÈLE INTERBANCAIRE
+2.2 Notion de schéma carte
+Un schéma de carte est un ensemble de règles, de standards et de services qui per-
+mettent l’interopérabilité. Il définit :
+— Les formats des messages (ISO 8583 pour les transactions, ISO 20022 pour la com-
+pensation).
+— Les protocoles de communication (réseaux privés, VPN, Internet sécurisé).
+— Les règles de sécurité (certification des terminaux, des processeurs).
+— Les barèmes de commissions d’interchange (sous contrainte réglementaire).
+— Les procédures de gestion des litiges (disputes, chargebacks).
+Table 2.1– Principaux schémas de carte
+Schéma Type Zone principale Particularités
+Visa Ouvert Monde Leader mondial
+Mastercard Ouvert Monde Concurrent direct
+CB Ouvert
+(national)
+France Co-badge avec Visa/Mastercard
+American Express Fermé
+(histori-
+quement)
+Monde Premium, frais élevés
+UnionPay Fermé (en
+Chine)
+Chine, expansion Monopole chinois
+JCB Fermé Japon Présent en Asie
+2.2.1 Exemple : co-badgeage CB/Visa
+La plupart des cartes françaises sont co-badgées CB/Visa ou CB/Mastercard. Cela
+signifie que la carte porte deux marques. Lors d’un paiement, le terminal choisit le chemin
+à utiliser (préférence donnée à CB en France, à l’international vers l’autre schéma). Cela
+permet d’utiliser la carte partout dans le monde.
+2.3 Introduction à EMV
+EMV (Europay, Mastercard, Visa) est le standard mondial pour les cartes à puce et les
+terminaux. Il a été développé à partir de 1994 pour lutter contre la fraude par contrefaçon
+de piste magnétique. Aujourd’hui, plus de 10 milliards de cartes EMV sont en circulation.
+2.3.1 Principes de base
+La puce est un microprocesseur capable d’exécuter des algorithmes cryptographiques.
+Elle stocke des données sensibles (clés privées) qui ne peuvent pas être lues de l’extérieur.
+Lors d’une transaction, la carte et le terminal dialoguent via des commandes APDU
+(Application Protocol Data Unit). Les principales étapes :
+11
+
+=================================== PAGE 13 ===================================
+Principes du paiement CHAPITRE 2. LE MODÈLE INTERBANCAIRE
+1. Sélection de l’application (paiement).
+2. Authentification de la carte par le terminal (par exemple via un certificat).
+3. Authentification du porteur (code PIN offline ou online).
+4. Génération d’un cryptogramme de transaction (données dynamiques) signé par la
+carte.
+5. Transmission à l’émetteur pour autorisation (ou autorisation offline si le terminal
+l’autorise).
+2.3.2 Cryptographie EMV
+EMV utilise plusieurs mécanismes :
+—Authentification statique des données (SDA): la carte signe des données
+statiques. Vulnérable à la copie, aujourd’hui remplacée.
+—Authentification dynamique des données (DDA): la carte génère une signa-
+ture unique à chaque transaction.
+—Authentification combinée (CDA): combine l’authentification de la carte et du
+terminal.
+Les algorithmes utilisés sont RSA (jusqu’à 2048 bits) ou ECC (cryptographie sur courbes
+elliptiques) pour les cartes récentes.
+2.3.3 Les modes d’autorisation
+—Online: le terminal contacte l’émetteur via l’acquéreur. L’émetteur vérifie le code
+PIN, le solde, et renvoie une réponse. C’est le mode le plus courant en Europe.
+—Offline: la carte et le terminal décident localement d’autoriser ou non, selon des
+paramètres (plafonds, risque). Utilisé dans certains pays pour les petits montants
+ou en cas de panne réseau.
+2.3.4 Le sans contact EMV
+La spécification EMV Contactless (ou EMV LCP) permet un paiement rapide en
+approchant la carte ou le téléphone du terminal. Pour les montants inférieurs à 50€
+(seuil variable selon les pays), l’authentification du porteur n’est pas requise. Des limites
+cumulées (5 transactions sans code, plafond de 150€) sont appliquées pour limiter les
+risques.
+Paiement sans contact dans le métro :
+À Paris, la RATP a adopté le paiement sans contact aux tourniquets. Le
+voyageur présente sa carte bancaire (ou son smartphone) sur le validateur. La
+transaction est faite en mode offline : le terminal vérifie que la carte n’est pas
+frauduleuse (via des listes noires), et autorise le passage. En fin de journée, les
+transactions sont regroupées et envoyées à la banque du voyageur pour débit.
+12
+
+=================================== PAGE 14 ===================================
+Principes du paiement CHAPITRE 2. LE MODÈLE INTERBANCAIRE
+2.4 Les flux interbancaires
+Les échanges entre banques suivent des standards. Le plus connu est ISO 8583 pour les
+messages d’autorisation (message financier) et ISO 20022 pour la compensation (fichiers
+XML).
+2.4.1 ISO 8583
+C’estunformatbinaire(outexte)quidéfinitunestructuredemessageavecdeschamps
+dedonnées(bitmap).Chaquechampaunesignification(numérodecarte,montant,devise,
+etc.). Un message typique contient :
+— Type de message (autorisation, conseil, annulation...).
+— Bitmap indiquant quels champs sont présents.
+— Données des champs.
+Exemple simplifié : un message d’autorisation Visa peut contenir le PAN dans le champ
+2, le montant dans le champ 4, le code pays dans le champ 19, etc.
+2.4.2 ISO 20022
+Pour la compensation, les fichiers sont en XML (pain.001 pour les virements, camt.053
+pour les relevés, etc.). Le format est plus riche et extensible. Il est utilisé pour le SEPA.
+2.5 Résumé
+Le modèle interbancaire repose sur une coopération forte entre banques, encadrée par
+des groupements et des schémas. EMV a apporté la sécurité par la puce et la cryptogra-
+phie. Les flux sont standardisés (ISO 8583, ISO 20022) pour assurer l’interopérabilité.
+13
+
+=================================== PAGE 15 ===================================
+3. Histoire et géographie de la moné-
+tique
+Objectifs d’apprentissage
+— Connaître les grandes étapes de l’évolution des paiements.
+— Comprendre l’impact des innovations technologiques.
+— Situer les enjeux aux différentes échelles (locale, nationale, européenne, mondiale).
+3.1 Des origines à nos jours
+3.1.1 Années 1950 : l’invention de la carte de crédit
+En 1950, Frank McNamara crée Diners Club après avoir oublié son portefeuille dans
+un restaurant. La première carte est en carton, acceptée dans 27 restaurants new-yorkais.
+En 1958, American Express lance sa carte, et Bank of America lance la BankAmericard
+(future Visa) en Californie.
+3.1.2 Années 1960 : premiers pas en France
+La Carte Bleue est créée en 1967 par six banques françaises. Les premières cartes
+sont à piste magnétique (norme ISO 7810). Le réseau des distributeurs automatiques se
+développe.
+3.1.3 Années 1970 : la bande magnétique s’impose
+La bande magnétique stocke les données sur trois pistes (norme ISO 7813). Mais la
+fraude par contrefaçon (skimming) apparaît. En 1974, Roland Moreno dépose le brevet
+de la carte à puce.
+3.1.4 Années 1980 : naissance du GIE CB
+En 1984, le GIE Cartes Bancaires est créé pour unifier les réseaux concurrents (Carte
+Bleue, Crédit Agricole, etc.). La carte à puce est expérimentée en France à partir de 1986.
+3.1.5 Années 1990 : EMV et Internet
+En 1993, Europay, Mastercard et Visa s’associent pour définir le standard EMV. La
+première version est publiée en 1996. Parallèlement, le commerce en ligne explose, néces-
+sitant de nouveaux protocoles (SET, puis 3-D Secure).
+14
+
+=================================== PAGE 16 ===================================
+Principes du paiement CHAPITRE 3. HISTOIRE ET GÉOGRAPHIE DE LA MONÉTIQUE
+3.1.6 Années 2000 : migration EMV et SEPA
+La France achève sa migration EMV en 2003. Le SEPA est lancé en 2008 pour har-
+moniser les paiements en euros.
+3.1.7 Années 2010 : sans contact et mobile
+Le sans contact (NFC) se généralise. Apple Pay (2014) et Google Pay (2015) popula-
+risent le paiement par mobile. La DSP2 (2018) ouvre le marché aux fintechs.
+3.1.8 Années 2020 : instantanéité et tokenisation
+Le virement instantané devient accessible. La tokenisation (remplacement du PAN
+par un jeton) protège les données. Les cryptomonnaies et les stablecoins interrogent le
+système.
+3.2 Géographie des paiements
+3.2.1 Niveau régional : pôle TES
+En Bretagne, le pôle de compétitivité TES (Transactions Électroniques Sécurisées)
+regroupe entreprises, laboratoires et formations pour innover dans la monétique. Il a
+contribué à des projets comme le paiement sans contact ou la biométrie.
+3.2.2 Niveau national : spécificités françaises
+La France se distingue par :
+— Une forte adoption de la carte à puce dès les années 1990.
+— Le système CB, résilient et peu coûteux.
+— Des industriels leaders (Ingenico, Worldline).
+— Un taux de fraude parmi les plus bas d’Europe.
+3.2.3 Niveau européen : le SEPA
+Le SEPA (Single Euro Payments Area) a uniformisé les règles. Il couvre 36 pays (UE
++ Suisse, Norvège, Islande, Liechtenstein, Monaco, Saint-Marin, Andorre, Vatican). Les
+instruments sont identiques partout.
+3.2.4 Niveau mondial : la domination américaine
+Visa et Mastercard réalisent environ 80% des transactions hors carte domestique.
+UnionPay, porté par le marché chinois, est le premier émetteur en nombre de cartes, mais
+peu utilisé hors de Chine. Les systèmes nationaux (JCB au Japon, RuPay en Inde) tentent
+de résister.
+15
+
+=================================== PAGE 17 ===================================
+Principes du paiement CHAPITRE 3. HISTOIRE ET GÉOGRAPHIE DE LA MONÉTIQUE
+3.3 Enjeux actuels
+—Inclusion financière: donner accès aux paiements électroniques aux populations
+non bancarisées.
+—Souveraineté: l’Europe cherche à développer des solutions alternatives (projet
+EPI).
+—Environnement: impact écologique des cartes en plastique, des data centers.
+—Sécurité: lutte contre la cybercriminalité.
+16
+
+=================================== PAGE 18 ===================================
+4. Sécurité et fraude
+Objectifs d’apprentissage
+— Connaître les mécanismes de sécurité de la carte.
+— Identifier les différents types de fraude.
+— Comprendre les contre-mesures (tokenisation, 3-D Secure, biométrie).
+— Savoir analyser un cas de fraude et proposer des solutions.
+4.1 Généralités sur la sécurité des paiements
+La sécurité repose sur trois piliers (CIA) :
+—Confidentialité: les données sensibles (PAN, cryptogramme) ne doivent pas être
+divulguées.
+—Intégrité: les données ne doivent pas être modifiées lors du transit.
+—Disponibilité: les systèmes doivent fonctionner en permanence.
+À cela s’ajoute l’authentification : s’assurer de l’identité du porteur et de la légitimité de
+la carte.
+4.2 Les dispositifs de sécurité de la carte
+4.2.1 La puce EMV
+Comme vu au chapitre 2, la puce génère des données dynamiques, rendant inutilisable
+une copie. Elle protège également contre les attaques physiques (micro-sondes).
+4.2.2 Le code PIN
+Le code à 4 à 6 chiffres est le principal moyen d’authentification. Il peut être vérifié
+offline (par la carte) ou online (par l’émetteur). Des tentatives erronées bloquent la carte.
+La norme exige que le PIN ne soit jamais transmis en clair sur le réseau.
+4.2.3 Le cryptogramme visuel (CVV/CVC)
+Le CVV2 (Card Verification Value 2) pour Visa, CVC2 pour Mastercard, est imprimé
+au dos de la carte. Il est utilisé pour les paiements à distance. Il n’est pas stocké sur la
+piste magnétique, ce qui limite la fraude en cas de clonage de la piste.
+17
+
+=================================== PAGE 19 ===================================
+Principes du paiement CHAPITRE 4. SÉCURITÉ ET FRAUDE
+4.2.4 La tokenisation
+La tokenisation remplace le PAN par un jeton (token) unique pour un contexte donné
+(un commerçant, un appareil). Le jeton n’a pas de valeur en dehors de ce contexte. Par
+exemple, Apple Pay stocke un jeton sur l’iPhone, et lors du paiement, c’est ce jeton qui
+est transmis, jamais le vrai numéro de carte. Si le serveur du commerçant est piraté, le
+pirate ne récupère qu’un jeton inutilisable ailleurs.
+4.2.5 Le 3-D Secure
+C’est un protocole d’authentification du porteur pour les paiements en ligne. Il ajoute
+une étape de vérification :
+— Version 1 : redirection vers le site de la banque, saisie d’un mot de passe (statique).
+— Version 2 : vérification en arrière-plan (analyse de risque) et authentification forte
+(biométrie, OTP) si nécessaire. Conforme à la DSP2.
+Si le commerçant utilise 3-D Secure, la responsabilité en cas de fraude est transférée à
+l’émetteur. Sinon, le commerçant est responsable.
+4.3 La fraude : typologie et chiffres
+Selon la Banque de France, le taux de fraude sur les paiements par carte en France
+était de 0,07% en 2022, soit environ 500 millions d’euros. Les principaux types :
+4.3.1 Fraude à la carte non présente (CNP)
+Elle concerne les paiements sur Internet, par téléphone ou par correspondance. Elle
+représente plus de 70% de la fraude totale. Les techniques : phishing, vol de données sur
+des sites marchands, achat de données sur le dark web.
+4.3.2 Contrefaçon
+Clonage de la piste magnétique (skimming) pour créer une fausse carte. La générali-
+sation de la puce a réduit ce type de fraude, mais elle persiste dans les pays non EMV.
+4.3.3 Perte ou vol
+Utilisation frauduleuse d’une carte perdue ou volée. Le sans contact facilite les petits
+montants sans code. Les banques ont mis en place des plafonds et des alertes.
+4.3.4 Usurpation d’identité
+Obtention frauduleuse d’une carte à partir de faux documents. Les émetteurs ren-
+forcent les contrôles d’identité.
+18
+
+=================================== PAGE 20 ===================================
+Principes du paiement CHAPITRE 4. SÉCURITÉ ET FRAUDE
+4.3.5 Fraude interne
+Malveillance d’employés de banque ou de prestataires. Des audits et des séparations
+de tâches limitent ce risque.
+Attaque par skimming sur un distributeur :
+En 2018, une bande organisée a installé des faux lecteurs de carte sur plusieurs
+distributeurs en région parisienne. Les lecteurs capturaient les données de la
+piste magnétique, et une caméra miniature filmait la saisie du code. Avec ces
+données,ilsfabriquaientdefaussescartesetretiraientdel’argentdansd’autres
+pays. La contre-mesure : généralisation des protections anti-skimming sur les
+distributeurs (lecteur de carte avec anti-soulèvement), et migration vers la
+puce EMV qui rend le clonage inutile.
+4.4 Les contre-mesures et la régulation
+4.4.1 La norme PCI DSS
+Le PCI DSS (Payment Card Industry Data Security Standard) est un ensemble d’exi-
+gences de sécurité imposées à tous les acteurs manipulant des données de cartes (com-
+merçants, processeurs, etc.). Il couvre :
+— La construction d’un réseau sécurisé.
+— La protection des données des porteurs.
+— La gestion des vulnérabilités.
+— Le contrôle d’accès.
+— La surveillance et les tests.
+— La politique de sécurité.
+La conformité est auditée annuellement.
+4.4.2 La DSP2 et l’authentification forte
+La directive DSP2 (2015/2366) impose l’authentification forte du client (SCA) pour
+les paiements électroniques. L’authentification doit reposer sur au moins deux éléments
+parmi :
+— Connaissance (code PIN, mot de passe).
+— Possession (téléphone, carte).
+— Inhérence (biométrie).
+Pour les paiements en ligne, cela se traduit souvent par une double validation (ex. code
+reçu par SMS + mot de passe). Des exemptions existent pour les petits montants et les
+transactions à faible risque.
+4.4.3 L’analyse comportementale
+Les banques utilisent des algorithmes de scoring en temps réel pour détecter des com-
+portements anormaux (transaction inhabituelle, pays différent, montant élevé). En cas de
+doute, la transaction peut être refusée ou soumise à une vérification.
+19
+
+=================================== PAGE 21 ===================================
+Principes du paiement CHAPITRE 4. SÉCURITÉ ET FRAUDE
+4.5 Résumé
+La sécurité des paiements est un combat permanent. La puce EMV a considérablement
+réduit la contrefaçon. La tokenisation et le 3-D Secure protègent les paiements en ligne.
+La régulation (DSP2) impose l’authentification forte. Les acteurs doivent se conformer à
+des normes strictes (PCI DSS). Malgré cela, la fraude évolue (phishing, ingénierie sociale)
+et nécessite une veille constante.
+20
+
+=================================== PAGE 22 ===================================
+5. Le dispositif industriel
+Objectifs d’apprentissage
+— Connaître les principaux industriels de la monétique.
+— Comprendre les architectures techniques (autorisation, compensation).
+— Savoir décrire la chaîne monétique complète.
+5.1 Les industriels
+5.1.1 Fabricants de cartes
+—Idemia(ex Oberthur) : leader français, produit des cartes, des solutions d’identité.
+—Thales(ex Gemalto) : cartes, puces, solutions de paiement mobile.
+—Giesecke+Devrient: allemand, spécialiste des cartes et de la sécurité.
+Ces entreprises fournissent les cartes vierges, personnalisées avec les données du porteur
+et les clés cryptographiques.
+5.1.2 Fabricants de terminaux de paiement (TPE)
+—Ingenico(groupe Worldline) : leader mondial, propose des terminaux fixes et mo-
+biles.
+—Verifone: américain, présent dans le monde entier.
+—PAX: chinois, en forte croissance.
+Les TPE sont certifiés par les schémas (EMV, PCI PTS) et doivent supporter les évolu-
+tions (sans contact, paiement par QR code).
+5.1.3 Processeurs techniques
+Ce sont des sociétés qui gèrent l’infrastructure d’autorisation et de compensation pour
+le compte des banques.
+—Worldline: issu du rapprochement d’Ingenico, c’est le leader européen.
+—Nets: nordique, racheté par Nexi.
+—TSYS(racheté par Global Payments) : américain.
+—FIS: américain (Worldpay).
+21
+
+=================================== PAGE 23 ===================================
+Principes du paiement CHAPITRE 5. LE DISPOSITIF INDUSTRIEL
+5.1.4 Prestataires de services de paiement (PSP)
+Ils offrent aux commerçants une interface unique pour accepter plusieurs moyens de
+paiement.
+—Stripe: très présent dans l’e-commerce, facilite l’intégration.
+—Adyen: néerlandais, coté en bourse, utilisé par les grands comptes (Uber, Netflix).
+—Mollie: néerlandais, spécialisé PME.
+5.2 Architectures techniques
+5.2.1 Le système d’autorisation
+C’est un système temps réel, à haute disponibilité (99,99%). Il doit traiter des milliers
+de transactions par seconde. Les composants :
+—Frontaux: interfaces avec les réseaux (TPE, banques).
+—Moteur de règles: applique les plafonds, les listes noires, le scoring.
+—Base de données: stocke les comptes, les plafonds.
+—Serveurs cryptographiques(HSM) : stockent les clés et génèrent les signatures.
+Lesystèmeestredondégéographiquement(datacentersmultiples)pourrésisterauxpannes.
+5.2.2 La compensation (clearing)
+Les transactions sont regroupées en lots (fichiers) et échangées via des systèmes de
+compensation (ex. STET en France, EBA Clearing en Europe). Les fichiers sont au format
+ISO 20022 (XML). Le traitement est généralement en batch (plusieurs fois par jour). Les
+positions nettes sont calculées pour chaque banque.
+5.2.3 Le règlement (settlement)
+Le règlement final s’effectue via les comptes que les banques détiennent à la banque
+centrale (ou via des banques correspondantes). En zone euro, TARGET2 (Trans-European
+AutomatedReal-timeGrossSettlementExpressTransferSystem)assurelerèglementbrut
+en temps réel. Les banques règlent leur position nette.
+5.3 La chaîne monétique détaillée
+Nous allons décomposer une transaction pas à pas, en suivant les acteurs techniques.
+1.Initiation: Le porteur présente sa carte sur le TPE. Le TPE lit la puce (ou la
+piste) et initie le dialogue EMV.
+2.Construction du message: Le TPE construit un message d’autorisation (ISO
+8583) avec le PAN, le montant, le cryptogramme, etc.
+3.Transmission à l’acquéreur: Le TPE envoie le message via le réseau de télécom-
+munication (GPRS, IP, ligne téléphonique). Le message arrive chez l’acquéreur (ou
+son processeur).
+22
+
+=================================== PAGE 24 ===================================
+Principes du paiement CHAPITRE 5. LE DISPOSITIF INDUSTRIEL
+4.Traitement par l’acquéreur: L’acquéreur vérifie la validité du commerçant, ef-
+fectue un premier contrôle (format, liste noire), puis route le message vers le schéma
+(Visa, Mastercard, CB).
+5.Routage par le schéma: Le schéma détermine l’émetteur à partir du PAN et
+transmet le message.
+6.Traitement par l’émetteur: L’émetteur (ou son processeur) reçoit le message. Il
+vérifie le code PIN (si online), le solde, le plafond, applique des règles de détection
+de fraude. Puis il construit une réponse (autorisation ou refus) avec un code (00 =
+accepté, 05 = refus, etc.).
+7.Retour: La réponse repart en sens inverse jusqu’au TPE.
+8.Impression du ticket: Le TPE imprime le ticket (ou affiche le résultat).
+9.Capture et lot: En fin de journée, le commerçant transmet toutes ses transactions
+(celles autorisées) à son acquéreur sous forme de lot.
+10.Compensation: L’acquéreur envoie les fichiers de transactions à la chambre de
+compensation (ou directement aux émetteurs via le schéma). Les émetteurs les re-
+çoivent et les rapprochent.
+11.Règlement: Les banques règlent leurs positions nettes via TARGET2. Le com-
+merçant est crédité (moins les commissions) sur son compte, généralement sous 1 à
+3 jours ouvrés.
+5.4 Les défis industriels
+—Disponibilité: les systèmes doivent fonctionner 24h/24, 7j/7, avec des pics (Black
+Friday, Noël).
+—Sécurité: protection contre les cyberattaques (DDoS, intrusion).
+—Évolutivité: adaptation aux nouveaux usages (mobile, instantané).
+—Conformité: respect des normes (PCI DSS, EMV, régulation).
+23
+
+=================================== PAGE 25 ===================================
+6. Architecturesdese-paiements:lemo-
+dèle à 15 coins
+Objectifs d’apprentissage
+— Comprendre la complexité des écosystèmes modernes.
+— Identifier les nouveaux acteurs (PSP, TPP, agrégateurs).
+— Savoir modéliser une transaction avec le modèle à 15 coins.
+6.1 Limites du modèle à 4 coins
+Le modèle traditionnel à 4 coins (porteur, émetteur, commerçant, acquéreur) est in-
+suffisant pour décrire les transactions modernes, notamment en ligne. De nombreux in-
+termédiaires techniques sont intervenus :
+— Passerelles de paiement (gateways) pour les commerçants.
+— Prestataires techniques pour l’acceptation (PSP).
+— Agrégateurs de moyens de paiement.
+— Fournisseurs de tokenisation.
+— Services d’authentification (3-D Secure).
+— Prestataires de risque et de scoring.
+6.2 Le modèle à 15 coins
+Ce modèle, proposé par des experts (Observatoire de la monétique), vise à représenter
+tous les rôles possibles. Il ne s’agit pas d’un modèle figé mais d’une grille d’analyse.
+6.2.1 Les 15 rôles identifiés
+Nous pouvons lister (de façon non exhaustive) :
+1.Porteur(payeur)
+2.Émetteur(banque du porteur)
+3.Accepteur(commerçant)
+4.Acquéreur(banque du commerçant)
+5.Schéma de carte(Visa, Mastercard, CB)
+6.Processeur technique de l’émetteur(gère l’infrastructure d’autorisation)
+24
+
+=================================== PAGE 26 ===================================
+Principes du paiement CHAPITRE 6. ARCHITECTURES DES E-PAIEMENTS : LE MODÈLE À 15 COINS
+7.Processeur technique de l’acquéreur(idem)
+8.PSP (Payment Service Provider): interface pour le commerçant, agrège plu-
+sieurs acquéreurs et moyens de paiement.
+9.Gateway de paiement: passerelle technique entre le site du commerçant et le
+PSP ou l’acquéreur.
+10.Fournisseur de tokenisation: émet et gère les jetons.
+11.Fournisseur de 3-D Secure(ACS) : gère l’authentification du porteur.
+12.Fournisseur d’analyse de risque: scoring en temps réel.
+13.Fabricant de la carte(personnaliseur)
+14.Fabricant du terminal
+15.Autorité de régulation(Banque centrale, ACPR, etc.)
+6.2.2 Exemple d’une transaction en ligne complexe
+Considérons un achat sur un site marchand utilisant Stripe (PSP) avec des cartes. Le
+site a intégré Stripe via une API. Le client utilise sa carte Visa. Les étapes :
+1. Le client (porteur) saisit ses données de carte sur le site (chiffré en HTTPS).
+2. Le site envoie les données à Stripe (gateway/PSP).
+3. Stripe détermine le meilleur chemin (acquéreur partenaire, par exemple Stripe est
+aussi acquéreur dans certains pays). Ici, Stripe utilise son propre acquéreur (banque
+X).
+4. Stripe envoie une demande d’autorisation à l’acquéreur (banque X).
+5. L’acquéreur transmet au schéma (Visa).
+6. Visa route vers l’émetteur (banque Y).
+7. L’émetteur peut déléguer l’authentification 3-D Secure à un fournisseur tiers (ACS).
+8. Si la transaction est à risque, un scoreur externe peut être consulté.
+9. L’émetteur autorise et renvoie la réponse.
+10. Stripe notifie le site, qui confirme la commande.
+On voit intervenir : porteur, site (accepteur), PSP, acquéreur, schéma, émetteur, ACS, et
+éventuellement scoreur. Cela dépasse largement les 4 coins.
+6.3 Impact sur les responsabilités
+Aveccettemultiplicationd’acteurs,larépartitiondesresponsabilitésdevientcomplexe.
+En cas de litige, il faut déterminer quel acteur est en cause. Les contrats entre acteurs
+(notamment avec les PSP) doivent préciser les responsabilités.
+Litige sur une transaction en ligne :
+Un client conteste un achat de 500€sur un site. Il affirme n’avoir jamais auto-
+risé la transaction. Le site utilise Stripe. L’émetteur (banque du client) engage
+une procédure de "dispute" (chargeback) via Visa. Le message de contestation
+transite par Visa, Stripe, puis le site. Stripe applique les règles de Visa et peut
+débiter le site si la contestation est valide. Le site doit prouver que l’authenti-
+fication forte a été réalisée (3-D Secure). Ici, Stripe joue un rôle central dans
+le traitement du litige.
+25
+
+=================================== PAGE 27 ===================================
+Principes du paiement CHAPITRE 6. ARCHITECTURES DES E-PAIEMENTS : LE MODÈLE À 15 COINS
+6.4 Conclusion
+Le modèle à 15 coins reflète la réalité d’un écosystème fragmenté et spécialisé. Il est
+essentiel pour les professionnels de cartographier les acteurs et leurs relations afin de
+concevoir des solutions robustes et conformes.
+26
+
+=================================== PAGE 28 ===================================
+7. LesinstrumentsdepaiementduSEPA
+Objectifs d’apprentissage
+— Maîtriser les instruments SEPA : SCT, SDD, SCF.
+— Comprendre les schémas de virement et prélèvement.
+— Connaître le projet de carte SEPA (SCF/Nexo).
+7.1 Le SEPA : principes et périmètre
+Le SEPA (Single Euro Payments Area) est une initiative de la Commission européenne
+et de la Banque centrale européenne visant à créer un marché unique des paiements en
+euros. Il est entré en vigueur en 2008 (virements) et 2009 (prélèvements). Il couvre 36
+pays. Tous les paiements en euros, quel que soit le pays, sont traités de la même manière.
+7.2 SEPA Credit Transfer (SCT)
+Le virement SEPA (SCT) permet de transférer des euros d’un compte à un autre dans
+la zone SEPA. Caractéristiques :
+— Délai d’exécution : jusqu’au 1er jour ouvré suivant (J+1). Depuis 2017, le virement
+instantané (SCT Inst) permet un transfert en moins de 10 secondes, 24h/24, 7j/7.
+— Les coordonnées nécessaires : IBAN (International Bank Account Number) et BIC
+(Bank Identifier Code) du bénéficiaire.
+— Montant : illimité (mais les banques peuvent fixer des plafonds). Format : messages
+XML ISO 20022 (pain.001 pour l’ordre, camt.053 pour le relevé).
+7.2.1 Le virement instantané (SCT Inst)
+Le SCT Inst est un schéma optionnel mais de plus en plus adopté. Le transfert est irré-
+vocable et immédiat. Les fonds sont disponibles en quelques secondes. Les banques doivent
+traiter les ordres 24h/24. Le montant maximum est fixé à 100 000€(sauf dérogation).
+En France, il est plafonné à 100 000€également.
+Achat d’une voiture d’occasion :
+M. Martin achète une voiture à un particulier pour 8 000€. Plutôt que de
+transporter des espèces, il propose un virement instantané. Il se connecte à
+sa banque en ligne, saisit l’IBAN du vendeur, et valide le virement avec son
+authentification forte. Le vendeur reçoit une notification sur son téléphone
+indiquant que les fonds sont crédités. La transaction est sécurisée et rapide.
+27
+
+=================================== PAGE 29 ===================================
+Principes du paiementCHAPITRE 7. LES INSTRUMENTS DE PAIEMENT DU SEPA
+7.3 SEPA Direct Debit (SDD)
+Le prélèvement SEPA (SDD) permet à un créancier d’initier un prélèvement sur le
+compte d’un débiteur, après signature d’un mandat. Deux formules :
+—SDD Core: pour les consommateurs et entreprises. Le débiteur peut demander
+remboursement dans les 8 semaines suivant le débit (sans justification) et dans les
+13 mois en cas de prélèvement non autorisé.
+—SDD B2B: réservé aux entreprises. Pas de droit de remboursement, mais des
+contrôles renforcés (le créancier doit s’assurer de la validité du mandat).
+Le mandat est géré électroniquement (parfois papier). Le créancier envoie un fichier de
+prélèvement à sa banque (pain.008). Les banques échangent via des systèmes de compen-
+sation.
+7.3.1 Exemple de prélèvement SEPA
+Un fournisseur d’électricité (EDF) prélève chaque mois la facture de ses clients. Le
+client a signé un mandat de prélèvement (généralement en ligne). Chaque mois, EDF
+génère un fichier contenant tous les prélèvements et l’envoie à sa banque. La banque
+d’EDF transmet aux banques des clients via la compensation. Le compte du client est
+débité, celui d’EDF crédité.
+7.4 SEPA Cards Framework (SCF) et projet Nexo
+Le volet cartes est plus complexe car les systèmes nationaux sont très ancrés. Le SCF
+définit des principes :
+— Co-badgeage obligatoire (une carte peut porter plusieurs marques).
+— Séparation des rôles (émetteur, acquéreur, processeur) pour éviter les conflits d’in-
+térêts.
+— Liberté de choix du processeur par les commerçants.
+— Interchange plafonné (comme vu précédemment).
+Le projetNexo(Network for Exchange of electronic payment information) est une ini-
+tiative de standardisation des échanges interbancaires pour les transactions par carte. Il
+vise à remplacer les protocoles propriétaires par des messages ISO 20022. Cela faciliterait
+l’interopérabilité et réduirait les coûts.
+7.4.1 L’avenir de la carte en Europe
+La Commission européenne pousse pour une solution de paiement paneuropéenne. Le
+projet EPI (European Payments Initiative) vise à créer un schéma de carte européen
+(peut-être basé sur la CB et d’autres) pour concurrencer Visa/Mastercard. Cependant,
+les obstacles sont nombreux (investissements, adhésion des banques).
+28
+
+=================================== PAGE 30 ===================================
+Principes du paiementCHAPITRE 7. LES INSTRUMENTS DE PAIEMENT DU SEPA
+7.5 Résumé
+Le SEPA a harmonisé les virements et prélèvements en euros. Le virement instantané
+gagne du terrain. Pour les cartes, l’harmonisation est en cours, avec des défis techniques
+et politiques.
+29
+
+=================================== PAGE 31 ===================================
+8. Lesfutursdespaiementsélectroniques
+Objectifs d’apprentissage
+— Identifier les grandes tendances technologiques.
+— Comprendre les enjeux des monnaies numériques (CBDC).
+— Analyser l’impact de l’open banking et de l’IA.
+— Se projeter dans les métiers de demain.
+8.1 Tendances technologiques
+8.1.1 Paiement mobile et NFC
+Les portefeuilles électroniques (Apple Pay, Google Pay, Samsung Pay) remplacent pro-
+gressivement les cartes physiques. Ils utilisent la tokenisation pour sécuriser les transac-
+tions. Le paiement par QR code se développe en Asie (WeChat Pay, Alipay) et commence
+à percer en Europe.
+8.1.2 Paiement instantané
+Le virement instantané pourrait devenir le nouveau standard, y compris pour les paie-
+ments de proximité (via QR code ou NFC). Le projet européen "Instant" vise à généraliser
+le SCT Inst.
+8.1.3 Cryptomonnaies et stablecoins
+Les cryptomonnaies (Bitcoin) sont trop volatiles pour être des moyens de paiement
+courants.Lesstablecoins(adossésàunemonnaiefiduciaire,commeUSDC)pourraientêtre
+utilisés pour les transferts internationaux ou les échanges interbancaires. La régulation
+MiCA (Markets in Crypto-Assets) en Europe encadre leur usage.
+8.1.4 Monnaies numériques de banque centrale (MNBC)
+De nombreuses banques centrales travaillent sur des CBDC (Central Bank Digital
+Currency). L’euro numérique est en phase d’étude par la BCE. Il s’agirait d’une monnaie
+électronique émise par la banque centrale, accessible aux citoyens (via des comptes ou des
+portefeuilles). Cela pourrait concurrencer les dépôts bancaires et transformer le paysage.
+30
+
+=================================== PAGE 32 ===================================
+Principes du paiement CHAPITRE 8. LES FUTURS DES PAIEMENTS ÉLECTRONIQUES
+8.1.5 Intelligence artificielle et analyse de données
+L’IA est utilisée pour la détection de fraude (analyse comportementale), la person-
+nalisation des offres, l’optimisation des parcours de paiement. Les modèles de machine
+learning permettent d’identifier des schémas anormaux en temps réel.
+8.2 Évolutions réglementaires
+La DSP2 a ouvert la voie à l’open banking. La prochaine version (DSP3) pourrait
+renforcer l’authentification et étendre le périmètre. Le règlement sur les frais d’interchange
+(IFR)aplafonnélescommissions.Denouvellesrégulationspourraientconcernerlesgrands
+fournisseurs de technologie (Big Tech) pour éviter les abus de position dominante.
+8.3 Impact sur les acteurs
+—Banques traditionnelles: doivent moderniser leurs systèmes, collaborer avec des
+fintechs, et se préparer à la concurrence des néobanques (Revolut, N26).
+—Commerçants: bénéficient de solutions plus fluides et moins chères, mais doivent
+gérer la multiplicité des moyens de paiement.
+—Consommateurs: attendent une expérience transparente, sécurisée et instantanée.
+—Fintechs: innovent sur des niches (paiement fractionné, crypto, identité numé-
+rique).
+8.4 Les métiers de la monétique de demain
+Les compétences recherchées :
+— Architectes techniques (connaissance des normes EMV, ISO 20022).
+— Experts en sécurité (cryptographie, PCI DSS).
+— Data scientists (analyse de fraude, scoring).
+— Juristes spécialisés (régulation bancaire).
+— Chefs de produit (innovation, UX).
+31
+
+=================================== PAGE 33 ===================================
+9. Applications pratiques
+9.1 Visite de la Plateforme Monétique Pédagogique
+Une demi-journée est consacrée à la découverte de la Plateforme Monétique Péda-
+gogique (PMP). Cette plateforme, développée par des industriels et des enseignants-
+chercheurs, permet de simuler une chaîne de paiement complète. Les étudiants pourront :
+— Manipuler des terminaux de paiement réels (Ingenico, Verifone) avec des cartes de
+test.
+— Observer les messages échangés (trames ISO 8583) grâce à un analyseur.
+— Simuler des transactions avec différents scénarios (autorisation, refus, erreur).
+— Configurer un processeur d’autorisation simple.
+— Visualiser le cycle de compensation et de règlement.
+9.2 Études de cas
+9.2.1 Cas n°1 : Mise en place d’une solution de paiement pour un
+site e-commerce
+Un commerçant souhaite accepter les paiements par carte sur son site. Il vend des
+produits de luxe (montants élevés). Il veut minimiser les risques de fraude et offrir une
+expérience fluide. Travail à réaliser :
+— Analyser les options : intégration directe avec un acquéreur, recours à un PSP
+(Stripe, Adyen), etc.
+— Comparer les coûts (commission, frais fixes).
+— Proposer une architecture technique (API, hébergement des données, conformité
+PCI DSS).
+— Recommander des mesures de sécurité (3-D Secure, tokenisation).
+9.2.2 Cas n°2 : Analyse d’un incident de fraude
+Une banque constate une augmentation des fraudes sur les paiements sans contact.
+Les montants sont inférieurs à 30€. Les transactions ont lieu dans des supermarchés.
+Objectif :
+— Identifier les causes possibles (perte/vol, skimming de carte sans contact?).
+— Proposer des contre-mesures (abaisser le plafond sans contact, renforcer l’authenti-
+fication, utiliser des listes noires).
+— Simuler l’impact sur l’expérience client.
+32
+
+=================================== PAGE 34 ===================================
+Principes du paiement CHAPITRE 9. APPLICATIONS PRATIQUES
+9.2.3 Cas n°3 : Conception d’un nouveau moyen de paiement
+Une fintech veut lancer une carte prépayée destinée aux adolescents, avec contrôle
+parental via une application. Définir :
+— Les acteurs nécessaires (émetteur, processeur, fabricant de carte).
+— Les fonctionnalités (plafonds, notifications, blocage).
+— Le modèle économique (frais de carte, interchange).
+— Les aspects réglementaires (agrément, DSP2).
+9.3 Exercices pratiques
+1. Décoder un message ISO 8583 simplifié fourni.
+2. Remplir un mandat de prélèvement SEPA.
+3. Calculer les commissions d’une transaction en fonction des taux d’interchange.
+4. Analyser un extrait de fichier de compensation XML (pain.001) et identifier les
+champs.
+33
+
+=================================== PAGE 35 ===================================
+Conclusion générale
+Nous voici au terme de ce module de 40 heures sur les principes du paiement électro-
+nique.Vousavezacquislesbasesessentielles:vocabulaire,acteurs,modèlesinterbancaires,
+sécurité, architectures, instruments SEPA et perspectives futures. Ce socle vous permet-
+tra d’aborder des sujets plus avancés (sécurité des transactions, architectures distribuées,
+innovation financière) avec une vision claire.
+Le domaine des paiements est en constante évolution. Les technologies (mobile, ins-
+tantané, crypto) et la régulation (DSP3, MiCA) redessinent le paysage. Les professionnels
+doivent rester en veille et s’adapter. Ce cours vous a donné les clés pour comprendre ces
+évolutions et y contribuer.
+Nous vous encourageons à poursuivre par des lectures spécialisées, des participations à
+des conférences (Trustech, Paris Fintech Forum) et des stages en entreprise. La monétique
+est un secteur passionnant, alliant technique, business et sécurité.
+Bonne continuation dans votre parcours!
+34
+
+=================================== PAGE 36 ===================================
+Bibliographie
+[1] EMVCo,EMV Specifications, 2023.
+[2] Banque de France,Les moyens de paiement, édition 2023.
+[3] European Payments Council,SEPA scheme rulebooks, 2023.
+[4] Directive (UE) 2015/2366 (DSP2).
+[5] PCI Security Standards Council,PCI DSS v4.0.
+[6] Groupement CB,Rapport annuel 2022.
+[7] Worldline,Digital Commerce Report, 2023.
+[8] ACPR,Les risques dans les paiements, 2022.
+[9] Lety, J.-M.,Monétique et paiement électronique, Dunod, 2020.
+35
+
+=================================== PAGE 37 ===================================
+Annexes
+Annexe A : Glossaire
+AcquéreurBanque du commerçant.
+ClearingCompensation : échange des données de transaction.
+CVVCard Verification Value (cryptogramme).
+DSP2Directive sur les Services de Paiement 2.
+EMVEuropay Mastercard Visa (standard de carte à puce).
+IBANInternational Bank Account Number.
+ISO 8583Standard pour les messages d’autorisation.
+ISO 20022Standard pour les messages de compensation.
+PANPrimary Account Number (numéro de carte).
+PCI DSSPayment Card Industry Data Security Standard.
+PSPPayment Service Provider.
+SCTSEPA Credit Transfer (virement).
+SDDSEPA Direct Debit (prélèvement).
+SEPASingle Euro Payments Area.
+SettlementRèglement interbancaire.
+TPETerminal de Paiement Électronique.
+Annexe B : Acronymes courants
+BIC Bank Identifier Code
+CB Carte Bancaire
+CVC Card Validation Code (Mastercard)
+CVV Card Verification Value (Visa)
+GAB Guichet Automatique Bancaire
+HSM Hardware Security Module
+IIN Issuer Identification Number
+NFC Near Field Communication
+OTP One-Time Password
+PIN Personal Identification Number
+SCA Strong Customer Authentication
+TPP Third Party Provider
+36

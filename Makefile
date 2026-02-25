@@ -2,7 +2,7 @@
 # Makefile for Plateforme Monétique Pédagogique
 # ==============================================
 
-.PHONY: help start stop restart logs logs-follow test status clean keys init build ps health ssl-init ssl-renew-start ssl-renew-stop
+.PHONY: help start stop restart logs logs-follow test status clean keys init build ps health ssl-init ssl-renew-start ssl-renew-stop prod prod-lite prod-lite-ui prod-lite-full dev monitoring ctf full down down-lite down-volumes trim-docker
 
 # Colors for terminal output
 RED := \033[0;31m
@@ -64,35 +64,106 @@ ssl-renew-stop: ## Stop automatic Let's Encrypt renewal
 	@echo "$(YELLOW)certbot-renew stopped$(NC)"
 
 # ==============================================
-# Start/Stop commands
+# Profile-based deployments (optimisation cloud)
+# ==============================================
+# Profils disponibles :
+#   (aucun)     → services core uniquement  (23 conteneurs, ~4GB RAM)
+#   dev         → + pgadmin
+#   monitoring  → + prometheus, grafana, elasticsearch, kibana, dashboards
+#   ctf         → + ctf-attackbox
 # ==============================================
 
-start: ## Start all services
-	@echo "$(GREEN)Starting PMP platform...$(NC)"
-	@docker-compose up -d
+prod: ## Démarrer les services core uniquement (prod optimisée)
+	@echo "$(GREEN)Démarrage PMP - mode production (services core)...$(NC)"
+	@docker compose up -d
 	@echo ""
-	@echo "$(GREEN)✓ Platform started successfully!$(NC)"
+	@echo "$(GREEN)✓ Plateforme démarrée (23 conteneurs)$(NC)"
 	@echo ""
-	@echo "$(BLUE)Access points:$(NC)"
-	@echo "  • Client Interface:    $(YELLOW)http://localhost:3000$(NC)"
-	@echo "  • Merchant Interface:  $(YELLOW)http://localhost:3001$(NC)"
+	@echo "$(BLUE)Accès :$(NC)"
+	@echo "  • Portail:             $(YELLOW)http://localhost:3000$(NC)"
+	@echo "  • Interface client:    $(YELLOW)http://localhost:3001$(NC)"
+	@echo "  • Cards web:           $(YELLOW)http://localhost:3004$(NC)"
+	@echo "  • HSM web:             $(YELLOW)http://localhost:3006$(NC)"
+	@echo "  • 3DS Challenge:       $(YELLOW)http://localhost:3088$(NC)"
 	@echo "  • API Gateway:         $(YELLOW)http://localhost:8000$(NC)"
 	@echo "  • Nginx (HTTPS):       $(YELLOW)https://localhost$(NC)"
-	@echo "  • PgAdmin:             $(YELLOW)http://localhost:5050$(NC)"
+	@echo ""
+
+prod-lite: ## Demarrer la prod minimale (RAM/cout optimises)
+	@echo "$(GREEN)Demarrage PMP - mode prod-lite (cout optimise)...$(NC)"
+	@docker compose -f docker-compose.yml -f docker-compose.prod-lite.yml up -d
+	@echo "$(GREEN)OK Prod-lite demarree (UI extra et extensions desactivees)$(NC)"
+
+prod-lite-ui: ## Prod-lite + interfaces additionnelles (3001/3004/3006/3088)
+	@echo "$(GREEN)Demarrage PMP - prod-lite + interfaces additionnelles...$(NC)"
+	@docker compose -f docker-compose.yml -f docker-compose.prod-lite.yml --profile ui-extra up -d
+	@echo "$(GREEN)OK Prod-lite UI demarree$(NC)"
+
+prod-lite-full: ## Prod-lite + interfaces + extensions 3DS/tokenisation
+	@echo "$(GREEN)Demarrage PMP - prod-lite complet...$(NC)"
+	@docker compose -f docker-compose.yml -f docker-compose.prod-lite.yml --profile ui-extra --profile extensions up -d
+	@echo "$(GREEN)OK Prod-lite complet demarre$(NC)"
+
+dev: ## Démarrer en mode développement (prod + pgadmin)
+	@echo "$(GREEN)Démarrage PMP - mode développement...$(NC)"
+	@docker compose --profile dev up -d
+	@echo "$(GREEN)✓ Plateforme démarrée avec PgAdmin sur :5050$(NC)"
+
+monitoring: ## Démarrer avec le stack monitoring (prod + prometheus/grafana/elasticsearch)
+	@echo "$(GREEN)Démarrage PMP - avec monitoring...$(NC)"
+	@docker compose --profile monitoring up -d
+	@echo ""
+	@echo "$(GREEN)✓ Monitoring activé$(NC)"
+	@echo "$(BLUE)Accès monitoring :$(NC)"
 	@echo "  • Prometheus:          $(YELLOW)http://localhost:9090$(NC)"
 	@echo "  • Grafana:             $(YELLOW)http://localhost:3002$(NC)"
-	@echo ""
-	@echo "$(BLUE)Credentials:$(NC)"
-	@echo "  • PgAdmin:    admin@pmp.local / pgadmin_pass_2024"
-	@echo "  • Grafana:    admin / grafana_pass_2024"
+	@echo "  • Kibana:              $(YELLOW)http://localhost:5601$(NC)"
+	@echo "  • Dashboard:           $(YELLOW)http://localhost:3082$(NC)"
 	@echo ""
 
-stop: ## Stop all services
-	@echo "$(RED)Stopping PMP platform...$(NC)"
-	@docker-compose down
-	@echo "$(GREEN)✓ Platform stopped$(NC)"
+ctf: ## Démarrer en mode CTF (prod + ctf-attackbox)
+	@echo "$(GREEN)Démarrage PMP - mode CTF...$(NC)"
+	@docker compose --profile ctf up -d
+	@echo "$(GREEN)✓ CTF Attackbox démarrée sur :7681$(NC)"
 
-restart: stop start ## Restart all services
+full: ## Démarrer tous les services (31 conteneurs)
+	@echo "$(GREEN)Démarrage PMP - mode complet (31 conteneurs)...$(NC)"
+	@docker compose --profile dev --profile monitoring --profile ctf up -d
+	@echo "$(GREEN)✓ Tous les services démarrés$(NC)"
+
+down: ## Arrêter et supprimer les conteneurs (tous profils)
+	@echo "$(RED)Arrêt de PMP...$(NC)"
+	@docker compose --profile dev --profile monitoring --profile ctf down
+	@echo "$(GREEN)✓ Plateforme arrêtée$(NC)"
+
+down-lite: ## Arreter le deploiement prod-lite
+	@echo "$(RED)Arret de PMP (prod-lite)...$(NC)"
+	@docker compose -f docker-compose.yml -f docker-compose.prod-lite.yml --profile ui-extra --profile extensions down
+	@echo "$(GREEN)OK Prod-lite arretee$(NC)"
+
+down-volumes: ## Arrêter et supprimer conteneurs ET volumes (⚠ PERTE DE DONNÉES)
+	@echo "$(RED)⚠ ATTENTION : suppression de toutes les données !$(NC)"
+	@read -p "Confirmer ? [y/N] " -n 1 -r; \
+	echo; \
+	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+		docker compose --profile dev --profile monitoring --profile ctf down -v; \
+		echo "$(GREEN)✓ Suppression complète$(NC)"; \
+	else \
+		echo "$(BLUE)Annulé$(NC)"; \
+	fi
+
+# ==============================================
+# Start/Stop commands (compatibilité)
+# ==============================================
+
+start: prod ## Alias pour 'make prod' (compatibilité)
+
+stop: ## Arrêter tous les services (tous profils)
+	@echo "$(RED)Arrêt de PMP...$(NC)"
+	@docker compose --profile dev --profile monitoring --profile ctf stop
+	@echo "$(GREEN)✓ Plateforme arrêtée$(NC)"
+
+restart: stop prod ## Redémarrer les services core
 
 # ==============================================
 # Logging commands
@@ -101,8 +172,8 @@ restart: stop start ## Restart all services
 logs: ## Show logs (last 100 lines)
 	@docker-compose logs --tail=100
 
-logs-follow: ## Follow logs in real-time
-	@docker-compose logs -f
+logs-follow: ## Follow logs in real-time (tous profils)
+	@docker compose --profile dev --profile monitoring --profile ctf logs -f
 
 logs-api: ## Show API Gateway logs
 	@docker-compose logs --tail=100 -f api-gateway
@@ -117,15 +188,15 @@ logs-nginx: ## Show Nginx logs
 # Status and monitoring
 # ==============================================
 
-ps: ## List running containers
-	@docker-compose ps
+ps: ## List running containers (tous profils)
+	@docker compose --profile dev --profile monitoring --profile ctf ps
 
-status: ## Show detailed service status
+status: ## Show detailed service status (tous profils)
 	@echo "$(BLUE)=========================================$(NC)"
 	@echo "$(BLUE)  PMP Platform Status$(NC)"
 	@echo "$(BLUE)=========================================$(NC)"
 	@echo ""
-	@docker-compose ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}"
+	@docker compose --profile dev --profile monitoring --profile ctf ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}"
 	@echo ""
 
 health: ## Check health of all services
@@ -209,9 +280,9 @@ db-reset: ## Reset database with fresh pedagogical data
 # Cleanup commands
 # ==============================================
 
-clean: ## Remove containers and networks (keep volumes)
+clean: ## Remove containers and networks (keep volumes, tous profils)
 	@echo "$(RED)Cleaning up containers and networks...$(NC)"
-	@docker-compose down
+	@docker compose --profile dev --profile monitoring --profile ctf down
 	@echo "$(GREEN)✓ Cleanup complete (volumes preserved)$(NC)"
 
 clean-all: ## Remove everything including volumes (⚠ DATA LOSS)
@@ -220,7 +291,7 @@ clean-all: ## Remove everything including volumes (⚠ DATA LOSS)
 	echo; \
 	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
 		echo "$(RED)Removing all containers, networks, and volumes...$(NC)"; \
-		docker-compose down -v; \
+		docker compose --profile dev --profile monitoring --profile ctf down -v; \
 		rm -rf keys/*.key keys/*.pem nginx/ssl/*.pem; \
 		echo "$(GREEN)✓ Complete cleanup done$(NC)"; \
 	else \
@@ -231,6 +302,13 @@ clean-logs: ## Clean Nginx logs
 	@echo "$(YELLOW)Cleaning Nginx logs...$(NC)"
 	@rm -f nginx/logs/*.log
 	@echo "$(GREEN)✓ Logs cleaned$(NC)"
+
+trim-docker: ## Supprimer cache build + images/containers orphelins
+	@echo "$(YELLOW)Nettoyage des ressources Docker inutilisees...$(NC)"
+	@docker builder prune -af
+	@docker image prune -af
+	@docker container prune -f
+	@echo "$(GREEN)OK Nettoyage Docker termine$(NC)"
 
 # ==============================================
 # Development commands

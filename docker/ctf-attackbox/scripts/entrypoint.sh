@@ -4,9 +4,10 @@ set -eu
 # Source the banner for login shells
 chmod +x /etc/profile.d/*.sh 2>/dev/null || true
 
-# Disable Docker internal DNS service discovery for challenge realism.
+# Keep Docker internal DNS (127.0.0.11) so containers on session networks
+# are reachable by IP.  Students target machines by IP, not by name.
 if [ -w /etc/resolv.conf ]; then
-  printf "nameserver 127.0.0.1\noptions ndots:0\n" > /etc/resolv.conf || true
+  printf "nameserver 127.0.0.11\noptions ndots:0\n" > /etc/resolv.conf || true
 fi
 
 # Start ttyd web terminal (auth handled by portal JWT)

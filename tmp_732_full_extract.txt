@@ -1,0 +1,463 @@
+
+
+=================================== PAGE 1 ===================================
+Paiements carte présente / carte non présente
+Module 732-2
+Expert(e) en Monétique et Transactions Sécurisées
+Responsable : Georges Balog
+Semestre 5
+
+=================================== PAGE 2 ===================================
+Table des matières
+Introduction 3
+1 EMV pour les transactions avec carte présente 4
+1.1 Introduction à EMV . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+1.1.1 Objectifs d’EMV . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+1.1.2 Les acteurs impliqués . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+1.2 Rappel sur ISO/IEC 7816-4 . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+1.3 Architecture d’une transaction EMV . . . . . . . . . . . . . . . . . . . . . 5
+1.3.1 1. Sélection de l’application . . . . . . . . . . . . . . . . . . . . . . 5
+1.3.2 2. Initiation de la transaction . . . . . . . . . . . . . . . . . . . . . 5
+1.3.3 3. Authentification de la carte . . . . . . . . . . . . . . . . . . . . . 5
+1.3.4 4. Traitement des restrictions . . . . . . . . . . . . . . . . . . . . . 6
+1.3.5 5. Authentification du porteur . . . . . . . . . . . . . . . . . . . . . 6
+1.3.6 6. Analyse des risques et décision . . . . . . . . . . . . . . . . . . . 6
+1.3.7 7. Autorisation online . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+1.3.8 8. Finalisation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+1.4 Le cryptogramme de transaction . . . . . . . . . . . . . . . . . . . . . . . . 6
+1.5 Le sans contact (EMV Contactless) . . . . . . . . . . . . . . . . . . . . . . 7
+1.6 Sécurité et évolutions . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7
+1.7 Résumé . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7
+2 3-D Secure pour les transactions sans carte 8
+2.1 Introduction . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+2.1.1 Objectifs . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+2.2 Architecture de 3-D Secure . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+2.3 3-D Secure version 1 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 9
+2.4 3-D Secure version 2 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 9
+2.4.1 Flux 3DS 2 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 9
+2.4.2 Données échangées . . . . . . . . . . . . . . . . . . . . . . . . . . . 10
+2.5 Intégration de 3-D Secure . . . . . . . . . . . . . . . . . . . . . . . . . . . 10
+2.5.1 Côté marchand . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 10
+2.5.2 Côté émetteur . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 10
+2.6 Impact de la DSP2 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 10
+2.7 Sécurité et limites . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 11
+2.8 Résumé . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 11
+1
+
+=================================== PAGE 3 ===================================
+Paiements carte présente / carte non présente TABLE DES MATIÈRES
+3 Travaux pratiques 12
+3.1 TP EMV : Analyse d’une transaction en laboratoire . . . . . . . . . . . . . 12
+3.1.1 Matériel . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 12
+3.1.2 Déroulement . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 12
+3.1.3 Livrable . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+3.2 TP EMV : Implémentation simplifiée d’un terminal . . . . . . . . . . . . . 13
+3.2.1 Préparation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+3.2.2 Étapes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+3.3 TP 3D Secure : Simulation d’une authentification . . . . . . . . . . . . . . 13
+3.3.1 Outils . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+3.3.2 Déroulement . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+3.3.3 Variantes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 14
+3.3.4 Livrable . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 14
+Conclusion 15
+A Annexes 17
+2
+
+=================================== PAGE 4 ===================================
+Introduction
+Le monde des paiements électroniques se divise en deux grandes catégories : les tran-
+sactions où la carte est physiquement présente (paiement de proximité) et celles où elle ne
+l’est pas (paiement à distance, principalement sur Internet). Les mécanismes de sécurité
+et les protocoles diffèrent fondamentalement.
+Ce module de 14 heures (8h de cours, 6h de travaux pratiques) vous plonge au cœur
+des spécifications EMV pour lecard presentet des protocoles 3-D Secure pour lecard not
+present. Vous acquerrez une connaissance approfondie des flux, de la cryptographie, des
+rôles des acteurs et des évolutions récentes.
+Pré-requis :
+— Maîtrise du vocabulaire du paiement électronique (porteur, émetteur, acquéreur,
+etc.) – voir module 734-2.
+— Connaissance de la norme ISO/IEC 7816-4 (commandes APDU) recommandée.
+À l’issue de ce module, vous serez capable d’analyser une transaction EMV, de com-
+prendre les messages d’authentification 3-D Secure et de mettre en œuvre des simulations
+pratiques.
+3
+
+=================================== PAGE 5 ===================================
+1. EMV pour les transactions avec carte
+présente
+Objectifs d’apprentissage
+— Comprendre l’architecture et les objectifs d’EMV.
+— Maîtriser le dialogue entre la carte et le terminal (APDU).
+— Connaître les méthodes d’authentification (SDA, DDA, CDA).
+— Savoir décrire les flux d’autorisation online et offline.
+1.1 Introduction à EMV
+EMV(Europay,Mastercard,Visa)estunstandardmondialpourlescartesdepaiement
+à puce et les terminaux. Il a été développé pour remplacer la piste magnétique, trop
+vulnérable à la fraude par contrefaçon. Aujourd’hui, plus de 10 milliards de cartes EMV
+sont en circulation.
+1.1.1 Objectifs d’EMV
+— Authentifier la carte (pour s’assurer qu’elle n’est pas une contrefaçon).
+— Authentifier le porteur (par code PIN ou signature).
+— Garantir l’intégrité des données de transaction.
+— Permettre l’interopérabilité internationale.
+1.1.2 Les acteurs impliqués
+—La carte: contient une puce (microprocesseur) avec un système d’exploitation, des
+données et des clés cryptographiques.
+—Le terminal(TPE) : initie la transaction, dialogue avec la carte, transmet les
+données à l’acquéreur.
+—L’acquéreuretl’émetteurvia le réseau.
+1.2 Rappel sur ISO/IEC 7816-4
+La norme ISO/IEC 7816-4 définit les commandes et réponses échangées entre une
+carte à puce et un terminal (commandes APDU – Application Protocol Data Unit). Une
+commande APDU (C-APDU) est structurée ainsi :
+4
+
+=================================== PAGE 6 ===================================
+Paiements carte présente / carte non présente CHAPITRE 1. EMV POUR LES TRANSACTIONS AVEC CARTE PRÉSENTE
+—CLA(class) : classe de l’instruction.
+—INS(instruction) : code de l’instruction (ex : 0xA4 pour SELECT, 0x20 pour
+VERIFY, 0x80 pour GET DATA...).
+—P1, P2: paramètres.
+—Lc: longueur des données envoyées.
+—Données(optionnel).
+—Le: longueur attendue en réponse.
+La réponse (R-APDU) contient des données et deux octets de statut (SW1, SW2) indi-
+quant le succès ou l’échec (ex : 90 00 = OK).
+Commande SELECT :
+Pour sélectionner l’application de paiement (AID – Application Identifier), le
+terminal envoie :
+1CLA = 00 , INS = A4 , P1 = 04 , P2 = 00 , Lc = 07 , D o n n e s =
+A0000000041010 , Le = 00
+La carte répond avec les données du fichier sélectionné et SW1 SW2 = 90 00.
+1.3 Architecture d’une transaction EMV
+Une transaction EMV typique se déroule en plusieurs étapes :
+1.3.1 1. Sélection de l’application
+Le terminal envoie une liste d’AID (identifiants d’application) pris en charge. La carte
+répond avec l’AID qu’elle supporte (si plusieurs, le terminal peut choisir). Cette étape
+utilise les commandes SELECT.
+1.3.2 2. Initiation de la transaction
+Le terminal envoie la commande GET PROCESSING OPTIONS (GPO) pour de-
+mander à la carte les données nécessaires. La carte renvoie les éléments comme le crypto-
+gramme de la carte, les limites de transaction offline, etc.
+1.3.3 3. Authentification de la carte
+Plusieurs méthodes existent. Le terminal détermine la méthode selon les capacités de
+la carte et ses propres configurations.
+Authentification statique des données (SDA)
+La carte envoie des données signées (certificat) que le terminal vérifie avec la clé
+publiqueduschéma.Cependant,lasignatureeststatique(identiqueàchaquetransaction),
+donc vulnérable à la copie si l’on parvient à extraire les données signées (mais pas la clé
+privée). Utilisée dans les premières cartes.
+5
+
+=================================== PAGE 7 ===================================
+Paiements carte présente / carte non présente CHAPITRE 1. EMV POUR LES TRANSACTIONS AVEC CARTE PRÉSENTE
+Authentification dynamique des données (DDA)
+La carte possède une paire de clés (privée/publique). Le terminal envoie un défi (ran-
+dom); la carte signe ce défi avec sa clé privée. Le terminal vérifie avec la clé publique
+(certifiée). Ainsi, la signature est différente à chaque transaction. C’est plus sécurisé.
+Authentification combinée (CDA)
+Combine l’authentification de la carte et du terminal. La carte signe des données de
+transaction, et le terminal peut également signer (si supporté). C’est la méthode la plus
+robuste.
+1.3.4 4. Traitement des restrictions
+Le terminal vérifie les listes noires (listes de cartes volées ou compromises) stockées
+localement (listes de révocation). Il vérifie aussi les plafonds de transaction.
+1.3.5 5. Authentification du porteur
+Le porteur est authentifié par code PIN ou signature. Deux modes :
+—PIN offline: le code est vérifié par la carte elle-même. La carte stocke le PIN de
+manière sécurisée et le compare à celui saisi. Le terminal transmet le PIN chiffré.
+—PIN online: le code est transmis (chiffré) à l’émetteur pour vérification.
+Le choix dépend des capacités de la carte et des règles de l’émetteur.
+1.3.6 6. Analyse des risques et décision
+La carte peut décider d’autoriser la transaction offline (si le montant est faible et que
+les conditions sont remplies) ou de demander une autorisation online. Le terminal peut
+aussi imposer l’online.
+1.3.7 7. Autorisation online
+Si l’online est requis, le terminal construit un message d’autorisation (souvent au
+format ISO 8583) contenant le cryptogramme de transaction (généré par la carte). Ce
+message est envoyé à l’acquéreur, puis au schéma, puis à l’émetteur. L’émetteur vérifie le
+cryptogramme (preuve que la carte est authentique), le solde, et renvoie une réponse.
+1.3.8 8. Finalisation
+Le terminal reçoit la réponse et l’affiche. Il imprime un ticket. La transaction est
+stockée dans le journal du terminal.
+1.4 Le cryptogramme de transaction
+Le cryptogramme (TC – Transaction Cryptogram) est une donnée cruciale. Il est
+calculé par la carte à partir des données de transaction (montant, devise, date, etc.) et
+d’une clé secrète (clé de session ou clé maître). L’émetteur recalcule le cryptogramme et
+vérifie la concordance. Cela prouve que la carte a bien participé à la transaction.
+6
+
+=================================== PAGE 8 ===================================
+Paiements carte présente / carte non présente CHAPITRE 1. EMV POUR LES TRANSACTIONS AVEC CARTE PRÉSENTE
+1.5 Le sans contact (EMV Contactless)
+EMV a étendu les spécifications au sans contact (NFC). Le dialogue est similaire mais
+optimisé pour la rapidité. Des mécanismes de "quick payment" permettent de ne pas saisir
+le code PIN pour les petits montants. Des plafonds cumulés limitent les risques.
+Paiement sans contact dans un supermarché :
+Un client présente sa carte sans contact sur le terminal. Le terminal détecte
+la carte, effectue la sélection d’application et l’authentification en quelques
+millisecondes. Pour un montant de 15€, le terminal peut décider de ne pas
+demander de code PIN (car en dessous du plafond sans contact et dans la
+limite de transactions sans code). La transaction est autorisée offline ou online
+selon les règles de l’émetteur. Le client entend un bip et la transaction est
+terminée.
+1.6 Sécurité et évolutions
+EMV a considérablement réduit la fraude par contrefaçon. Cependant, de nouvelles
+menaces sont apparues :
+—Attaques par relais: intercepter et transmettre à distance le dialogue entre la
+carte et le terminal. Des solutions comme la distance de détection NFC et des
+horodatages limitent ce risque.
+—Attaques sur le terminal: modification du logiciel du TPE pour capturer des
+données. La certification PCI PTS (Pin Transaction Security) et les mises à jour
+sécurisées sont essentielles.
+Les évolutions récentes incluent la tokenisation (remplacement du PAN par un jeton) et
+la biométrie (empreinte) sur carte.
+1.7 Résumé
+Les transactions EMV reposent sur un dialogue complexe entre la carte et le terminal,
+utilisant des commandes APDU normalisées. L’authentification dynamique et le crypto-
+gramme de transaction garantissent l’intégrité et l’authenticité. Le sans contact a ajouté
+de la rapidité sans sacrifier la sécurité.
+7
+
+=================================== PAGE 9 ===================================
+2. 3-D Secure pour les transactions sans
+carte
+Objectifs d’apprentissage
+— Comprendre le principe et les acteurs de 3-D Secure.
+— Distinguer les versions 1 et 2.
+— Maîtriser les flux d’authentification.
+— Connaître l’impact de la DSP2.
+2.1 Introduction
+Les paiements en ligne (carte non présente) présentent un risque plus élevé de fraude
+car le commerçant ne peut pas vérifier physiquement la carte. 3-D Secure (3DS) est un
+protocole d’authentification du porteur développé par Visa (Verified by Visa), Mastercard
+(SecureCode) et d’autres. Il ajoute une étape de vérification auprès de l’émetteur.
+2.1.1 Objectifs
+— Authentifier le porteur (réduire la fraude).
+— Transférer la responsabilité en cas de litige (du commerçant vers l’émetteur) si
+l’authentification est réussie.
+— Se conformer à la DSP2 (authentification forte).
+2.2 Architecture de 3-D Secure
+Le nom "3-D Secure" vient des trois domaines impliqués :
+—Domaine de l’acquéreur: le commerçant et sa banque.
+—Domaine de l’émetteur: la banque du porteur.
+—Domaine de l’interopérabilité: les serveurs du schéma (Visa, Mastercard) qui
+font le lien.
+Les acteurs principaux :
+—Marchand: site e-commerce.
+—Plugin marchand(MPI) : composant logiciel intégré au site qui initie la requête
+3DS.
+8
+
+=================================== PAGE 10 ===================================
+Paiements carte présente / carte non présente CHAPITRE 2. 3-D SECURE POUR LES TRANSACTIONS SANS CARTE
+—Serveur d’accès(ACS – Access Control Server) : géré par l’émetteur, responsable
+de l’authentification.
+—Serveur de répertoire(DS – Directory Server) : géré par le schéma, il aiguille les
+requêtes vers le bon ACS.
+2.3 3-D Secure version 1
+La version 1 (3DS 1.0) a été déployée dans les années 2000. Le flux typique :
+1. Le client saisit ses données de carte sur le site marchand.
+2. Le site (via le MPI) envoie une requête de vérification (VE) au répertoire (DS) pour
+savoir si la carte est éligible 3DS.
+3. Le DS répond avec l’URL de l’ACS (si la carte est éligible).
+4. Le site redirige le navigateur du client vers l’ACS (généralement via une page de la
+banque) avec les données de transaction.
+5. L’ACS affiche une page demandant un mot de passe (statique) ou un code à usage
+unique.
+6. Le client saisit le code, l’ACS vérifie.
+7. L’ACS renvoie un message de réponse (PARes) signé, contenant le statut de l’au-
+thentification.
+8. Le site reçoit le PARes et le vérifie (signature). Si authentification réussie, la tran-
+saction se poursuit.
+Problèmes de la v1 : expérience utilisateur médiocre (redirection, fenêtre pop-up), mots
+de passe statiques peu sécurisés, adaptation difficile aux mobiles.
+2.4 3-D Secure version 2
+3DS 2.0 a été introduit pour répondre aux exigences de la DSP2 (authentification
+forte) et améliorer l’expérience. Principales différences :
+— Communication via API (JSON) plutôt que redirections HTTP.
+— Échange de données enrichies (contexte du navigateur, historique du client, adresse
+IP) pour une analyse de risque.
+— Authentification forte possible (biométrie, OTP) mais aussi authentification fric-
+tionless (si le risque est faible, pas d’interaction).
+— Support natif des applications mobiles (SDK).
+2.4.1 Flux 3DS 2
+1. Le marchand initie une authentification 3DS en appelant son serveur 3DS (ou di-
+rectement l’ACS via API).
+2. Les données de transaction et de contexte (navigateur, appareil) sont envoyées.
+3. L’ACS reçoit la requête, analyse le risque (scoring). Si le risque est faible et que
+l’authentification forte n’est pas requise (exemption), il répond immédiatement avec
+un résultat positif (frictionless). Sinon, il demande une authentification (challenge).
+9
+
+=================================== PAGE 11 ===================================
+Paiements carte présente / carte non présente CHAPITRE 2. 3-D SECURE POUR LES TRANSACTIONS SANS CARTE
+4. En cas de challenge, le navigateur (ou l’application) est redirigé vers l’ACS pour
+une authentification (par exemple, saisie d’un OTP, reconnaissance biométrique).
+5. Le résultat est renvoyé au marchand.
+Les échanges utilisent des JSON structurés, sécurisés par signature.
+2.4.2 Données échangées
+3DS 2 collecte de nombreuses données pour l’analyse de risque :
+— Adresse IP, user-agent, résolution d’écran, fuseau horaire.
+— Historique de transactions du commerçant.
+— Adresse de livraison (si différente de facturation).
+— Montant, devise, etc.
+Ces données permettent à l’émetteur de décider si une authentification forte est nécessaire.
+2.5 Intégration de 3-D Secure
+2.5.1 Côté marchand
+Le marchand doit intégrer un SDK ou utiliser une passerelle de paiement qui supporte
+3DS. Il reçoit un statut d’authentification (Y = authentifié, N = non authentifié, U =
+impossible). Selon la responsabilité, il peut accepter ou refuser la transaction.
+2.5.2 Côté émetteur
+L’émetteur déploie un ACS (souvent via un processeur technique). Il doit gérer les
+règles de scoring et l’authentification forte (conforme DSP2).
+2.6 Impact de la DSP2
+La directive DSP2 impose l’authentification forte du client (SCA) pour les paiements
+électroniques. 3DS 2 est le principal moyen d’y satisfaire pour les paiements en ligne. Des
+exemptions sont possibles :
+— Transactions de faible montant (<30€).
+— Transactions à faible risque (analyse par l’émetteur).
+— Paiements récurrents (même montant, même bénéficiaire).
+Le marchand doit indiquer s’il demande une exemption; l’émetteur peut l’accepter ou la
+refuser.
+Achat en ligne avec 3DS 2 :
+Mme Martin achète un livre à 25€sur un site. Elle saisit ses données de
+carte. Le site envoie une requête 3DS à l’ACS de sa banque. L’ACS analyse le
+risque (adresse IP habituelle, montant modéré) et décide que l’authentification
+forten’estpasnécessaire(exemption).Ilrépondimmédiatementavecunstatut
+"frictionless". La transaction est autorisée sans que Mme Martin ait à faire une
+étape supplémentaire. Si le montant avait été de 150€, l’ACS aurait demandé
+10
+
+=================================== PAGE 12 ===================================
+Paiements carte présente / carte non présente CHAPITRE 2. 3-D SECURE POUR LES TRANSACTIONS SANS CARTE
+un challenge. Mme Martin aurait reçu une notification sur son téléphone pour
+valider avec son empreinte, ou aurait saisi un code reçu par SMS.
+2.7 Sécurité et limites
+3DS 2 améliore la sécurité mais n’est pas parfait :
+— Les données de contexte peuvent être usurpées (émulation de navigateur).
+— Le phishing reste possible si l’utilisateur est redirigé vers un faux ACS.
+— L’expérience utilisateur peut être dégradée si trop de challenges.
+Des améliorations sont en cours (3DS 2.3, 2.4) avec biométrie intégrée, partage de données
+de risque plus fines.
+2.8 Résumé
+3-D Secure est le standard d’authentification pour les paiements en ligne. La version 2
+répond aux exigences de la DSP2 avec une approche basée sur le risque et une meilleure
+expérience. Il implique une coopération entre marchand, schéma et émetteur. La respon-
+sabilité est transférée en cas d’authentification réussie.
+11
+
+=================================== PAGE 13 ===================================
+3. Travaux pratiques
+Les travaux pratiques (6h) sont répartis en deux parties : EMV (4h) et 3D Secure
+(2h). Ils se déroulent sur la Plateforme Monétique Pédagogique ou à l’aide d’outils de
+simulation.
+3.1 TP EMV : Analyse d’une transaction en laboratoire
+Objectif: Observer le dialogue entre une carte de test et un terminal, analyser les
+commandes APDU, et comprendre les données échangées.
+3.1.1 Matériel
+— Terminal de paiement (Ingenico / Verifone) configuré en mode test.
+— Cartes de test EMV (avec différentes configurations : SDA, DDA, etc.).
+— Analyseur de protocole (logiciel PC/SC, ou oscilloscope logique).
+— Ordinateur avec logiciel de capture (ex. PyApduTool, ou script Python avec pys-
+card).
+3.1.2 Déroulement
+1.Prise en main: connecter le terminal à l’ordinateur via USB série. Lancer un outil
+de capture.
+2.Réalisation d’un paiement: insérer la carte, suivre le processus (sélection appli-
+cation, saisie montant, code PIN si demandé). Observer les messages.
+3.Analyse des APDU:
+— Identifier les commandes SELECT (AID de l’application).
+— Analyser la commande GET PROCESSING OPTIONS et la réponse (liste des
+fichiers, AFL – Application File Locator).
+— Observer les commandes READ RECORD pour lire les données de la carte.
+— Voir la commande VERIFY (pour le PIN) et GENERATE AC (pour générer
+le cryptogramme).
+4.Interprétation des données: décoder les TLV (Tag-Length-Value) présents dans
+les réponses (ex. tag 9F02 pour le montant, tag 9A pour la date).
+5.Variantes: refaire avec une carte différente (sans contact, ou avec PIN online/of-
+fline). Noter les différences.
+12
+
+=================================== PAGE 14 ===================================
+Paiements carte présente / carte non présente CHAPITRE 3. TRAVAUX PRATIQUES
+3.1.3 Livrable
+Un rapport d’analyse décrivant le déroulement, avec capture des principales com-
+mandes et leur signification. Inclure un schéma du dialogue.
+3.2 TP EMV : Implémentation simplifiée d’un terminal
+Objectif: Développer un script (Python) qui simule un terminal EMV basique, ca-
+pable de dialoguer avec une carte via un lecteur PC/SC.
+3.2.1 Préparation
+— Utiliser la bibliothèquepyscardpour accéder au lecteur.
+— Connaître les commandes APDU de base.
+3.2.2 Étapes
+1. Écrire une fonction pour sélectionner l’application (AID de test).
+2. Envoyer GET PROCESSING OPTIONS et parser la réponse.
+3. Lire les enregistrements indiqués par l’AFL.
+4. Construire un cryptogramme (simulé, sans vérification) et envoyer GENERATE AC.
+5. Afficher les données.
+Le script pourra être testé avec des cartes de test.
+3.3 TP 3D Secure : Simulation d’une authentification
+Objectif: Simuler un flux 3DS 2 entre un marchand, un ACS factice et un client, en
+utilisant des appels API.
+3.3.1 Outils
+— Serveur local (Node.js ou Python Flask) pour simuler l’ACS et le DS.
+— Client web (HTML/JavaScript) simulant la page de paiement.
+— Utilisation de JSON pour les échanges.
+3.3.2 Déroulement
+1.Création d’un serveur ACS simplifié: implémenter les endpoints/prepare
+(réception des données, renvoi d’un identifiant) et/challenge(pour l’authentifica-
+tion). Stocker les sessions.
+2.Création d’une page marchande: formulaire de paiement. À la soumission,
+envoyer une requête au serveur ACS avec les données (montant, PAN, etc.).
+3.Réponse ACS: selon un paramètre (risque simulé), renvoyer un statut "friction-
+less" ou "challenge". Si challenge, rediriger vers une page d’authentification (saisie
+d’un OTP simple).
+4.Affichage du résultat: après authentification, le marchand reçoit le statut final.
+13
+
+=================================== PAGE 15 ===================================
+Paiements carte présente / carte non présente CHAPITRE 3. TRAVAUX PRATIQUES
+3.3.3 Variantes
+— Ajouter la vérification de signature (avec une clé symétrique).
+— Implémenter un Directory Server simple qui route vers le bon ACS selon le BIN.
+3.3.4 Livrable
+Code source et documentation du fonctionnement.
+14
+
+=================================== PAGE 16 ===================================
+Conclusion
+Lespaiementsaveccarteprésente(EMV)etsanscarte(3DSecure)constituentlesdeux
+piliers de la monétique moderne. Maîtriser leurs spécifications, leurs flux et leurs enjeux de
+sécurité est indispensable pour tout professionnel du secteur. Les travaux pratiques vous
+ont permis de mettre en œuvre concrètement ces concepts. Ce module ouvre la voie à
+des approfondissements (sécurité avancée, tokenisation, paiement mobile) et à des métiers
+spécialisés.
+15
+
+=================================== PAGE 17 ===================================
+Bibliographie
+[1] EMVCo,EMV Integrated Circuit Card Specifications for Payment Systems, v4.4, 2023.
+[2] EMVCo,EMV 3-D Secure Protocol and Core Functions Specification, v2.3, 2023.
+[3] ISO/IEC 7816-4 :2020,Identification cards — Integrated circuit cards — Part 4 :
+Organization, security and commands for interchange.
+[4] Directive (UE) 2015/2366 (DSP2).
+[5] PCI Security Standards Council,PCI DSS v4.0.
+16
+
+=================================== PAGE 18 ===================================
+A. Annexes
+Annexe A : Liste des AID courants
+AID (hex) Signification
+A0000000031010 Visa
+A0000000041010 Mastercard
+A00000002501 American Express
+A0000000421010 Cartes Bancaires CB
+Annexe B : TLV courants en EMV
+Tag Signification Exemple
+9F02 Montant de la transaction (6 octets) 000000001234 = 12,34€
+9A Date de transaction (3 octets) 220101 = 01/01/2022
+5F2A Devise (2 octets) 0978 = EUR
+9F1A Pays du terminal (2 octets) 0250 = France
+9F36 Compteur de transaction (ATC) 0012
+17
