@@ -5,19 +5,32 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../auth/useAuth';
 import {
-    ArrowDownLeft,
-    ArrowUpRight,
-    ChevronDown,
     ChevronRight,
     Download,
-    Filter,
     GitBranch,
     RefreshCw,
     RotateCcw,
-    Search
+    Search,
 } from 'lucide-react';
-import { toRecord, toNumber, toText, formatMoney, formatDateTimeString, getCardBrand, getLastFour, mapStatus, mapType } from '@shared/lib/formatting';
-import StatusBadge from '@shared/components/StatusBadge';
+import {
+    toRecord,
+    toNumber,
+    toText,
+    formatMoney,
+    formatDateTimeString,
+    getCardBrand,
+    getLastFour,
+    mapStatus,
+    mapType,
+} from '@shared/lib/formatting';
+import { BankPageHeader } from '@shared/components/banking/layout/BankPageHeader';
+import { BankButton } from '@shared/components/banking/primitives/BankButton';
+import { BankBadge } from '@shared/components/banking/primitives/BankBadge';
+import { BankSpinner } from '@shared/components/banking/primitives/BankSpinner';
+import { BankInput } from '@shared/components/banking/primitives/BankInput';
+import { BankSelect, type BankSelectOption } from '@shared/components/banking/forms/BankSelect';
+import { StatCard } from '@shared/components/banking/data-display/StatCard';
+import { BankTable, type BankTableColumn } from '@shared/components/banking/data-display/BankTable';
 
 interface MerchantTransaction {
     id: string;
@@ -74,6 +87,36 @@ const normalizeTransactions = (rawList: unknown): MerchantTransaction[] => {
 
 const isDev = process.env.NODE_ENV === 'development';
 
+const statusOptions: BankSelectOption[] = [
+    { value: 'all', label: 'Tous statuts' },
+    { value: 'approved', label: 'Approuvee' },
+    { value: 'pending', label: 'En attente' },
+    { value: 'declined', label: 'Refusee' },
+    { value: 'voided', label: 'Annulee / Remboursee' },
+];
+
+const typeOptions: BankSelectOption[] = [
+    { value: 'all', label: 'Tous types' },
+    { value: 'sale', label: 'Vente' },
+    { value: 'refund', label: 'Remboursement' },
+    { value: 'void', label: 'Annulation' },
+];
+
+const statusToVariant = (status: string) => {
+    if (status === 'approved') return 'success' as const;
+    if (status === 'pending') return 'pending' as const;
+    if (status === 'declined') return 'danger' as const;
+    if (status === 'voided') return 'neutral' as const;
+    return 'neutral' as const;
+};
+
+const typeToVariant = (type: string) => {
+    if (type === 'sale') return 'info' as const;
+    if (type === 'refund') return 'danger' as const;
+    if (type === 'void') return 'neutral' as const;
+    return 'neutral' as const;
+};
+
 export default function MerchantTransactionsPage() {
     const router = useRouter();
     const { isLoading } = useAuth(true);
@@ -84,8 +127,8 @@ export default function MerchantTransactionsPage() {
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [typeFilter, setTypeFilter] = useState<string>('all');
     const [terminalFilter, setTerminalFilter] = useState<string>('all');
-    const [isFilterOpen, setIsFilterOpen] = useState(false);
-    const [selectedTx, setSelectedTx] = useState<MerchantTransaction | null>(null);
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
     const [generationSummary, setGenerationSummary] = useState<GenerationSummary | null>(null);
@@ -109,8 +152,9 @@ export default function MerchantTransactionsPage() {
             setIsRefreshing(true);
             await fetchTransactions();
             setError(null);
-        } catch (fetchError: any) {
-            setError(fetchError.message || 'Erreur de chargement');
+        } catch (fetchError: unknown) {
+            const message = fetchError instanceof Error ? fetchError.message : 'Erreur de chargement';
+            setError(message);
         } finally {
             setLoading(false);
             setIsRefreshing(false);
@@ -145,7 +189,7 @@ export default function MerchantTransactionsPage() {
 
             const payload = await response.json();
             if (!response.ok) {
-                throw new Error(payload.error || 'Échec génération historique');
+                throw new Error(payload.error || 'Echec generation historique');
             }
 
             const summary = toRecord(payload.summary);
@@ -158,14 +202,15 @@ export default function MerchantTransactionsPage() {
             });
 
             await refreshTransactions();
-        } catch (historyError: any) {
-            setError(historyError.message || 'Erreur génération historique');
+        } catch (historyError: unknown) {
+            const message = historyError instanceof Error ? historyError.message : 'Erreur generation historique';
+            setError(message);
         } finally {
             setIsGenerating(false);
         }
     };
 
-    const performRefund = async (tx: MerchantTransaction) => {
+    const performRefund = useCallback(async (tx: MerchantTransaction) => {
         try {
             const typedAmount = window.prompt('Montant du remboursement (laisser vide = total)', tx.amount.toFixed(2));
             if (typedAmount === null) return;
@@ -190,17 +235,17 @@ export default function MerchantTransactionsPage() {
 
             const payload = await response.json();
             if (!response.ok) {
-                throw new Error(payload.error || 'Échec du remboursement');
+                throw new Error(payload.error || 'Echec du remboursement');
             }
 
             await refreshTransactions();
-            setSelectedTx(null);
-        } catch (refundError: any) {
-            setError(refundError.message || 'Erreur remboursement');
+        } catch (refundError: unknown) {
+            const message = refundError instanceof Error ? refundError.message : 'Erreur remboursement';
+            setError(message);
         }
-    };
+    }, [refreshTransactions]);
 
-    const performVoid = async (tx: MerchantTransaction) => {
+    const performVoid = useCallback(async (tx: MerchantTransaction) => {
         try {
             const confirmVoid = window.confirm('Annuler cette transaction ?');
             if (!confirmVoid) return;
@@ -219,17 +264,20 @@ export default function MerchantTransactionsPage() {
 
             const payload = await response.json();
             if (!response.ok) {
-                throw new Error(payload.error || 'Échec de l’annulation');
+                throw new Error(payload.error || 'Echec de l annulation');
             }
 
             await refreshTransactions();
-            setSelectedTx(null);
-        } catch (voidError: any) {
-            setError(voidError.message || 'Erreur annulation');
+        } catch (voidError: unknown) {
+            const message = voidError instanceof Error ? voidError.message : 'Erreur annulation';
+            setError(message);
         }
-    };
+    }, [refreshTransactions]);
 
     const filteredTransactions = useMemo(() => {
+        const fromDate = dateFrom ? new Date(`${dateFrom}T00:00:00`) : null;
+        const toDate = dateTo ? new Date(`${dateTo}T23:59:59`) : null;
+
         return transactions.filter((tx) => {
             const mappedStatus = mapStatus(tx.status);
             const mappedType = mapType(tx.type);
@@ -247,9 +295,13 @@ export default function MerchantTransactionsPage() {
             const matchesType = typeFilter === 'all' || mappedType === typeFilter;
             const matchesTerminal = terminalFilter === 'all' || tx.terminalId === terminalFilter;
 
-            return matchesSearch && matchesStatus && matchesType && matchesTerminal;
+            const txDate = tx.timestamp ? new Date(tx.timestamp) : null;
+            const matchesFrom = !fromDate || (txDate && txDate >= fromDate);
+            const matchesTo = !toDate || (txDate && txDate <= toDate);
+
+            return matchesSearch && matchesStatus && matchesType && matchesTerminal && matchesFrom && matchesTo;
         });
-    }, [transactions, searchTerm, statusFilter, typeFilter, terminalFilter]);
+    }, [transactions, searchTerm, statusFilter, typeFilter, terminalFilter, dateFrom, dateTo]);
 
     const stats = useMemo(() => {
         const totalSales = filteredTransactions
@@ -270,281 +322,339 @@ export default function MerchantTransactionsPage() {
         return Array.from(new Set(transactions.map((tx) => tx.terminalId).filter(Boolean)));
     }, [transactions]);
 
+    const terminalOptions = useMemo<BankSelectOption[]>(() => {
+        return [
+            { value: 'all', label: 'Tous terminaux' },
+            ...terminals.map((terminalId) => ({ value: terminalId, label: terminalId })),
+        ];
+    }, [terminals]);
+
+    const exportCsv = () => {
+        const headers = [
+            'transaction_id',
+            'stan',
+            'masked_pan',
+            'amount',
+            'currency',
+            'type',
+            'status',
+            'response_code',
+            'authorization_code',
+            'terminal_id',
+            'timestamp',
+            'settled_at',
+            'fraud_score',
+            'threeds_status',
+            'eci',
+        ];
+
+        const rows = filteredTransactions.map((tx) => [
+            tx.transactionId || tx.id,
+            tx.stan,
+            tx.maskedPan,
+            tx.amount.toFixed(2),
+            tx.currency,
+            tx.type,
+            tx.status,
+            tx.responseCode,
+            tx.authorizationCode,
+            tx.terminalId,
+            tx.timestamp,
+            tx.settledAt || '',
+            tx.fraudScore ?? '',
+            tx.threedsStatus || '',
+            tx.eci || '',
+        ]);
+
+        const escapeCsv = (value: string) => `"${String(value).replace(/"/g, '""')}"`;
+        const csv = [
+            headers.map(escapeCsv).join(','),
+            ...rows.map((row) => row.map((cell) => escapeCsv(String(cell))).join(',')),
+        ].join('\n');
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `merchant-transactions-${new Date().toISOString().slice(0, 10)}.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
+    };
+
+    const columns = useMemo<BankTableColumn<MerchantTransaction>[]>(() => {
+        return [
+            {
+                key: 'transactionId',
+                header: 'ID',
+                sortable: true,
+                render: (tx) => (
+                    <span style={{ fontFamily: 'var(--bank-font-mono)', color: 'var(--bank-text-primary)' }}>
+                        {tx.transactionId || tx.id}
+                    </span>
+                ),
+            },
+            {
+                key: 'maskedPan',
+                header: 'PAN masqué',
+                render: (tx) => (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <BankBadge variant="neutral" label={getCardBrand(tx.maskedPan)} />
+                        <span style={{ fontFamily: 'var(--bank-font-mono)' }}>•••• {getLastFour(tx.maskedPan)}</span>
+                    </span>
+                ),
+            },
+            {
+                key: 'amount',
+                header: 'Montant',
+                align: 'right',
+                sortable: true,
+                render: (tx) => {
+                    const txType = mapType(tx.type);
+                    const negative = txType === 'refund' || mapStatus(tx.status) === 'voided';
+                    return (
+                        <span style={{ color: negative ? 'var(--bank-danger)' : 'var(--bank-text-primary)', fontWeight: 600 }}>
+                            {negative ? '-' : '+'}{formatMoney(tx.amount, tx.currency)}
+                        </span>
+                    );
+                },
+            },
+            {
+                key: 'type',
+                header: 'Type',
+                render: (tx) => {
+                    const txType = mapType(tx.type);
+                    const label = txType === 'sale' ? 'Vente' : txType === 'refund' ? 'Remboursement' : 'Annulation';
+                    return <BankBadge variant={typeToVariant(txType)} label={label} />;
+                },
+            },
+            {
+                key: 'status',
+                header: 'Status',
+                render: (tx) => {
+                    const txStatus = mapStatus(tx.status);
+                    const label = txStatus === 'approved' ? 'Approuvée' : txStatus === 'pending' ? 'En attente' : txStatus === 'declined' ? 'Refusée' : 'Annulée';
+                    return <BankBadge variant={statusToVariant(txStatus)} label={label} />;
+                },
+            },
+            {
+                key: 'terminalId',
+                header: 'Terminal',
+                render: (tx) => <span style={{ fontFamily: 'var(--bank-font-mono)' }}>{tx.terminalId}</span>,
+            },
+            {
+                key: 'timestamp',
+                header: 'Date',
+                sortable: true,
+                render: (tx) => <span>{formatDateTimeString(tx.timestamp)}</span>,
+            },
+            {
+                key: 'actions',
+                header: 'Actions',
+                align: 'right',
+                render: (tx) => {
+                    const canAdjust = mapStatus(tx.status) === 'approved' && mapType(tx.type) === 'sale';
+                    return (
+                        <div style={{ display: 'inline-flex', gap: 6 }}>
+                            {canAdjust && (
+                                <>
+                                    <BankButton
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                            performRefund(tx);
+                                        }}
+                                    >
+                                        Refund
+                                    </BankButton>
+                                    <BankButton
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                            performVoid(tx);
+                                        }}
+                                    >
+                                        Void
+                                    </BankButton>
+                                </>
+                            )}
+                            <BankButton
+                                size="sm"
+                                variant="ghost"
+                                icon={GitBranch}
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                    router.push(`/merchant/transactions/${tx.id}/timeline`);
+                                }}
+                            >
+                                Timeline
+                            </BankButton>
+                        </div>
+                    );
+                },
+            },
+        ];
+    }, [router, performRefund, performVoid]);
+
     if (isLoading || loading) {
         return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+            <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <BankSpinner size={40} />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-slate-950 pt-24 pb-12">
-            <div className="max-w-7xl mx-auto px-6">
-                <div className="flex items-center justify-between mb-8">
-                    <div>
-                        <div className="text-xs text-slate-500 mb-2">
-                            <Link href="/merchant" className="hover:text-purple-400">Dashboard Marchand</Link>
-                            <ChevronRight size={12} className="inline mx-1" />
-                            <span className="text-purple-400">Transactions</span>
-                        </div>
-                        <h1 className="text-3xl font-bold text-white mb-2">Transactions réelles</h1>
-                        <p className="text-slate-400">Historique réel alimenté par la base transactionnelle.</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <button
-                            onClick={refreshTransactions}
-                            className="flex items-center gap-2 px-4 py-2 bg-slate-800 border border-white/10 text-white rounded-xl hover:bg-slate-700"
-                        >
-                            <RefreshCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
+        <div style={{ maxWidth: 1320, margin: '0 auto', padding: 'var(--bank-space-6)' }}>
+            <div className="bk-caption" style={{ marginBottom: 'var(--bank-space-4)' }}>
+                <Link href="/merchant" style={{ color: 'var(--bank-text-tertiary)', textDecoration: 'none' }}>Dashboard Marchand</Link>
+                <ChevronRight size={12} style={{ display: 'inline', margin: '0 6px' }} />
+                <span style={{ color: 'var(--bank-accent)' }}>Transactions</span>
+            </div>
+
+            <BankPageHeader
+                title="Transactions"
+                subtitle="Historique reel alimente par la base transactionnelle marchande."
+                actions={
+                    <div style={{ display: 'flex', gap: 'var(--bank-space-2)', flexWrap: 'wrap' }}>
+                        <BankButton variant="ghost" size="sm" icon={RefreshCw} onClick={refreshTransactions} loading={isRefreshing}>
                             Actualiser
-                        </button>
+                        </BankButton>
+                        <BankButton variant="ghost" size="sm" icon={Download} onClick={exportCsv} disabled={filteredTransactions.length === 0}>
+                            Export CSV
+                        </BankButton>
                         {isDev && (
-                            <button
-                                onClick={generateRealHistory}
-                                disabled={isGenerating}
-                                className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-white rounded-xl hover:bg-purple-600 disabled:opacity-60"
-                            >
-                                <Download size={18} />
-                                {isGenerating ? 'Génération...' : 'Générer historique réel'}
-                            </button>
+                            <BankButton size="sm" icon={RotateCcw} onClick={generateRealHistory} loading={isGenerating}>
+                                {isGenerating ? 'Generation...' : 'Generer historique reel'}
+                            </BankButton>
                         )}
                     </div>
+                }
+            />
+
+            {error && (
+                <div
+                    style={{
+                        marginBottom: 'var(--bank-space-4)',
+                        borderRadius: 'var(--bank-radius-lg)',
+                        border: '1px solid color-mix(in srgb, var(--bank-danger) 30%, transparent)',
+                        background: 'color-mix(in srgb, var(--bank-danger) 8%, transparent)',
+                        color: 'var(--bank-danger)',
+                        padding: 'var(--bank-space-4)',
+                        fontSize: 'var(--bank-text-sm)',
+                    }}
+                >
+                    {error}
                 </div>
+            )}
 
-                {error && (
-                    <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-sm">
-                        {error}
-                    </div>
-                )}
-
-                {isDev && generationSummary && (
-                    <div className="mb-6 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-200 text-sm">
-                        Historique créé: {generationSummary.createdTransactions} transactions ({generationSummary.approvedTransactions} approuvées, {generationSummary.declinedTransactions} refusées), {generationSummary.refunds} remboursements, {generationSummary.voids} annulations.
-                    </div>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                    <div className="bg-slate-800/50 border border-white/10 rounded-xl p-4">
-                        <p className="text-sm text-slate-400 mb-1">Total ventes</p>
-                        <p className="text-2xl font-bold text-emerald-400">+{formatMoney(stats.totalSales)}</p>
-                    </div>
-                    <div className="bg-slate-800/50 border border-white/10 rounded-xl p-4">
-                        <p className="text-sm text-slate-400 mb-1">Total remboursements</p>
-                        <p className="text-2xl font-bold text-red-400">-{formatMoney(stats.totalRefunds)}</p>
-                    </div>
-                    <div className="bg-slate-800/50 border border-white/10 rounded-xl p-4">
-                        <p className="text-sm text-slate-400 mb-1">Net</p>
-                        <p className="text-2xl font-bold text-white">{formatMoney(stats.net)}</p>
-                    </div>
-                    <div className="bg-slate-800/50 border border-white/10 rounded-xl p-4">
-                        <p className="text-sm text-slate-400 mb-1">Transactions</p>
-                        <p className="text-2xl font-bold text-white">{filteredTransactions.length}</p>
-                    </div>
+            {isDev && generationSummary && (
+                <div
+                    style={{
+                        marginBottom: 'var(--bank-space-4)',
+                        borderRadius: 'var(--bank-radius-lg)',
+                        border: '1px solid color-mix(in srgb, var(--bank-success) 30%, transparent)',
+                        background: 'color-mix(in srgb, var(--bank-success) 10%, transparent)',
+                        color: 'var(--bank-success)',
+                        padding: 'var(--bank-space-4)',
+                        fontSize: 'var(--bank-text-sm)',
+                    }}
+                >
+                    Historique cree: {generationSummary.createdTransactions} transactions ({generationSummary.approvedTransactions} approuvees, {generationSummary.declinedTransactions} refusees), {generationSummary.refunds} remboursements, {generationSummary.voids} annulations.
                 </div>
+            )}
 
-                <div className="flex flex-col md:flex-row gap-4 mb-6">
-                    <div className="relative flex-1">
-                        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input
-                            type="text"
-                            placeholder="Rechercher par ID, STAN, carte, auth code..."
-                            value={searchTerm}
-                            onChange={(event) => setSearchTerm(event.target.value)}
-                            className="w-full pl-12 pr-4 py-3 bg-slate-800/50 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
-                        />
-                    </div>
-
-                    <button
-                        onClick={() => setIsFilterOpen((current) => !current)}
-                        className="flex items-center gap-2 px-4 py-3 bg-slate-800/50 border border-white/10 rounded-xl text-white hover:bg-slate-700"
-                    >
-                        <Filter size={18} />
-                        Filtres
-                        <ChevronDown size={16} className={`transition-transform ${isFilterOpen ? 'rotate-180' : ''}`} />
-                    </button>
-                </div>
-
-                {isFilterOpen && (
-                    <div className="bg-slate-800/50 border border-white/10 rounded-xl p-4 mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <label className="text-sm text-slate-400 mb-2 block">Statut</label>
-                            <select
-                                value={statusFilter}
-                                onChange={(event) => setStatusFilter(event.target.value)}
-                                className="w-full px-4 py-2 bg-slate-900 border border-white/10 rounded-lg text-white"
-                            >
-                                <option value="all">Tous</option>
-                                <option value="approved">Approuvée</option>
-                                <option value="pending">En attente</option>
-                                <option value="declined">Refusée</option>
-                                <option value="voided">Annulée / Remboursée</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="text-sm text-slate-400 mb-2 block">Type</label>
-                            <select
-                                value={typeFilter}
-                                onChange={(event) => setTypeFilter(event.target.value)}
-                                className="w-full px-4 py-2 bg-slate-900 border border-white/10 rounded-lg text-white"
-                            >
-                                <option value="all">Tous</option>
-                                <option value="sale">Vente</option>
-                                <option value="refund">Remboursement</option>
-                                <option value="void">Annulation</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="text-sm text-slate-400 mb-2 block">Terminal</label>
-                            <select
-                                value={terminalFilter}
-                                onChange={(event) => setTerminalFilter(event.target.value)}
-                                className="w-full px-4 py-2 bg-slate-900 border border-white/10 rounded-lg text-white"
-                            >
-                                <option value="all">Tous</option>
-                                {terminals.map((terminalId) => (
-                                    <option key={terminalId} value={terminalId}>{terminalId}</option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-                )}
-
-                <div className="bg-slate-800/50 border border-white/10 rounded-2xl overflow-hidden">
-                    <div className="hidden lg:grid grid-cols-12 gap-4 p-4 border-b border-white/10 text-sm text-slate-400 font-medium">
-                        <div className="col-span-2">Type</div>
-                        <div className="col-span-2">Carte</div>
-                        <div className="col-span-2">Date/Heure</div>
-                        <div className="col-span-2">Terminal</div>
-                        <div className="col-span-2">Statut</div>
-                        <div className="col-span-2 text-right">Montant</div>
-                    </div>
-
-                    {filteredTransactions.map((tx, index) => {
-                        const txType = mapType(tx.type);
-                        const txStatus = mapStatus(tx.status);
-                        return (
-                            <div
-                                key={tx.id}
-                                onClick={() => setSelectedTx(tx)}
-                                className={`grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 hover:bg-white/5 transition-colors cursor-pointer items-center ${index !== 0 ? 'border-t border-white/5' : ''}`}
-                            >
-                                <div className="lg:col-span-2 flex items-center gap-3">
-                                    <div className={`p-2 rounded-lg ${txType === 'refund' ? 'bg-red-500/20' : txType === 'void' ? 'bg-slate-500/20' : 'bg-emerald-500/20'}`}>
-                                        {txType === 'refund' ? (
-                                            <ArrowDownLeft size={16} className="text-red-400" />
-                                        ) : txType === 'void' ? (
-                                            <RotateCcw size={16} className="text-slate-400" />
-                                        ) : (
-                                            <ArrowUpRight size={16} className="text-emerald-400" />
-                                        )}
-                                    </div>
-                                    <span className={txType === 'refund' ? 'text-red-400' : txType === 'void' ? 'text-slate-300' : 'text-emerald-400'}>
-                                        {txType === 'refund' ? 'Remboursement' : txType === 'void' ? 'Annulation' : 'Vente'}
-                                    </span>
-                                </div>
-
-                                <div className="lg:col-span-2">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs px-1.5 py-0.5 rounded bg-slate-700 text-slate-300">
-                                            {getCardBrand(tx.maskedPan)}
-                                        </span>
-                                        <span className="text-white font-mono">•••• {getLastFour(tx.maskedPan)}</span>
-                                    </div>
-                                </div>
-
-                                <div className="lg:col-span-2 text-slate-300 text-sm">{formatDateTimeString(tx.timestamp)}</div>
-                                <div className="lg:col-span-2"><span className="text-white font-mono text-sm">{tx.terminalId}</span></div>
-                                <div className="lg:col-span-2"><StatusBadge status={tx.status} /></div>
-
-                                <div className="lg:col-span-2 text-right">
-                                    <p className={`font-semibold ${txType === 'refund' || txStatus === 'voided' ? 'text-red-400' : 'text-white'}`}>
-                                        {txType === 'refund' || txStatus === 'voided' ? '-' : '+'}
-                                        {formatMoney(tx.amount, tx.currency)}
-                                    </p>
-                                    {tx.authorizationCode && (
-                                        <span className="text-xs text-slate-500 font-mono">{tx.authorizationCode}</span>
-                                    )}
-                                </div>
-                            </div>
-                        );
-                    })}
-
-                    {filteredTransactions.length === 0 && (
-                        <div className="p-12 text-center text-slate-400">Aucune transaction trouvée</div>
-                    )}
-                </div>
-
-                {selectedTx && (
-                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                        <div className="bg-slate-800 border border-white/10 rounded-2xl p-6 w-full max-w-lg">
-                            <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-xl font-bold text-white">Détail transaction</h2>
-                                <button onClick={() => setSelectedTx(null)} className="text-slate-400 hover:text-white">✕</button>
-                            </div>
-
-                            <div className="space-y-3 text-sm">
-                                <div className="flex justify-between py-2 border-b border-white/5"><span className="text-slate-400">Transaction ID</span><span className="text-white font-mono">{selectedTx.transactionId}</span></div>
-                                <div className="flex justify-between py-2 border-b border-white/5"><span className="text-slate-400">Montant</span><span className="text-white font-bold">{formatMoney(selectedTx.amount, selectedTx.currency)}</span></div>
-                                <div className="flex justify-between py-2 border-b border-white/5"><span className="text-slate-400">Carte</span><span className="text-white font-mono">{selectedTx.maskedPan}</span></div>
-                                <div className="flex justify-between py-2 border-b border-white/5"><span className="text-slate-400">Statut</span><StatusBadge status={selectedTx.status} /></div>
-                                <div className="flex justify-between py-2 border-b border-white/5"><span className="text-slate-400">Code réponse</span><span className="text-white font-mono">{selectedTx.responseCode || '-'}</span></div>
-                                <div className="flex justify-between py-2 border-b border-white/5"><span className="text-slate-400">Auth code</span><span className="text-white font-mono">{selectedTx.authorizationCode || '-'}</span></div>
-                                <div className="flex justify-between py-2 border-b border-white/5"><span className="text-slate-400">STAN</span><span className="text-white font-mono">{selectedTx.stan || '-'}</span></div>
-                                <div className="flex justify-between py-2 border-b border-white/5"><span className="text-slate-400">Terminal</span><span className="text-white font-mono">{selectedTx.terminalId}</span></div>
-                                <div className="flex justify-between py-2 border-b border-white/5"><span className="text-slate-400">Date</span><span className="text-white">{formatDateTimeString(selectedTx.timestamp)}</span></div>
-                                <div className="flex justify-between py-2 border-b border-white/5"><span className="text-slate-400">Settled at</span><span className="text-white">{selectedTx.settledAt ? formatDateTimeString(selectedTx.settledAt) : '-'}</span></div>
-                                <div className="flex justify-between py-2 border-b border-white/5">
-                                    <span className="text-slate-400">Fraud Score</span>
-                                    <span className={`font-mono font-bold ${selectedTx.fraudScore != null ? (selectedTx.fraudScore < 30 ? 'text-emerald-400' : selectedTx.fraudScore < 60 ? 'text-amber-400' : 'text-red-400') : 'text-white'}`}>
-                                        {selectedTx.fraudScore != null ? selectedTx.fraudScore : '-'}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between py-2 border-b border-white/5">
-                                    <span className="text-slate-400">3DS Status</span>
-                                    <span className={`text-xs px-2 py-0.5 rounded font-bold ${selectedTx.threedsStatus === 'Y' ? 'bg-emerald-500/20 text-emerald-400' : selectedTx.threedsStatus === 'N' ? 'bg-red-500/20 text-red-400' : 'text-white'}`}>
-                                        {selectedTx.threedsStatus || '-'}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between py-2">
-                                    <span className="text-slate-400">ECI</span>
-                                    <span className="text-white font-mono">{selectedTx.eci || '-'}</span>
-                                </div>
-                            </div>
-
-                            <button
-                                onClick={() => {
-                                    const txId = selectedTx.id;
-                                    setSelectedTx(null);
-                                    router.push(`/merchant/transactions/${txId}/timeline`);
-                                }}
-                                className="w-full mt-4 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-violet-600 text-white font-bold hover:from-purple-500 hover:to-violet-500 transition flex items-center justify-center gap-2"
-                            >
-                                <GitBranch size={18} />
-                                Voir la Timeline Interactive
-                            </button>
-
-                            {mapStatus(selectedTx.status) === 'approved' && mapType(selectedTx.type) === 'sale' && (
-                                <div className="mt-3 flex gap-3">
-                                    <button
-                                        onClick={() => performRefund(selectedTx)}
-                                        className="flex-1 py-3 bg-red-500/20 text-red-400 rounded-xl hover:bg-red-500/30"
-                                    >
-                                        Rembourser
-                                    </button>
-                                    <button
-                                        onClick={() => performVoid(selectedTx)}
-                                        className="flex-1 py-3 bg-slate-700 text-white rounded-xl hover:bg-slate-600"
-                                    >
-                                        Annuler (void)
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
+            <div
+                style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                    gap: 'var(--bank-space-4)',
+                    marginBottom: 'var(--bank-space-5)',
+                }}
+            >
+                <StatCard label="Total ventes" value={`+${formatMoney(stats.totalSales)}`} loading={isRefreshing} index={0} />
+                <StatCard label="Total remboursements" value={`-${formatMoney(stats.totalRefunds)}`} loading={isRefreshing} index={1} />
+                <StatCard label="Net" value={formatMoney(stats.net)} loading={isRefreshing} accent index={2} />
+                <StatCard label="Transactions" value={String(filteredTransactions.length)} loading={isRefreshing} index={3} />
             </div>
+
+            <section className="bk-card" style={{ marginBottom: 'var(--bank-space-4)' }}>
+                <div
+                    style={{
+                        display: 'grid',
+                        gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr',
+                        gap: 'var(--bank-space-3)',
+                    }}
+                    className="bk-merchant-tx-filters"
+                >
+                    <BankInput
+                        label="Recherche"
+                        value={searchTerm}
+                        onChange={(event) => setSearchTerm(event.target.value)}
+                        placeholder="ID, STAN, carte, auth code..."
+                        prefix={Search}
+                    />
+                    <BankSelect
+                        label="Statut"
+                        value={statusFilter}
+                        onChange={(value) => setStatusFilter(value)}
+                        options={statusOptions}
+                    />
+                    <BankSelect
+                        label="Type"
+                        value={typeFilter}
+                        onChange={(value) => setTypeFilter(value)}
+                        options={typeOptions}
+                    />
+                    <BankSelect
+                        label="Terminal"
+                        value={terminalFilter}
+                        onChange={(value) => setTerminalFilter(value)}
+                        options={terminalOptions}
+                    />
+                    <BankInput
+                        label="Date debut"
+                        type="date"
+                        value={dateFrom}
+                        onChange={(event) => setDateFrom(event.target.value)}
+                    />
+                    <BankInput
+                        label="Date fin"
+                        type="date"
+                        value={dateTo}
+                        onChange={(event) => setDateTo(event.target.value)}
+                    />
+                </div>
+            </section>
+
+            <BankTable
+                columns={columns}
+                data={filteredTransactions}
+                loading={isRefreshing}
+                skeletonRows={6}
+                emptyTitle="Aucune transaction"
+                emptyDesc="Aucune transaction ne correspond aux filtres actifs."
+                onRowClick={(tx) => router.push(`/merchant/transactions/${tx.id}/timeline`)}
+                rowKey={(tx) => tx.id}
+                caption="Transactions marchand"
+            />
+
+            <style>{`
+              .bk-merchant-tx-filters {
+                grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
+              }
+              @media (max-width: 1120px) {
+                .bk-merchant-tx-filters {
+                  grid-template-columns: 1fr 1fr;
+                }
+              }
+              @media (max-width: 720px) {
+                .bk-merchant-tx-filters {
+                  grid-template-columns: 1fr;
+                }
+              }
+            `}</style>
         </div>
     );
 }
-

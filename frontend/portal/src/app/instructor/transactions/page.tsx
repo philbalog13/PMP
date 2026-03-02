@@ -6,8 +6,9 @@ import Link from 'next/link';
 import { useAuth } from '../../auth/useAuth';
 import {
     Activity, Search, RefreshCw, ArrowUpRight, ArrowDownLeft,
-    ChevronRight, GitBranch, X
+    GitBranch, X
 } from 'lucide-react';
+import { NotionSkeleton } from '@shared/components/notion/NotionSkeleton';
 
 interface PlatformTransaction {
     id: string;
@@ -36,6 +37,14 @@ interface PlatformTransaction {
     merchant_first_name: string;
     merchant_last_name: string;
 }
+
+const STATUS_TOKENS: Record<string, { color: string; bg: string; border: string }> = {
+    APPROVED: { color: 'var(--n-success)', bg: 'var(--n-success-bg)', border: 'var(--n-success-border)' },
+    DECLINED: { color: 'var(--n-danger)', bg: 'var(--n-danger-bg)', border: 'var(--n-danger-border)' },
+    PENDING:  { color: 'var(--n-warning)', bg: 'var(--n-warning-bg)', border: 'var(--n-warning-border)' },
+    REFUNDED: { color: 'var(--n-accent)', bg: 'var(--n-accent-bg)', border: 'var(--n-accent-border)' },
+    REVERSED: { color: '#8b5cf6', bg: '#8b5cf610', border: '#8b5cf630' },
+};
 
 export default function InstructorTransactionsPage() {
     const router = useRouter();
@@ -70,7 +79,7 @@ export default function InstructorTransactionsPage() {
             if (!res.ok) {
                 const text = await res.text();
                 let msg = `Erreur ${res.status}`;
-                try { msg = JSON.parse(text)?.error || msg; } catch { /* plain text response */ }
+                try { msg = JSON.parse(text)?.error || msg; } catch { /* plain text */ }
                 throw new Error(msg);
             }
             const data = await res.json();
@@ -86,87 +95,89 @@ export default function InstructorTransactionsPage() {
         if (!isLoading && isAuthenticated) fetchTransactions();
     }, [isLoading, isAuthenticated, fetchTransactions]);
 
-    if (isLoading) {
-        return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-                <div className="h-8 w-8 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
-            </div>
-        );
-    }
-
-    const statusColors: Record<string, string> = {
-        APPROVED: 'bg-emerald-500/20 text-emerald-400',
-        DECLINED: 'bg-red-500/20 text-red-400',
-        PENDING: 'bg-amber-500/20 text-amber-400',
-        REFUNDED: 'bg-blue-500/20 text-blue-400',
-        REVERSED: 'bg-purple-500/20 text-purple-400',
-    };
-
     const approvedCount = transactions.filter(t => t.status === 'APPROVED').length;
     const declinedCount = transactions.filter(t => t.status === 'DECLINED').length;
     const totalVolume = transactions.filter(t => t.status === 'APPROVED').reduce((s, t) => s + parseFloat(t.amount), 0);
 
-    return (
-        <div className="min-h-screen bg-slate-950 pt-24 pb-12 px-4 md:px-8">
-            <div className="max-w-7xl mx-auto">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-8">
-                    <div>
-                        <div className="text-xs text-slate-500 mb-2">
-                            <Link href="/instructor" className="hover:text-blue-400">Dashboard</Link>
-                            <ChevronRight size={12} className="inline mx-1" />
-                            <span className="text-blue-400">Transactions</span>
-                        </div>
-                        <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-                            <Activity size={28} className="text-blue-400" />
-                            Transactions Plateforme
-                        </h1>
-                        <p className="text-sm text-slate-400 mt-1">
-                            Vue formateur — toutes les transactions de la plateforme PMP
-                        </p>
+    const SELECT_STYLE: React.CSSProperties = {
+        padding: '9px 12px', borderRadius: 8, border: '1px solid var(--n-border)',
+        background: 'var(--n-bg-secondary)', color: 'var(--n-text-primary)', fontSize: 13, outline: 'none',
+    };
+
+    if (isLoading) {
+        return (
+            <div style={{ minHeight: '100vh', background: 'var(--n-bg-secondary)' }}>
+                <div style={{ background: 'var(--n-bg-primary)', borderBottom: '1px solid var(--n-border)', padding: '24px 32px' }}>
+                    <NotionSkeleton type="title" />
+                </div>
+                <div style={{ padding: '32px', maxWidth: 1200, margin: '0 auto' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
+                        {[...Array(4)].map((_, i) => <NotionSkeleton key={i} type="stat" />)}
                     </div>
-                    <button onClick={fetchTransactions} disabled={loading} className="p-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition text-slate-400">
-                        <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+                    {[...Array(6)].map((_, i) => <div key={i} style={{ marginBottom: 8 }}><NotionSkeleton type="card" /></div>)}
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div style={{ minHeight: '100vh', background: 'var(--n-bg-secondary)' }}>
+            {/* Page Header */}
+            <div style={{ background: 'var(--n-bg-primary)', borderBottom: '1px solid var(--n-border)', padding: '24px 32px' }}>
+                <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--n-accent-bg)', border: '1px solid var(--n-accent-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Activity size={20} style={{ color: 'var(--n-accent)' }} />
+                        </div>
+                        <div>
+                            <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--n-text-primary)', margin: 0 }}>Transactions Plateforme</h1>
+                            <p style={{ fontSize: 13, color: 'var(--n-text-tertiary)', margin: '2px 0 0' }}>
+                                Vue formateur — toutes les transactions PMP
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={fetchTransactions}
+                        disabled={loading}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--n-border)', background: 'var(--n-bg-secondary)', color: 'var(--n-text-secondary)', fontSize: 13, cursor: loading ? 'not-allowed' : 'pointer' }}
+                    >
+                        <RefreshCw size={14} style={{ animation: loading ? 'spin 0.7s linear infinite' : 'none' }} />
+                        Actualiser
                     </button>
                 </div>
+            </div>
 
+            {/* Content */}
+            <div style={{ padding: '32px', maxWidth: 1200, margin: '0 auto' }}>
                 {/* Stats */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                    <StatCard label="Total" value={transactions.length} color="text-white" />
-                    <StatCard label="Approuvées" value={approvedCount} color="text-emerald-400" />
-                    <StatCard label="Refusées" value={declinedCount} color="text-red-400" />
-                    <StatCard label="Volume" value={`${totalVolume.toFixed(2)} EUR`} color="text-blue-400" />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
+                    <StatCard label="Total" value={transactions.length} accent="var(--n-text-primary)" accentBg="var(--n-bg-tertiary)" />
+                    <StatCard label="Approuvées" value={approvedCount} accent="var(--n-success)" accentBg="var(--n-success-bg)" />
+                    <StatCard label="Refusées" value={declinedCount} accent="var(--n-danger)" accentBg="var(--n-danger-bg)" />
+                    <StatCard label="Volume" value={`${totalVolume.toFixed(2)} EUR`} accent="var(--n-accent)" accentBg="var(--n-accent-bg)" />
                 </div>
 
                 {/* Filters */}
-                <div className="flex flex-wrap gap-3 mb-6">
-                    <div className="relative flex-1 min-w-[200px]">
-                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
+                    <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
+                        <Search size={14} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--n-text-tertiary)', pointerEvents: 'none' }} />
                         <input
                             type="text"
                             placeholder="Rechercher (ID, PAN, marchand)..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && fetchTransactions()}
-                            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-800/50 border border-white/10 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500/50"
+                            style={{ width: '100%', paddingLeft: 34, paddingRight: 12, paddingTop: 9, paddingBottom: 9, borderRadius: 8, border: '1px solid var(--n-border)', background: 'var(--n-bg-secondary)', color: 'var(--n-text-primary)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
                         />
                     </div>
-                    <select
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        className="px-4 py-2.5 rounded-xl bg-slate-800/50 border border-white/10 text-white text-sm focus:outline-none"
-                    >
+                    <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={SELECT_STYLE}>
                         <option value="ALL">Tous statuts</option>
                         <option value="APPROVED">Approuvé</option>
                         <option value="DECLINED">Refusé</option>
                         <option value="PENDING">En attente</option>
                         <option value="REFUNDED">Remboursé</option>
                     </select>
-                    <select
-                        value={typeFilter}
-                        onChange={(e) => setTypeFilter(e.target.value)}
-                        className="px-4 py-2.5 rounded-xl bg-slate-800/50 border border-white/10 text-white text-sm focus:outline-none"
-                    >
+                    <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} style={SELECT_STYLE}>
                         <option value="ALL">Tous types</option>
                         <option value="PURCHASE">Achat</option>
                         <option value="REFUND">Remboursement</option>
@@ -176,121 +187,157 @@ export default function InstructorTransactionsPage() {
 
                 {/* Error */}
                 {error && (
-                    <div className="rounded-xl bg-red-500/10 border border-red-500/30 p-4 mb-6 text-sm text-red-300">{error}</div>
+                    <div style={{ padding: '12px 16px', background: 'var(--n-danger-bg)', border: '1px solid var(--n-danger-border)', borderRadius: 8, color: 'var(--n-danger)', fontSize: 13, marginBottom: 20 }}>
+                        {error}
+                    </div>
                 )}
 
                 {/* Transactions list */}
                 {loading ? (
-                    <div className="text-center py-20">
-                        <div className="h-8 w-8 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin mx-auto" />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {[...Array(6)].map((_, i) => <NotionSkeleton key={i} type="card" />)}
                     </div>
                 ) : transactions.length === 0 ? (
-                    <div className="text-center py-20 text-slate-500">Aucune transaction trouvée</div>
-                ) : (
-                    <div className="space-y-2">
-                        {transactions.map((tx) => (
-                            <div
-                                key={tx.id}
-                                onClick={() => setSelectedTxn(tx)}
-                                className="rounded-xl border border-white/10 bg-slate-800/30 p-4 flex items-center justify-between gap-4 cursor-pointer hover:bg-slate-800/50 hover:border-white/20 transition group"
-                            >
-                                <div className="flex items-center gap-4 flex-1 min-w-0">
-                                    <div className="p-2 rounded-lg bg-slate-900 shrink-0">
-                                        {tx.type === 'REFUND' ? <ArrowDownLeft size={16} className="text-emerald-400" /> : <ArrowUpRight size={16} className="text-slate-300" />}
-                                    </div>
-                                    <div className="min-w-0">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-sm font-medium text-white truncate">{tx.merchant_name || 'N/A'}</span>
-                                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${statusColors[tx.status] || 'bg-slate-500/20 text-slate-400'}`}>
-                                                {tx.status}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center gap-3 text-xs text-slate-500 mt-0.5">
-                                            <span>{tx.masked_pan || '-'}</span>
-                                            <span>{tx.client_first_name ? `${tx.client_first_name} ${tx.client_last_name || ''}` : tx.client_username || 'Client'}</span>
-                                            <span>{tx.timestamp ? new Date(tx.timestamp).toLocaleString('fr-FR') : '-'}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-3 shrink-0">
-                                    <span className="text-sm font-bold text-white">{parseFloat(tx.amount).toFixed(2)} {tx.currency || 'EUR'}</span>
-                                    <ChevronRight size={16} className="text-slate-600 group-hover:text-slate-400 transition" />
-                                </div>
-                            </div>
-                        ))}
+                    <div style={{ textAlign: 'center', padding: '64px 16px', color: 'var(--n-text-tertiary)', fontSize: 14 }}>
+                        Aucune transaction trouvée
                     </div>
-                )}
-
-                {/* Detail Modal */}
-                {selectedTxn && (
-                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelectedTxn(null)}>
-                        <div className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-                            <div className="p-6">
-                                <div className="flex items-center justify-between mb-6">
-                                    <h2 className="text-lg font-bold text-white">Détail Transaction</h2>
-                                    <button onClick={() => setSelectedTxn(null)} className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400">
-                                        <X size={18} />
-                                    </button>
-                                </div>
-
-                                <div className={`rounded-xl p-4 mb-4 border ${selectedTxn.status === 'APPROVED' ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-red-500/20 bg-red-500/5'}`}>
-                                    <div className="text-2xl font-bold text-white text-center">{parseFloat(selectedTxn.amount).toFixed(2)} EUR</div>
-                                    <div className="text-center mt-1">
-                                        <span className={`text-xs font-bold px-2 py-0.5 rounded ${statusColors[selectedTxn.status] || ''}`}>{selectedTxn.status}</span>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2 text-sm mb-6">
-                                    <ModalRow label="Transaction ID" value={selectedTxn.transaction_id} />
-                                    <ModalRow label="STAN" value={selectedTxn.stan} />
-                                    <ModalRow label="Code Auth." value={selectedTxn.authorization_code} />
-                                    <ModalRow label="Code Réponse" value={selectedTxn.response_code} />
-                                    <ModalRow label="Type" value={selectedTxn.type} />
-                                    <ModalRow label="Carte" value={selectedTxn.masked_pan} />
-                                    <ModalRow label="Terminal" value={selectedTxn.terminal_id} />
-                                    <ModalRow label="Marchand" value={selectedTxn.merchant_name} />
-                                    <ModalRow label="MCC" value={selectedTxn.merchant_mcc} />
-                                    <ModalRow label="Client" value={selectedTxn.client_first_name ? `${selectedTxn.client_first_name} ${selectedTxn.client_last_name || ''}` : selectedTxn.client_username} />
-                                    <ModalRow label="Score Fraude" value={selectedTxn.fraud_score ? `${parseFloat(selectedTxn.fraud_score).toFixed(1)}/100` : 'N/A'} />
-                                    <ModalRow label="3DS" value={selectedTxn.threeds_status || 'N/A'} />
-                                    <ModalRow label="Date" value={selectedTxn.timestamp ? new Date(selectedTxn.timestamp).toLocaleString('fr-FR') : 'N/A'} />
-                                    <ModalRow label="Réglé le" value={selectedTxn.settled_at ? new Date(selectedTxn.settled_at).toLocaleString('fr-FR') : 'Non réglé'} />
-                                </div>
-
-                                <button
-                                    onClick={() => {
-                                        setSelectedTxn(null);
-                                        router.push(`/instructor/transactions/${selectedTxn.id}/timeline`);
-                                    }}
-                                    className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold hover:from-blue-500 hover:to-indigo-500 transition flex items-center justify-center gap-2"
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {transactions.map((tx) => {
+                            const tokens = STATUS_TOKENS[tx.status] || { color: 'var(--n-text-tertiary)', bg: 'var(--n-bg-tertiary)', border: 'var(--n-border)' };
+                            return (
+                                <div
+                                    key={tx.id}
+                                    onClick={() => setSelectedTxn(tx)}
+                                    style={{ background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)', borderRadius: 9, padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, cursor: 'pointer' }}
                                 >
-                                    <GitBranch size={18} />
-                                    Voir la Timeline Interactive
-                                </button>
-                            </div>
-                        </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
+                                        <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--n-bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                            {tx.type === 'REFUND'
+                                                ? <ArrowDownLeft size={14} style={{ color: 'var(--n-success)' }} />
+                                                : <ArrowUpRight size={14} style={{ color: 'var(--n-text-tertiary)' }} />
+                                            }
+                                        </div>
+                                        <div style={{ minWidth: 0 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--n-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                    {tx.merchant_name || 'N/A'}
+                                                </span>
+                                                <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 5, background: tokens.bg, border: `1px solid ${tokens.border}`, color: tokens.color, textTransform: 'uppercase', flexShrink: 0 }}>
+                                                    {tx.status}
+                                                </span>
+                                            </div>
+                                            <div style={{ display: 'flex', gap: 12, fontSize: 11, color: 'var(--n-text-tertiary)', marginTop: 2 }}>
+                                                <span>{tx.masked_pan || '-'}</span>
+                                                <span>{tx.client_first_name ? `${tx.client_first_name} ${tx.client_last_name || ''}` : tx.client_username || 'Client'}</span>
+                                                <span>{tx.timestamp ? new Date(tx.timestamp).toLocaleString('fr-FR') : '-'}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--n-text-primary)', flexShrink: 0 }}>
+                                        {parseFloat(tx.amount).toFixed(2)} {tx.currency || 'EUR'}
+                                    </span>
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
             </div>
+
+            {/* Detail Modal */}
+            {selectedTxn && (
+                <div
+                    style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+                    onClick={() => setSelectedTxn(null)}
+                >
+                    <div
+                        style={{ background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)', borderRadius: 12, width: '100%', maxWidth: 520, maxHeight: '90vh', overflow: 'auto' }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div style={{ padding: 24 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                                <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--n-text-primary)', margin: 0 }}>Détail Transaction</h2>
+                                <button
+                                    onClick={() => setSelectedTxn(null)}
+                                    style={{ padding: 6, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--n-text-tertiary)', borderRadius: 6 }}
+                                >
+                                    <X size={16} />
+                                </button>
+                            </div>
+
+                            {/* Amount banner */}
+                            <div style={{
+                                borderRadius: 8, padding: '16px 12px', marginBottom: 16, textAlign: 'center',
+                                background: selectedTxn.status === 'APPROVED' ? 'var(--n-success-bg)' : 'var(--n-danger-bg)',
+                                border: `1px solid ${selectedTxn.status === 'APPROVED' ? 'var(--n-success-border)' : 'var(--n-danger-border)'}`,
+                            }}>
+                                <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--n-text-primary)' }}>
+                                    {parseFloat(selectedTxn.amount).toFixed(2)} EUR
+                                </div>
+                                <div style={{ marginTop: 6 }}>
+                                    {(() => {
+                                        const t = STATUS_TOKENS[selectedTxn.status] || { color: 'var(--n-text-tertiary)', bg: 'var(--n-bg-tertiary)', border: 'var(--n-border)' };
+                                        return (
+                                            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: t.bg, border: `1px solid ${t.border}`, color: t.color }}>
+                                                {selectedTxn.status}
+                                            </span>
+                                        );
+                                    })()}
+                                </div>
+                            </div>
+
+                            {/* Details */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 1, marginBottom: 20 }}>
+                                <ModalRow label="Transaction ID" value={selectedTxn.transaction_id} />
+                                <ModalRow label="STAN" value={selectedTxn.stan} />
+                                <ModalRow label="Code Auth." value={selectedTxn.authorization_code} />
+                                <ModalRow label="Code Réponse" value={selectedTxn.response_code} />
+                                <ModalRow label="Type" value={selectedTxn.type} />
+                                <ModalRow label="Carte" value={selectedTxn.masked_pan} />
+                                <ModalRow label="Terminal" value={selectedTxn.terminal_id} />
+                                <ModalRow label="Marchand" value={selectedTxn.merchant_name} />
+                                <ModalRow label="MCC" value={selectedTxn.merchant_mcc} />
+                                <ModalRow label="Client" value={selectedTxn.client_first_name ? `${selectedTxn.client_first_name} ${selectedTxn.client_last_name || ''}` : selectedTxn.client_username} />
+                                <ModalRow label="Score Fraude" value={selectedTxn.fraud_score ? `${parseFloat(selectedTxn.fraud_score).toFixed(1)}/100` : 'N/A'} />
+                                <ModalRow label="3DS" value={selectedTxn.threeds_status || 'N/A'} />
+                                <ModalRow label="Date" value={selectedTxn.timestamp ? new Date(selectedTxn.timestamp).toLocaleString('fr-FR') : 'N/A'} />
+                                <ModalRow label="Réglé le" value={selectedTxn.settled_at ? new Date(selectedTxn.settled_at).toLocaleString('fr-FR') : 'Non réglé'} />
+                            </div>
+
+                            <button
+                                onClick={() => {
+                                    setSelectedTxn(null);
+                                    router.push(`/instructor/transactions/${selectedTxn.id}/timeline`);
+                                }}
+                                style={{ width: '100%', padding: '12px 16px', borderRadius: 8, background: 'var(--n-accent)', color: '#fff', fontSize: 14, fontWeight: 600, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                            >
+                                <GitBranch size={16} />
+                                Voir la Timeline Interactive
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
 
-function StatCard({ label, value, color }: { label: string; value: number | string; color: string }) {
+function StatCard({ label, value, accent, accentBg }: { label: string; value: number | string; accent: string; accentBg: string }) {
     return (
-        <div className="rounded-xl border border-white/10 bg-slate-800/30 p-3">
-            <span className="text-[10px] text-slate-500 uppercase tracking-wider">{label}</span>
-            <div className={`text-lg font-bold ${color}`}>{value}</div>
+        <div style={{ background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)', borderRadius: 9, padding: '14px 16px' }}>
+            <div style={{ fontSize: 11, color: 'var(--n-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>{label}</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: accent }}>{value}</div>
         </div>
     );
 }
 
 function ModalRow({ label, value }: { label: string; value: string | null | undefined }) {
     return (
-        <div className="flex justify-between py-1.5 border-b border-white/5">
-            <span className="text-slate-500">{label}</span>
-            <span className="text-white font-mono text-xs text-right max-w-[250px] truncate">{value || 'N/A'}</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--n-border)' }}>
+            <span style={{ fontSize: 12, color: 'var(--n-text-tertiary)' }}>{label}</span>
+            <span style={{ fontSize: 12, fontFamily: 'monospace', color: 'var(--n-text-primary)', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {value || 'N/A'}
+            </span>
         </div>
     );
 }
-

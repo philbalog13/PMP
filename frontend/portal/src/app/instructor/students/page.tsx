@@ -5,9 +5,11 @@ import Link from 'next/link';
 import { useAuth } from '../../auth/useAuth';
 import {
     Users, TrendingUp, CheckCircle, Activity,
-    ChevronRight, RefreshCw, Search, UserPlus, Beaker,
-    BookOpen, BarChart3, GraduationCap
+    RefreshCw, Search, UserPlus,
+    BookOpen, BarChart3, GraduationCap, Beaker
 } from 'lucide-react';
+import { NotionProgress } from '@shared/components/notion/NotionProgress';
+import { NotionSkeleton } from '@shared/components/notion/NotionSkeleton';
 
 interface Student {
     id: string;
@@ -31,13 +33,11 @@ export default function InstructorStudentsPage() {
     const fetchStudents = useCallback(async () => {
         const token = localStorage.getItem('token');
         if (!token) return;
-
         try {
             setError(null);
             const res = await fetch('/api/users/students?limit=50', {
                 headers: { Authorization: `Bearer ${token}` }
             });
-
             if (res.ok) {
                 const data = await res.json();
                 setStudents(data.students || []);
@@ -56,14 +56,12 @@ export default function InstructorStudentsPage() {
         fetchStudents();
     }, [isLoading, fetchStudents]);
 
-    // Computed stats
     const activeStudents = students.filter(s => s.status === 'ACTIVE').length;
     const avgCompletion = students.length > 0
         ? Math.round(students.reduce((acc, s) => acc + Math.min(100, Math.round((s.workshops_completed / 6) * 100)), 0) / students.length)
         : 0;
     const totalModulesValidated = students.reduce((acc, s) => acc + s.workshops_completed, 0);
 
-    // Filter
     const filteredStudents = students.filter(s => {
         if (!searchQuery) return true;
         const name = `${s.first_name} ${s.last_name} ${s.username} ${s.email}`.toLowerCase();
@@ -72,266 +70,202 @@ export default function InstructorStudentsPage() {
 
     if (isLoading || dataLoading) {
         return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                    <Users className="animate-bounce w-12 h-12 text-blue-500" />
-                    <span className="text-sm text-slate-500">Chargement des étudiants...</span>
+            <div style={{ minHeight: '100vh', background: 'var(--n-bg-secondary)' }}>
+                <div style={{ background: 'var(--n-bg-primary)', borderBottom: '1px solid var(--n-border)', padding: '24px 32px' }}>
+                    <NotionSkeleton type="title" />
+                </div>
+                <div style={{ padding: '32px', maxWidth: 1200, margin: '0 auto' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 32 }}>
+                        {[...Array(4)].map((_, i) => <NotionSkeleton key={i} type="stat" />)}
+                    </div>
+                    {[...Array(5)].map((_, i) => <div key={i} style={{ marginBottom: 8 }}><NotionSkeleton type="card" /></div>)}
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-slate-950 text-white pt-24 pb-12 px-6">
-            <div className="max-w-7xl mx-auto space-y-8">
-                {/* Breadcrumb */}
-                <div className="text-xs text-slate-500">
-                    <Link href="/instructor" className="hover:text-blue-400">Dashboard</Link>
-                    <ChevronRight size={12} className="inline mx-1" />
-                    <span className="text-blue-400">Étudiants</span>
-                </div>
-
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="p-3 bg-blue-500/20 rounded-xl border border-blue-500/30">
-                            <Users className="w-7 h-7 text-blue-400" />
+        <div style={{ minHeight: '100vh', background: 'var(--n-bg-secondary)' }}>
+            {/* Page Header */}
+            <div style={{ background: 'var(--n-bg-primary)', borderBottom: '1px solid var(--n-border)', padding: '24px 32px' }}>
+                <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--n-accent-bg)', border: '1px solid var(--n-accent-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Users size={20} style={{ color: 'var(--n-accent)' }} />
                         </div>
                         <div>
-                            <h1 className="text-3xl font-bold">Suivi Étudiants</h1>
-                            <p className="text-slate-400 mt-1">
+                            <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--n-text-primary)', margin: 0 }}>Suivi Étudiants</h1>
+                            <p style={{ fontSize: 13, color: 'var(--n-text-tertiary)', margin: '2px 0 0' }}>
                                 {students.length} étudiant{students.length !== 1 ? 's' : ''} inscrit{students.length !== 1 ? 's' : ''}
                             </p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <button
                             onClick={() => { setDataLoading(true); fetchStudents(); }}
-                            className="flex items-center gap-2 px-4 py-2 bg-slate-800 border border-white/10 text-white rounded-xl hover:bg-slate-700"
+                            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--n-border)', background: 'var(--n-bg-secondary)', color: 'var(--n-text-secondary)', fontSize: 13, cursor: 'pointer' }}
                         >
-                            <RefreshCw size={18} />
+                            <RefreshCw size={14} />
                             Actualiser
                         </button>
                         <Link
                             href="/instructor/students/add"
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-colors"
+                            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, background: 'var(--n-accent)', color: '#fff', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}
                         >
-                            <UserPlus size={18} />
+                            <UserPlus size={14} />
                             Ajouter
                         </Link>
-                        <div className="flex items-center gap-2 px-3 py-2 bg-green-500/10 border border-green-500/20 rounded-full">
-                            <Activity className="w-4 h-4 text-green-400 animate-pulse" />
-                            <span className="text-xs font-bold text-green-400">Live</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 20, background: 'var(--n-success-bg)', border: '1px solid var(--n-success-border)' }}>
+                            <Activity size={12} style={{ color: 'var(--n-success)' }} />
+                            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--n-success)' }}>Live</span>
                         </div>
                     </div>
                 </div>
+            </div>
 
+            {/* Content */}
+            <div style={{ padding: '32px', maxWidth: 1200, margin: '0 auto' }}>
                 {error && (
-                    <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-sm">
+                    <div style={{ padding: '12px 16px', background: 'var(--n-danger-bg)', border: '1px solid var(--n-danger-border)', borderRadius: 8, color: 'var(--n-danger)', fontSize: 13, marginBottom: 24 }}>
                         {error}
                     </div>
                 )}
 
                 {/* Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <StatCard
-                        label="Étudiants Actifs"
-                        value={String(activeStudents)}
-                        icon={<Users className="w-6 h-6" />}
-                        color="green"
-                    />
-                    <StatCard
-                        label="Complétion Moyenne"
-                        value={`${avgCompletion}%`}
-                        icon={<TrendingUp className="w-6 h-6" />}
-                        color="blue"
-                    />
-                    <StatCard
-                        label="XP Total Cohorte"
-                        value={students.reduce((acc, s) => acc + s.total_xp, 0).toLocaleString()}
-                        icon={<GraduationCap className="w-6 h-6" />}
-                        color="purple"
-                    />
-                    <StatCard
-                        label="Modules Validés"
-                        value={String(totalModulesValidated)}
-                        icon={<CheckCircle className="w-6 h-6" />}
-                        color="emerald"
-                    />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
+                    <StatCard label="Étudiants Actifs" value={String(activeStudents)} icon={<Users size={18} />} accent="var(--n-success)" accentBg="var(--n-success-bg)" />
+                    <StatCard label="Complétion Moyenne" value={`${avgCompletion}%`} icon={<TrendingUp size={18} />} accent="var(--n-accent)" accentBg="var(--n-accent-bg)" />
+                    <StatCard label="XP Total Cohorte" value={students.reduce((acc, s) => acc + s.total_xp, 0).toLocaleString()} icon={<GraduationCap size={18} />} accent="#8b5cf6" accentBg="#8b5cf610" />
+                    <StatCard label="Modules Validés" value={String(totalModulesValidated)} icon={<CheckCircle size={18} />} accent="var(--n-success)" accentBg="var(--n-success-bg)" />
                 </div>
 
                 {/* Search */}
-                <div className="relative max-w-md">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <div style={{ position: 'relative', maxWidth: 400, marginBottom: 24 }}>
+                    <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--n-text-tertiary)', pointerEvents: 'none' }} />
                     <input
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Rechercher un étudiant..."
-                        className="w-full pl-12 pr-4 py-3 bg-slate-800/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                        style={{ width: '100%', paddingLeft: 38, paddingRight: 12, paddingTop: 9, paddingBottom: 9, borderRadius: 8, border: '1px solid var(--n-border)', background: 'var(--n-bg-primary)', color: 'var(--n-text-primary)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
                     />
                 </div>
 
-                {/* Students Table */}
-                <div className="bg-slate-900/60 border border-white/10 rounded-2xl overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-slate-900/80">
+                {/* Table */}
+                <div style={{ background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)', borderRadius: 10, overflow: 'hidden', marginBottom: 32 }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                            <tr style={{ borderBottom: '1px solid var(--n-border)', background: 'var(--n-bg-secondary)' }}>
+                                {['Étudiant', 'Ateliers', 'XP', 'Badges', 'Progression', 'Statut', 'Actions'].map(h => (
+                                    <th key={h} style={{ padding: '10px 16px', textAlign: h === 'Actions' ? 'right' : 'left', fontSize: 11, fontWeight: 600, color: 'var(--n-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filteredStudents.length === 0 ? (
                                 <tr>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Étudiant</th>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Ateliers</th>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">XP</th>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Badges</th>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Progression</th>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Statut</th>
-                                    <th className="px-6 py-4 text-right text-xs font-bold text-slate-400 uppercase tracking-wider">Actions</th>
+                                    <td colSpan={7} style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--n-text-tertiary)', fontSize: 14 }}>
+                                        {searchQuery ? 'Aucun étudiant ne correspond à votre recherche' : 'Aucun étudiant inscrit'}
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody className="divide-y divide-white/5">
-                                {filteredStudents.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
-                                            {searchQuery ? 'Aucun étudiant ne correspond à votre recherche' : 'Aucun étudiant inscrit'}
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    filteredStudents.map((student) => {
-                                        const name = [student.first_name, student.last_name].filter(Boolean).join(' ') || student.username;
-                                        const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-                                        const progressPercent = Math.min(100, Math.round((student.workshops_completed / 6) * 100));
-                                        const isStruggling = progressPercent < 20 && student.total_xp < 50;
+                            ) : (
+                                filteredStudents.map((student) => {
+                                    const name = [student.first_name, student.last_name].filter(Boolean).join(' ') || student.username;
+                                    const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+                                    const progressPercent = Math.min(100, Math.round((student.workshops_completed / 6) * 100));
+                                    const isStruggling = progressPercent < 20 && student.total_xp < 50;
 
-                                        return (
-                                            <tr key={student.id} className="hover:bg-white/5 transition">
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs">
-                                                            {initials}
-                                                        </div>
-                                                        <div>
-                                                            <div className="font-medium text-white">{name}</div>
-                                                            <div className="text-xs text-slate-500">{student.email}</div>
-                                                        </div>
+                                    return (
+                                        <tr key={student.id} style={{ borderBottom: '1px solid var(--n-border)' }}>
+                                            <td style={{ padding: '12px 16px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                                    <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--n-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 11, flexShrink: 0 }}>
+                                                        {initials}
                                                     </div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <span className="text-white font-medium">{student.workshops_completed}/6</span>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <span className="text-emerald-400 font-bold">{student.total_xp}</span>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <span className="px-2 py-1 bg-amber-500/20 text-amber-400 rounded-full text-xs font-medium">
-                                                        {student.badge_count}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden max-w-[120px]">
-                                                            <div
-                                                                className={`h-full rounded-full transition-all ${isStruggling ? 'bg-amber-500' : 'bg-gradient-to-r from-blue-500 to-emerald-500'}`}
-                                                                style={{ width: `${progressPercent}%` }}
-                                                            />
-                                                        </div>
-                                                        <span className="text-xs font-bold text-slate-400 min-w-[3rem]">
-                                                            {progressPercent}%
-                                                        </span>
+                                                    <div>
+                                                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--n-text-primary)' }}>{name}</div>
+                                                        <div style={{ fontSize: 11, color: 'var(--n-text-tertiary)' }}>{student.email}</div>
                                                     </div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <span className={`inline-flex px-3 py-1 rounded-full text-xs font-bold uppercase border ${
-                                                        student.status === 'ACTIVE'
-                                                            ? 'bg-green-500/20 text-green-400 border-green-500/30'
-                                                            : 'bg-slate-500/20 text-slate-400 border-slate-500/30'
-                                                    }`}>
-                                                        {student.status === 'ACTIVE' ? 'Actif' : 'Inactif'}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-right">
-                                                    <Link
-                                                        href={`/instructor/students/${student.id}`}
-                                                        className="text-sm font-bold text-blue-400 hover:text-blue-300 transition"
-                                                    >
-                                                        Détails
-                                                    </Link>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                                                </div>
+                                            </td>
+                                            <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: 'var(--n-text-primary)' }}>{student.workshops_completed}/6</td>
+                                            <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 700, color: 'var(--n-success)' }}>{student.total_xp}</td>
+                                            <td style={{ padding: '12px 16px' }}>
+                                                <span style={{ padding: '3px 8px', borderRadius: 6, background: 'var(--n-warning-bg)', border: '1px solid var(--n-warning-border)', fontSize: 11, fontWeight: 600, color: 'var(--n-warning)' }}>
+                                                    {student.badge_count}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '12px 16px', width: 160 }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                    <div style={{ flex: 1 }}>
+                                                        <NotionProgress
+                                                            value={progressPercent}
+                                                            variant={isStruggling ? 'warning' : 'accent'}
+                                                            size="thin"
+                                                        />
+                                                    </div>
+                                                    <span style={{ fontSize: 11, color: 'var(--n-text-tertiary)', minWidth: '2.5rem', textAlign: 'right' }}>{progressPercent}%</span>
+                                                </div>
+                                            </td>
+                                            <td style={{ padding: '12px 16px' }}>
+                                                <span style={{
+                                                    padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
+                                                    background: student.status === 'ACTIVE' ? 'var(--n-success-bg)' : 'var(--n-bg-tertiary)',
+                                                    color: student.status === 'ACTIVE' ? 'var(--n-success)' : 'var(--n-text-tertiary)',
+                                                    border: `1px solid ${student.status === 'ACTIVE' ? 'var(--n-success-border)' : 'var(--n-border)'}`,
+                                                }}>
+                                                    {student.status === 'ACTIVE' ? 'Actif' : 'Inactif'}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                                                <Link
+                                                    href={`/instructor/students/${student.id}`}
+                                                    style={{ fontSize: 12, fontWeight: 600, color: 'var(--n-accent)', textDecoration: 'none' }}
+                                                >
+                                                    Détails →
+                                                </Link>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                            )}
+                        </tbody>
+                    </table>
                 </div>
 
                 {/* Quick Actions */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <Link
-                        href="/instructor/exercises"
-                        className="p-6 bg-slate-900/60 border border-white/10 rounded-2xl hover:border-blue-500/30 transition group"
-                    >
-                        <div className="flex items-center gap-3 mb-2">
-                            <BookOpen size={20} className="text-blue-400" />
-                            <h3 className="text-lg font-bold group-hover:text-blue-400 transition">
-                                Gestion Exercices
-                            </h3>
-                        </div>
-                        <p className="text-sm text-slate-400">
-                            Créer et modifier les exercices pédagogiques
-                        </p>
-                    </Link>
-
-                    <Link
-                        href="/instructor/lab-control"
-                        className="p-6 bg-slate-900/60 border border-white/10 rounded-2xl hover:border-amber-500/30 transition group"
-                    >
-                        <div className="flex items-center gap-3 mb-2">
-                            <Beaker size={20} className="text-amber-400" />
-                            <h3 className="text-lg font-bold group-hover:text-amber-400 transition">
-                                Contrôle Lab
-                            </h3>
-                        </div>
-                        <p className="text-sm text-slate-400">
-                            Injecter des conditions d&apos;erreur pour les exercices
-                        </p>
-                    </Link>
-
-                    <Link
-                        href="/instructor/analytics"
-                        className="p-6 bg-slate-900/60 border border-white/10 rounded-2xl hover:border-emerald-500/30 transition group"
-                    >
-                        <div className="flex items-center gap-3 mb-2">
-                            <BarChart3 size={20} className="text-emerald-400" />
-                            <h3 className="text-lg font-bold group-hover:text-emerald-400 transition">
-                                Analytics
-                            </h3>
-                        </div>
-                        <p className="text-sm text-slate-400">
-                            Statistiques détaillées et classements
-                        </p>
-                    </Link>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+                    {[
+                        { href: '/instructor/exercises', icon: <BookOpen size={18} />, label: 'Gestion Exercices', desc: 'Créer et modifier les exercices pédagogiques', accent: 'var(--n-accent)' },
+                        { href: '/instructor/lab-control', icon: <Beaker size={18} />, label: 'Contrôle Lab', desc: "Injecter des conditions d'erreur pour les exercices", accent: 'var(--n-warning)' },
+                        { href: '/instructor/analytics', icon: <BarChart3 size={18} />, label: 'Analytics', desc: 'Statistiques détaillées et classements', accent: 'var(--n-success)' },
+                    ].map(({ href, icon, label, desc, accent }) => (
+                        <Link
+                            key={href}
+                            href={href}
+                            style={{ display: 'block', padding: 20, background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)', borderRadius: 10, textDecoration: 'none' }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                                <span style={{ color: accent }}>{icon}</span>
+                                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--n-text-primary)' }}>{label}</span>
+                            </div>
+                            <p style={{ fontSize: 12, color: 'var(--n-text-tertiary)', margin: 0 }}>{desc}</p>
+                        </Link>
+                    ))}
                 </div>
             </div>
         </div>
     );
 }
 
-function StatCard({ label, value, icon, color }: { label: string; value: string; icon: React.ReactNode; color: string }) {
-    const colors: Record<string, string> = {
-        green: 'bg-green-500/20 border-green-500/30 text-green-400',
-        blue: 'bg-blue-500/20 border-blue-500/30 text-blue-400',
-        purple: 'bg-purple-500/20 border-purple-500/30 text-purple-400',
-        emerald: 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400',
-    };
-
+function StatCard({ label, value, icon, accent, accentBg }: { label: string; value: string; icon: React.ReactNode; accent: string; accentBg: string }) {
     return (
-        <div className="bg-slate-900/60 border border-white/10 rounded-2xl p-6 space-y-3">
-            <div className={`inline-flex p-3 rounded-xl border ${colors[color]}`}>{icon}</div>
-            <div>
-                <div className="text-3xl font-bold">{value}</div>
-                <div className="text-sm text-slate-400 mt-1">{label}</div>
+        <div style={{ background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)', borderRadius: 10, padding: 20 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 8, background: accentBg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: accent, marginBottom: 12 }}>
+                {icon}
             </div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--n-text-primary)', lineHeight: 1.2 }}>{value}</div>
+            <div style={{ fontSize: 12, color: 'var(--n-text-tertiary)', marginTop: 4 }}>{label}</div>
         </div>
     );
 }
-

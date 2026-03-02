@@ -11,5 +11,8 @@ export const config = {
         aes: '0123456789ABCDEF0123456789ABCDEF',
         des: '0123456789ABCDEF',
         tdes: '0123456789ABCDEF0123456789ABCDEF01234567'
-    }
+    },
+
+    keyManagementUrl: process.env.KEY_MANAGEMENT_URL || 'http://localhost:8012',
+    mtlsEnabled: process.env.MTLS_ENABLED === 'true'
 };

@@ -66,6 +66,9 @@ export const config = {
         tokenizationService: process.env.TOKENIZATION_URL || 'http://localhost:8014'
     },
 
+    keyManagementUrl: process.env.KEY_MANAGEMENT_URL || 'http://localhost:8012',
+    mtlsEnabled: process.env.MTLS_ENABLED === 'true',
+
     circuitBreaker: {
         timeout: 5000,
         errorThresholdPercentage: 50,

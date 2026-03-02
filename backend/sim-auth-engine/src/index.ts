@@ -8,6 +8,9 @@ import compression from 'compression';
 import { v4 as uuidv4 } from 'uuid';
 import { config } from './config';
 import routes from './routes';
+import { bootstrapMTLS, startMTLSServer, patchAxiosWithMTLS } from './utils/mtls.helper';
+
+const SERVICE_NAME = 'sim-auth-engine';
 
 // ===========================================
 // Application Setup
@@ -68,6 +71,17 @@ let server: ReturnType<typeof app.listen>;
 let isShuttingDown = false;
 
 const startServer = async (): Promise<void> => {
+    if (config.mtlsEnabled) {
+        try {
+            const ctx = await bootstrapMTLS(SERVICE_NAME, config.keyManagementUrl);
+            patchAxiosWithMTLS(ctx);
+            startMTLSServer(app, config.server.port, ctx);
+            console.log(`🚀 Sim-Auth-Engine (🔒 mTLS) on port ${config.server.port}`);
+            return;
+        } catch (err: any) {
+            console.error(`[mTLS] ${err.message} — falling back to HTTP`);
+        }
+    }
     server = app.listen(config.server.port, config.server.host, () => {
         console.log(`🚀 Sim-Auth-Engine started on port ${config.server.port}`);
         console.log('Endpoints:');

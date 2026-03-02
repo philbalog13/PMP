@@ -3,338 +3,387 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@shared/context/AuthContext';
-import { Wallet, CreditCard, Activity, Building2, RefreshCcw, ArrowRight } from 'lucide-react';
+import {
+  Wallet, CreditCard, Activity,
+  RefreshCcw, ArrowRight, TrendingUp,
+} from 'lucide-react';
 import { clientApi } from '@/lib/api-client';
 
+/* ── Composants Banking ── */
+import { BankPageHeader }  from '@shared/components/banking/layout/BankPageHeader';
+import { BankSkeleton }    from '@shared/components/banking/feedback/BankSkeleton';
+import { BankEmptyState }  from '@shared/components/banking/feedback/BankEmptyState';
+import { StatCard }        from '@shared/components/banking/data-display/StatCard';
+import { BalanceDisplay }  from '@shared/components/banking/data-display/BalanceDisplay';
+import { CardVisual }      from '@shared/components/banking/data-display/CardVisual';
+import { TransactionList } from '@shared/components/banking/data-display/TransactionList';
+import { type BankTransaction } from '@shared/components/banking/data-display/TransactionRow';
+
+/* ══════════════════════════════════════════════════════
+   TYPES (inchangés)
+   ══════════════════════════════════════════════════════ */
 type DashboardState = {
-    cards: {
-        total: number;
-        active: number;
-        totalBalance: number;
-    };
-    today: {
-        transactionCount: number;
-        totalSpent: number;
-    };
-    activeCards: Array<{
-        id: string;
-        maskedPan: string;
-        cardType: string;
-        network: string;
-        status: string;
-        balance: number;
-        dailyLimit: number;
-        dailySpent: number;
-        isAutoIssued: boolean;
-    }>;
-    recentTransactions: Array<{
-        id: string;
-        transactionId: string;
-        amount: number;
-        currency: string;
-        type: string;
-        status: string;
-        merchantName: string;
-        timestamp: string;
-    }>;
+  cards: { total: number; active: number; totalBalance: number };
+  today: { transactionCount: number; totalSpent: number };
+  activeCards: Array<{
+    id: string; maskedPan: string; cardType: string; network: string;
+    status: string; balance: number; dailyLimit: number; dailySpent: number;
+    isAutoIssued: boolean;
+  }>;
+  recentTransactions: Array<{
+    id: string; transactionId: string; amount: number; currency: string;
+    type: string; status: string; merchantName: string; timestamp: string;
+  }>;
 };
 
 type AccountState = {
-    iban: string;
-    bic: string;
-    accountLabel: string;
-    accountHolderName: string;
-    balance: number;
-    currency: string;
+  iban: string; bic: string; accountLabel: string;
+  accountHolderName: string; balance: number; currency: string;
 };
 
-const asObject = (value: unknown): Record<string, unknown> =>
-    value !== null && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+/* ══════════════════════════════════════════════════════
+   HELPERS (inchangés — logique métier préservée)
+   ══════════════════════════════════════════════════════ */
+const asObject = (v: unknown): Record<string, unknown> =>
+  v !== null && typeof v === 'object' ? (v as Record<string, unknown>) : {};
 
-const getErrorMessage = (error: unknown, fallback: string): string => {
-    if (error instanceof Error && error.message) return error.message;
-    const candidate = asObject(error);
-    return typeof candidate.message === 'string' ? candidate.message : fallback;
+const getErrorMessage = (e: unknown, fb: string): string => {
+  if (e instanceof Error && e.message) return e.message;
+  const c = asObject(e);
+  return typeof c.message === 'string' ? c.message : fb;
 };
 
-const toNumber = (value: unknown): number => {
-    const parsed = Number.parseFloat(String(value ?? ''));
-    return Number.isFinite(parsed) ? parsed : 0;
+const toNum = (v: unknown): number => {
+  const p = Number.parseFloat(String(v ?? ''));
+  return Number.isFinite(p) ? p : 0;
 };
 
-const formatMoney = (value: number, currency = 'EUR') =>
-    new Intl.NumberFormat('fr-FR', {
-        style: 'currency',
-        currency,
-        minimumFractionDigits: 2
-    }).format(value);
+const fmt = (v: number, cur = 'EUR') =>
+  new Intl.NumberFormat('fr-FR', { style: 'currency', currency: cur, minimumFractionDigits: 2 }).format(v);
 
 const normalizeDashboard = (payload: unknown): DashboardState => {
-    const payloadObject = asObject(payload);
-    const dashboard = asObject(payloadObject.dashboard);
-    const cards = asObject(dashboard.cards);
-    const today = asObject(dashboard.today);
-    const activeCards = Array.isArray(dashboard.activeCards) ? dashboard.activeCards : [];
-    const recentTransactions = Array.isArray(dashboard.recentTransactions) ? dashboard.recentTransactions : [];
-
-    return {
-        cards: {
-            total: Number.parseInt(String(cards.total ?? ''), 10) || 0,
-            active: Number.parseInt(String(cards.active ?? ''), 10) || 0,
-            totalBalance: toNumber(cards.totalBalance)
-        },
-        today: {
-            transactionCount: Number.parseInt(String(today.transactionCount ?? ''), 10) || 0,
-            totalSpent: toNumber(today.totalSpent)
-        },
-        activeCards: activeCards.map((rawCard) => {
-            const card = asObject(rawCard);
-            return {
-                id: String(card.id || ''),
-                maskedPan: String(card.masked_pan || card.maskedPan || ''),
-                cardType: String(card.card_type || card.cardType || 'DEBIT'),
-                network: String(card.network || 'VISA'),
-                status: String(card.status || 'ACTIVE'),
-                balance: toNumber(card.balance),
-                dailyLimit: toNumber(card.daily_limit || card.dailyLimit),
-                dailySpent: toNumber(card.daily_spent || card.dailySpent),
-                isAutoIssued: Boolean(card.is_auto_issued ?? card.isAutoIssued)
-            };
-        }),
-        recentTransactions: recentTransactions.map((rawTransaction) => {
-            const transaction = asObject(rawTransaction);
-            return {
-                id: String(transaction.id || ''),
-                transactionId: String(transaction.transaction_id || transaction.transactionId || ''),
-                amount: toNumber(transaction.amount),
-                currency: String(transaction.currency || 'EUR'),
-                type: String(transaction.type || 'PURCHASE'),
-                status: String(transaction.status || 'PENDING'),
-                merchantName: String(transaction.merchant_name || transaction.merchantName || '-'),
-                timestamp: String(transaction.timestamp || '')
-            };
-        })
-    };
+  const p  = asObject(payload);
+  const d  = asObject(p.dashboard);
+  const c  = asObject(d.cards);
+  const t  = asObject(d.today);
+  const ac = Array.isArray(d.activeCards) ? d.activeCards : [];
+  const rt = Array.isArray(d.recentTransactions) ? d.recentTransactions : [];
+  return {
+    cards: {
+      total:        Number.parseInt(String(c.total ?? ''), 10) || 0,
+      active:       Number.parseInt(String(c.active ?? ''), 10) || 0,
+      totalBalance: toNum(c.totalBalance),
+    },
+    today: {
+      transactionCount: Number.parseInt(String(t.transactionCount ?? ''), 10) || 0,
+      totalSpent:       toNum(t.totalSpent),
+    },
+    activeCards: ac.map(raw => {
+      const x = asObject(raw);
+      return {
+        id:           String(x.id || ''),
+        maskedPan:    String(x.masked_pan || x.maskedPan || ''),
+        cardType:     String(x.card_type || x.cardType || 'DEBIT'),
+        network:      String(x.network || 'VISA'),
+        status:       String(x.status || 'ACTIVE'),
+        balance:      toNum(x.balance),
+        dailyLimit:   toNum(x.daily_limit || x.dailyLimit),
+        dailySpent:   toNum(x.daily_spent || x.dailySpent),
+        isAutoIssued: Boolean(x.is_auto_issued ?? x.isAutoIssued),
+      };
+    }),
+    recentTransactions: rt.map(raw => {
+      const x = asObject(raw);
+      return {
+        id:            String(x.id || ''),
+        transactionId: String(x.transaction_id || x.transactionId || ''),
+        amount:        toNum(x.amount),
+        currency:      String(x.currency || 'EUR'),
+        type:          String(x.type || 'PURCHASE'),
+        status:        String(x.status || 'PENDING'),
+        merchantName:  String(x.merchant_name || x.merchantName || '-'),
+        timestamp:     String(x.timestamp || ''),
+      };
+    }),
+  };
 };
 
 const normalizeAccount = (payload: unknown): AccountState => {
-    const payloadObject = asObject(payload);
-    const account = asObject(payloadObject.account);
-    return {
-        iban: String(account.iban || ''),
-        bic: String(account.bic || ''),
-        accountLabel: String(account.accountLabel || account.account_label || 'Compte principal'),
-        accountHolderName: String(account.accountHolderName || account.account_holder_name || ''),
-        balance: toNumber(account.balance),
-        currency: String(account.currency || 'EUR')
-    };
+  const p = asObject(payload);
+  const a = asObject(p.account);
+  return {
+    iban:              String(a.iban || ''),
+    bic:               String(a.bic || ''),
+    accountLabel:      String(a.accountLabel || a.account_label || 'Compte principal'),
+    accountHolderName: String(a.accountHolderName || a.account_holder_name || ''),
+    balance:           toNum(a.balance),
+    currency:          String(a.currency || 'EUR'),
+  };
 };
 
+/* ══════════════════════════════════════════════════════
+   COMPOSANT PRINCIPAL
+   ══════════════════════════════════════════════════════ */
 export default function ClientDashboardHome() {
-    const { user, isLoading, isAuthenticated } = useAuth();
-    const [isRefreshing, setIsRefreshing] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [dashboard, setDashboard] = useState<DashboardState | null>(null);
-    const [account, setAccount] = useState<AccountState | null>(null);
+  const { user, isLoading, isAuthenticated } = useAuth();
+  const [isRefreshing, setIsRefreshing] = useState(true);
+  const [error,        setError]        = useState<string | null>(null);
+  const [dashboard,    setDashboard]    = useState<DashboardState | null>(null);
+  const [account,      setAccount]      = useState<AccountState | null>(null);
 
-    const loadData = async () => {
-        setIsRefreshing(true);
-        setError(null);
-
-        try {
-            const [dashboardResponse, accountResponse] = await Promise.all([
-                clientApi.getDashboard(),
-                clientApi.getAccount()
-            ]);
-
-            setDashboard(normalizeDashboard(dashboardResponse));
-            setAccount(normalizeAccount(accountResponse));
-        } catch (loadError: unknown) {
-            setError(getErrorMessage(loadError, 'Impossible de charger les données client'));
-        } finally {
-            setIsRefreshing(false);
-        }
-    };
-
-    useEffect(() => {
-        if (!isAuthenticated) return;
-        loadData();
-    }, [isAuthenticated]);
-
-    const welcomeName = useMemo(() => {
-        if (!user) return 'Client';
-        if (user.firstName) return user.firstName;
-        if (user.name) return user.name;
-        if (user.email) return user.email.split('@')[0];
-        return 'Client';
-    }, [user]);
-
-    if (isLoading) {
-        return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-500"></div>
-            </div>
-        );
+  const loadData = async () => {
+    setIsRefreshing(true);
+    setError(null);
+    try {
+      const [dr, ar] = await Promise.all([clientApi.getDashboard(), clientApi.getAccount()]);
+      setDashboard(normalizeDashboard(dr));
+      setAccount(normalizeAccount(ar));
+    } catch (e: unknown) {
+      setError(getErrorMessage(e, 'Impossible de charger les données client'));
+    } finally {
+      setIsRefreshing(false);
     }
+  };
 
-    if (!isAuthenticated) {
-        return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center px-6">
-                <div className="max-w-md w-full rounded-3xl border border-white/10 bg-slate-900/70 p-8 text-center space-y-4">
-                    <h1 className="text-2xl font-bold text-white">Session expirée</h1>
-                    <p className="text-slate-400">Reconnectez-vous sur le portail pour accéder à votre espace client.</p>
-                    <a
-                        href={`${process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:3000'}/login`}
-                        className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-amber-500 text-slate-950 font-semibold hover:bg-amber-400 transition-colors"
-                    >
-                        Retour au login
-                    </a>
-                </div>
-            </div>
-        );
-    }
+  useEffect(() => { if (!isAuthenticated) return; loadData(); }, [isAuthenticated]);
 
+  const welcomeName = useMemo(() => {
+    if (!user) return 'Client';
+    return user.firstName || user.name || user.email?.split('@')[0] || 'Client';
+  }, [user]);
+
+  /* Adapte les transactions pour le composant BankTransaction */
+  const bankTransactions: BankTransaction[] = useMemo(() =>
+    (dashboard?.recentTransactions ?? []).map(tx => ({
+      id: tx.id, transactionId: tx.transactionId,
+      amount: tx.amount, currency: tx.currency,
+      type: tx.type, status: tx.status,
+      description: tx.merchantName, timestamp: tx.timestamp,
+    })),
+  [dashboard]);
+
+  const currency = account?.currency || 'EUR';
+
+  /* ── Skeleton global (premier chargement) ── */
+  if (isLoading) {
     return (
-        <div className="min-h-screen bg-slate-950 py-8 pb-12">
-            <div className="max-w-6xl mx-auto px-6 space-y-6">
-                <div className="flex items-center justify-between gap-4">
-                    <div>
-                        <h1 className="text-3xl font-bold text-white mb-1">Bonjour, {welcomeName}</h1>
-                        <p className="text-slate-400">Données bancaires et cartes synchronisées en temps réel.</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Link
-                            href="/pay"
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 text-slate-950 font-semibold hover:bg-amber-400 transition-colors"
-                        >
-                            Payer
-                            <ArrowRight size={16} />
-                        </Link>
-                        <button
-                            onClick={loadData}
-                            disabled={isRefreshing}
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 border border-white/10 text-white hover:bg-slate-700 disabled:opacity-60"
-                        >
-                            <RefreshCcw size={16} className={isRefreshing ? 'animate-spin' : ''} />
-                            Actualiser
-                        </button>
-                    </div>
-                </div>
-
-                {error && (
-                    <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200">
-                        {error}
-                    </div>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5">
-                        <p className="text-sm text-amber-300 mb-1">Solde compte bancaire</p>
-                        <p className="text-2xl font-bold text-white">
-                            {formatMoney(account?.balance || 0, account?.currency || 'EUR')}
-                        </p>
-                    </div>
-                    <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-5">
-                        <p className="text-sm text-slate-400 mb-1">Cartes actives</p>
-                        <p className="text-2xl font-bold text-white">{dashboard?.cards.active || 0}</p>
-                    </div>
-                    <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-5">
-                        <p className="text-sm text-slate-400 mb-1">Transactions du jour</p>
-                        <p className="text-2xl font-bold text-white">{dashboard?.today.transactionCount || 0}</p>
-                    </div>
-                    <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-5">
-                        <p className="text-sm text-slate-400 mb-1">Dépenses du jour</p>
-                        <p className="text-2xl font-bold text-white">
-                            {formatMoney(dashboard?.today.totalSpent || 0, account?.currency || 'EUR')}
-                        </p>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-2 rounded-2xl border border-white/10 bg-slate-800/50 p-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-                                <CreditCard size={18} className="text-amber-400" />
-                                Cartes actives
-                            </h2>
-                            <Link href="/cards" className="text-sm text-amber-400 hover:text-amber-300">
-                                Gérer mes cartes
-                            </Link>
-                        </div>
-                        <div className="space-y-3">
-                            {(dashboard?.activeCards || []).slice(0, 3).map((card) => (
-                                <div key={card.id} className="rounded-xl border border-white/10 bg-slate-900/50 p-4 flex items-center justify-between">
-                                    <div>
-                                        <p className="text-white font-medium">{card.maskedPan}</p>
-                                        <p className="text-xs text-slate-400">{card.network} - {card.cardType}</p>
-                                        {card.isAutoIssued && <p className="text-xs text-emerald-300">Carte auto (solde compte)</p>}
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-white font-semibold">{formatMoney(card.balance, account?.currency || 'EUR')}</p>
-                                        <p className="text-xs text-slate-400">
-                                            {formatMoney(card.dailySpent, account?.currency || 'EUR')} / {formatMoney(card.dailyLimit, account?.currency || 'EUR')}
-                                        </p>
-                                    </div>
-                                </div>
-                            ))}
-                            {(dashboard?.activeCards || []).length === 0 && (
-                                <p className="text-slate-400 text-sm">Aucune carte active trouvée.</p>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-6 space-y-4">
-                        <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-                            <Building2 size={18} className="text-emerald-400" />
-                            Compte bancaire
-                        </h2>
-                        <div className="text-sm text-slate-300 space-y-1">
-                            <p className="text-slate-500">Intitulé</p>
-                            <p className="text-white">{account?.accountLabel || '-'}</p>
-                            <p className="text-slate-500 mt-2">Titulaire</p>
-                            <p className="text-white">{account?.accountHolderName || '-'}</p>
-                            <p className="text-slate-500 mt-2">IBAN</p>
-                            <p className="text-white font-mono text-xs break-all">{account?.iban || '-'}</p>
-                            <p className="text-slate-500 mt-2">BIC</p>
-                            <p className="text-white font-mono text-xs">{account?.bic || '-'}</p>
-                        </div>
-                        <Link
-                            href="/account"
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30"
-                        >
-                            <Wallet size={16} />
-                            Gérer le compte
-                        </Link>
-                    </div>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-6">
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-                            <Activity size={18} className="text-purple-400" />
-                            Dernières transactions
-                        </h2>
-                        <Link href="/transactions" className="text-sm text-purple-300 hover:text-purple-200">
-                            Voir tout
-                        </Link>
-                    </div>
-                    <div className="space-y-3">
-                        {(dashboard?.recentTransactions || []).slice(0, 6).map((tx) => (
-                            <div key={tx.id} className="rounded-xl border border-white/10 bg-slate-900/50 p-4 flex items-center justify-between">
-                                <div>
-                                    <p className="text-white font-medium">{tx.merchantName}</p>
-                                    <p className="text-xs text-slate-400">{tx.type} - {tx.status} - {new Date(tx.timestamp).toLocaleString('fr-FR')}</p>
-                                </div>
-                                <p className="text-white font-semibold">{formatMoney(tx.amount, tx.currency)}</p>
-                            </div>
-                        ))}
-                        {(dashboard?.recentTransactions || []).length === 0 && (
-                            <p className="text-slate-400 text-sm">Aucune transaction récente.</p>
-                        )}
-                    </div>
-                </div>
-
-            </div>
-        </div>
+      <div style={{ padding: 'var(--bank-space-6)', maxWidth: 1100, margin: '0 auto' }}>
+        <BankSkeleton variant="full-page" />
+      </div>
     );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--bank-space-6)', background: 'var(--bank-bg-base)' }}>
+        <div style={{ maxWidth: 420, width: '100%', borderRadius: 'var(--bank-radius-2xl)', border: '1px solid var(--bank-border-subtle)', background: 'var(--bank-bg-surface)', padding: 'var(--bank-space-8)', textAlign: 'center' }}>
+          <h1 style={{ fontSize: 'var(--bank-text-2xl)', fontWeight: 'var(--bank-font-bold)', color: 'var(--bank-text-primary)', marginBottom: 'var(--bank-space-3)' }}>
+            Session expirée
+          </h1>
+          <p style={{ color: 'var(--bank-text-tertiary)', marginBottom: 'var(--bank-space-6)', fontSize: 'var(--bank-text-sm)' }}>
+            Reconnectez-vous sur le portail pour accéder à votre espace client.
+          </p>
+          <a
+            href={`${process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:3000'}/login`}
+            className="bk-btn bk-btn--primary bk-btn--md"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}
+          >
+            Retour au login
+            <ArrowRight size={16} aria-hidden="true" />
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  /* ══════════════════════════════════════════════════════
+     DASHBOARD PRINCIPAL
+     ══════════════════════════════════════════════════════ */
+  return (
+    <div style={{ padding: 'var(--bank-space-6)', paddingBottom: 'var(--bank-space-12)', maxWidth: 1100, margin: '0 auto' }}>
+
+      {/* ── En-tête ── */}
+      <BankPageHeader
+        title={`Bonjour, ${welcomeName}`}
+        subtitle="Données bancaires et cartes synchronisées en temps réel."
+        style={{ marginBottom: 'var(--bank-space-6)' }}
+        actions={
+          <div style={{ display: 'flex', gap: 'var(--bank-space-2)' }}>
+            <Link
+              href="/pay"
+              className="bk-btn bk-btn--primary bk-btn--sm"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}
+            >
+              Payer <ArrowRight size={14} aria-hidden="true" />
+            </Link>
+            <button
+              onClick={loadData}
+              disabled={isRefreshing}
+              className="bk-btn bk-btn--ghost bk-btn--sm"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            >
+              <RefreshCcw size={14} className={isRefreshing ? 'bk-spin' : ''} aria-hidden="true" />
+              Actualiser
+            </button>
+          </div>
+        }
+      />
+
+      {/* ── Erreur ── */}
+      {error && (
+        <div style={{ padding: 'var(--bank-space-4)', borderRadius: 'var(--bank-radius-lg)', border: '1px solid color-mix(in srgb, var(--bank-danger) 30%, transparent)', background: 'color-mix(in srgb, var(--bank-danger) 8%, transparent)', color: 'var(--bank-danger)', fontSize: 'var(--bank-text-sm)', marginBottom: 'var(--bank-space-5)' }}>
+          {error}
+        </div>
+      )}
+
+      {/* ══ STATS ══ */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--bank-space-4)', marginBottom: 'var(--bank-space-6)' }}>
+        <StatCard label="Solde compte" value={fmt(account?.balance ?? 0, currency)} icon={Wallet}    loading={isRefreshing} accent index={0} />
+        <StatCard label="Cartes actives" value={String(dashboard?.cards.active ?? 0)}                icon={CreditCard}  loading={isRefreshing} index={1} />
+        <StatCard label="Transactions du jour" value={String(dashboard?.today.transactionCount ?? 0)} icon={Activity}   loading={isRefreshing} index={2} />
+        <StatCard label="Dépenses du jour" value={fmt(dashboard?.today.totalSpent ?? 0, currency)}   icon={TrendingUp}  loading={isRefreshing} index={3} />
+      </div>
+
+      {/* ══ CARTES + COMPTE ══ */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 'var(--bank-space-6)', marginBottom: 'var(--bank-space-6)', alignItems: 'start' }}
+        className="bk-grid-cards-account">
+        {/* Cartes actives */}
+        <div style={{ borderRadius: 'var(--bank-radius-2xl)', border: '1px solid var(--bank-border-subtle)', background: 'var(--bank-bg-surface)', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'var(--bank-space-4) var(--bank-space-5)', borderBottom: '1px solid var(--bank-border-subtle)' }}>
+            <h2 style={{ display: 'flex', alignItems: 'center', gap: 'var(--bank-space-2)', fontSize: 'var(--bank-text-base)', fontWeight: 'var(--bank-font-semibold)', color: 'var(--bank-text-primary)' }}>
+              <CreditCard size={16} strokeWidth={2} style={{ color: 'var(--bank-accent)' }} aria-hidden="true" />
+              Cartes actives
+            </h2>
+            <Link href="/cards" style={{ fontSize: 'var(--bank-text-sm)', color: 'var(--bank-accent)', textDecoration: 'none' }}>
+              Gérer mes cartes →
+            </Link>
+          </div>
+
+          <div style={{ padding: 'var(--bank-space-5)', display: 'flex', gap: 'var(--bank-space-5)', overflowX: 'auto' }}>
+            {isRefreshing ? (
+              <BankSkeleton variant="card-visual" count={2} />
+            ) : (dashboard?.activeCards ?? []).length === 0 ? (
+              <div style={{ padding: 'var(--bank-space-8)', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--bank-space-3)', width: '100%' }}>
+                <CreditCard size={24} style={{ color: 'var(--bank-text-tertiary)' }} aria-hidden="true" />
+                <div>
+                  <p style={{ fontSize: 'var(--bank-text-sm)', fontWeight: 'var(--bank-font-semibold)', color: 'var(--bank-text-primary)', marginBottom: 4 }}>Aucune carte active</p>
+                  <p style={{ fontSize: 'var(--bank-text-xs)', color: 'var(--bank-text-tertiary)' }}>Commandez votre première carte pour commencer à payer.</p>
+                </div>
+                <Link href="/cards" className="bk-btn bk-btn--primary bk-btn--sm" style={{ textDecoration: 'none' }}>
+                  Demander une carte →
+                </Link>
+              </div>
+            ) : (
+              (dashboard?.activeCards ?? []).slice(0, 3).map(card => (
+                <div key={card.id}>
+                  <CardVisual
+                    maskedPan={card.maskedPan}
+                    network={card.network.toLowerCase()}
+                    accent="client"
+                    size="md"
+                    isBlocked={card.status !== 'ACTIVE'}
+                  />
+                  <div style={{ marginTop: 'var(--bank-space-3)', maxWidth: 360 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 'var(--bank-text-sm)', fontWeight: 'var(--bank-font-semibold)', color: 'var(--bank-text-primary)' }}>
+                        {fmt(card.balance, currency)}
+                      </span>
+                      {card.isAutoIssued && (
+                        <span style={{ fontSize: 'var(--bank-text-xs)', color: 'var(--bank-success)', background: 'color-mix(in srgb, var(--bank-success) 12%, transparent)', padding: '1px 8px', borderRadius: 'var(--bank-radius-full)', border: '1px solid color-mix(in srgb, var(--bank-success) 25%, transparent)' }}>
+                          Compte lié
+                        </span>
+                      )}
+                    </div>
+                    {card.dailyLimit > 0 && (
+                      <div style={{ marginTop: 'var(--bank-space-2)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <span style={{ fontSize: 'var(--bank-text-xs)', color: 'var(--bank-text-tertiary)' }}>{fmt(card.dailySpent, currency)} dépensés</span>
+                          <span style={{ fontSize: 'var(--bank-text-xs)', color: 'var(--bank-text-tertiary)' }}>/ {fmt(card.dailyLimit, currency)}</span>
+                        </div>
+                        <div style={{ height: 4, background: 'var(--bank-bg-elevated)', borderRadius: 'var(--bank-radius-full)', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${Math.min(100, (card.dailySpent / card.dailyLimit) * 100)}%`, background: 'var(--bank-accent)', borderRadius: 'var(--bank-radius-full)', transition: 'width 0.6s ease' }} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Compte bancaire */}
+        <div style={{ borderRadius: 'var(--bank-radius-2xl)', border: '1px solid var(--bank-border-subtle)', background: 'var(--bank-bg-surface)', padding: 'var(--bank-space-5)' }}>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: 'var(--bank-space-2)', fontSize: 'var(--bank-text-base)', fontWeight: 'var(--bank-font-semibold)', color: 'var(--bank-text-primary)', marginBottom: 'var(--bank-space-4)' }}>
+            <Wallet size={16} strokeWidth={2} style={{ color: 'var(--bank-success)' }} aria-hidden="true" />
+            Compte bancaire
+          </h2>
+
+          {isRefreshing ? (
+            <BankSkeleton variant="text-line" count={5} />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--bank-space-3)' }}>
+              <BalanceDisplay amount={account?.balance ?? 0} currency={currency} />
+              {[
+                { label: 'Intitulé',  value: account?.accountLabel },
+                { label: 'Titulaire', value: account?.accountHolderName },
+                { label: 'IBAN',      value: account?.iban, mono: true },
+                { label: 'BIC',       value: account?.bic,  mono: true },
+              ].map(row => (
+                <div key={row.label}>
+                  <p style={{ fontSize: 'var(--bank-text-xs)', color: 'var(--bank-text-tertiary)', marginBottom: 2 }}>{row.label}</p>
+                  <p style={{ fontSize: row.mono ? 'var(--bank-text-xs)' : 'var(--bank-text-sm)', color: 'var(--bank-text-primary)', fontFamily: row.mono ? '"Courier New", monospace' : undefined, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {row.value || '—'}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ══ TRANSACTIONS RÉCENTES ══ */}
+      <div style={{ borderRadius: 'var(--bank-radius-2xl)', border: '1px solid var(--bank-border-subtle)', background: 'var(--bank-bg-surface)', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'var(--bank-space-4) var(--bank-space-5)', borderBottom: '1px solid var(--bank-border-subtle)' }}>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: 'var(--bank-space-2)', fontSize: 'var(--bank-text-base)', fontWeight: 'var(--bank-font-semibold)', color: 'var(--bank-text-primary)' }}>
+            <Activity size={16} strokeWidth={2} style={{ color: 'var(--bank-accent)' }} aria-hidden="true" />
+            Dernières transactions
+          </h2>
+          <Link href="/transactions" style={{ fontSize: 'var(--bank-text-sm)', color: 'var(--bank-accent)', textDecoration: 'none' }}>
+            Voir tout →
+          </Link>
+        </div>
+
+        <TransactionList
+          transactions={bankTransactions.slice(0, 8)}
+          loading={isRefreshing}
+          skeletonCount={6}
+          locale="fr-FR"
+          label="Dernières transactions"
+          onClickRow={tx => { window.location.href = `/transactions?id=${tx.id}`; }}
+          emptyState={
+            <BankEmptyState
+              icon={<Activity size={20} />}
+              title="Aucune transaction"
+              description="Simulez votre premier paiement pour voir vos opérations ici."
+              action={
+                <Link href="/pay" className="bk-btn bk-btn--primary bk-btn--sm" style={{ textDecoration: 'none' }}>
+                  Simuler un paiement →
+                </Link>
+              }
+            />
+          }
+        />
+      </div>
+
+      {/* Responsive overrides */}
+      <style>{`
+        @media (max-width: 900px) {
+          .bk-grid-cards-account { grid-template-columns: 1fr !important; }
+        }
+        .bk-spin { animation: bk-rotate 1s linear infinite; }
+        @keyframes bk-rotate { to { transform: rotate(360deg); } }
+      `}</style>
+    </div>
+  );
 }

@@ -5,7 +5,8 @@
 
 import express from 'express';
 import cors from 'cors';
-import { createServer } from 'http';
+import { createServer as createHttpServer } from 'http';
+import https from 'https';
 import { WebSocketServer } from './websocket/server.js';
 import { ElasticsearchService } from './services/elasticsearch.js';
 import { MetricsService } from './services/metrics.js';
@@ -15,9 +16,13 @@ import transactionsRouter from './routes/transactions.js';
 import analyticsRouter from './routes/analytics.js';
 import debugRouter from './routes/debug.js';
 import logsRouter from './routes/logs.js';
+import { bootstrapMTLS, createMTLSServer } from './utils/mtls.helper.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
+const KEY_MANAGEMENT_URL = process.env.KEY_MANAGEMENT_URL || 'http://localhost:8012';
+const MTLS_ENABLED = process.env.MTLS_ENABLED === 'true';
+const SERVICE_NAME = 'monitoring-service';
 
 // Middleware
 app.use(cors());
@@ -72,36 +77,52 @@ app.get('/', (req, res) => {
     });
 });
 
-// Créer le serveur HTTP
-const server = createServer(app);
+let server: https.Server | ReturnType<typeof createHttpServer>;
+let wsServer: InstanceType<typeof WebSocketServer>;
 
-// Initialiser WebSocket
-const wsServer = new WebSocketServer(server);
+async function start() {
+    if (MTLS_ENABLED) {
+        try {
+            const ctx = await bootstrapMTLS(SERVICE_NAME, KEY_MANAGEMENT_URL);
+            server = createMTLSServer(app, Number(PORT), ctx);
+            wsServer = new WebSocketServer(server);
+            serviceCollector.start();
+            console.log(`📊 PMP Monitoring Service (🔒 mTLS) on port ${PORT}`);
+            return;
+        } catch (err: any) {
+            console.error(`[mTLS] ${err.message} — falling back to HTTP`);
+        }
+    }
 
-// Démarrer le serveur
-server.listen(PORT, () => {
-    serviceCollector.start();
-    console.log('═'.repeat(60));
-    console.log('  📊 PMP MONITORING SERVICE v1.1');
-    console.log('═'.repeat(60));
-    console.log(`
+    // HTTP fallback
+    server = createHttpServer(app);
+    wsServer = new WebSocketServer(server);
+    server.listen(PORT, () => {
+        serviceCollector.start();
+        console.log('═'.repeat(60));
+        console.log('  📊 PMP MONITORING SERVICE v1.1');
+        console.log('═'.repeat(60));
+        console.log(`
   🌐 HTTP API:    http://localhost:${PORT}
   📈 Prometheus:  http://localhost:${PORT}/metrics
   🔌 WebSocket:   ws://localhost:${PORT}/ws
-  
+
   📡 Endpoints:
     - GET  /api/transactions
     - GET  /api/analytics
     - GET  /api/debug/trace/:id
 `);
-    console.log('═'.repeat(60));
-});
+        console.log('═'.repeat(60));
+    });
+}
+
+start().catch(console.error);
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
     console.log('\n🛑 Arrêt gracieux...');
     serviceCollector.stop();
-    wsServer.close();
+    wsServer?.close();
     server.close(() => {
         console.log('✅ Serveur arrêté');
         process.exit(0);

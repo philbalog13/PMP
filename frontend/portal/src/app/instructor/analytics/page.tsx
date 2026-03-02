@@ -14,6 +14,7 @@ import {
     ChevronRight,
     RefreshCw
 } from 'lucide-react';
+import { NotionProgress, NotionSkeleton } from '@shared/components/notion';
 
 interface WorkshopStats {
     workshopId: string;
@@ -104,7 +105,6 @@ export default function InstructorAnalyticsPage() {
         fetchAnalytics();
     }, [isLoading, fetchAnalytics]);
 
-    // Computed
     const avgProgress = workshopStats.length > 0
         ? Math.round(workshopStats.reduce((s, w) => s + w.avgProgress, 0) / workshopStats.length)
         : 0;
@@ -115,229 +115,270 @@ export default function InstructorAnalyticsPage() {
 
     if (isLoading || dataLoading) {
         return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                    <BarChart3 className="animate-bounce w-12 h-12 text-blue-500" />
-                    <span className="text-sm text-slate-500">Chargement des analytics...</span>
+            <div style={{ minHeight: '100vh', background: 'var(--n-bg-secondary)', padding: '32px 24px' }}>
+                <NotionSkeleton type="line" />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '12px', marginTop: '24px' }}>
+                    {[0,1,2,3].map(i => <NotionSkeleton key={i} type="stat" />)}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '24px' }}>
+                    <NotionSkeleton type="card" />
+                    <NotionSkeleton type="card" />
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-slate-950 pt-24 pb-12">
-            <div className="max-w-7xl mx-auto px-6">
-                {/* Breadcrumb */}
-                <div className="text-xs text-slate-500 mb-6">
-                    <Link href="/instructor" className="hover:text-blue-400">Dashboard</Link>
-                    <ChevronRight size={12} className="inline mx-1" />
-                    <span className="text-blue-400">Analytics</span>
-                </div>
-
-                {/* Header */}
-                <div className="flex items-center justify-between mb-8">
+        <div style={{ minHeight: '100vh', background: 'var(--n-bg-secondary)' }}>
+            {/* Page header */}
+            <div style={{
+                background: 'var(--n-bg-primary)',
+                borderBottom: '1px solid var(--n-border)',
+                padding: '20px 24px',
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div>
-                        <h1 className="text-3xl font-bold text-white mb-2">Analytics & Statistiques</h1>
-                        <p className="text-slate-400">
+                        <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--n-text-primary)', margin: 0 }}>
+                            Analytics &amp; Statistiques
+                        </h1>
+                        <p style={{ fontSize: '13px', color: 'var(--n-text-secondary)', marginTop: '4px' }}>
                             Vue d&apos;ensemble des performances de la cohorte
                         </p>
                     </div>
                     <button
                         onClick={() => { setDataLoading(true); fetchAnalytics(); }}
-                        className="flex items-center gap-2 px-4 py-2 bg-slate-800 border border-white/10 text-white rounded-xl hover:bg-slate-700"
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '6px',
+                            padding: '7px 14px',
+                            background: 'var(--n-bg-secondary)', border: '1px solid var(--n-border)',
+                            borderRadius: '6px', fontSize: '13px', color: 'var(--n-text-primary)', cursor: 'pointer',
+                        }}
                     >
-                        <RefreshCw size={18} />
-                        Actualiser
+                        <RefreshCw size={14} /> Actualiser
                     </button>
                 </div>
 
                 {error && (
-                    <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-sm mb-6">
+                    <div style={{
+                        marginTop: '12px', padding: '10px 14px',
+                        background: 'var(--n-danger-bg)', border: '1px solid var(--n-danger-border)',
+                        borderRadius: '6px', fontSize: '13px', color: 'var(--n-danger)',
+                    }}>
                         {error}
                     </div>
                 )}
+            </div>
+
+            <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
                 {/* Overview Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                    <div className="bg-gradient-to-br from-blue-500/20 to-indigo-500/10 border border-blue-500/30 rounded-2xl p-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="p-3 bg-blue-500/20 rounded-xl">
-                                <Users className="w-6 h-6 text-blue-400" />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '12px' }}>
+                    {[
+                        { icon: <Users size={18} />, label: 'Étudiants inscrits', value: totalStudents, accent: 'var(--n-accent)', bg: 'var(--n-accent-light)' },
+                        { icon: <TrendingUp size={18} />, label: 'Progression moyenne', value: `${avgProgress}%`, accent: 'var(--n-success)', bg: 'var(--n-success-bg)' },
+                        { icon: <BarChart3 size={18} />, label: 'Score moyen quiz', value: `${avgQuizScore}%`, accent: '#7c3aed', bg: '#f5f3ff' },
+                        { icon: <Award size={18} />, label: 'Badges délivrés', value: totalBadges, accent: 'var(--n-warning)', bg: 'var(--n-warning-bg)' },
+                    ].map(({ icon, label, value, accent, bg }) => (
+                        <div key={label} style={{ background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)', borderRadius: '8px', padding: '16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                                <div style={{ width: '30px', height: '30px', borderRadius: '6px', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <span style={{ color: accent }}>{icon}</span>
+                                </div>
+                                <span style={{ fontSize: '11px', color: 'var(--n-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</span>
                             </div>
+                            <div style={{ fontSize: '26px', fontWeight: 700, color: 'var(--n-text-primary)', fontFamily: 'var(--n-font-mono)' }}>{value}</div>
                         </div>
-                        <p className="text-sm text-slate-400 mb-1">Étudiants inscrits</p>
-                        <p className="text-2xl font-bold text-white">{totalStudents}</p>
-                    </div>
-
-                    <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
-                        <div className="p-3 bg-emerald-500/20 rounded-xl w-fit mb-4">
-                            <TrendingUp className="w-6 h-6 text-emerald-400" />
-                        </div>
-                        <p className="text-sm text-slate-400 mb-1">Progression moyenne</p>
-                        <p className="text-2xl font-bold text-white">{avgProgress}%</p>
-                    </div>
-
-                    <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
-                        <div className="p-3 bg-purple-500/20 rounded-xl w-fit mb-4">
-                            <BarChart3 className="w-6 h-6 text-purple-400" />
-                        </div>
-                        <p className="text-sm text-slate-400 mb-1">Score moyen quiz</p>
-                        <p className="text-2xl font-bold text-white">{avgQuizScore}%</p>
-                    </div>
-
-                    <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
-                        <div className="p-3 bg-amber-500/20 rounded-xl w-fit mb-4">
-                            <Award className="w-6 h-6 text-amber-400" />
-                        </div>
-                        <p className="text-sm text-slate-400 mb-1">Badges délivrés</p>
-                        <p className="text-2xl font-bold text-white">{totalBadges}</p>
-                    </div>
+                    ))}
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                {/* Workshop & Quiz */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+
                     {/* Workshop Performance */}
-                    <div className="bg-slate-800/50 border border-white/10 rounded-2xl overflow-hidden">
-                        <div className="p-6 border-b border-white/10">
-                            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                                <BookOpen size={20} className="text-blue-400" />
-                                Performance par Atelier
+                    <div style={{ background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)', borderRadius: '8px', overflow: 'hidden' }}>
+                        <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--n-border)' }}>
+                            <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--n-text-primary)', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
+                                <BookOpen size={15} style={{ color: 'var(--n-accent)' }} /> Performance par Atelier
                             </h2>
                         </div>
-                        <div className="p-6 space-y-4">
+                        <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                             {workshopStats.length > 0 ? workshopStats.map((workshop) => (
-                                <div key={workshop.workshopId} className="p-4 bg-slate-900/50 rounded-xl">
-                                    <div className="flex items-center justify-between mb-3">
-                                        <h3 className="font-medium text-white truncate">{workshop.title}</h3>
-                                        <span className="text-sm text-slate-400 shrink-0 ml-2">{workshop.studentsStarted} participants</span>
+                                <div key={workshop.workshopId} style={{
+                                    padding: '12px',
+                                    background: 'var(--n-bg-secondary)',
+                                    border: '1px solid var(--n-border)',
+                                    borderRadius: '6px',
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                        <h3 style={{ fontSize: '13px', fontWeight: 500, color: 'var(--n-text-primary)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '60%' }}>{workshop.title}</h3>
+                                        <span style={{ fontSize: '12px', color: 'var(--n-text-secondary)', flexShrink: 0 }}>{workshop.studentsStarted} participants</span>
                                     </div>
-                                    <div className="grid grid-cols-3 gap-4 text-sm">
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', fontSize: '12px' }}>
                                         <div>
-                                            <p className="text-slate-400 mb-1">Complétion</p>
-                                            <div className="flex items-center gap-2">
-                                                <div className="flex-1 h-2 bg-slate-700 rounded-full overflow-hidden">
-                                                    <div
-                                                        className={`h-full rounded-full ${
-                                                            workshop.avgProgress >= 80 ? 'bg-emerald-500' :
-                                                            workshop.avgProgress >= 60 ? 'bg-amber-500' : 'bg-red-500'
-                                                        }`}
-                                                        style={{ width: `${workshop.avgProgress}%` }}
+                                            <p style={{ color: 'var(--n-text-secondary)', marginBottom: '4px', margin: 0 }}>Complétion</p>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                                                <div style={{ flex: 1 }}>
+                                                    <NotionProgress
+                                                        value={workshop.avgProgress}
+                                                        variant={workshop.avgProgress >= 80 ? 'success' : workshop.avgProgress >= 60 ? 'warning' : 'danger'}
+                                                        size="thin"
                                                     />
                                                 </div>
-                                                <span className="text-white font-medium">{workshop.avgProgress}%</span>
+                                                <span style={{ color: 'var(--n-text-primary)', fontWeight: 600, whiteSpace: 'nowrap' }}>{workshop.avgProgress}%</span>
                                             </div>
                                         </div>
                                         <div>
-                                            <p className="text-slate-400 mb-1">Terminés</p>
-                                            <p className="text-white font-medium">{workshop.studentsCompleted}/{workshop.studentsStarted}</p>
+                                            <p style={{ color: 'var(--n-text-secondary)', margin: 0 }}>Terminés</p>
+                                            <p style={{ color: 'var(--n-text-primary)', fontWeight: 600, margin: '4px 0 0' }}>{workshop.studentsCompleted}/{workshop.studentsStarted}</p>
                                         </div>
                                         <div>
-                                            <p className="text-slate-400 mb-1">Temps moyen</p>
-                                            <p className="text-white font-medium">{workshop.avgTimeMinutes} min</p>
+                                            <p style={{ color: 'var(--n-text-secondary)', margin: 0 }}>Temps moyen</p>
+                                            <p style={{ color: 'var(--n-text-primary)', fontWeight: 600, margin: '4px 0 0' }}>{workshop.avgTimeMinutes} min</p>
                                         </div>
                                     </div>
                                 </div>
                             )) : (
-                                <p className="text-sm text-slate-500 text-center py-8">Aucune donnée de progression disponible.</p>
+                                <p style={{ fontSize: '13px', color: 'var(--n-text-tertiary)', textAlign: 'center', padding: '24px 0' }}>Aucune donnée de progression disponible.</p>
                             )}
                         </div>
                     </div>
 
                     {/* Quiz Performance */}
-                    <div className="bg-slate-800/50 border border-white/10 rounded-2xl overflow-hidden">
-                        <div className="p-6 border-b border-white/10">
-                            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                                <BarChart3 size={20} className="text-purple-400" />
-                                Performance aux Quiz
+                    <div style={{ background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)', borderRadius: '8px', overflow: 'hidden' }}>
+                        <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--n-border)' }}>
+                            <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--n-text-primary)', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
+                                <BarChart3 size={15} style={{ color: '#7c3aed' }} /> Performance aux Quiz
                             </h2>
                         </div>
-                        <div className="p-6 space-y-4">
+                        <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             {quizStats.length > 0 ? quizStats.map((quiz) => (
-                                <div key={quiz.quizId} className="p-4 bg-slate-900/50 rounded-xl">
-                                    <div className="flex items-center justify-between mb-3">
-                                        <h3 className="font-medium text-white">{quiz.quizId}</h3>
-                                        <span className="text-sm text-slate-400">{quiz.attempts} tentatives</span>
+                                <div key={quiz.quizId} style={{
+                                    padding: '12px',
+                                    background: 'var(--n-bg-secondary)',
+                                    border: '1px solid var(--n-border)',
+                                    borderRadius: '6px',
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                        <h3 style={{ fontSize: '13px', fontWeight: 500, color: 'var(--n-text-primary)', margin: 0 }}>{quiz.quizId}</h3>
+                                        <span style={{ fontSize: '12px', color: 'var(--n-text-secondary)' }}>{quiz.attempts} tentatives</span>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px' }}>
                                         <div>
-                                            <p className="text-slate-400 mb-1">Score moyen</p>
-                                            <p className={`text-xl font-bold ${
-                                                quiz.avgScore >= 80 ? 'text-emerald-400' :
-                                                quiz.avgScore >= 60 ? 'text-amber-400' : 'text-red-400'
-                                            }`}>
+                                            <p style={{ color: 'var(--n-text-secondary)', margin: 0 }}>Score moyen</p>
+                                            <p style={{
+                                                fontSize: '18px', fontWeight: 700, margin: '4px 0 0',
+                                                color: quiz.avgScore >= 80 ? 'var(--n-success)' : quiz.avgScore >= 60 ? 'var(--n-warning)' : 'var(--n-danger)',
+                                            }}>
                                                 {quiz.avgScore}%
                                             </p>
                                         </div>
                                         <div>
-                                            <p className="text-slate-400 mb-1">Taux de réussite</p>
-                                            <p className="text-xl font-bold text-white flex items-center gap-2">
+                                            <p style={{ color: 'var(--n-text-secondary)', margin: 0 }}>Taux de réussite</p>
+                                            <p style={{ fontSize: '18px', fontWeight: 700, color: 'var(--n-text-primary)', margin: '4px 0 0', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                                 {quiz.passRate}%
-                                                {quiz.passRate >= 80 ? (
-                                                    <CheckCircle2 size={16} className="text-emerald-400" />
-                                                ) : quiz.passRate < 60 ? (
-                                                    <XCircle size={16} className="text-red-400" />
-                                                ) : null}
+                                                {quiz.passRate >= 80
+                                                    ? <CheckCircle2 size={14} style={{ color: 'var(--n-success)' }} />
+                                                    : quiz.passRate < 60
+                                                        ? <XCircle size={14} style={{ color: 'var(--n-danger)' }} />
+                                                        : null}
                                             </p>
                                         </div>
                                     </div>
-                                    <p className="text-xs text-slate-500 mt-2">
+                                    <p style={{ fontSize: '11px', color: 'var(--n-text-tertiary)', marginTop: '6px' }}>
                                         {quiz.uniqueStudents} étudiant{quiz.uniqueStudents !== 1 ? 's' : ''} unique{quiz.uniqueStudents !== 1 ? 's' : ''}
                                     </p>
                                 </div>
                             )) : (
-                                <p className="text-sm text-slate-500 text-center py-8">Aucun quiz soumis pour le moment.</p>
+                                <p style={{ fontSize: '13px', color: 'var(--n-text-tertiary)', textAlign: 'center', padding: '24px 0' }}>Aucun quiz soumis pour le moment.</p>
                             )}
                         </div>
                     </div>
                 </div>
 
-                {/* Student Rankings */}
-                <div className="bg-slate-800/50 border border-white/10 rounded-2xl overflow-hidden">
-                    <div className="p-6 border-b border-white/10">
-                        <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                            <Award size={20} className="text-amber-400" />
-                            Classement des Étudiants
+                {/* Badges Distribution */}
+                {badgeStats.length > 0 && (
+                    <div style={{ background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)', borderRadius: '8px', overflow: 'hidden' }}>
+                        <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--n-border)' }}>
+                            <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--n-text-primary)', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
+                                <Award size={15} style={{ color: 'var(--n-warning)' }} /> Distribution des Badges
+                            </h2>
+                        </div>
+                        <div style={{ padding: '12px 16px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px,1fr))', gap: '10px' }}>
+                            {badgeStats.map((badge) => (
+                                <div key={badge.badgeType} style={{
+                                    padding: '10px 12px',
+                                    background: 'var(--n-warning-bg)',
+                                    border: '1px solid var(--n-warning-border)',
+                                    borderRadius: '6px',
+                                }}>
+                                    <p style={{ fontSize: '13px', fontWeight: 500, color: 'var(--n-text-primary)', margin: 0 }}>{badge.name}</p>
+                                    <p style={{ fontSize: '12px', color: 'var(--n-text-secondary)', margin: '4px 0 0' }}>
+                                        {badge.studentsEarned} étudiant{badge.studentsEarned !== 1 ? 's' : ''}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Leaderboard */}
+                <div style={{ background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)', borderRadius: '8px', overflow: 'hidden' }}>
+                    <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--n-border)' }}>
+                        <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--n-text-primary)', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
+                            <Award size={15} style={{ color: 'var(--n-warning)' }} /> Classement des Étudiants
                         </h2>
                     </div>
                     {leaderboard.length > 0 ? (
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead className="bg-slate-900/50">
-                                    <tr>
-                                        <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Rang</th>
-                                        <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Étudiant</th>
-                                        <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">XP Total</th>
-                                        <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Ateliers</th>
-                                        <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Badges</th>
+                        <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                <thead>
+                                    <tr style={{ background: 'var(--n-bg-secondary)' }}>
+                                        {['Rang', 'Étudiant', 'XP Total', 'Ateliers', 'Badges'].map(h => (
+                                            <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: 'var(--n-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
+                                        ))}
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-white/5">
+                                <tbody>
                                     {leaderboard.map((student) => {
                                         const name = [student.first_name, student.last_name].filter(Boolean).join(' ') || student.username;
                                         const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+                                        const rankColors: Record<number,string> = { 1: 'var(--n-warning)', 2: 'var(--n-text-secondary)', 3: '#c2410c' };
                                         return (
-                                            <tr key={student.id} className="hover:bg-white/5 transition">
-                                                <td className="px-6 py-4">
-                                                    <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                                                        student.rank === 1 ? 'bg-amber-500/20 text-amber-400' :
-                                                        student.rank === 2 ? 'bg-slate-400/20 text-slate-300' :
-                                                        student.rank === 3 ? 'bg-orange-500/20 text-orange-400' :
-                                                        'bg-slate-700 text-slate-400'
-                                                    }`}>
+                                            <tr key={student.id} style={{ borderTop: '1px solid var(--n-border)' }}>
+                                                <td style={{ padding: '10px 16px' }}>
+                                                    <span style={{
+                                                        display: 'inline-flex', width: '26px', height: '26px', borderRadius: '50%',
+                                                        alignItems: 'center', justifyContent: 'center',
+                                                        fontSize: '12px', fontWeight: 700,
+                                                        background: 'var(--n-bg-secondary)', color: rankColors[student.rank] || 'var(--n-text-tertiary)',
+                                                    }}>
                                                         {student.rank}
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-4">
-                                                    <Link href={`/instructor/students/${student.id}`} className="flex items-center gap-3 hover:text-blue-400 transition-colors">
-                                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs">
+                                                <td style={{ padding: '10px 16px' }}>
+                                                    <Link href={`/instructor/students/${student.id}`} style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
+                                                        <div style={{
+                                                            width: '32px', height: '32px', borderRadius: '50%',
+                                                            background: 'var(--n-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                            fontSize: '11px', fontWeight: 700, color: 'white', flexShrink: 0,
+                                                        }}>
                                                             {initials}
                                                         </div>
-                                                        <span className="font-medium text-white">{name}</span>
+                                                        <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--n-text-primary)' }}>{name}</span>
                                                     </Link>
                                                 </td>
-                                                <td className="px-6 py-4 font-bold text-emerald-400">{student.total_xp.toLocaleString()} XP</td>
-                                                <td className="px-6 py-4 text-slate-300">{student.workshops_completed}/6</td>
-                                                <td className="px-6 py-4">
-                                                    <span className="px-2 py-1 bg-amber-500/20 text-amber-400 rounded-full text-sm">
+                                                <td style={{ padding: '10px 16px' }}>
+                                                    <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--n-success)', fontFamily: 'var(--n-font-mono)' }}>{student.total_xp.toLocaleString()} XP</span>
+                                                </td>
+                                                <td style={{ padding: '10px 16px' }}>
+                                                    <span style={{ fontSize: '13px', color: 'var(--n-text-primary)' }}>{student.workshops_completed}/6</span>
+                                                </td>
+                                                <td style={{ padding: '10px 16px' }}>
+                                                    <span style={{
+                                                        padding: '2px 8px', borderRadius: '999px',
+                                                        background: 'var(--n-warning-bg)', border: '1px solid var(--n-warning-border)',
+                                                        fontSize: '12px', color: 'var(--n-warning)', fontWeight: 500,
+                                                    }}>
                                                         {student.badge_count}
                                                     </span>
                                                 </td>
@@ -348,7 +389,7 @@ export default function InstructorAnalyticsPage() {
                             </table>
                         </div>
                     ) : (
-                        <div className="p-12 text-center text-slate-500">
+                        <div style={{ padding: '48px', textAlign: 'center', fontSize: '13px', color: 'var(--n-text-tertiary)' }}>
                             Pas encore de classement disponible.
                         </div>
                     )}
@@ -357,4 +398,3 @@ export default function InstructorAnalyticsPage() {
         </div>
     );
 }
-

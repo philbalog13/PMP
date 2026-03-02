@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
     Shield, CheckCircle, AlertTriangle, Lock, Unlock,
-    HelpCircle, Activity, Flag, KeyRound, RotateCcw, RefreshCw
+    HelpCircle, Activity, Flag, KeyRound, RotateCcw, RefreshCw,
+    ChevronRight, Terminal
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '../../auth/useAuth';
-import { CourseCard, CoursePageShell, CoursePill } from '@/components/course/CoursePageShell';
+import { NotionProgress, NotionSkeleton } from '@shared/components/notion';
 
 type Severity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
 
@@ -45,6 +46,44 @@ interface FlagFeedback {
     type: 'success' | 'error';
     message: string;
 }
+
+// Desaturated severity tokens for Notion style
+const SEVERITY_CONFIG: Record<Severity, {
+    label: string;
+    badgeBg: string;
+    badgeText: string;
+    badgeBorder: string;
+    barColor: string;
+}> = {
+    CRITICAL: {
+        label: 'CRITICAL',
+        badgeBg: 'var(--n-danger-bg)',
+        badgeText: 'var(--n-danger)',
+        badgeBorder: 'var(--n-danger-border)',
+        barColor: 'var(--n-danger)',
+    },
+    HIGH: {
+        label: 'HIGH',
+        badgeBg: 'rgba(194,65,12,0.08)',
+        badgeText: '#c2410c',
+        badgeBorder: 'rgba(194,65,12,0.2)',
+        barColor: '#c2410c',
+    },
+    MEDIUM: {
+        label: 'MEDIUM',
+        badgeBg: 'var(--n-warning-bg)',
+        badgeText: 'var(--n-warning)',
+        badgeBorder: 'var(--n-warning-border)',
+        barColor: 'var(--n-warning)',
+    },
+    LOW: {
+        label: 'LOW',
+        badgeBg: 'var(--n-success-bg)',
+        badgeText: 'var(--n-success)',
+        badgeBorder: 'var(--n-success-border)',
+        barColor: 'var(--n-success)',
+    },
+};
 
 export default function DefenseDashboard() {
     const { isLoading } = useAuth(true);
@@ -139,10 +178,7 @@ export default function DefenseDashboard() {
 
             const res = await fetch('/api/defense/submit-flag', {
                 method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ vulnCode, flag })
             });
 
@@ -174,31 +210,19 @@ export default function DefenseDashboard() {
 
     const handleResetVuln = async (vulnCode: string) => {
         const token = localStorage.getItem('token');
-
-        if (!token) {
-            setError('Session expiree. Merci de vous reconnecter.');
-            return;
-        }
+        if (!token) { setError('Session expiree. Merci de vous reconnecter.'); return; }
 
         try {
             setResetSubmitting((prev) => ({ ...prev, [vulnCode]: true }));
 
             const res = await fetch('/api/defense/reset', {
                 method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ vulnCode })
             });
 
             const data = await res.json().catch(() => ({}));
-
-            if (!res.ok || !data.success) {
-                setError(data.error || 'Erreur lors du reset de la faille.');
-                return;
-            }
-
+            if (!res.ok || !data.success) { setError(data.error || 'Erreur lors du reset de la faille.'); return; }
             await fetchData();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Erreur lors du reset de la faille.');
@@ -208,10 +232,7 @@ export default function DefenseDashboard() {
     };
 
     const openQuiz = (vuln: Vulnerability) => {
-        if (!vuln.defense_unlocked || !vuln.is_vulnerable) {
-            return;
-        }
-
+        if (!vuln.defense_unlocked || !vuln.is_vulnerable) return;
         setSelectedVuln(vuln);
         setQuizAnswer(null);
         setQuizResult(null);
@@ -219,44 +240,26 @@ export default function DefenseDashboard() {
 
     const handleQuizSubmit = async () => {
         if (!selectedVuln || quizAnswer === null) return;
-
         const token = localStorage.getItem('token');
-        if (!token) {
-            setError('Session expiree. Merci de vous reconnecter.');
-            return;
-        }
+        if (!token) { setError('Session expiree. Merci de vous reconnecter.'); return; }
 
         try {
             setSubmittingQuiz(true);
             const res = await fetch('/api/defense/fix', {
                 method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    vulnCode: selectedVuln.vuln_code,
-                    selectedOptionIndex: quizAnswer
-                })
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ vulnCode: selectedVuln.vuln_code, selectedOptionIndex: quizAnswer })
             });
 
             const data = await res.json().catch(() => ({}));
-
             if (!res.ok || !data.success) {
                 setError(data.error || 'Erreur lors de la soumission du quiz defense.');
                 return;
             }
 
-            setQuizResult({
-                correct: Boolean(data.correction?.correct),
-                explanation: data.correction?.explanation
-            });
-
+            setQuizResult({ correct: Boolean(data.correction?.correct), explanation: data.correction?.explanation });
             if (data.correction?.correct) {
-                setTimeout(() => {
-                    setSelectedVuln(null);
-                    void fetchData();
-                }, 1200);
+                setTimeout(() => { setSelectedVuln(null); void fetchData(); }, 1200);
             }
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Erreur lors de la soumission du quiz defense.');
@@ -265,92 +268,110 @@ export default function DefenseDashboard() {
         }
     };
 
+    /* ── Loading ── */
     if (loading && !status) {
         return (
-            <CoursePageShell
-                title="Sandbox Defense"
-                description="Chargement de votre environnement de défense."
-                icon={<Shield className="h-8 w-8 text-emerald-300" />}
-                crumbs={[
-                    { label: 'Mon Parcours', href: '/student' },
-                    { label: 'Sandbox Defense' },
-                ]}
-                backHref="/student"
-                backLabel="Retour au parcours"
-            >
-                <CourseCard className="p-8">
-                    <div className="flex items-center gap-3 text-slate-300">
-                        <RefreshCw className="h-5 w-5 animate-spin text-emerald-400" />
-                        <span className="text-sm">Chargement…</span>
-                    </div>
-                    <div className="mt-6 space-y-3 animate-pulse">
-                        <div className="h-3 w-1/2 rounded bg-slate-800/70" />
-                        <div className="h-3 w-full rounded bg-slate-800/50" />
-                        <div className="h-3 w-5/6 rounded bg-slate-800/40" />
-                    </div>
-                </CourseCard>
-            </CoursePageShell>
+            <div style={{ minHeight: '100vh', background: 'var(--n-bg-secondary)', padding: '32px 24px' }}>
+                <div style={{ maxWidth: '960px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <NotionSkeleton type="line" />
+                    <NotionSkeleton type="card" />
+                    <NotionSkeleton type="card" />
+                    <NotionSkeleton type="card" />
+                </div>
+            </div>
         );
     }
 
+    const progressPct = status?.progress ?? 0;
+
     return (
-        <CoursePageShell
-            title="Sandbox Defense"
-            description="Workflow: exploitez la faille, soumettez le flag, puis appliquez le correctif defense."
-            icon={<Shield className="h-8 w-8 text-emerald-300" />}
-            crumbs={[
-                { label: 'Mon Parcours', href: '/student' },
-                { label: 'Sandbox Defense' },
-            ]}
-            backHref="/student"
-            backLabel="Retour au parcours"
-            meta={
-                <>
-                    <CoursePill tone="emerald">{status?.progress ?? 0}%</CoursePill>
-                    <CoursePill tone="slate">{status?.total ?? 0} vulnérabilités</CoursePill>
-                    <CoursePill tone="slate">{status?.exploited ?? 0} flags</CoursePill>
-                    <CoursePill tone="slate">{status?.fixed ?? 0} corrigées</CoursePill>
-                </>
-            }
-            headerFooter={
-                <div className="flex items-center gap-3">
-                    <div className="h-2 flex-1 bg-slate-800/70 rounded-full overflow-hidden">
-                        <div
-                            className="h-full bg-gradient-to-r from-red-500 via-amber-500 to-emerald-500 transition-all duration-1000"
-                            style={{ width: `${status?.progress ?? 0}%` }}
-                        />
-                    </div>
-                    <span className="text-xs font-mono text-emerald-200">{status?.progress ?? 0}%</span>
-                </div>
-            }
-            actions={
-                <button
-                    onClick={() => void fetchData()}
-                    disabled={loading}
-                    className="px-4 py-2.5 rounded-xl border border-white/10 bg-slate-900/40 hover:bg-slate-900/60 disabled:opacity-60 text-sm font-semibold inline-flex items-center gap-2"
-                >
-                    <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-                    Actualiser
-                </button>
-            }
-        >
-            <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <StatCard label="Vulnérabilités" value={String(status?.total ?? 0)} />
-                    <StatCard label="Flags trouvés" value={String(status?.exploited ?? 0)} />
-                    <StatCard label="Failles corrigées" value={String(status?.fixed ?? 0)} />
+        <div style={{ minHeight: '100vh', background: 'var(--n-bg-secondary)' }}>
+
+            {/* ── Page header ── */}
+            <div style={{ background: 'var(--n-bg-primary)', borderBottom: '1px solid var(--n-border)', padding: '16px 24px' }}>
+                {/* Breadcrumb */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--n-text-tertiary)', marginBottom: '10px' }}>
+                    <Link href="/student" style={{ color: 'var(--n-text-tertiary)', textDecoration: 'none' }}
+                        onMouseEnter={e => (e.currentTarget.style.color = 'var(--n-accent)')}
+                        onMouseLeave={e => (e.currentTarget.style.color = 'var(--n-text-tertiary)')}>
+                        Mon Parcours
+                    </Link>
+                    <ChevronRight size={11} />
+                    <span style={{ color: 'var(--n-text-secondary)' }}>Sandbox Défense</span>
                 </div>
 
-                {error && (
-                    <CourseCard className="border border-red-500/20 bg-red-500/5 p-4 md:p-5">
-                        <div className="flex items-start gap-3">
-                            <AlertTriangle className="mt-0.5 h-5 w-5 text-red-300" />
-                            <p className="text-sm text-red-100/90">{error}</p>
+                {/* Title + refresh */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{
+                            width: '32px', height: '32px', borderRadius: '7px',
+                            background: 'var(--n-danger-bg)', border: '1px solid var(--n-danger-border)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                        }}>
+                            <Shield size={16} style={{ color: 'var(--n-danger)' }} />
                         </div>
-                    </CourseCard>
+                        <div>
+                            <h1 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--n-text-primary)', lineHeight: 1.2 }}>
+                                Sandbox Défense
+                            </h1>
+                            <p style={{ fontSize: '12px', color: 'var(--n-text-secondary)', marginTop: '1px' }}>
+                                Exploitez les failles, soumettez les flags, puis appliquez les correctifs.
+                            </p>
+                        </div>
+                    </div>
+                    <button onClick={() => void fetchData()} disabled={loading}
+                        style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '6px',
+                            padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 500,
+                            background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)',
+                            color: 'var(--n-text-secondary)', cursor: 'pointer', opacity: loading ? 0.5 : 1,
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--n-bg-tertiary)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'var(--n-bg-primary)')}>
+                        <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
+                        Actualiser
+                    </button>
+                </div>
+            </div>
+
+            {/* ── Stats strip ── */}
+            <div style={{ background: 'var(--n-bg-primary)', borderBottom: '1px solid var(--n-border)', padding: '12px 24px' }}>
+                <div style={{ maxWidth: '960px', margin: '0 auto' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '16px', marginBottom: '12px' }}>
+                        {[
+                            { value: status?.total ?? 0, label: 'Vulnérabilités', color: 'var(--n-danger)' },
+                            { value: status?.exploited ?? 0, label: 'Flags trouvés', color: '#c2410c' },
+                            { value: status?.fixed ?? 0, label: 'Failles corrigées', color: 'var(--n-success)' },
+                            { value: `${progressPct}%`, label: 'Progression', color: 'var(--n-accent)' },
+                        ].map((stat) => (
+                            <div key={stat.label}>
+                                <div style={{ fontSize: '22px', fontWeight: 700, color: stat.color, lineHeight: 1 }}>{stat.value}</div>
+                                <div style={{ fontSize: '11px', color: 'var(--n-text-tertiary)', marginTop: '3px' }}>{stat.label}</div>
+                            </div>
+                        ))}
+                    </div>
+                    <NotionProgress value={progressPct} variant="accent" size="thin" />
+                </div>
+            </div>
+
+            {/* ── Content ── */}
+            <div style={{ maxWidth: '960px', margin: '0 auto', padding: '24px' }}>
+                {error && (
+                    <div style={{
+                        display: 'flex', alignItems: 'flex-start', gap: '10px',
+                        padding: '12px 14px', borderRadius: '8px', marginBottom: '16px',
+                        background: 'var(--n-danger-bg)', border: '1px solid var(--n-danger-border)',
+                    }}>
+                        <AlertTriangle size={15} style={{ color: 'var(--n-danger)', marginTop: '1px', flexShrink: 0 }} />
+                        <p style={{ fontSize: '13px', color: 'var(--n-danger)', margin: 0 }}>{error}</p>
+                    </div>
                 )}
 
-                <div className="grid gap-6">
+                <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--n-text-tertiary)', marginBottom: '12px' }}>
+                    Catalogue des vulnérabilités
+                </p>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     {catalog.map((vuln) => {
                         const isFixed = !vuln.is_vulnerable;
                         const isLocked = vuln.is_vulnerable && !vuln.defense_unlocked;
@@ -358,211 +379,292 @@ export default function DefenseDashboard() {
                         const feedback = flagFeedbacks[vuln.vuln_code];
                         const submittingFlag = Boolean(flagSubmitting[vuln.vuln_code]);
                         const resettingVuln = Boolean(resetSubmitting[vuln.vuln_code]);
+                        const cfg = SEVERITY_CONFIG[vuln.severity] || SEVERITY_CONFIG.MEDIUM;
 
                         return (
-                            <CourseCard
-                                key={vuln.vuln_code}
-                                className={`p-6 md:p-6 transition-all ${isFixed
-                                    ? 'opacity-80 !border-emerald-500/20'
-                                    : '!border-amber-500/20 hover:!border-amber-500/40'
-                                    }`}
-                            >
-                                <div className="flex items-start justify-between gap-6">
-                                    <div className="flex-1">
-                                        <div className="flex flex-wrap items-center gap-2 mb-2">
-                                            <Badge severity={vuln.severity} />
-                                            <span className="text-xs font-mono text-slate-500">BLOC {vuln.bloc_number}</span>
-                                            {typeof vuln.module_number === 'number' && (
-                                                <span className="text-xs font-mono text-slate-500">MODULE {vuln.module_number}</span>
-                                            )}
-                                            {isFixed && (
-                                                <span className="flex items-center gap-1 text-xs text-emerald-400 font-bold px-2 py-0.5 bg-emerald-500/10 rounded-full">
-                                                    <CheckCircle size={12} /> SECURISE
-                                                </span>
-                                            )}
-                                            {isLocked && (
-                                                <span className="flex items-center gap-1 text-xs text-amber-300 font-bold px-2 py-0.5 bg-amber-500/10 rounded-full">
-                                                    <Lock size={12} /> DEFENSE VERROUILLEE
-                                                </span>
-                                            )}
-                                            {isReadyForDefense && (
-                                                <span className="flex items-center gap-1 text-xs text-cyan-300 font-bold px-2 py-0.5 bg-cyan-500/10 rounded-full">
-                                                    <Unlock size={12} /> QUIZ DEBLOQUE
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        <h3 className="text-xl font-bold mb-2">{vuln.title}</h3>
-                                        <p className="text-slate-400 text-sm mb-4">{vuln.description}</p>
-
-                                        <div className="flex flex-wrap gap-2 mb-4">
-                                            <Link
-                                                href={`/student/defense/lab/${encodeURIComponent(vuln.vuln_code)}`}
-                                                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-950/60 border border-white/10 text-slate-200 text-xs hover:bg-slate-950 hover:border-white/20 transition"
-                                            >
-                                                <Flag size={14} />
-                                                Ouvrir le lab (flag)
-                                            </Link>
-                                        </div>
-
-                                        <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 mb-4">
-                                            <span className="flex items-center gap-1">
-                                                <Activity size={14} /> Type: {vuln.attack_type || 'N/A'}
+                            <div key={vuln.vuln_code} style={{
+                                background: 'var(--n-bg-primary)',
+                                border: `1px solid ${isFixed ? 'var(--n-border)' : cfg.badgeBorder}`,
+                                borderLeft: `3px solid ${isFixed ? 'var(--n-border-strong)' : cfg.barColor}`,
+                                borderRadius: '8px',
+                                opacity: isFixed ? 0.7 : 1,
+                            }}>
+                                <div style={{ padding: '14px 16px' }}>
+                                    {/* Badges */}
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
+                                        <span style={{
+                                            fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+                                            padding: '2px 7px', borderRadius: '4px',
+                                            background: cfg.badgeBg, color: cfg.badgeText, border: `1px solid ${cfg.badgeBorder}`,
+                                        }}>
+                                            {cfg.label}
+                                        </span>
+                                        <span style={{
+                                            fontSize: '11px', fontFamily: 'var(--n-font-mono)', padding: '2px 6px', borderRadius: '4px',
+                                            background: 'var(--n-bg-secondary)', border: '1px solid var(--n-border)', color: 'var(--n-text-tertiary)',
+                                        }}>
+                                            BLOC {vuln.bloc_number}
+                                        </span>
+                                        {typeof vuln.module_number === 'number' && (
+                                            <span style={{
+                                                fontSize: '11px', fontFamily: 'var(--n-font-mono)', padding: '2px 6px', borderRadius: '4px',
+                                                background: 'var(--n-bg-secondary)', border: '1px solid var(--n-border)', color: 'var(--n-text-tertiary)',
+                                            }}>
+                                                MODULE {vuln.module_number}
                                             </span>
-                                            {vuln.exploited_at && (
-                                                <span className="text-cyan-300">Flag valide</span>
-                                            )}
-                                            {vuln.fixed_at && (
-                                                <span className="text-emerald-300">Correctif applique</span>
-                                            )}
-                                        </div>
-
+                                        )}
+                                        {isFixed && (
+                                            <span style={{
+                                                display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '10px', fontWeight: 700,
+                                                textTransform: 'uppercase', letterSpacing: '0.08em', padding: '2px 7px', borderRadius: '4px',
+                                                background: 'var(--n-success-bg)', color: 'var(--n-success)', border: '1px solid var(--n-success-border)',
+                                            }}>
+                                                <CheckCircle size={9} /> Sécurisé
+                                            </span>
+                                        )}
                                         {isLocked && (
-                                            <div className="rounded-xl border border-white/10 bg-slate-950/50 p-4">
-                                                <div className="text-xs uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-2">
-                                                    <Flag size={14} /> Etape offensive requise
-                                                </div>
-                                                <div className="flex flex-col md:flex-row gap-3">
-                                                    <div className="flex-1">
-                                                        <input
-                                                            value={flagInputs[vuln.vuln_code] || ''}
-                                                            onChange={(event) => setFlagInputs((prev) => ({
-                                                                ...prev,
-                                                                [vuln.vuln_code]: event.target.value
-                                                            }))}
-                                                            placeholder="FLAG{...}"
-                                                            className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                                        />
-                                                        {feedback?.message && (
-                                                            <p className={`mt-2 text-xs ${feedback.type === 'success' ? 'text-emerald-300' : 'text-red-300'}`}>
-                                                                {feedback.message}
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                    <button
-                                                        onClick={() => void handleSubmitFlag(vuln.vuln_code)}
-                                                        disabled={submittingFlag}
-                                                        className="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 disabled:opacity-60 text-white text-sm font-semibold inline-flex items-center gap-2"
-                                                    >
-                                                        <KeyRound size={15} />
-                                                        {submittingFlag ? 'Validation...' : 'Valider le flag'}
+                                            <span style={{
+                                                display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '10px', fontWeight: 700,
+                                                textTransform: 'uppercase', letterSpacing: '0.08em', padding: '2px 7px', borderRadius: '4px',
+                                                background: 'var(--n-warning-bg)', color: 'var(--n-warning)', border: '1px solid var(--n-warning-border)',
+                                            }}>
+                                                <Lock size={9} /> Défense verrouillée
+                                            </span>
+                                        )}
+                                        {isReadyForDefense && (
+                                            <span style={{
+                                                display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '10px', fontWeight: 700,
+                                                textTransform: 'uppercase', letterSpacing: '0.08em', padding: '2px 7px', borderRadius: '4px',
+                                                background: 'var(--n-accent-light)', color: 'var(--n-accent)', border: '1px solid var(--n-accent-border)',
+                                            }}>
+                                                <Unlock size={9} /> Quiz débloqué
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--n-text-primary)', marginBottom: '4px' }}>
+                                        {vuln.title}
+                                    </h3>
+                                    <p style={{ fontSize: '13px', color: 'var(--n-text-secondary)', lineHeight: 1.5, marginBottom: '12px' }}>
+                                        {vuln.description}
+                                    </p>
+
+                                    {/* Meta */}
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px', fontSize: '12px', color: 'var(--n-text-tertiary)', marginBottom: '12px' }}>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <Activity size={12} /> {vuln.attack_type || 'N/A'}
+                                        </span>
+                                        {vuln.exploited_at && (
+                                            <span style={{
+                                                display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 600,
+                                                padding: '2px 7px', borderRadius: '999px',
+                                                background: 'var(--n-accent-light)', color: 'var(--n-accent)', border: '1px solid var(--n-accent-border)',
+                                            }}>
+                                                <Flag size={10} /> Flag validé
+                                            </span>
+                                        )}
+                                        {vuln.fixed_at && (
+                                            <span style={{
+                                                display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 600,
+                                                padding: '2px 7px', borderRadius: '999px',
+                                                background: 'var(--n-success-bg)', color: 'var(--n-success)', border: '1px solid var(--n-success-border)',
+                                            }}>
+                                                <CheckCircle size={10} /> Correctif appliqué
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {/* Actions */}
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px', marginBottom: isLocked ? '12px' : 0 }}>
+                                        <Link href={`/student/defense/lab/${encodeURIComponent(vuln.vuln_code)}`}
+                                            style={{
+                                                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                                padding: '7px 14px', borderRadius: '6px', fontSize: '13px', fontWeight: 500,
+                                                background: 'var(--n-accent)', color: '#fff', textDecoration: 'none',
+                                            }}
+                                            onMouseEnter={e => (e.currentTarget.style.opacity = '0.85')}
+                                            onMouseLeave={e => (e.currentTarget.style.opacity = '1')}>
+                                            <Terminal size={13} /> Accéder au lab
+                                        </Link>
+                                        {isReadyForDefense && (
+                                            <button onClick={() => openQuiz(vuln)}
+                                                style={{
+                                                    display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                                    padding: '7px 14px', borderRadius: '6px', fontSize: '13px', fontWeight: 500,
+                                                    background: 'var(--n-success-bg)', border: '1px solid var(--n-success-border)',
+                                                    color: 'var(--n-success)', cursor: 'pointer',
+                                                }}>
+                                                <Unlock size={13} /> Corriger la faille
+                                            </button>
+                                        )}
+                                        {isFixed && (
+                                            <button onClick={() => void handleResetVuln(vuln.vuln_code)} disabled={resettingVuln}
+                                                style={{
+                                                    display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                                    padding: '7px 14px', borderRadius: '6px', fontSize: '13px', fontWeight: 500,
+                                                    background: 'var(--n-bg-secondary)', border: '1px solid var(--n-border)',
+                                                    color: 'var(--n-text-secondary)', cursor: 'pointer', opacity: resettingVuln ? 0.5 : 1,
+                                                }}>
+                                                <RotateCcw size={13} /> {resettingVuln ? 'Reset...' : 'Réinitialiser'}
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {/* Flag input */}
+                                    {isLocked && (
+                                        <div style={{
+                                            padding: '12px 14px', borderRadius: '6px',
+                                            background: 'var(--n-bg-secondary)', border: '1px solid var(--n-border)',
+                                        }}>
+                                            <p style={{
+                                                fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em',
+                                                color: 'var(--n-text-tertiary)', marginBottom: '10px',
+                                                display: 'flex', alignItems: 'center', gap: '5px',
+                                            }}>
+                                                <Flag size={12} /> Étape offensive — soumettez le flag pour débloquer
+                                            </p>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                                    <input
+                                                        value={flagInputs[vuln.vuln_code] || ''}
+                                                        onChange={(event) => setFlagInputs((prev) => ({ ...prev, [vuln.vuln_code]: event.target.value }))}
+                                                        placeholder="FLAG{...}"
+                                                        style={{
+                                                            flex: 1, minWidth: '200px', padding: '8px 12px', borderRadius: '6px', fontSize: '13px',
+                                                            fontFamily: 'var(--n-font-mono)', background: 'var(--n-bg-primary)',
+                                                            border: '1px solid var(--n-border)', color: 'var(--n-text-primary)', outline: 'none',
+                                                        }}
+                                                        onFocus={e => (e.currentTarget.style.borderColor = 'var(--n-accent-border)')}
+                                                        onBlur={e => (e.currentTarget.style.borderColor = 'var(--n-border)')}
+                                                    />
+                                                    <button onClick={() => void handleSubmitFlag(vuln.vuln_code)} disabled={submittingFlag}
+                                                        style={{
+                                                            display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                                            padding: '8px 14px', borderRadius: '6px', fontSize: '13px', fontWeight: 500,
+                                                            background: 'var(--n-accent)', color: '#fff', border: 'none',
+                                                            cursor: submittingFlag ? 'not-allowed' : 'pointer', opacity: submittingFlag ? 0.5 : 1, flexShrink: 0,
+                                                        }}>
+                                                        <KeyRound size={13} /> {submittingFlag ? 'Validation...' : 'Valider le flag'}
                                                     </button>
                                                 </div>
+                                                {feedback?.message && (
+                                                    <p style={{ fontSize: '12px', margin: 0, color: feedback.type === 'success' ? 'var(--n-success)' : 'var(--n-danger)' }}>
+                                                        {feedback.message}
+                                                    </p>
+                                                )}
                                             </div>
-                                        )}
-                                    </div>
-
-                                    <div>
-                                        {isReadyForDefense ? (
-                                            <button
-                                                onClick={() => openQuiz(vuln)}
-                                                className="flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold transition-colors shadow-lg shadow-emerald-900/20"
-                                            >
-                                                <Unlock size={18} />
-                                                Corriger la faille
-                                            </button>
-                                        ) : isFixed ? (
-                                            <button
-                                                onClick={() => void handleResetVuln(vuln.vuln_code)}
-                                                disabled={resettingVuln}
-                                                className="flex items-center gap-2 px-6 py-3 bg-slate-700 hover:bg-slate-600 disabled:opacity-60 text-white rounded-xl font-bold transition-colors"
-                                            >
-                                                <RotateCcw size={18} />
-                                                {resettingVuln ? 'Reset...' : 'Reinitialiser'}
-                                            </button>
-                                        ) : (
-                                            <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-slate-500">
-                                                <Lock size={24} />
-                                            </div>
-                                        )}
-                                    </div>
+                                        </div>
+                                    )}
                                 </div>
-                            </CourseCard>
+                            </div>
                         );
                     })}
+
+                    {catalog.length === 0 && !loading && (
+                        <div style={{
+                            textAlign: 'center', padding: '48px 24px', borderRadius: '8px',
+                            background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)', borderStyle: 'dashed',
+                        }}>
+                            <Shield size={28} style={{ color: 'var(--n-text-tertiary)', marginBottom: '10px' }} />
+                            <p style={{ fontSize: '13px', color: 'var(--n-text-tertiary)' }}>
+                                Aucune vulnérabilité disponible pour le moment.
+                            </p>
+                        </div>
+                    )}
                 </div>
             </div>
 
+            {/* ── Quiz Modal ── */}
             {selectedVuln && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-                    <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full p-8 relative shadow-2xl">
-                        <button
-                            onClick={() => setSelectedVuln(null)}
-                            className="absolute top-4 right-4 text-slate-500 hover:text-white"
-                        >
-                            x
+                <div style={{
+                    position: 'fixed', inset: 0, zIndex: 50,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: '16px', background: 'rgba(0,0,0,0.45)',
+                }}>
+                    <div style={{
+                        maxWidth: '560px', width: '100%', padding: '24px',
+                        background: 'var(--n-bg-primary)', borderRadius: '12px',
+                        border: '1px solid var(--n-border)',
+                        boxShadow: '0 20px 60px -12px rgba(0,0,0,0.2)',
+                        position: 'relative',
+                    }}>
+                        <button onClick={() => setSelectedVuln(null)}
+                            style={{
+                                position: 'absolute', top: '12px', right: '12px',
+                                width: '28px', height: '28px', borderRadius: '6px',
+                                background: 'transparent', border: '1px solid var(--n-border)',
+                                color: 'var(--n-text-tertiary)', cursor: 'pointer', fontSize: '16px',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.background = 'var(--n-bg-secondary)')}
+                            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                            ×
                         </button>
 
-                        <h2 className="text-2xl font-bold mb-2 text-emerald-400">Patch de securite</h2>
-                        <h3 className="text-xl font-bold mb-6">{selectedVuln.title}</h3>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                            <Shield size={14} style={{ color: 'var(--n-danger)' }} />
+                            <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--n-danger)' }}>
+                                Quiz de défense
+                            </span>
+                        </div>
+                        <h2 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--n-text-primary)', marginBottom: '16px' }}>
+                            {selectedVuln.title}
+                        </h2>
 
                         {!quizResult ? (
                             <>
-                                <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700 mb-6">
-                                    <p className="font-medium text-lg mb-4 flex gap-3">
-                                        <HelpCircle className="text-amber-400 shrink-0" />
-                                        {selectedVuln.question || 'Comment corriger cette vulnerabilite ?'}
+                                <div style={{ padding: '14px 16px', borderRadius: '8px', marginBottom: '16px', background: 'var(--n-bg-secondary)', border: '1px solid var(--n-border)' }}>
+                                    <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--n-text-primary)', marginBottom: '14px', display: 'flex', alignItems: 'flex-start', gap: '8px', lineHeight: 1.5 }}>
+                                        <HelpCircle size={16} style={{ color: 'var(--n-warning)', flexShrink: 0, marginTop: '1px' }} />
+                                        {selectedVuln.question || 'Comment corriger cette vulnérabilité ?'}
                                     </p>
-                                    <div className="space-y-3">
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                         {(selectedVuln.options || []).map((opt, idx) => (
-                                            <label
-                                                key={idx}
-                                                className={`flex items-center gap-3 p-4 rounded-lg border cursor-pointer transition-all ${quizAnswer === idx
-                                                    ? 'bg-emerald-500/10 border-emerald-500'
-                                                    : 'bg-slate-950 border-slate-800 hover:border-slate-600'
-                                                    }`}
-                                            >
-                                                <input
-                                                    type="radio"
-                                                    name="quiz"
-                                                    className="accent-emerald-500 w-4 h-4"
-                                                    checked={quizAnswer === idx}
-                                                    onChange={() => setQuizAnswer(idx)}
-                                                />
-                                                <span>{opt}</span>
+                                            <label key={idx} style={{
+                                                display: 'flex', alignItems: 'flex-start', gap: '10px',
+                                                padding: '10px 12px', borderRadius: '6px', cursor: 'pointer',
+                                                background: quizAnswer === idx ? 'var(--n-accent-light)' : 'var(--n-bg-primary)',
+                                                border: `1px solid ${quizAnswer === idx ? 'var(--n-accent-border)' : 'var(--n-border)'}`,
+                                                transition: 'all 0.1s',
+                                            }}>
+                                                <input type="radio" name="quiz" style={{ marginTop: '2px', flexShrink: 0, accentColor: 'var(--n-accent)' }}
+                                                    checked={quizAnswer === idx} onChange={() => setQuizAnswer(idx)} />
+                                                <span style={{ fontSize: '13px', color: 'var(--n-text-primary)', lineHeight: 1.5 }}>{opt}</span>
                                             </label>
                                         ))}
                                     </div>
                                 </div>
-
-                                <div className="flex justify-end gap-3">
-                                    <button
-                                        onClick={() => setSelectedVuln(null)}
-                                        className="px-4 py-2 text-slate-400 hover:text-white"
-                                    >
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                                    <button onClick={() => setSelectedVuln(null)}
+                                        style={{ padding: '7px 14px', borderRadius: '6px', fontSize: '13px', fontWeight: 500, background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)', color: 'var(--n-text-secondary)', cursor: 'pointer' }}>
                                         Annuler
                                     </button>
-                                    <button
-                                        onClick={() => void handleQuizSubmit()}
-                                        disabled={quizAnswer === null || submittingQuiz}
-                                        className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-bold"
-                                    >
+                                    <button onClick={() => void handleQuizSubmit()} disabled={quizAnswer === null || submittingQuiz}
+                                        style={{ padding: '7px 14px', borderRadius: '6px', fontSize: '13px', fontWeight: 500, background: 'var(--n-accent)', color: '#fff', border: 'none', cursor: quizAnswer === null || submittingQuiz ? 'not-allowed' : 'pointer', opacity: quizAnswer === null || submittingQuiz ? 0.5 : 1 }}>
                                         {submittingQuiz ? 'Validation...' : 'Appliquer le correctif'}
                                     </button>
                                 </div>
                             </>
                         ) : (
-                            <div className="text-center py-8">
+                            <div style={{ textAlign: 'center', padding: '24px 0' }}>
                                 {quizResult.correct ? (
                                     <>
-                                        <div className="w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                                            <CheckCircle size={32} className="text-white" />
+                                        <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: 'var(--n-success-bg)', border: '2px solid var(--n-success-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                                            <CheckCircle size={26} style={{ color: 'var(--n-success)' }} />
                                         </div>
-                                        <h3 className="text-2xl font-bold text-emerald-400 mb-2">Faille corrigee</h3>
-                                        <p className="text-slate-300 mb-6">{quizResult.explanation}</p>
+                                        <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--n-success)', marginBottom: '6px' }}>Faille corrigée !</h3>
+                                        <p style={{ fontSize: '13px', color: 'var(--n-text-secondary)', lineHeight: 1.5 }}>{quizResult.explanation}</p>
                                     </>
                                 ) : (
                                     <>
-                                        <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                                            <AlertTriangle size={32} className="text-white" />
+                                        <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: 'var(--n-danger-bg)', border: '2px solid var(--n-danger-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                                            <AlertTriangle size={26} style={{ color: 'var(--n-danger)' }} />
                                         </div>
-                                        <h3 className="text-2xl font-bold text-red-400 mb-2">Correction incorrecte</h3>
-                                        <p className="text-slate-300 mb-6">{quizResult.explanation || 'Ce n est pas la bonne solution. Reessayez.'}</p>
-                                        <button
-                                            onClick={() => setQuizResult(null)}
-                                            className="px-6 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg"
-                                        >
-                                            Reessayer
+                                        <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--n-danger)', marginBottom: '6px' }}>Correction incorrecte</h3>
+                                        <p style={{ fontSize: '13px', color: 'var(--n-text-secondary)', lineHeight: 1.5, marginBottom: '16px' }}>{quizResult.explanation || 'Ce n\'est pas la bonne solution. Réessayez.'}</p>
+                                        <button onClick={() => setQuizResult(null)}
+                                            style={{ padding: '7px 16px', borderRadius: '6px', fontSize: '13px', fontWeight: 500, background: 'var(--n-bg-secondary)', border: '1px solid var(--n-border)', color: 'var(--n-text-secondary)', cursor: 'pointer' }}>
+                                            Réessayer
                                         </button>
                                     </>
                                 )}
@@ -571,30 +673,6 @@ export default function DefenseDashboard() {
                     </div>
                 </div>
             )}
-        </CoursePageShell>
-    );
-}
-
-function StatCard({ label, value }: { label: string; value: string }) {
-    return (
-        <CourseCard className="p-4 md:p-5">
-            <div className="text-xs uppercase tracking-wider text-slate-500">{label}</div>
-            <div className="text-2xl font-bold mt-1">{value}</div>
-        </CourseCard>
-    );
-}
-
-function Badge({ severity }: { severity: Severity }) {
-    const colors: Record<Severity, string> = {
-        CRITICAL: 'bg-red-500 text-white',
-        HIGH: 'bg-orange-500 text-white',
-        MEDIUM: 'bg-amber-500 text-slate-900',
-        LOW: 'bg-blue-500 text-white'
-    };
-
-    return (
-        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${colors[severity]}`}>
-            {severity}
-        </span>
+        </div>
     );
 }

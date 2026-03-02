@@ -16,6 +16,9 @@ import { logger } from './utils/logger';
 import { activeConnections } from './utils/metrics';
 import { initializeHealthCheckDependencies } from './services/health.service';
 import { Iso8583TcpServer } from './iso8583/Iso8583Server';
+import { bootstrapMTLS, startMTLSServer, patchAxiosWithMTLS } from './utils/mtls.helper';
+
+const SERVICE_NAME = 'sim-network-switch';
 
 // ===========================================
 // Application Setup
@@ -42,6 +45,21 @@ const startServer = async (): Promise<void> => {
 
         // Get app info
         const appInfo = getAppInfo();
+
+        // mTLS bootstrap
+        if (config.mtlsEnabled) {
+            try {
+                const ctx = await bootstrapMTLS(SERVICE_NAME, config.keyManagementUrl);
+                patchAxiosWithMTLS(ctx);
+                startMTLSServer(app, config.server.port, ctx);
+                logger.info(`🚀 ${appInfo.name} (🔒 mTLS) on port ${config.server.port}`);
+                // Start ISO8583 TCP server (stays plain TCP for protocol reasons)
+                iso8583Server.start(8583);
+                return;
+            } catch (err: any) {
+                logger.warn(`[mTLS] ${err.message} — falling back to HTTP`);
+            }
+        }
 
         // Start HTTP server
         server = app.listen(config.server.port, config.server.host, () => {

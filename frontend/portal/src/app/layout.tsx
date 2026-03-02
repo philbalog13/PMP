@@ -19,6 +19,7 @@ export const metadata: Metadata = {
 
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { AppShell } from "@/components/AppShell";
 import { AuthProvider } from "@shared/context/AuthContext";
 
 export default function RootLayout({
@@ -29,14 +30,21 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-950`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AuthProvider>
-          <Navbar />
-          <main className="pt-20">
+          {/*
+           * AppShell gère conditionnellement Navbar+Footer :
+           * - /student/*, /instructor/*, /merchant/* → NotionLayout (pas de Navbar publique)
+           * - /auth/*, /login, /register            → standalone (pas de chrome)
+           * - tout le reste                         → Navbar + pt-20 + Footer
+           */}
+          <AppShell
+            navbar={<Navbar />}
+            footer={<Footer />}
+          >
             {children}
-          </main>
-          <Footer />
+          </AppShell>
         </AuthProvider>
       </body>
     </html>

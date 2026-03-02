@@ -4,8 +4,27 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@shared/context/AuthContext';
 import { UserRole } from '@shared/types/user';
-import { CreditCard, Lock, Unlock, Shield, Wifi, RefreshCcw, AlertTriangle, Plus } from 'lucide-react';
+import {
+    AlertTriangle,
+    ArrowRight,
+    CreditCard,
+    Lock,
+    Plus,
+    RefreshCcw,
+    Settings,
+    Shield,
+    Unlock,
+    Wifi,
+} from 'lucide-react';
 import { CardFeaturesUpdateBody, clientApi } from '@/lib/api-client';
+import { BankPageHeader } from '@shared/components/banking/layout/BankPageHeader';
+import { BankButton } from '@shared/components/banking/primitives/BankButton';
+import { BankBadge } from '@shared/components/banking/primitives/BankBadge';
+import { BankModal } from '@shared/components/banking/feedback/BankModal';
+import { BankEmptyState } from '@shared/components/banking/feedback/BankEmptyState';
+import { BankSkeleton } from '@shared/components/banking/feedback/BankSkeleton';
+import { StatCard } from '@shared/components/banking/data-display/StatCard';
+import { CardVisual } from '@shared/components/banking/data-display/CardVisual';
 
 type ClientCard = {
     id: string;
@@ -79,6 +98,8 @@ export default function CardsPage() {
     const [isRefreshing, setIsRefreshing] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [actionId, setActionId] = useState<string | null>(null);
+    const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+    const [confirmTarget, setConfirmTarget] = useState<ClientCard | null>(null);
 
     const isClient = user?.role === UserRole.CLIENT;
 
@@ -108,7 +129,7 @@ export default function CardsPage() {
             await clientApi.updateCardFeatures(card.id, body);
             await loadCards();
         } catch (featureError: unknown) {
-            setError(getErrorMessage(featureError, 'Mise à jour impossible'));
+            setError(getErrorMessage(featureError, 'Mise a jour impossible'));
         } finally {
             setActionId(null);
         }
@@ -133,26 +154,60 @@ export default function CardsPage() {
         [cards]
     );
 
+    const selectedCard = useMemo(
+        () => cards.find((card) => card.id === selectedCardId) || cards[0] || null,
+        [cards, selectedCardId]
+    );
+
+    useEffect(() => {
+        if (!cards.length) {
+            setSelectedCardId(null);
+            return;
+        }
+        if (!selectedCardId || !cards.some((card) => card.id === selectedCardId)) {
+            setSelectedCardId(cards[0].id);
+        }
+    }, [cards, selectedCardId]);
+
+    const statusToVariant = (status: string) => {
+        if (status === 'ACTIVE') return 'success' as const;
+        if (status === 'BLOCKED') return 'danger' as const;
+        return 'warning' as const;
+    };
+
+    const getLimitProgress = (spent: number, limit: number) => {
+        if (limit <= 0) return 0;
+        return Math.min(100, Math.max(0, (spent / limit) * 100));
+    };
+
+    const confirmBlockToggle = async () => {
+        if (!confirmTarget) return;
+        await toggleBlockStatus(confirmTarget);
+        setConfirmTarget(null);
+    };
+
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-500"></div>
+            <div style={{ padding: 'var(--bank-space-6)', maxWidth: 1150, margin: '0 auto' }}>
+                <BankSkeleton variant="full-page" />
             </div>
         );
     }
 
     if (!isAuthenticated) {
         return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center px-6">
-                <div className="max-w-md w-full rounded-3xl border border-white/10 bg-slate-900/70 p-8 text-center space-y-4">
-                    <h1 className="text-2xl font-bold text-white">Session expirée</h1>
-                    <p className="text-slate-400">Reconnectez-vous sur le portail pour accéder à votre espace client.</p>
-                    <a
+            <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--bank-space-6)', background: 'var(--bank-bg-base)' }}>
+                <div style={{ maxWidth: 420, width: '100%', borderRadius: 'var(--bank-radius-2xl)', border: '1px solid var(--bank-border-subtle)', background: 'var(--bank-bg-surface)', padding: 'var(--bank-space-8)', textAlign: 'center' }}>
+                    <h1 style={{ fontSize: 'var(--bank-text-2xl)', fontWeight: 'var(--bank-font-bold)', color: 'var(--bank-text-primary)', marginBottom: 'var(--bank-space-3)' }}>Session expirée</h1>
+                    <p style={{ color: 'var(--bank-text-tertiary)', marginBottom: 'var(--bank-space-6)', fontSize: 'var(--bank-text-sm)' }}>Reconnectez-vous sur le portail pour accéder à votre espace client.</p>
+                    <Link
                         href={`${process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:3000'}/login`}
-                        className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-amber-500 text-slate-950 font-semibold hover:bg-amber-400 transition-colors"
+                        className="bk-btn bk-btn--primary bk-btn--md"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}
                     >
                         Retour au login
-                    </a>
+                        <ArrowRight size={16} aria-hidden="true" />
+                    </Link>
                 </div>
             </div>
         );
@@ -160,11 +215,11 @@ export default function CardsPage() {
 
     if (!isClient) {
         return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center px-6">
-                <div className="max-w-xl w-full rounded-3xl border border-white/10 bg-slate-900/70 p-8 text-center space-y-4">
-                    <AlertTriangle className="w-10 h-10 mx-auto text-amber-400" />
-                    <h1 className="text-2xl font-bold text-white">Cartes non disponibles</h1>
-                    <p className="text-slate-400">
+            <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--bank-space-6)', background: 'var(--bank-bg-base)' }}>
+                <div style={{ maxWidth: 520, width: '100%', borderRadius: 'var(--bank-radius-2xl)', border: '1px solid var(--bank-border-subtle)', background: 'var(--bank-bg-surface)', padding: 'var(--bank-space-8)', textAlign: 'center' }}>
+                    <AlertTriangle style={{ width: 40, height: 40, margin: '0 auto var(--bank-space-4)', color: 'var(--bank-warning)' }} aria-hidden="true" />
+                    <h1 style={{ fontSize: 'var(--bank-text-2xl)', fontWeight: 'var(--bank-font-bold)', color: 'var(--bank-text-primary)', marginBottom: 'var(--bank-space-3)' }}>Cartes non disponibles</h1>
+                    <p style={{ color: 'var(--bank-text-tertiary)', fontSize: 'var(--bank-text-sm)' }}>
                         Les cartes bancaires sont réservées aux clients. Les comptes marchands n&apos;ont pas de carte.
                     </p>
                 </div>
@@ -173,130 +228,404 @@ export default function CardsPage() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-950 py-8 pb-12">
-            <div className="max-w-6xl mx-auto px-6 space-y-6">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-3xl font-bold text-white mb-1">Mes cartes</h1>
-                        <p className="text-slate-400">Données synchronisées depuis l&apos;API client.</p>
-                    </div>
-                    <div className="flex items-center gap-3">
+        <div style={{ maxWidth: 1150, margin: '0 auto', padding: 'var(--bank-space-6)' }}>
+            <BankPageHeader
+                title="Mes cartes"
+                subtitle="Gestion des cartes bancaires et des fonctionnalites de securite."
+                actions={
+                    <div style={{ display: 'flex', gap: 'var(--bank-space-2)' }}>
                         <Link
                             href="/cards/add"
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 text-slate-950 font-semibold hover:bg-amber-400 transition-colors"
+                            className="bk-btn bk-btn--primary bk-btn--sm"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}
                         >
-                            <Plus size={16} />
+                            <Plus size={14} aria-hidden="true" />
                             Nouvelle carte
                         </Link>
-                        <button
+                        <BankButton
+                            size="sm"
+                            variant="ghost"
+                            icon={RefreshCcw}
                             onClick={loadCards}
-                            disabled={isRefreshing}
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 border border-white/10 text-white hover:bg-slate-700 disabled:opacity-60"
+                            loading={isRefreshing}
                         >
-                            <RefreshCcw size={16} className={isRefreshing ? 'animate-spin' : ''} />
                             Actualiser
-                        </button>
+                        </BankButton>
                     </div>
+                }
+            />
+
+            {error && (
+                <div
+                    style={{
+                        marginBottom: 'var(--bank-space-4)',
+                        borderRadius: 'var(--bank-radius-lg)',
+                        border: '1px solid color-mix(in srgb, var(--bank-danger) 30%, transparent)',
+                        background: 'color-mix(in srgb, var(--bank-danger) 8%, transparent)',
+                        color: 'var(--bank-danger)',
+                        padding: 'var(--bank-space-4)',
+                        fontSize: 'var(--bank-text-sm)',
+                    }}
+                >
+                    {error}
+                </div>
+            )}
+
+            <div
+                style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                    gap: 'var(--bank-space-4)',
+                    marginBottom: 'var(--bank-space-6)',
+                }}
+            >
+                <StatCard label="Cartes totales" value={String(cards.length)} icon={CreditCard} loading={isRefreshing} index={0} />
+                <StatCard
+                    label="Cartes actives"
+                    value={String(cards.filter((card) => card.status === 'ACTIVE').length)}
+                    icon={Shield}
+                    loading={isRefreshing}
+                    index={1}
+                />
+                <StatCard
+                    label="Solde total cartes"
+                    value={formatMoney(totalBalance, cards[0]?.currency || 'EUR')}
+                    icon={CreditCard}
+                    loading={isRefreshing}
+                    accent
+                    index={2}
+                />
+            </div>
+
+            <section className="bk-card" style={{ marginBottom: 'var(--bank-space-6)' }}>
+                <div
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: 'var(--bank-space-4)',
+                    }}
+                >
+                    <h2
+                        style={{
+                            fontSize: 'var(--bank-text-base)',
+                            fontWeight: 'var(--bank-font-semibold)',
+                            color: 'var(--bank-text-primary)',
+                            margin: 0,
+                        }}
+                    >
+                        Cartes disponibles
+                    </h2>
+                    <span className="bk-caption">Selectionnez une carte pour afficher le detail.</span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-5">
-                        <p className="text-sm text-slate-400">Cartes totales</p>
-                        <p className="text-2xl font-bold text-white">{cards.length}</p>
-                    </div>
-                    <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-5">
-                        <p className="text-sm text-slate-400">Cartes actives</p>
-                        <p className="text-2xl font-bold text-white">{cards.filter((card) => card.status === 'ACTIVE').length}</p>
-                    </div>
-                    <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5">
-                        <p className="text-sm text-amber-300">Solde total cartes</p>
-                        <p className="text-2xl font-bold text-white">{formatMoney(totalBalance, cards[0]?.currency || 'EUR')}</p>
-                    </div>
-                </div>
-
-                {error && (
-                    <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200">
-                        {error}
+                {isRefreshing ? (
+                    <BankSkeleton variant="card-visual" count={2} />
+                ) : cards.length === 0 ? (
+                    <BankEmptyState
+                        icon={<CreditCard size={24} />}
+                        title="Aucune carte disponible"
+                        description="Ajoutez une carte ou demandez une emission pour commencer."
+                        action={
+                            <Link
+                                href="/cards/add"
+                                className="bk-btn bk-btn--primary bk-btn--sm"
+                                style={{ textDecoration: 'none' }}
+                            >
+                                Ajouter une carte
+                            </Link>
+                        }
+                    />
+                ) : (
+                    <div
+                        style={{
+                            display: 'flex',
+                            gap: 'var(--bank-space-4)',
+                            overflowX: 'auto',
+                            paddingBottom: 'var(--bank-space-2)',
+                        }}
+                    >
+                        {cards.map((card) => {
+                            const isSelected = selectedCard?.id === card.id;
+                            return (
+                                <div key={card.id}>
+                                    <button
+                                        onClick={() => setSelectedCardId(card.id)}
+                                        type="button"
+                                        className="bk-card--interactive"
+                                        style={{
+                                            border: isSelected
+                                                ? '1px solid var(--bank-accent)'
+                                                : '1px solid var(--bank-border-subtle)',
+                                            borderRadius: 'var(--bank-radius-xl)',
+                                            padding: 'var(--bank-space-2)',
+                                            background: isSelected ? 'var(--bank-accent-subtle)' : 'transparent',
+                                            transition: 'all var(--bank-t-fast) var(--bank-ease)',
+                                        }}
+                                    >
+                                        <CardVisual
+                                            maskedPan={card.maskedPan}
+                                            cardHolder={card.cardholderName || ''}
+                                            expiry={card.expiryDate || '--/--'}
+                                            network={card.network.toLowerCase()}
+                                            cardType={card.cardType === 'VIRTUAL' ? 'virtual' : 'physical'}
+                                            isBlocked={card.status !== 'ACTIVE'}
+                                            accent="client"
+                                            size="sm"
+                                        />
+                                    </button>
+                                    <div style={{ marginTop: 'var(--bank-space-2)', textAlign: 'center' }}>
+                                        <BankBadge
+                                            variant={isSelected ? 'accent' : statusToVariant(card.status)}
+                                            label={isSelected ? 'Carte active' : card.status}
+                                        />
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
+            </section>
 
-                <div className="space-y-4">
-                    {cards.map((card) => (
-                        <div key={card.id} className="rounded-2xl border border-white/10 bg-slate-800/50 p-5 space-y-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-white font-semibold">{card.maskedPan}</p>
-                                    <p className="text-xs text-slate-400">{card.network} - {card.cardType} - Exp {card.expiryDate}</p>
-                                    {card.isAutoIssued && (
-                                        <p className="text-xs text-emerald-300 mt-1">Carte auto (solde du compte)</p>
-                                    )}
-                                </div>
-                                <span className={`px-3 py-1 rounded-full text-xs ${card.status === 'ACTIVE' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-yellow-500/20 text-yellow-300'}`}>
-                                    {card.status}
-                                </span>
+            {selectedCard && (
+                <section className="bk-card">
+                    <div
+                        style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            marginBottom: 'var(--bank-space-5)',
+                            gap: 'var(--bank-space-3)',
+                        }}
+                    >
+                        <div>
+                            <p className="bk-label-upper" style={{ marginBottom: 4 }}>
+                                Detail carte
+                            </p>
+                            <h3
+                                style={{
+                                    margin: 0,
+                                    fontSize: 'var(--bank-text-lg)',
+                                    color: 'var(--bank-text-primary)',
+                                    fontWeight: 'var(--bank-font-semibold)',
+                                }}
+                            >
+                                {selectedCard.maskedPan}
+                            </h3>
+                        </div>
+                        <BankBadge variant={statusToVariant(selectedCard.status)} label={selectedCard.status} />
+                    </div>
+
+                    <div
+                        style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                            gap: 'var(--bank-space-4)',
+                            marginBottom: 'var(--bank-space-5)',
+                        }}
+                    >
+                        <div>
+                            <p className="bk-label-upper" style={{ marginBottom: 6 }}>
+                                Titulaire
+                            </p>
+                            <p className="bk-body" style={{ margin: 0, color: 'var(--bank-text-primary)' }}>
+                                {selectedCard.cardholderName || 'Non renseigne'}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="bk-label-upper" style={{ marginBottom: 6 }}>
+                                Reseau / Type
+                            </p>
+                            <p className="bk-body" style={{ margin: 0, color: 'var(--bank-text-primary)' }}>
+                                {selectedCard.network} - {selectedCard.cardType}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="bk-label-upper" style={{ marginBottom: 6 }}>
+                                Expiration
+                            </p>
+                            <p className="bk-body" style={{ margin: 0, color: 'var(--bank-text-primary)' }}>
+                                {selectedCard.expiryDate || '--/--'}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="bk-label-upper" style={{ marginBottom: 6 }}>
+                                CVV
+                            </p>
+                            <p className="bk-body" style={{ margin: 0, color: 'var(--bank-text-primary)' }}>
+                                ***
+                            </p>
+                        </div>
+                    </div>
+
+                    <div
+                        style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                            gap: 'var(--bank-space-4)',
+                            marginBottom: 'var(--bank-space-5)',
+                        }}
+                    >
+                        <div
+                            style={{
+                                border: '1px solid var(--bank-border-subtle)',
+                                background: 'var(--bank-bg-sunken)',
+                                borderRadius: 'var(--bank-radius-lg)',
+                                padding: 'var(--bank-space-4)',
+                            }}
+                        >
+                            <p className="bk-label-upper" style={{ marginBottom: 6 }}>
+                                Solde
+                            </p>
+                            <p
+                                style={{
+                                    margin: 0,
+                                    fontSize: 'var(--bank-text-xl)',
+                                    fontWeight: 'var(--bank-font-semibold)',
+                                    color: 'var(--bank-text-primary)',
+                                }}
+                            >
+                                {formatMoney(selectedCard.balance, selectedCard.currency)}
+                            </p>
+                            {selectedCard.isAutoIssued && (
+                                <p className="bk-caption" style={{ marginTop: 6 }}>
+                                    Carte auto-issuee (solde compte principal)
+                                </p>
+                            )}
+                        </div>
+
+                        <div
+                            style={{
+                                border: '1px solid var(--bank-border-subtle)',
+                                background: 'var(--bank-bg-sunken)',
+                                borderRadius: 'var(--bank-radius-lg)',
+                                padding: 'var(--bank-space-4)',
+                            }}
+                        >
+                            <p className="bk-label-upper" style={{ marginBottom: 'var(--bank-space-2)' }}>
+                                Plafond journalier
+                            </p>
+                            <p className="bk-caption" style={{ marginTop: 0, marginBottom: 'var(--bank-space-2)' }}>
+                                {formatMoney(selectedCard.dailySpent, selectedCard.currency)} / {formatMoney(selectedCard.dailyLimit, selectedCard.currency)}
+                            </p>
+                            <div
+                                style={{
+                                    height: 6,
+                                    borderRadius: 'var(--bank-radius-full)',
+                                    background: 'var(--bank-bg-elevated)',
+                                    overflow: 'hidden',
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        height: '100%',
+                                        width: `${getLimitProgress(selectedCard.dailySpent, selectedCard.dailyLimit)}%`,
+                                        background: 'var(--bank-accent)',
+                                        borderRadius: 'var(--bank-radius-full)',
+                                        transition: 'width var(--bank-t-base) var(--bank-ease)',
+                                    }}
+                                />
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                                <div className="rounded-xl bg-slate-900/50 p-3 border border-white/5">
-                                    <p className="text-slate-400 mb-1">{card.isAutoIssued ? 'Solde compte' : 'Solde attribué'}</p>
-                                    <p className="text-white font-semibold">{formatMoney(card.balance, card.currency)}</p>
-                                </div>
-                                <div className="rounded-xl bg-slate-900/50 p-3 border border-white/5">
-                                    <p className="text-slate-400 mb-1">Dépense / limite jour</p>
-                                    <p className="text-white font-semibold">
-                                        {formatMoney(card.dailySpent, card.currency)} / {formatMoney(card.dailyLimit, card.currency)}
-                                    </p>
-                                </div>
-                                <div className="rounded-xl bg-slate-900/50 p-3 border border-white/5">
-                                    <p className="text-slate-400 mb-1">Dépense / limite mois</p>
-                                    <p className="text-white font-semibold">
-                                        {formatMoney(card.monthlySpent, card.currency)} / {formatMoney(card.monthlyLimit, card.currency)}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="flex flex-wrap items-center gap-2">
-                                <button
-                                    onClick={() => toggleBlockStatus(card)}
-                                    disabled={actionId === card.id}
-                                    className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-700 text-white hover:bg-slate-600 disabled:opacity-60"
-                                >
-                                    {card.status === 'ACTIVE' ? <Lock size={14} /> : <Unlock size={14} />}
-                                    {card.status === 'ACTIVE' ? 'Bloquer' : 'Débloquer'}
-                                </button>
-                                <button
-                                    onClick={() => updateCardFeature(card, { threedsEnrolled: !card.threedsEnrolled })}
-                                    disabled={actionId === card.id}
-                                    className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl disabled:opacity-60 ${card.threedsEnrolled ? 'bg-blue-500/20 text-blue-300 hover:bg-blue-500/30' : 'bg-slate-700 text-slate-200 hover:bg-slate-600'}`}
-                                >
-                                    <Shield size={14} />
-                                    3DS {card.threedsEnrolled ? 'ON' : 'OFF'}
-                                </button>
-                                <button
-                                    onClick={() => updateCardFeature(card, { contactlessEnabled: !card.contactlessEnabled })}
-                                    disabled={actionId === card.id}
-                                    className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl disabled:opacity-60 ${card.contactlessEnabled ? 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30' : 'bg-slate-700 text-slate-200 hover:bg-slate-600'}`}
-                                >
-                                    <Wifi size={14} />
-                                    NFC {card.contactlessEnabled ? 'ON' : 'OFF'}
-                                </button>
-                                <span className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-900/60 text-slate-300 border border-white/10">
-                                    <CreditCard size={14} />
-                                    {card.cardholderName || 'Titulaire non renseigné'}
-                                </span>
+                            <p className="bk-label-upper" style={{ marginBottom: 'var(--bank-space-2)', marginTop: 'var(--bank-space-4)' }}>
+                                Plafond mensuel
+                            </p>
+                            <p className="bk-caption" style={{ marginTop: 0, marginBottom: 'var(--bank-space-2)' }}>
+                                {formatMoney(selectedCard.monthlySpent, selectedCard.currency)} / {formatMoney(selectedCard.monthlyLimit, selectedCard.currency)}
+                            </p>
+                            <div
+                                style={{
+                                    height: 6,
+                                    borderRadius: 'var(--bank-radius-full)',
+                                    background: 'var(--bank-bg-elevated)',
+                                    overflow: 'hidden',
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        height: '100%',
+                                        width: `${getLimitProgress(selectedCard.monthlySpent, selectedCard.monthlyLimit)}%`,
+                                        background: 'var(--bank-success)',
+                                        borderRadius: 'var(--bank-radius-full)',
+                                        transition: 'width var(--bank-t-base) var(--bank-ease)',
+                                    }}
+                                />
                             </div>
                         </div>
-                    ))}
+                    </div>
 
-                    {cards.length === 0 && (
-                        <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-8 text-center text-slate-400">
-                            Aucune carte disponible.
-                        </div>
-                    )}
-                </div>
-            </div>
+                    <div
+                        style={{
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: 'var(--bank-space-2)',
+                        }}
+                    >
+                        <BankButton
+                            variant={selectedCard.status === 'ACTIVE' ? 'danger' : 'primary'}
+                            icon={selectedCard.status === 'ACTIVE' ? Lock : Unlock}
+                            onClick={() => setConfirmTarget(selectedCard)}
+                            loading={actionId === selectedCard.id}
+                        >
+                            {selectedCard.status === 'ACTIVE' ? 'Bloquer la carte' : 'Debloquer la carte'}
+                        </BankButton>
+                        <BankButton
+                            variant="ghost"
+                            icon={Shield}
+                            onClick={() =>
+                                updateCardFeature(selectedCard, { threedsEnrolled: !selectedCard.threedsEnrolled })
+                            }
+                            loading={actionId === selectedCard.id}
+                        >
+                            3DS {selectedCard.threedsEnrolled ? 'ON' : 'OFF'}
+                        </BankButton>
+                        <BankButton
+                            variant="ghost"
+                            icon={Wifi}
+                            onClick={() =>
+                                updateCardFeature(selectedCard, { contactlessEnabled: !selectedCard.contactlessEnabled })
+                            }
+                            loading={actionId === selectedCard.id}
+                        >
+                            NFC {selectedCard.contactlessEnabled ? 'ON' : 'OFF'}
+                        </BankButton>
+                        <Link
+                            href="/security"
+                            className="bk-btn bk-btn--ghost"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}
+                        >
+                            <Settings size={14} aria-hidden="true" />
+                            Gerer securite
+                        </Link>
+                    </div>
+                </section>
+            )}
+
+            <BankModal
+                open={Boolean(confirmTarget)}
+                onClose={() => setConfirmTarget(null)}
+                title={confirmTarget?.status === 'ACTIVE' ? 'Bloquer cette carte ?' : 'Debloquer cette carte ?'}
+                footer={
+                    <>
+                        <BankButton variant="ghost" onClick={() => setConfirmTarget(null)}>
+                            Annuler
+                        </BankButton>
+                        <BankButton
+                            variant={confirmTarget?.status === 'ACTIVE' ? 'danger' : 'primary'}
+                            onClick={confirmBlockToggle}
+                            loading={Boolean(confirmTarget && actionId === confirmTarget.id)}
+                        >
+                            {confirmTarget?.status === 'ACTIVE' ? 'Confirmer le blocage' : 'Confirmer le deblocage'}
+                        </BankButton>
+                    </>
+                }
+            >
+                <p className="bk-body" style={{ margin: 0 }}>
+                    {confirmTarget?.status === 'ACTIVE'
+                        ? 'Cette action bloque les paiements en ligne et en terminal pour la carte selectionnee.'
+                        : 'Cette action reactive les paiements et rend la carte de nouveau utilisable.'}
+                </p>
+            </BankModal>
         </div>
     );
 }
-
-

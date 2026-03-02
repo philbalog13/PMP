@@ -10,12 +10,12 @@ import {
     Users,
     Clock,
     Target,
-    ChevronRight,
     Search,
     BarChart3,
     BookOpen
 } from 'lucide-react';
 import Link from 'next/link';
+import { NotionSkeleton } from '@shared/components/notion';
 
 interface Exercise {
     id: string;
@@ -54,19 +54,20 @@ const normalizeExercise = (raw: unknown): Exercise => {
     };
 };
 
-const DIFFICULTY_COLORS: Record<string, string> = {
-    BEGINNER: 'bg-emerald-500/20 text-emerald-400',
-    INTERMEDIATE: 'bg-blue-500/20 text-blue-400',
-    ADVANCED: 'bg-amber-500/20 text-amber-400',
-    EXPERT: 'bg-red-500/20 text-red-400'
+const DIFFICULTY_STYLES: Record<string, { bg: string; color: string }> = {
+    BEGINNER: { bg: 'var(--n-success-bg)', color: 'var(--n-success)' },
+    INTERMEDIATE: { bg: 'var(--n-accent-light)', color: 'var(--n-accent)' },
+    ADVANCED: { bg: 'var(--n-warning-bg)', color: 'var(--n-warning)' },
+    EXPERT: { bg: 'var(--n-danger-bg)', color: 'var(--n-danger)' },
+};
+
+const DIFFICULTY_LABELS: Record<string, string> = {
+    BEGINNER: 'Débutant', INTERMEDIATE: 'Intermédiaire', ADVANCED: 'Avancé', EXPERT: 'Expert'
 };
 
 const TYPE_LABELS: Record<string, string> = {
-    QUIZ: 'Quiz',
-    PRACTICAL: 'Pratique',
-    SIMULATION: 'Simulation',
-    CODE_REVIEW: 'Revue de code',
-    CASE_STUDY: 'Etude de cas'
+    QUIZ: 'Quiz', PRACTICAL: 'Pratique', SIMULATION: 'Simulation',
+    CODE_REVIEW: 'Revue de code', CASE_STUDY: 'Étude de cas'
 };
 
 export default function ExercisesPage() {
@@ -78,31 +79,21 @@ export default function ExercisesPage() {
     const [filterType, setFilterType] = useState<string>('');
     const [filterDifficulty, setFilterDifficulty] = useState<string>('');
 
-    useEffect(() => {
-        fetchExercises();
-    }, []);
+    useEffect(() => { fetchExercises(); }, []);
 
     const fetchExercises = async () => {
         try {
             setError(null);
             const token = localStorage.getItem('token');
-            if (!token) {
-                throw new Error('Session introuvable');
-            }
-
+            if (!token) throw new Error('Session introuvable');
             const response = await fetch('/api/exercises', {
                 headers: { Authorization: `Bearer ${token}` }
             });
-
-            if (!response.ok) {
-                throw new Error(`Impossible de charger les exercices (${response.status})`);
-            }
-
+            if (!response.ok) throw new Error(`Impossible de charger les exercices (${response.status})`);
             const data = await response.json();
             setExercises((data.exercises || []).map(normalizeExercise));
         } catch (err) {
-            const message = err instanceof Error ? err.message : 'Impossible de charger les exercices';
-            setError(message);
+            setError(err instanceof Error ? err.message : 'Impossible de charger les exercices');
             setExercises([]);
         } finally {
             setLoading(false);
@@ -111,226 +102,270 @@ export default function ExercisesPage() {
 
     const deleteExercise = async (id: string) => {
         if (!confirm('Voulez-vous vraiment supprimer cet exercice ?')) return;
-
         try {
             setError(null);
             const token = localStorage.getItem('token');
-            if (!token) {
-                throw new Error('Session introuvable');
-            }
-
+            if (!token) throw new Error('Session introuvable');
             const response = await fetch(`/api/exercises/${id}`, {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` }
             });
-
-            if (!response.ok) {
-                throw new Error(`Suppression impossible (${response.status})`);
-            }
-
-            setExercises((prev) => prev.filter((exercise) => exercise.id !== id));
+            if (!response.ok) throw new Error(`Suppression impossible (${response.status})`);
+            setExercises((prev) => prev.filter((e) => e.id !== id));
         } catch (err) {
-            const message = err instanceof Error ? err.message : 'Suppression impossible';
-            setError(message);
+            setError(err instanceof Error ? err.message : 'Suppression impossible');
         }
     };
 
-    const filteredExercises = exercises.filter((exercise) => {
-        const matchesSearch = exercise.title.toLowerCase().includes(searchQuery.toLowerCase())
-            || exercise.description.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesType = !filterType || exercise.type === filterType;
-        const matchesDifficulty = !filterDifficulty || exercise.difficulty === filterDifficulty;
-        return matchesSearch && matchesType && matchesDifficulty;
+    const filteredExercises = exercises.filter((e) => {
+        const matchesSearch = e.title.toLowerCase().includes(searchQuery.toLowerCase())
+            || e.description.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesSearch
+            && (!filterType || e.type === filterType)
+            && (!filterDifficulty || e.difficulty === filterDifficulty);
     });
 
     if (authLoading || loading) {
         return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500" />
+            <div style={{ minHeight: '100vh', background: 'var(--n-bg-secondary)', padding: '32px 24px' }}>
+                <NotionSkeleton type="list" />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-slate-950 pt-24 pb-12">
-            <div className="max-w-6xl mx-auto px-6">
-                <div className="flex items-center justify-between mb-8">
+        <div style={{ minHeight: '100vh', background: 'var(--n-bg-secondary)', padding: '32px 24px' }}>
+            <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+
+                {/* Header */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '28px' }}>
                     <div>
-                        <div className="flex items-center gap-2 text-xs text-slate-500 mb-2">
-                            <Link href="/instructor" className="hover:text-blue-400">Dashboard</Link>
-                            <ChevronRight size={12} className="inline" />
-                            <span className="text-blue-400">Exercices</span>
-                        </div>
-                        <h1 className="text-3xl font-bold text-white">Gestion des exercices</h1>
-                        <p className="text-slate-400 mt-1">
-                            {exercises.length} exercice{exercises.length > 1 ? 's' : ''} cree{exercises.length > 1 ? 's' : ''}
+                        <h1 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--n-text-primary)', margin: 0 }}>
+                            Gestion des exercices
+                        </h1>
+                        <p style={{ color: 'var(--n-text-secondary)', fontSize: '14px', marginTop: '4px' }}>
+                            {exercises.length} exercice{exercises.length > 1 ? 's' : ''} créé{exercises.length > 1 ? 's' : ''}
                         </p>
                     </div>
                     <Link
                         href="/instructor/exercises/create"
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-medium transition-colors"
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '8px',
+                            padding: '8px 16px', background: 'var(--n-accent)',
+                            color: '#fff', borderRadius: '6px', fontWeight: 500,
+                            fontSize: '14px', textDecoration: 'none'
+                        }}
                     >
-                        <Plus size={18} />
+                        <Plus size={16} />
                         Nouvel exercice
                     </Link>
                 </div>
 
+                {/* Error */}
                 {error && (
-                    <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-sm">
+                    <div style={{
+                        marginBottom: '20px', padding: '12px 16px',
+                        background: 'var(--n-danger-bg)', border: '1px solid var(--n-danger)',
+                        borderRadius: '6px', color: 'var(--n-danger)', fontSize: '14px'
+                    }}>
                         {error}
                     </div>
                 )}
 
-                <div className="flex flex-wrap gap-4 mb-6">
-                    <div className="relative flex-1 min-w-64">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                {/* Filtres */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
+                    <div style={{ position: 'relative', flex: 1, minWidth: '220px' }}>
+                        <Search style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', width: '16px', height: '16px', color: 'var(--n-text-tertiary)' }} />
                         <input
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Rechercher un exercice..."
-                            className="w-full pl-12 pr-4 py-3 bg-slate-800/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            style={{
+                                width: '100%', paddingLeft: '40px', paddingRight: '12px',
+                                paddingTop: '9px', paddingBottom: '9px',
+                                background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)',
+                                borderRadius: '6px', color: 'var(--n-text-primary)', fontSize: '14px',
+                                outline: 'none', boxSizing: 'border-box'
+                            }}
                         />
                     </div>
-
                     <select
                         value={filterType}
                         onChange={(e) => setFilterType(e.target.value)}
-                        className="px-4 py-3 bg-slate-800/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        style={{
+                            padding: '9px 12px', background: 'var(--n-bg-primary)',
+                            border: '1px solid var(--n-border)', borderRadius: '6px',
+                            color: 'var(--n-text-primary)', fontSize: '14px', outline: 'none'
+                        }}
                     >
                         <option value="">Tous les types</option>
                         <option value="QUIZ">Quiz</option>
                         <option value="PRACTICAL">Pratique</option>
                         <option value="SIMULATION">Simulation</option>
                         <option value="CODE_REVIEW">Revue de code</option>
-                        <option value="CASE_STUDY">Etude de cas</option>
+                        <option value="CASE_STUDY">Étude de cas</option>
                     </select>
-
                     <select
                         value={filterDifficulty}
                         onChange={(e) => setFilterDifficulty(e.target.value)}
-                        className="px-4 py-3 bg-slate-800/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        style={{
+                            padding: '9px 12px', background: 'var(--n-bg-primary)',
+                            border: '1px solid var(--n-border)', borderRadius: '6px',
+                            color: 'var(--n-text-primary)', fontSize: '14px', outline: 'none'
+                        }}
                     >
-                        <option value="">Toutes difficultes</option>
-                        <option value="BEGINNER">Debutant</option>
-                        <option value="INTERMEDIATE">Intermediaire</option>
-                        <option value="ADVANCED">Avance</option>
+                        <option value="">Toutes difficultés</option>
+                        <option value="BEGINNER">Débutant</option>
+                        <option value="INTERMEDIATE">Intermédiaire</option>
+                        <option value="ADVANCED">Avancé</option>
                         <option value="EXPERT">Expert</option>
                     </select>
                 </div>
 
-                <div className="space-y-4">
+                {/* Liste exercices */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {filteredExercises.length === 0 ? (
-                        <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-12 text-center">
-                            <FileText className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-                            <h3 className="text-xl font-semibold text-white mb-2">Aucun exercice trouve</h3>
-                            <p className="text-slate-400 mb-6">
+                        <div style={{
+                            background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)',
+                            borderRadius: '8px', padding: '48px 24px', textAlign: 'center'
+                        }}>
+                            <FileText style={{ width: '40px', height: '40px', color: 'var(--n-text-tertiary)', margin: '0 auto 16px' }} />
+                            <h3 style={{ color: 'var(--n-text-primary)', fontWeight: 600, marginBottom: '8px' }}>
+                                Aucun exercice trouvé
+                            </h3>
+                            <p style={{ color: 'var(--n-text-secondary)', fontSize: '14px', marginBottom: '20px' }}>
                                 {searchQuery || filterType || filterDifficulty
                                     ? 'Essayez de modifier vos filtres.'
-                                    : 'Commencez par creer votre premier exercice.'}
+                                    : 'Commencez par créer votre premier exercice.'}
                             </p>
                             {!searchQuery && !filterType && !filterDifficulty && (
                                 <Link
                                     href="/instructor/exercises/create"
-                                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-medium transition-colors"
+                                    style={{
+                                        display: 'inline-flex', alignItems: 'center', gap: '8px',
+                                        padding: '8px 16px', background: 'var(--n-accent)',
+                                        color: '#fff', borderRadius: '6px', fontWeight: 500,
+                                        fontSize: '14px', textDecoration: 'none'
+                                    }}
                                 >
-                                    <Plus size={18} />
-                                    Creer un exercice
+                                    <Plus size={16} /> Créer un exercice
                                 </Link>
                             )}
                         </div>
                     ) : (
-                        filteredExercises.map((exercise) => (
-                            <div
-                                key={exercise.id}
-                                className="bg-slate-800/50 border border-white/10 rounded-2xl p-6 hover:bg-slate-800/70 transition-colors"
-                            >
-                                <div className="flex items-start justify-between">
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <h3 className="text-lg font-semibold text-white">{exercise.title}</h3>
-                                            <span className={`px-2 py-0.5 rounded-full text-xs ${DIFFICULTY_COLORS[exercise.difficulty] || 'bg-slate-600 text-slate-300'}`}>
-                                                {exercise.difficulty === 'BEGINNER' && 'Debutant'}
-                                                {exercise.difficulty === 'INTERMEDIATE' && 'Intermediaire'}
-                                                {exercise.difficulty === 'ADVANCED' && 'Avance'}
-                                                {exercise.difficulty === 'EXPERT' && 'Expert'}
+                        filteredExercises.map((exercise) => {
+                            const diffStyle = DIFFICULTY_STYLES[exercise.difficulty] || { bg: 'var(--n-bg-secondary)', color: 'var(--n-text-secondary)' };
+                            return (
+                                <div
+                                    key={exercise.id}
+                                    style={{
+                                        background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)',
+                                        borderRadius: '8px', padding: '16px 20px',
+                                        display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+                                        gap: '16px'
+                                    }}
+                                >
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px', flexWrap: 'wrap' }}>
+                                            <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--n-text-primary)', margin: 0 }}>
+                                                {exercise.title}
+                                            </h3>
+                                            <span style={{
+                                                padding: '2px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 500,
+                                                background: diffStyle.bg, color: diffStyle.color
+                                            }}>
+                                                {DIFFICULTY_LABELS[exercise.difficulty] || exercise.difficulty}
                                             </span>
-                                            <span className="px-2 py-0.5 bg-slate-700 text-slate-300 rounded-full text-xs">
+                                            <span style={{
+                                                padding: '2px 8px', borderRadius: '4px', fontSize: '12px',
+                                                background: 'var(--n-bg-secondary)', color: 'var(--n-text-secondary)'
+                                            }}>
                                                 {TYPE_LABELS[exercise.type] || exercise.type}
                                             </span>
                                         </div>
-                                        <p className="text-slate-400 text-sm mb-4">{exercise.description}</p>
-
-                                        <div className="flex items-center gap-6 text-sm">
-                                            <span className="flex items-center gap-2 text-slate-400">
-                                                <Target size={16} className="text-amber-400" />
-                                                {exercise.points} points
+                                        <p style={{ color: 'var(--n-text-secondary)', fontSize: '13px', marginBottom: '12px', lineHeight: '1.5' }}>
+                                            {exercise.description}
+                                        </p>
+                                        <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--n-text-secondary)' }}>
+                                                <Target size={14} style={{ color: 'var(--n-warning)' }} />
+                                                {exercise.points} pts
                                             </span>
                                             {exercise.timeLimitMinutes && (
-                                                <span className="flex items-center gap-2 text-slate-400">
-                                                    <Clock size={16} className="text-blue-400" />
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--n-text-secondary)' }}>
+                                                    <Clock size={14} style={{ color: 'var(--n-accent)' }} />
                                                     {exercise.timeLimitMinutes} min
                                                 </span>
                                             )}
-                                            <span className="flex items-center gap-2 text-slate-400">
-                                                <Users size={16} className="text-emerald-400" />
-                                                {exercise.assignmentCount} assigne{exercise.assignmentCount > 1 ? 's' : ''}
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--n-text-secondary)' }}>
+                                                <Users size={14} style={{ color: 'var(--n-success)' }} />
+                                                {exercise.assignmentCount} assigné{exercise.assignmentCount > 1 ? 's' : ''}
                                             </span>
                                             {exercise.workshopId && (
-                                                <span className="flex items-center gap-2 text-slate-400">
-                                                    <BookOpen size={16} className="text-purple-400" />
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--n-text-secondary)' }}>
+                                                    <BookOpen size={14} />
                                                     {exercise.workshopId}
                                                 </span>
                                             )}
                                         </div>
                                     </div>
-
-                                    <div className="flex items-center gap-2 ml-4">
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
                                         <Link
                                             href={`/instructor/exercises/${exercise.id}`}
-                                            className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+                                            style={{
+                                                padding: '7px', borderRadius: '6px', display: 'flex',
+                                                color: 'var(--n-text-tertiary)',
+                                                transition: 'background 0.15s'
+                                            }}
                                             title="Voir les soumissions"
                                         >
-                                            <BarChart3 size={20} />
+                                            <BarChart3 size={18} />
                                         </Link>
                                         <Link
                                             href={`/instructor/exercises/${exercise.id}/edit`}
-                                            className="p-2 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors"
+                                            style={{
+                                                padding: '7px', borderRadius: '6px', display: 'flex',
+                                                color: 'var(--n-accent)',
+                                            }}
                                             title="Modifier"
                                         >
-                                            <Edit size={20} />
+                                            <Edit size={18} />
                                         </Link>
                                         <button
                                             onClick={() => deleteExercise(exercise.id)}
-                                            className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                                            style={{
+                                                padding: '7px', borderRadius: '6px', display: 'flex',
+                                                background: 'none', border: 'none', cursor: 'pointer',
+                                                color: 'var(--n-danger)',
+                                            }}
                                             title="Supprimer"
                                         >
-                                            <Trash2 size={20} />
+                                            <Trash2 size={18} />
                                         </button>
                                     </div>
                                 </div>
-                            </div>
-                        ))
+                            );
+                        })
                     )}
                 </div>
 
-                <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="bg-slate-800/50 border border-white/10 rounded-xl p-4">
-                        <p className="text-sm text-slate-400 mb-1">Quiz</p>
-                        <p className="text-2xl font-bold text-white">{exercises.filter((e) => e.type === 'QUIZ').length}</p>
-                    </div>
-                    <div className="bg-slate-800/50 border border-white/10 rounded-xl p-4">
-                        <p className="text-sm text-slate-400 mb-1">Exercices pratiques</p>
-                        <p className="text-2xl font-bold text-white">{exercises.filter((e) => e.type === 'PRACTICAL').length}</p>
-                    </div>
-                    <div className="bg-slate-800/50 border border-white/10 rounded-xl p-4">
-                        <p className="text-sm text-slate-400 mb-1">Simulations</p>
-                        <p className="text-2xl font-bold text-white">{exercises.filter((e) => e.type === 'SIMULATION').length}</p>
-                    </div>
-                    <div className="bg-slate-800/50 border border-white/10 rounded-xl p-4">
-                        <p className="text-sm text-slate-400 mb-1">Total assignements</p>
-                        <p className="text-2xl font-bold text-white">{exercises.reduce((sum, e) => sum + e.assignmentCount, 0)}</p>
-                    </div>
+                {/* Stats bas de page */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginTop: '28px' }}>
+                    {[
+                        { label: 'Quiz', count: exercises.filter((e) => e.type === 'QUIZ').length },
+                        { label: 'Pratiques', count: exercises.filter((e) => e.type === 'PRACTICAL').length },
+                        { label: 'Simulations', count: exercises.filter((e) => e.type === 'SIMULATION').length },
+                        { label: 'Assignements', count: exercises.reduce((s, e) => s + e.assignmentCount, 0) },
+                    ].map(({ label, count }) => (
+                        <div key={label} style={{
+                            background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)',
+                            borderRadius: '8px', padding: '14px 16px'
+                        }}>
+                            <p style={{ fontSize: '12px', color: 'var(--n-text-secondary)', margin: '0 0 4px' }}>{label}</p>
+                            <p style={{ fontSize: '22px', fontWeight: 700, color: 'var(--n-text-primary)', margin: 0 }}>{count}</p>
+                        </div>
+                    ))}
                 </div>
             </div>
         </div>

@@ -3,58 +3,83 @@ import { config } from './config';
 import { logger } from './utils/logger';
 import { tokenBlacklist } from './services/tokenBlacklist.service';
 import { startLabMaintenanceLoop, stopLabMaintenanceLoop } from './services/ctfLab.service';
+import { bootstrapMTLS, startMTLSServer, patchAxiosWithMTLS } from './utils/mtls.helper';
+import https from 'https';
+import http from 'http';
 
 const PORT = config.port;
+const SERVICE_NAME = 'api-gateway';
 
 // Graceful shutdown handling
-let server: ReturnType<typeof app.listen>;
+let server: http.Server | https.Server | undefined;
 
 const gracefulShutdown = async (signal: string) => {
     logger.info(`${signal} received, starting graceful shutdown`);
 
     stopLabMaintenanceLoop();
-
-    // Close token blacklist service
     await tokenBlacklist.close();
 
-    server.close(() => {
-        logger.info('HTTP server closed');
+    if (server) {
+        server.close(() => {
+            logger.info('Server closed');
+            process.exit(0);
+        });
+    } else {
         process.exit(0);
-    });
+    }
 
-    // Force shutdown after 10 seconds
     setTimeout(() => {
         logger.error('Forced shutdown after timeout');
         process.exit(1);
     }, 10000);
 };
 
-// Start server
-server = app.listen(PORT, async () => {
-    logger.info('🚀 API Gateway started', {
-        port: PORT,
-        env: config.nodeEnv,
-        rateLimit: `${config.rateLimit.max} req/min`
-    });
+async function startGateway() {
+    if (config.mtlsEnabled) {
+        try {
+            const ctx = await bootstrapMTLS(SERVICE_NAME, config.keyManagementUrl);
+            patchAxiosWithMTLS(ctx);
+            server = startMTLSServer(app, PORT, ctx);
+            logger.info('🚀 API Gateway (🔒 mTLS) started', { port: PORT });
+            await tokenBlacklist.init();
+            startLabMaintenanceLoop();
+            return;
+        } catch (err: any) {
+            logger.warn(`[mTLS] ${err.message} — falling back to HTTP`);
+        }
+    }
 
-    // Initialize security services
-    await tokenBlacklist.init();
-    startLabMaintenanceLoop();
+    // Start HTTP server
+    server = app.listen(PORT, async () => {
+        logger.info('🚀 API Gateway started', {
+            port: PORT,
+            env: config.nodeEnv,
+            rateLimit: `${config.rateLimit.max} req/min`
+        });
 
-    logger.info('📋 Routing table:', {
-        cards: 'POST /api/cards → sim-card-service:8001',
-        transactions: 'POST /api/transactions → sim-pos-service:8002',
-        authorize: 'POST /api/authorize → sim-auth-engine:8006',
-        crypto: 'POST /api/crypto/* → crypto-service:8010',
-        keys: 'GET /api/keys → key-management:8012'
+        await tokenBlacklist.init();
+        startLabMaintenanceLoop();
+
+        logger.info('📋 Routing table:', {
+            cards: 'POST /api/cards → sim-card-service:8001',
+            transactions: 'POST /api/transactions → sim-pos-service:8002',
+            authorize: 'POST /api/authorize → sim-auth-engine:8006',
+            crypto: 'POST /api/crypto/* → crypto-service:8010',
+            keys: 'GET /api/keys → key-management:8012',
+            telecollecte: 'POST /api/merchant/telecollecte → sim-acquirer:8003',
+            clearingBatches: 'GET /api/merchant/clearing/batches → sim-clearing-engine:8016'
+        });
     });
+}
+
+startGateway().catch((err) => {
+    logger.error('Failed to start API Gateway', { error: err.message });
+    process.exit(1);
 });
 
-// Register shutdown handlers
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
-// Unhandled rejection handler
 process.on('unhandledRejection', (reason, promise) => {
     logger.error('Unhandled Rejection', { reason, promise });
 });
@@ -64,4 +89,4 @@ process.on('uncaughtException', (error) => {
     process.exit(1);
 });
 
-export default server;
+export { server };

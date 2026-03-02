@@ -1516,35 +1516,79 @@ export const getNextStep = async (req: Request, res: Response) => {
         // 1. Check for in-progress cursus module
         let inProgressModule: any = null;
         try {
-            const moduleResult = await query(
-                `SELECT
-                    cm.id AS module_id,
-                    cm.title AS module_title,
-                    cm.module_order,
-                    c.id AS cursus_id,
-                    c.title AS cursus_title,
-                    (
-                        SELECT COUNT(DISTINCT cp.chapter_id)::integer
-                        FROM learning.cursus_progress cp
-                        WHERE cp.student_id = $1
-                          AND cp.cursus_id = c.id
-                          AND cp.module_id = cm.id
-                          AND cp.status = 'COMPLETED'
-                          AND cp.chapter_id IS NOT NULL
-                    ) AS completed_chapters,
-                    (
-                        SELECT COUNT(*)::integer
-                        FROM learning.cursus_chapters ch
-                        WHERE ch.module_id = cm.id
-                    ) AS total_chapters
-                 FROM learning.cursus_modules cm
-                 JOIN learning.cursus c ON c.id = cm.cursus_id
-                 WHERE c.is_published = true
-                 ORDER BY c.id ASC, cm.module_order ASC`,
-                [userId]
-            );
+            let moduleRows: any[] = [];
 
-            const moduleRows = moduleResult.rows.map((row) => ({
+            try {
+                const moduleResult = await query(
+                    `WITH unit_counts AS (
+                        SELECT module_id, COUNT(*)::integer AS total_units
+                        FROM learning.cursus_units
+                        WHERE is_published = true
+                        GROUP BY module_id
+                    ),
+                    chapter_counts AS (
+                        SELECT module_id, COUNT(*)::integer AS total_chapters
+                        FROM learning.cursus_chapters
+                        GROUP BY module_id
+                    )
+                    SELECT
+                        cm.id AS module_id,
+                        cm.title AS module_title,
+                        cm.module_order,
+                        c.id AS cursus_id,
+                        c.title AS cursus_title,
+                        (
+                            SELECT COUNT(DISTINCT cp.chapter_id)::integer
+                            FROM learning.cursus_progress cp
+                            WHERE cp.student_id = $1
+                              AND cp.cursus_id = c.id
+                              AND cp.module_id = cm.id
+                              AND cp.status = 'COMPLETED'
+                              AND cp.chapter_id IS NOT NULL
+                        ) AS completed_chapters,
+                        COALESCE(uc.total_units, cc.total_chapters, 0)::integer AS total_chapters
+                    FROM learning.cursus_modules cm
+                    JOIN learning.cursus c ON c.id = cm.cursus_id
+                    LEFT JOIN unit_counts uc ON uc.module_id = cm.id
+                    LEFT JOIN chapter_counts cc ON cc.module_id = cm.id
+                    WHERE c.is_published = true
+                    ORDER BY c.id ASC, cm.module_order ASC`,
+                    [userId]
+                );
+
+                moduleRows = moduleResult.rows;
+            } catch {
+                const legacyModuleResult = await query(
+                    `SELECT
+                        cm.id AS module_id,
+                        cm.title AS module_title,
+                        cm.module_order,
+                        c.id AS cursus_id,
+                        c.title AS cursus_title,
+                        (
+                            SELECT COUNT(DISTINCT cp.chapter_id)::integer
+                            FROM learning.cursus_progress cp
+                            WHERE cp.student_id = $1
+                              AND cp.cursus_id = c.id
+                              AND cp.module_id = cm.id
+                              AND cp.status = 'COMPLETED'
+                              AND cp.chapter_id IS NOT NULL
+                        ) AS completed_chapters,
+                        (
+                            SELECT COUNT(*)::integer
+                            FROM learning.cursus_chapters ch
+                            WHERE ch.module_id = cm.id
+                        ) AS total_chapters
+                     FROM learning.cursus_modules cm
+                     JOIN learning.cursus c ON c.id = cm.cursus_id
+                     WHERE c.is_published = true
+                     ORDER BY c.id ASC, cm.module_order ASC`,
+                    [userId]
+                );
+                moduleRows = legacyModuleResult.rows;
+            }
+
+            moduleRows = moduleRows.map((row) => ({
                 ...row,
                 completed_chapters: parseInt(row.completed_chapters, 10) || 0,
                 total_chapters: parseInt(row.total_chapters, 10) || 0

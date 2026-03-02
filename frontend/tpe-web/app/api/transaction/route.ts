@@ -16,7 +16,9 @@ export async function POST(request: NextRequest) {
         }
 
         // Forward to the API gateway orchestration endpoint
-        const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://api-gateway:8000';
+        const backendUrl = process.env.INTERNAL_API_URL
+            || process.env.NEXT_PUBLIC_API_URL
+            || 'http://api-gateway:8000';
         const response = await fetch(`${backendUrl}/api/transaction/process`, {
             method: 'POST',
             headers,

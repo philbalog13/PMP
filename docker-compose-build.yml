@@ -1,0 +1,22 @@
+# docker-compose-build.yml
+# Usage: docker compose -f docker-compose-build.yml build [--parallel]
+# Builds all 3 frontend images. Run with --parallel for parallel builds.
+
+services:
+  portal:
+    image: pmp-portal:latest
+    build:
+      context: ./frontend
+      dockerfile: portal/Dockerfile
+
+  user-cards-web:
+    image: pmp-user-cards-web:latest
+    build:
+      context: ./frontend
+      dockerfile: user-cards-web/Dockerfile
+
+  client-interface:
+    image: pmp-client-interface:latest
+    build:
+      context: ./frontend
+      dockerfile: tpe-web/Dockerfile

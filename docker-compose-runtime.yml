@@ -278,6 +278,7 @@ services:
       - ./backend/api-gateway/src:/app/src
       - ./backend/api-gateway/package.json:/app/package.json
       - ./backend/api-gateway/tsconfig.json:/app/tsconfig.json
+      - ./backend/api-gateway/node_modules:/app/node_modules
     command: npm run dev
     networks:
       monetic-network: {}
@@ -626,6 +627,48 @@ services:
     cap_drop:
       - ALL
 
+  sim-monitoring-service:
+    image: pmp-sim-monitoring-service
+    pull_policy: never
+    container_name: pmp-monitoring-service
+    restart: unless-stopped
+    user: "node:node"
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - PORT=3005
+      - ELASTICSEARCH_HOST=http://elasticsearch:9200
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - KEY_MANAGEMENT_URL=http://key-management:8012
+      - MTLS_ENABLED=false
+      - SERVICE_HEALTH_POLL_MS=${SERVICE_HEALTH_POLL_MS:-15000}
+    ports:
+      - "3005:3005"
+    networks:
+      - monetic-network
+    depends_on:
+      - api-gateway
+      - key-management
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:3005/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    cap_drop:
+      - ALL
+
   # ============================================
   # SECURITY SERVICES
   # ============================================
@@ -801,8 +844,12 @@ services:
     container_name: pmp-client-interface
     restart: unless-stopped
     environment:
-      - NODE_ENV=${NODE_ENV}
-      - REACT_APP_API_URL=http://localhost:8000
+      - NODE_ENV=production
+      - PORT=3000
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - INTERNAL_API_URL=http://api-gateway:8000
+      - NEXT_PUBLIC_PORTAL_URL=http://localhost:3000
+      - NEXT_PUBLIC_USER_CARDS_URL=http://localhost:3004
     ports:
       - "3001:3000"
     networks:
@@ -810,7 +857,7 @@ services:
     depends_on:
       - api-gateway
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:3000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -820,20 +867,15 @@ services:
     pull_policy: never
     container_name: pmp-portal
     restart: unless-stopped
-    user: root
-    working_dir: /app/frontend/portal
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - PORT=3000
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - INTERNAL_API_URL=http://api-gateway:8000
       - NEXT_PUBLIC_CTF_ATTACKBOX_URL=${NEXT_PUBLIC_CTF_ATTACKBOX_URL:-http://localhost:7681}
       - INTERNAL_LAB_PROXY_URL=http://lab-access-proxy:8099
     ports:
       - "3000:3000"
-    volumes:
-      - .:/app
-      - /app/frontend/portal/node_modules
-      - ./frontend/shared:/app/frontend/portal/shared
-    command: sh -c "npm install && npm run dev"
     networks:
       - monetic-network
     depends_on:
@@ -884,8 +926,13 @@ services:
     container_name: pmp-user-cards-web
     restart: unless-stopped
     environment:
-      - NODE_ENV=${NODE_ENV}
+      - NODE_ENV=production
       - PORT=3000
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - INTERNAL_API_URL=http://api-gateway:8000
+      - NEXT_PUBLIC_PORTAL_URL=http://localhost:3000
+      - NEXT_PUBLIC_TPE_URL=http://localhost:3001
+      - NEXT_PUBLIC_USER_CARDS_URL=http://localhost:3004
     ports:
       - "3004:3000"
     networks:
@@ -902,6 +949,13 @@ services:
       - "3082:3000"
     networks:
       - monetic-network
+    depends_on:
+      - sim-monitoring-service
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   hsm-web:
     image: pmp-hsm-web
@@ -909,8 +963,10 @@ services:
     container_name: pmp-hsm-web
     restart: unless-stopped
     environment:
-      - NODE_ENV=${NODE_ENV}
+      - NODE_ENV=production
       - PORT=3000
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - INTERNAL_API_URL=http://api-gateway:8000
       - NEXT_PUBLIC_PORTAL_URL=http://localhost:3000
     ports:
       - "3006:3000"

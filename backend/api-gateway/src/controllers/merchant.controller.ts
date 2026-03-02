@@ -7,6 +7,8 @@ import { query } from '../config/database';
 import { logger } from '../utils/logger';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
+import axios from 'axios';
+import { config } from '../config';
 import {
     applyMerchantAccountEntry,
     bookMerchantReversal,
@@ -2180,5 +2182,71 @@ export const deleteWebhook = async (req: Request, res: Response) => {
     } catch (error: any) {
         logger.error('Delete webhook error', { error: error.message });
         res.status(500).json({ success: false, error: 'Failed to delete webhook' });
+    }
+};
+
+/**
+ * POST /api/merchant/telecollecte
+ * Submit end-of-day batch to clearing engine via acquirer.
+ * Télécollecte: ISO 8583 TC33 — batch submission from POS to Acquirer to Clearing Engine.
+ */
+export const telecollecte = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user?.userId;
+        const { terminalId } = req.body;
+
+        const posUrl = process.env.SIM_POS_SERVICE_URL || 'http://sim-pos-service:8002';
+        const response = await axios.post(
+            `${posUrl}/telecollecte`,
+            { merchantId: userId, terminalId },
+            { timeout: 30000 }
+        );
+
+        res.json(response.data);
+    } catch (error: any) {
+        logger.error('Telecollecte error', { error: error.message });
+        if (error.response) {
+            res.status(error.response.status).json(error.response.data);
+        } else {
+            res.status(503).json({ success: false, error: 'Clearing service or POS unavailable' });
+        }
+    }
+};
+
+/**
+ * GET /api/merchant/clearing/batches
+ * List clearing batches from sim-clearing-engine.
+ */
+export const getClearingBatches = async (req: Request, res: Response) => {
+    try {
+        const clearingUrl = process.env.SIM_CLEARING_ENGINE_URL || 'http://sim-clearing-engine:8016';
+        const response = await axios.get(`${clearingUrl}/clearing/batches`, { timeout: 10000 });
+        res.json(response.data);
+    } catch (error: any) {
+        logger.error('Get clearing batches error', { error: error.message });
+        if (error.response) {
+            res.status(error.response.status).json(error.response.data);
+        } else {
+            res.status(503).json({ success: false, error: 'Clearing engine unavailable' });
+        }
+    }
+};
+
+/**
+ * GET /api/merchant/clearing/batches/:id
+ * Get details of a specific clearing batch.
+ */
+export const getClearingBatch = async (req: Request, res: Response) => {
+    try {
+        const clearingUrl = process.env.SIM_CLEARING_ENGINE_URL || 'http://sim-clearing-engine:8016';
+        const response = await axios.get(`${clearingUrl}/clearing/batches/${req.params.id}`, { timeout: 10000 });
+        res.json(response.data);
+    } catch (error: any) {
+        logger.error('Get clearing batch error', { error: error.message });
+        if (error.response) {
+            res.status(error.response.status).json(error.response.data);
+        } else {
+            res.status(503).json({ success: false, error: 'Clearing engine unavailable' });
+        }
     }
 };

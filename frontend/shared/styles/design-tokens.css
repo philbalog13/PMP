@@ -1,6 +1,6 @@
 @theme {
-    /* 
-   * COLOR PALETTE REFERENCES
+    /*
+   * COLOR PALETTE REFERENCES — MISSION CIPHER (legacy)
    * Mapping Tailwind tokens to CSS variables for theming
    */
     --color-bg-deep: var(--bg-deep);
@@ -23,8 +23,50 @@
     --color-danger: var(--danger);
     --color-warning: var(--warning);
 
-    /* 
-   * ANIMATIONS
+    /*
+   * NOTION DESIGN TOKENS — Tailwind v4 mappings
+   * Préfixe n- pour éviter les conflits avec MISSION CIPHER
+   */
+    --color-n-bg:           var(--n-bg-primary);
+    --color-n-surface:      var(--n-bg-secondary);
+    --color-n-hover:        var(--n-bg-tertiary);
+    --color-n-elevated:     var(--n-bg-elevated);
+
+    --color-n-border:       var(--n-border);
+    --color-n-border-strong: var(--n-border-strong);
+    --color-n-divider:      var(--n-divider);
+
+    --color-n-text:         var(--n-text-primary);
+    --color-n-muted:        var(--n-text-secondary);
+    --color-n-subtle:       var(--n-text-tertiary);
+
+    --color-n-accent:       var(--n-accent);
+    --color-n-accent-hover: var(--n-accent-hover);
+    --color-n-accent-light: var(--n-accent-light);
+
+    --color-n-success:      var(--n-success);
+    --color-n-success-bg:   var(--n-success-bg);
+    --color-n-warning:      var(--n-warning);
+    --color-n-warning-bg:   var(--n-warning-bg);
+    --color-n-danger:       var(--n-danger);
+    --color-n-danger-bg:    var(--n-danger-bg);
+    --color-n-info:         var(--n-info);
+    --color-n-info-bg:      var(--n-info-bg);
+
+    /* Level colors */
+    --color-n-beginner:     var(--n-level-beginner);
+    --color-n-inter:        var(--n-level-inter);
+    --color-n-advanced:     var(--n-level-advanced);
+    --color-n-expert:       var(--n-level-expert);
+
+    /* Severity colors */
+    --color-n-critical:     var(--n-severity-critical);
+    --color-n-high:         var(--n-severity-high);
+    --color-n-medium:       var(--n-severity-medium);
+    --color-n-low:          var(--n-severity-low);
+
+    /*
+   * ANIMATIONS — MISSION CIPHER (legacy)
    */
     --animate-float: float 6s ease-in-out infinite;
     --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;

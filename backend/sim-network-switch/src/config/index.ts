@@ -46,6 +46,10 @@ const envSchema = Joi.object({
 
     // Timeout
     REQUEST_TIMEOUT: Joi.number().default(5000),
+
+    // mTLS / PKI
+    KEY_MANAGEMENT_URL: Joi.string().uri().default('http://localhost:8012'),
+    MTLS_ENABLED: Joi.boolean().default(false),
 }).unknown(true);
 
 const { error, value: envVars } = envSchema.validate(process.env);
@@ -106,6 +110,9 @@ export const config = {
     },
 
     timeout: envVars.REQUEST_TIMEOUT as number,
+
+    keyManagementUrl: envVars.KEY_MANAGEMENT_URL as string,
+    mtlsEnabled: envVars.MTLS_ENABLED as boolean,
 };
 
 export default config;

@@ -33,7 +33,9 @@ export const createCard = async (req: Request, res: Response): Promise<void> => 
                 expiryYear: card.expiryYear,
                 cardholderName: card.cardholderName,
                 cardType: card.cardType,
-                status: card.status
+                status: card.status,
+                pkiCert: card.pkiCert,
+                pkiPrivateKey: card.pkiPrivateKey
             },
             _educational: {
                 luhnValid: validateLuhn(card.pan),

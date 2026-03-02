@@ -4,70 +4,143 @@ import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '../../auth/useAuth';
 import {
-    BookOpen, Clock, ChevronRight, ArrowRight,
-    CreditCard, Shield, Lock, Layers, Key, FileText, Sparkles,
-    Search, RefreshCw, AlertCircle
+    BookOpen, Clock, Layers, Play, Star, CheckCircle,
+    AlertCircle, Search, TrendingUp, RefreshCw
 } from 'lucide-react';
+import { NotionCard, NotionBadge, NotionProgress, NotionSkeleton, NotionEmptyState, NotionTag } from '@shared/components/notion';
 
-const ICON_MAP: Record<string, React.ReactNode> = {
-    'credit-card': <CreditCard size={24} />,
-    'shield': <Shield size={24} />,
-    'lock': <Lock size={24} />,
-    'layers': <Layers size={24} />,
-    'key': <Key size={24} />,
-    'file-text': <FileText size={24} />,
-    'book-open': <BookOpen size={24} />,
+/* ── Level → NotionBadge variant map ─────────────────────────────────── */
+type LevelVariant = 'beginner' | 'inter' | 'advanced' | 'expert';
+const LEVEL_VARIANT: Record<string, LevelVariant> = {
+    DEBUTANT: 'beginner', INTERMEDIAIRE: 'inter', AVANCE: 'advanced', EXPERT: 'expert',
+};
+const LEVEL_LABEL: Record<string, string> = {
+    DEBUTANT: 'Débutant', INTERMEDIAIRE: 'Intermédiaire', AVANCE: 'Avancé', EXPERT: 'Expert',
+};
+const ICON_EMOJI: Record<string, string> = {
+    'credit-card': '💳', 'shield': '🛡️', 'lock': '🔐', 'layers': '📚',
+    'key': '🔑', 'file-text': '📄', 'book-open': '📖',
 };
 
-const LEVEL_CONFIG: Record<string, { label: string; color: string; bg: string; border: string; glow: string }> = {
-    DEBUTANT: {
-        label: 'Débutant',
-        color: 'text-emerald-400',
-        bg: 'bg-emerald-500/10',
-        border: 'border-emerald-500/20',
-        glow: 'hover:shadow-emerald-500/10'
-    },
-    INTERMEDIAIRE: {
-        label: 'Intermédiaire',
-        color: 'text-amber-400',
-        bg: 'bg-amber-500/10',
-        border: 'border-amber-500/20',
-        glow: 'hover:shadow-amber-500/10'
-    },
-    AVANCE: {
-        label: 'Avancé',
-        color: 'text-rose-400',
-        bg: 'bg-rose-500/10',
-        border: 'border-rose-500/20',
-        glow: 'hover:shadow-rose-500/10'
-    },
-    EXPERT: {
-        label: 'Expert',
-        color: 'text-violet-400',
-        bg: 'bg-violet-500/10',
-        border: 'border-violet-500/20',
-        glow: 'hover:shadow-violet-500/10'
-    },
-};
-
+/* ── Type ────────────────────────────────────────────────────────────── */
 interface Cursus {
-    id: string;
-    title: string;
-    description: string;
-    icon: string;
-    color: string;
-    level: string;
-    estimated_hours: number;
-    tags: string[];
-    module_count: number;
+    id: string; title: string; description: string; icon: string;
+    color: string; level: string; estimated_hours: number;
+    tags: string[]; module_count: number;
     progress: { completed: number; total: number };
 }
 
+/* ── CursusCard ──────────────────────────────────────────────────────── */
+function CursusCard({ cursus }: { cursus: Cursus }) {
+    const pct          = cursus.progress?.total > 0 ? Math.round((cursus.progress.completed / cursus.progress.total) * 100) : 0;
+    const isDone       = pct >= 100;
+    const hasStarted   = pct > 0 && !isDone;
+    const emoji        = ICON_EMOJI[cursus.icon] || '📚';
+    const levelVariant = LEVEL_VARIANT[cursus.level] ?? 'beginner';
+    const levelLabel   = LEVEL_LABEL[cursus.level] ?? 'Débutant';
+
+    return (
+        <NotionCard variant="hover" padding="none">
+            <Link href={`/student/cursus/${cursus.id}`} style={{ display: 'flex', textDecoration: 'none', color: 'inherit', borderRadius: 'var(--n-radius-md)', overflow: 'hidden' }}>
+                {/* Left accent bar */}
+                <div style={{
+                    width: '3px', flexShrink: 0,
+                    background: isDone ? 'var(--n-success)' : hasStarted ? 'var(--n-accent)' : 'var(--n-border)',
+                }} />
+
+                {/* Main content */}
+                <div style={{ flex: 1, padding: 'var(--n-space-5)', minWidth: 0 }}>
+                    {/* Top row */}
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--n-space-3)', marginBottom: 'var(--n-space-3)' }}>
+                        <div style={{
+                            width: '44px', height: '44px', borderRadius: 'var(--n-radius-sm)',
+                            background: 'var(--n-bg-secondary)', border: '1px solid var(--n-border)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: '22px', flexShrink: 0,
+                        }}>{emoji}</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)', marginBottom: 'var(--n-space-1)', flexWrap: 'wrap' }}>
+                                <NotionBadge variant={levelVariant} dot size="sm">{levelLabel}</NotionBadge>
+                                {isDone && <NotionBadge variant="success" size="sm"><CheckCircle size={9} /> Terminé</NotionBadge>}
+                            </div>
+                            <h3 style={{
+                                fontSize: 'var(--n-text-base)',
+                                fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'],
+                                color: 'var(--n-text-primary)', fontFamily: 'var(--n-font-sans)',
+                                lineHeight: 'var(--n-leading-snug)',
+                                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            }}>{cursus.title}</h3>
+                        </div>
+                    </div>
+
+                    {/* Description */}
+                    <p style={{
+                        fontSize: 'var(--n-text-sm)', color: 'var(--n-text-secondary)',
+                        fontFamily: 'var(--n-font-sans)', lineHeight: 'var(--n-leading-relaxed)',
+                        marginBottom: 'var(--n-space-3)',
+                        display: '-webkit-box', WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical' as React.CSSProperties['WebkitBoxOrient'], overflow: 'hidden',
+                    }}>{cursus.description}</p>
+
+                    {/* Meta */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-4)', marginBottom: 'var(--n-space-3)', flexWrap: 'wrap' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-1)', fontSize: 'var(--n-text-xs)', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)' }}>
+                            <Layers size={11} /> {cursus.module_count} modules
+                        </span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-1)', fontSize: 'var(--n-text-xs)', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)' }}>
+                            <Clock size={11} /> {cursus.estimated_hours}h
+                        </span>
+                        {cursus.progress?.total > 0 && (
+                            <span style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)' }}>
+                                {cursus.progress.completed}/{cursus.progress.total} UA
+                            </span>
+                        )}
+                    </div>
+
+                    {/* Tags */}
+                    {cursus.tags?.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--n-space-1)', marginBottom: 'var(--n-space-4)' }}>
+                            {cursus.tags.slice(0, 4).map(tag => (
+                                <NotionTag key={tag} variant="default">{tag}</NotionTag>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Progress */}
+                    <NotionProgress
+                        value={pct}
+                        variant={isDone ? 'success' : 'accent'}
+                        size="thin"
+                        showLabel
+                        label={isDone ? 'Terminé' : hasStarted ? 'En cours' : 'Non commencé'}
+                    />
+                </div>
+
+                {/* Right CTA column */}
+                <div style={{
+                    width: '80px', flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    borderLeft: '1px solid var(--n-border)',
+                    background: 'var(--n-bg-secondary)',
+                }}>
+                    <div style={{ textAlign: 'center', padding: 'var(--n-space-3)' }}>
+                        <div style={{ fontSize: '22px', marginBottom: 'var(--n-space-2)' }}>{emoji}</div>
+                        <NotionBadge variant={isDone ? 'success' : hasStarted ? 'accent' : 'default'} size="sm">
+                            {isDone ? <><Star size={9} /> Revoir</> : hasStarted ? <><Play size={9} /> Suite</> : <><Play size={9} /> Démarrer</>}
+                        </NotionBadge>
+                    </div>
+                </div>
+            </Link>
+        </NotionCard>
+    );
+}
+
+/* ── Main Page ────────────────────────────────────────────────────────── */
 export default function CursusListPage() {
-    const { isLoading: authLoading } = useAuth(true);
-    const [cursusList, setCursusList] = useState<Cursus[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const { isLoading: authLoading }    = useAuth(true);
+    const [cursusList, setCursusList]   = useState<Cursus[]>([]);
+    const [loading, setLoading]         = useState(true);
+    const [error, setError]             = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [filterLevel, setFilterLevel] = useState<string>('ALL');
 
@@ -77,19 +150,13 @@ export default function CursusListPage() {
             setLoading(true);
             const token = localStorage.getItem('token');
             if (!token) return;
-            const res = await fetch('/api/cursus', {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (!res.ok) {
-                throw new Error('Impossible de charger les cursus');
-            }
+            const res = await fetch('/api/cursus', { headers: { Authorization: `Bearer ${token}` } });
+            if (!res.ok) throw new Error('Impossible de charger les cursus');
             const data = await res.json();
             if (data.success) setCursusList(data.cursus || []);
-        } catch (err: any) {
-            setError(err.message || 'Erreur de chargement');
-        } finally {
-            setLoading(false);
-        }
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Erreur de chargement');
+        } finally { setLoading(false); }
     }, []);
 
     useEffect(() => {
@@ -97,243 +164,152 @@ export default function CursusListPage() {
         fetchCursus();
     }, [authLoading, fetchCursus]);
 
-    const getProgressPercent = (c: Cursus) => {
-        if (!c.progress || c.progress.total === 0) return 0;
-        return Math.round((c.progress.completed / c.progress.total) * 100);
-    };
-
-    const filteredCursus = cursusList.filter(c => {
-        const matchesSearch = !searchQuery ||
-            c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            c.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const filteredCursus = cursusList.filter((c) => {
+        const matchesSearch = !searchQuery
+            || c.title.toLowerCase().includes(searchQuery.toLowerCase())
+            || c.description.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesLevel = filterLevel === 'ALL' || c.level === filterLevel;
         return matchesSearch && matchesLevel;
     });
 
-    const totalCompleted = cursusList.reduce((sum, c) => sum + (c.progress?.completed || 0), 0);
-    const totalChapters = cursusList.reduce((sum, c) => sum + (c.progress?.total || 0), 0);
-    const totalProgress = totalChapters > 0 ? Math.round((totalCompleted / totalChapters) * 100) : 0;
+    const totalCompleted = cursusList.reduce((s, c) => s + (c.progress?.completed || 0), 0);
+    const totalChapters  = cursusList.reduce((s, c) => s + (c.progress?.total || 0), 0);
+    const totalProgress  = totalChapters > 0 ? Math.round((totalCompleted / totalChapters) * 100) : 0;
+    const totalHours     = cursusList.reduce((s, c) => s + c.estimated_hours, 0);
+    const totalModules   = cursusList.reduce((s, c) => s + c.module_count, 0);
+
+    if (authLoading || (loading && cursusList.length === 0)) {
+        return (
+            <div style={{ padding: 'var(--n-space-8) var(--n-space-6)', maxWidth: '860px', margin: '0 auto' }}>
+                <div style={{ marginBottom: 'var(--n-space-6)' }}>
+                    <NotionSkeleton type="line" width="200px" height="28px" />
+                    <div style={{ marginTop: 'var(--n-space-2)' }}><NotionSkeleton type="line" width="360px" height="14px" /></div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--n-space-3)' }}>
+                    {[...Array(4)].map((_, i) => <NotionSkeleton key={i} type="card" />)}
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div className="min-h-screen bg-slate-950 text-white pt-24 pb-16">
-            <div className="relative z-10 max-w-7xl mx-auto px-6">
-                {/* Breadcrumb */}
-                <div className="text-xs text-slate-500 mb-6">
-                    <Link href="/" className="hover:text-emerald-400 transition-colors">Accueil</Link>
-                    <ChevronRight size={12} className="inline mx-1" />
-                    <Link href="/student" className="hover:text-emerald-400 transition-colors">Espace Étudiant</Link>
-                    <ChevronRight size={12} className="inline mx-1" />
-                    <span className="text-emerald-400">Cursus</span>
-                </div>
+        <div style={{ padding: 'var(--n-space-8) var(--n-space-6)', maxWidth: '860px', margin: '0 auto' }}>
 
-                {/* Hero Header */}
-                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-600/20 via-teal-600/10 to-slate-900/50 border border-emerald-500/10 p-8 md:p-12 mb-10">
-                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(16,185,129,0.15),_transparent_60%)]" />
-                    <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                        <div className="flex items-center gap-6">
-                            <div className="shrink-0 animate-pulse-slow">
-                                <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30">
-                                    <BookOpen size={32} className="text-emerald-400" />
-                                </div>
-                            </div>
-                            <div>
-                                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-xs font-semibold mb-4">
-                                    <Sparkles size={14} />
-                                    Parcours d&apos;apprentissage
-                                </div>
-                                <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">
-                                    Mes Cursus
-                                </h1>
-                                <p className="text-slate-400 text-sm md:text-base max-w-lg">
-                                    Progressez à travers des parcours structurés couvrant tous les aspects de la monétique,
-                                    des fondamentaux aux techniques expertes.
-                                </p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-6">
-                            {/* Overall progress ring */}
-                            <div className="relative flex flex-col items-center">
-                                <svg className="w-24 h-24 -rotate-90" viewBox="0 0 100 100">
-                                    <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" strokeWidth="6"
-                                        className="text-slate-800" />
-                                    <circle cx="50" cy="50" r="40" fill="none" stroke="url(#progressGrad)" strokeWidth="6"
-                                        strokeLinecap="round"
-                                        strokeDasharray={`${totalProgress * 2.51} ${251 - totalProgress * 2.51}`} />
-                                    <defs>
-                                        <linearGradient id="progressGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                                            <stop offset="0%" stopColor="#10b981" />
-                                            <stop offset="100%" stopColor="#06b6d4" />
-                                        </linearGradient>
-                                    </defs>
-                                </svg>
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <span className="text-xl font-bold text-white">{totalProgress}%</span>
-                                </div>
-                                <span className="text-xs text-slate-500 mt-2">Progression</span>
-                            </div>
-                            <div className="space-y-2 text-sm">
-                                <div className="flex items-center gap-2 text-slate-400">
-                                    <BookOpen size={14} className="text-emerald-400" />
-                                    <span>{cursusList.length} cursus</span>
-                                </div>
-                                <div className="flex items-center gap-2 text-slate-400">
-                                    <Layers size={14} className="text-cyan-400" />
-                                    <span>{cursusList.reduce((s, c) => s + c.module_count, 0)} modules</span>
-                                </div>
-                                <div className="flex items-center gap-2 text-slate-400">
-                                    <Clock size={14} className="text-amber-400" />
-                                    <span>{cursusList.reduce((s, c) => s + c.estimated_hours, 0)}h de contenu</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {error && (
-                    <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <AlertCircle size={16} />
-                            <span>{error}</span>
-                        </div>
-                        <button onClick={fetchCursus} className="text-red-400 hover:text-red-300 text-xs underline">
-                            Réessayer
-                        </button>
-                    </div>
-                )}
-
-                {/* Search & Filter Bar */}
-                <div className="flex flex-col sm:flex-row gap-3 mb-8">
-                    <div className="relative flex-1">
-                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                        <input
-                            type="text"
-                            placeholder="Rechercher un cursus..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 bg-slate-900/60 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/20 transition-all"
-                        />
-                    </div>
-                    <div className="flex gap-2">
-                        {['ALL', 'DEBUTANT', 'INTERMEDIAIRE', 'AVANCE', 'EXPERT'].map((lvl) => {
-                            const config = lvl === 'ALL'
-                                ? { label: 'Tous', color: 'text-slate-400', bg: 'bg-slate-800/60', border: 'border-white/10' }
-                                : LEVEL_CONFIG[lvl];
-                            const isActive = filterLevel === lvl;
-                            return (
-                                <button
-                                    key={lvl}
-                                    onClick={() => setFilterLevel(lvl)}
-                                    className={`px-3 py-2 rounded-xl text-xs font-medium border transition-all ${isActive
-                                        ? `${lvl === 'ALL' ? 'bg-white/10 border-white/20 text-white' : `${config.bg} ${config.border} ${config.color}`}`
-                                        : 'bg-slate-900/40 border-white/5 text-slate-500 hover:text-slate-300 hover:border-white/10'
-                                        }`}
-                                >
-                                    {lvl === 'ALL' ? 'Tous' : LEVEL_CONFIG[lvl].label}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
-
-                {/* Content */}
-                {loading ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {[...Array(3)].map((_, i) => (
-                            <div key={i} className="bg-slate-900/50 rounded-2xl border border-white/5 p-6 animate-pulse">
-                                <div className="h-12 w-12 bg-slate-800 rounded-xl mb-4" />
-                                <div className="h-5 w-3/4 bg-slate-800 rounded mb-3" />
-                                <div className="h-4 w-full bg-slate-800/50 rounded mb-2" />
-                                <div className="h-4 w-2/3 bg-slate-800/50 rounded mb-6" />
-                                <div className="h-2 w-full bg-slate-800 rounded-full" />
-                            </div>
-                        ))}
-                    </div>
-                ) : filteredCursus.length === 0 ? (
-                    <div className="text-center py-20">
-                        <BookOpen size={48} className="mx-auto text-slate-700 mb-4" />
-                        <p className="text-slate-500 text-lg mb-2">
-                            {searchQuery || filterLevel !== 'ALL' ? 'Aucun cursus trouvé' : 'Aucun cursus disponible'}
-                        </p>
-                        <p className="text-slate-600 text-sm">
-                            {searchQuery || filterLevel !== 'ALL'
-                                ? 'Essayez de modifier vos critères de recherche.'
-                                : 'Les cursus seront bientôt disponibles.'}
-                        </p>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {filteredCursus.map((cursus) => {
-                            const pct = getProgressPercent(cursus);
-                            const levelInfo = LEVEL_CONFIG[cursus.level] || LEVEL_CONFIG.DEBUTANT;
-                            return (
-                                <Link key={cursus.id} href={`/student/cursus/${cursus.id}`} className="group block">
-                                    <div className={`relative bg-slate-900/50 rounded-2xl border border-white/5 p-6 transition-all duration-300 hover:border-white/15 hover:bg-slate-800/50 hover:-translate-y-1 hover:shadow-xl ${levelInfo.glow}`}>
-                                        {/* Top row: icon + level badge */}
-                                        <div className="flex items-start justify-between gap-4 mb-5">
-                                            <div className={`p-3 rounded-xl ${levelInfo.bg} ${levelInfo.border} border ${levelInfo.color}`}>
-                                                {ICON_MAP[cursus.icon] || <BookOpen size={24} />}
-                                            </div>
-                                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide ${levelInfo.bg} ${levelInfo.color} ${levelInfo.border} border`}>
-                                                {levelInfo.label}
-                                            </span>
-                                        </div>
-
-                                        {/* Title + description */}
-                                        <h3 className="text-white font-bold text-lg mb-2 group-hover:text-emerald-300 transition-colors line-clamp-1">
-                                            {cursus.title}
-                                        </h3>
-                                        <p className="text-slate-400 text-sm leading-relaxed mb-5 line-clamp-2">
-                                            {cursus.description}
-                                        </p>
-
-                                        {/* Meta chips */}
-                                        <div className="flex items-center gap-4 mb-4 flex-wrap">
-                                            <span className="flex items-center gap-1.5 text-xs text-slate-500">
-                                                <Layers size={12} className="text-slate-600" />
-                                                {cursus.module_count} modules
-                                            </span>
-                                            <span className="flex items-center gap-1.5 text-xs text-slate-500">
-                                                <Clock size={12} className="text-slate-600" />
-                                                {cursus.estimated_hours}h
-                                            </span>
-                                        </div>
-
-                                        {/* Tags */}
-                                        {cursus.tags && cursus.tags.length > 0 && (
-                                            <div className="flex gap-1.5 flex-wrap mb-5">
-                                                {cursus.tags.slice(0, 4).map((tag) => (
-                                                    <span key={tag} className="px-2 py-0.5 rounded-md bg-slate-800/80 text-slate-500 text-[10px] border border-white/5">
-                                                        {tag}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        )}
-
-                                        {/* Progress bar */}
-                                        <div className="space-y-2">
-                                            <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                                                <div
-                                                    className={`h-full rounded-full transition-all duration-700 ${pct >= 100
-                                                        ? 'bg-gradient-to-r from-emerald-500 to-emerald-400'
-                                                        : 'bg-gradient-to-r from-blue-500 to-cyan-400'
-                                                        }`}
-                                                    style={{ width: `${pct}%` }}
-                                                />
-                                            </div>
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-[11px] text-slate-500">
-                                                    {pct >= 100 ? '✅ Terminé' : `${pct}% complété`}
-                                                </span>
-                                                <ArrowRight size={14} className="text-slate-600 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all" />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </Link>
-                            );
-                        })}
-                    </div>
-                )}
+            {/* ── PAGE HEADER ───────────────────────────────────────── */}
+            <div style={{ marginBottom: 'var(--n-space-7)' }}>
+                <NotionTag variant="accent"><BookOpen size={12} /> Parcours d&apos;apprentissage</NotionTag>
+                <h1 style={{
+                    marginTop: 'var(--n-space-3)', marginBottom: 'var(--n-space-2)',
+                    fontSize: '26px',
+                    fontWeight: 'var(--n-weight-bold)' as React.CSSProperties['fontWeight'],
+                    color: 'var(--n-text-primary)', fontFamily: 'var(--n-font-sans)', letterSpacing: '-0.02em',
+                }}>Académie MoneTIC</h1>
+                <p style={{ color: 'var(--n-text-secondary)', fontSize: 'var(--n-text-sm)', fontFamily: 'var(--n-font-sans)', maxWidth: '520px', lineHeight: 'var(--n-leading-relaxed)' }}>
+                    Maîtrisez l&apos;écosystème de la monétique — des protocoles de paiement à la sécurité des transactions.
+                </p>
             </div>
+
+            {/* ── STATS ─────────────────────────────────────────────── */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--n-space-3)', marginBottom: 'var(--n-space-6)' }}>
+                {[
+                    { icon: BookOpen,   label: 'Modules',    value: totalModules > 0 ? `${totalModules}` : '—' },
+                    { icon: Clock,      label: 'De contenu', value: totalHours > 0 ? `${totalHours}h` : '—'    },
+                    { icon: TrendingUp, label: 'Complété',   value: `${totalProgress}%`                        },
+                ].map(({ icon: Icon, label, value }) => (
+                    <NotionCard key={label} variant="default" padding="sm">
+                        <div style={{ padding: 'var(--n-space-2)', textAlign: 'center' }}>
+                            <Icon size={16} style={{ color: 'var(--n-accent)', display: 'block', margin: '0 auto 4px' }} />
+                            <div style={{ fontSize: '20px', fontWeight: 'var(--n-weight-bold)' as React.CSSProperties['fontWeight'], fontFamily: 'var(--n-font-mono)', color: 'var(--n-text-primary)', marginBottom: '2px' }}>{value}</div>
+                            <div style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)' }}>{label}</div>
+                        </div>
+                    </NotionCard>
+                ))}
+            </div>
+
+            {/* Error */}
+            {error && (
+                <div style={{ marginBottom: 'var(--n-space-5)', padding: 'var(--n-space-3) var(--n-space-4)', borderRadius: 'var(--n-radius-sm)', background: 'var(--n-danger-bg)', border: '1px solid var(--n-danger-border)', color: 'var(--n-danger)', fontSize: 'var(--n-text-sm)', fontFamily: 'var(--n-font-sans)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)' }}><AlertCircle size={14} /> {error}</span>
+                    <button onClick={fetchCursus} style={{ fontSize: 'var(--n-text-xs)', textDecoration: 'underline', background: 'none', border: 'none', color: 'inherit', cursor: 'pointer' }}>Réessayer</button>
+                </div>
+            )}
+
+            {/* ── FILTERS ───────────────────────────────────────────── */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-3)', marginBottom: 'var(--n-space-6)', flexWrap: 'wrap' }}>
+                {/* Level filter */}
+                <div style={{ display: 'flex', gap: '2px', padding: '3px', borderRadius: 'var(--n-radius-sm)', border: '1px solid var(--n-border)', background: 'var(--n-bg-secondary)', flexShrink: 0 }}>
+                    {(['ALL', 'DEBUTANT', 'INTERMEDIAIRE', 'AVANCE', 'EXPERT'] as const).map(lvl => (
+                        <button key={lvl} onClick={() => setFilterLevel(lvl)} style={{
+                            padding: '4px 10px', borderRadius: '5px',
+                            border: filterLevel === lvl ? '1px solid var(--n-accent-border)' : '1px solid transparent',
+                            background: filterLevel === lvl ? 'var(--n-bg-primary)' : 'transparent',
+                            color: filterLevel === lvl ? 'var(--n-accent)' : 'var(--n-text-secondary)',
+                            fontSize: 'var(--n-text-xs)',
+                            fontWeight: filterLevel === lvl ? ('var(--n-weight-semibold)' as React.CSSProperties['fontWeight']) : undefined,
+                            fontFamily: 'var(--n-font-sans)', cursor: 'pointer', whiteSpace: 'nowrap',
+                            transition: 'all var(--n-duration-xs)',
+                        }}>
+                            {lvl === 'ALL' ? 'Tous' : LEVEL_LABEL[lvl]}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Search */}
+                <div style={{ position: 'relative', flex: 1, minWidth: '180px' }}>
+                    <Search size={13} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--n-text-tertiary)', pointerEvents: 'none' }} />
+                    <input
+                        type="text" placeholder="Rechercher un cursus…"
+                        value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                        style={{
+                            width: '100%', boxSizing: 'border-box',
+                            paddingLeft: '32px', paddingRight: '12px', paddingTop: '7px', paddingBottom: '7px',
+                            borderRadius: 'var(--n-radius-sm)', border: '1px solid var(--n-border)',
+                            background: 'var(--n-bg-primary)', color: 'var(--n-text-primary)',
+                            fontSize: 'var(--n-text-sm)', fontFamily: 'var(--n-font-sans)', outline: 'none',
+                        }}
+                        onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--n-accent-border)'; }}
+                        onBlur={e =>  { (e.target as HTMLInputElement).style.borderColor = 'var(--n-border)'; }}
+                    />
+                </div>
+
+                {!loading && (
+                    <span style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)', flexShrink: 0 }}>
+                        <strong style={{ color: 'var(--n-text-primary)' }}>{filteredCursus.length}</strong> cursus
+                    </span>
+                )}
+                <button onClick={fetchCursus} title="Actualiser" style={{ display: 'flex', alignItems: 'center', padding: '7px', borderRadius: 'var(--n-radius-sm)', border: '1px solid var(--n-border)', background: 'var(--n-bg-primary)', color: 'var(--n-text-secondary)', cursor: 'pointer', flexShrink: 0 }}>
+                    <RefreshCw size={13} />
+                </button>
+            </div>
+
+            {/* ── CURSUS LIST ───────────────────────────────────────── */}
+            {loading ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--n-space-3)' }}>
+                    {[...Array(3)].map((_, i) => <NotionSkeleton key={i} type="card" />)}
+                </div>
+            ) : filteredCursus.length === 0 ? (
+                <NotionEmptyState
+                    icon={<BookOpen size={28} />}
+                    title={searchQuery || filterLevel !== 'ALL' ? 'Aucun résultat' : 'Aucun cursus disponible'}
+                    description={searchQuery || filterLevel !== 'ALL' ? 'Modifiez vos filtres pour voir plus de cursus.' : 'Les cursus seront bientôt disponibles.'}
+                />
+            ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--n-space-3)' }}>
+                    {filteredCursus.map(c => <CursusCard key={c.id} cursus={c} />)}
+                </div>
+            )}
+
+            {/* ── TIP CALLOUT ───────────────────────────────────────── */}
+            {!loading && cursusList.length > 0 && (
+                <div style={{ marginTop: 'var(--n-space-10)', padding: 'var(--n-space-4)', borderRadius: 'var(--n-radius-md)', background: 'var(--n-info-bg)', border: '1px solid var(--n-info-border)' }}>
+                    <h3 style={{ fontSize: 'var(--n-text-sm)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], color: 'var(--n-info)', fontFamily: 'var(--n-font-sans)', marginBottom: 'var(--n-space-2)' }}>
+                        Conseil de parcours
+                    </h3>
+                    <p style={{ fontSize: 'var(--n-text-sm)', color: 'var(--n-text-secondary)', fontFamily: 'var(--n-font-sans)', lineHeight: 'var(--n-leading-relaxed)' }}>
+                        Commencez par les cursus <strong style={{ color: 'var(--n-level-beginner)' }}>Débutant</strong> pour bâtir une base solide, puis progressez vers les niveaux <strong style={{ color: 'var(--n-level-expert)' }}>Expert</strong>. Chaque module complété débloque des badges et XP.
+                    </p>
+                </div>
+            )}
         </div>
     );
 }

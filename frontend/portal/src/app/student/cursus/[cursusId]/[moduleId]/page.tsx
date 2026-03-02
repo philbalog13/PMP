@@ -1,15 +1,18 @@
-﻿'use client';
+'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useAuth } from '../../../../auth/useAuth';
 import { CourseRichRenderer } from '../../../../../components/cursus/CourseRichRenderer';
-import { CourseCard, CoursePageShell, CoursePill } from '@/components/course/CoursePageShell';
 import {
-    ArrowLeft, BookOpen, Clock, CheckCircle2, ChevronLeft, ChevronRight,
-    FileQuestion, Lightbulb, Award, Sparkles, Code2, AlertCircle, RefreshCw, Beaker
+    ArrowLeft, BookOpen, Clock, CheckCircle2, ChevronRight, ChevronDown, ChevronUp,
+    FileQuestion, Lightbulb, Award, Sparkles, Code2, AlertCircle, RefreshCw,
+    Check, Terminal, Star
 } from 'lucide-react';
+import { NotionCard, NotionBadge, NotionProgress, NotionSkeleton, NotionEmptyState } from '@shared/components/notion';
+
+/* ── Interfaces ─────────────────────────────────────────────────────────── */
 
 interface Chapter {
     id: string;
@@ -19,22 +22,18 @@ interface Chapter {
     chapter_order: number;
     estimated_minutes: number;
 }
-
 interface QuizQuestion {
     id: string;
     question: string;
     options: string[];
     questionOrder: number;
 }
-
 interface Quiz {
     id: string;
     title: string;
     pass_percentage: number;
-    // PostgreSQL json_agg with LEFT JOIN returns null when no rows match
     questions: QuizQuestion[] | null;
 }
-
 interface Exercise {
     id: string;
     title: string;
@@ -44,14 +43,12 @@ interface Exercise {
     hints: string[];
     estimated_minutes: number;
 }
-
 interface ModuleInfo {
     id: string;
     title: string;
     module_order: number;
     cursus_title: string;
 }
-
 interface QuizReviewItem {
     questionId: string;
     correct: boolean;
@@ -59,7 +56,6 @@ interface QuizReviewItem {
     userAnswer: number;
     explanation?: string;
 }
-
 interface QuizSubmissionResult {
     passed: boolean;
     score: number;
@@ -69,96 +65,195 @@ interface QuizSubmissionResult {
     results: QuizReviewItem[];
 }
 
-/* Maps module ID keywords to CTF category filter to create cross-links */
+/* ── CTF cross-link map ──────────────────────────────────────────────────── */
+
 const MODULE_CTF_MAP: Record<string, { category: string; label: string }> = {
-    'hsm': { category: 'HSM_ATTACK', label: 'HSM & Cryptographie' },
-    'crypto': { category: 'CRYPTO_WEAKNESS', label: 'Crypto' },
-    '3ds': { category: '3DS_BYPASS', label: '3-D Secure' },
-    '3dsecure': { category: '3DS_BYPASS', label: '3-D Secure' },
-    'iso8583': { category: 'ISO8583_MANIPULATION', label: 'ISO 8583' },
-    'iso7816': { category: 'PIN_CRACKING', label: 'PIN & Smartcard' },
-    'nfc': { category: 'REPLAY_ATTACK', label: 'Replay NFC' },
-    'fraude': { category: 'FRAUD_CNP', label: 'Fraude CNP' },
-    'antifraude': { category: 'FRAUD_CNP', label: 'Fraude CNP' },
-    'audit': { category: 'PRIVILEGE_ESCALATION', label: 'Audit & Privesc' },
-    'switch': { category: 'ISO8583_MANIPULATION', label: 'ISO 8583' },
-    'token': { category: 'CRYPTO_WEAKNESS', label: 'Crypto & Tokens' },
-    'pcipts': { category: 'PIN_CRACKING', label: 'PIN & PTS' },
-    'pcidss': { category: 'PRIVILEGE_ESCALATION', label: 'PCI DSS' },
+    'hsm':       { category: 'HSM_ATTACK',           label: 'HSM & Cryptographie' },
+    'crypto':    { category: 'CRYPTO_WEAKNESS',      label: 'Crypto' },
+    '3ds':       { category: '3DS_BYPASS',           label: '3-D Secure' },
+    '3dsecure':  { category: '3DS_BYPASS',           label: '3-D Secure' },
+    'iso8583':   { category: 'ISO8583_MANIPULATION', label: 'ISO 8583' },
+    'iso7816':   { category: 'PIN_CRACKING',         label: 'PIN & Smartcard' },
+    'nfc':       { category: 'REPLAY_ATTACK',        label: 'Replay NFC' },
+    'fraude':    { category: 'FRAUD_CNP',            label: 'Fraude CNP' },
+    'antifraude':{ category: 'FRAUD_CNP',            label: 'Fraude CNP' },
+    'audit':     { category: 'PRIVILEGE_ESCALATION', label: 'Audit & Privesc' },
+    'switch':    { category: 'ISO8583_MANIPULATION', label: 'ISO 8583' },
+    'token':     { category: 'CRYPTO_WEAKNESS',      label: 'Crypto & Tokens' },
+    'pcipts':    { category: 'PIN_CRACKING',         label: 'PIN & PTS' },
+    'pcidss':    { category: 'PRIVILEGE_ESCALATION', label: 'PCI DSS' },
     'messaging': { category: 'ISO8583_MANIPULATION', label: 'ISO 8583' },
 };
 
-function getCtfCategory(moduleId: string): { category: string; label: string } | null {
+function getCtfCategory(moduleId: string) {
     const lower = (moduleId || '').toLowerCase();
-    for (const [keyword, val] of Object.entries(MODULE_CTF_MAP)) {
-        if (lower.includes(keyword)) return val;
+    for (const [kw, val] of Object.entries(MODULE_CTF_MAP)) {
+        if (lower.includes(kw)) return val;
     }
     return null;
 }
 
+const MODULE_EMOJIS = ['💳', '🔐', '🛡️', '🔍', '⚡', '🌐', '🔑', '📊', '🧩', '🏆'];
+
+/* ── TaskAccordion Component ────────────────────────────────────────────── */
+
+type AccordionType = 'chapter' | 'quiz' | 'exercise';
+
+function getAccordionColors(type: AccordionType) {
+    if (type === 'quiz')     return { accent: 'var(--n-info)',    accentBorder: 'var(--n-info-border)',    accentBg: 'var(--n-info-bg)' };
+    if (type === 'exercise') return { accent: 'var(--n-text-secondary)', accentBorder: 'var(--n-border-strong)', accentBg: 'var(--n-bg-elevated)' };
+    return { accent: 'var(--n-accent)', accentBorder: 'var(--n-accent-border)', accentBg: 'var(--n-accent-light)' };
+}
+
+function TaskAccordion({
+    taskN, title, isOpen, isCompleted, type = 'chapter',
+    onToggle, children, estimatedMinutes
+}: {
+    taskN: number;
+    title: string;
+    isOpen: boolean;
+    isCompleted?: boolean;
+    type?: AccordionType;
+    onToggle: () => void;
+    children: React.ReactNode;
+    estimatedMinutes?: number;
+}) {
+    const colors   = getAccordionColors(type);
+    const labelMap = { chapter: `UA ${taskN}`, quiz: 'ÉVALUATION', exercise: 'EXERCICE' };
+
+    return (
+        <div style={{
+            borderRadius: 'var(--n-radius)',
+            overflow: 'hidden',
+            border: isCompleted
+                ? '1px solid var(--n-success-border)'
+                : isOpen
+                    ? `2px solid ${colors.accentBorder}`
+                    : '1px solid var(--n-border)',
+            background: isOpen ? 'var(--n-bg-primary)' : 'var(--n-bg-primary)',
+            transition: 'border-color 0.2s',
+        }}>
+            {/* Header */}
+            <button
+                onClick={onToggle}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 'var(--n-space-4)', padding: 'var(--n-space-4) var(--n-space-5)', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer' }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--n-bg-elevated)'}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'none'}
+            >
+                {/* Status circle */}
+                <div style={{ flexShrink: 0 }}>
+                    {isCompleted ? (
+                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'var(--n-success)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Check style={{ width: '12px', height: '12px', color: '#fff' }} strokeWidth={3} />
+                        </div>
+                    ) : isOpen ? (
+                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', border: `2px solid ${colors.accent}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: colors.accent }} />
+                        </div>
+                    ) : (
+                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', border: '2px solid var(--n-border)' }} />
+                    )}
+                </div>
+
+                {/* Label + title */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: isCompleted ? 'var(--n-success)' : colors.accent, marginBottom: '2px', fontFamily: 'var(--n-font-sans)' }}>
+                        {labelMap[type]}
+                    </div>
+                    <div style={{ fontSize: 'var(--n-text-sm)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], color: isCompleted ? 'var(--n-text-tertiary)' : 'var(--n-text-primary)', fontFamily: 'var(--n-font-sans)', textDecoration: isCompleted ? 'line-through' : 'none', lineHeight: 1.3 }}>
+                        {title}
+                    </div>
+                </div>
+
+                {/* Time + status + chevron */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-3)', flexShrink: 0 }}>
+                    {estimatedMinutes && !isCompleted && (
+                        <span style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)' }}>~{estimatedMinutes} min</span>
+                    )}
+                    {isCompleted && (
+                        <NotionBadge variant="success" size="sm">Terminé</NotionBadge>
+                    )}
+                    <div style={{ color: 'var(--n-text-tertiary)' }}>
+                        {isOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                    </div>
+                </div>
+            </button>
+
+            {/* Content panel */}
+            {isOpen && (
+                <div style={{ borderTop: `1px solid ${colors.accentBorder}`, borderLeft: `3px solid ${colors.accent}` }}>
+                    <div style={{ padding: 'var(--n-space-5) var(--n-space-5) var(--n-space-6)' }}>
+                        {children}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+/* ── Main Page ──────────────────────────────────────────────────────────── */
+
 export default function ModuleContentPage() {
     const { isLoading: authLoading } = useAuth(true);
-    const params = useParams();
+    const params   = useParams();
     const cursusId = params?.cursusId as string;
     const moduleId = params?.moduleId as string;
 
-    const [module_, setModule] = useState<ModuleInfo | null>(null);
-    const [chapters, setChapters] = useState<Chapter[]>([]);
-    const [quiz, setQuiz] = useState<Quiz | null>(null);
-    const [exercises, setExercises] = useState<Exercise[]>([]);
-    const [activeExercise, setActiveExercise] = useState(0);
+    const [module_,   setModule]   = useState<ModuleInfo | null>(null);
+    const [chapters,  setChapters] = useState<Chapter[]>([]);
+    const [quiz,      setQuiz]     = useState<Quiz | null>(null);
+    const [exercises, setExercises]= useState<Exercise[]>([]);
     const [completedIds, setCompletedIds] = useState<string[]>([]);
-    const [activeChapter, setActiveChapter] = useState(0);
-    const [activeTab, setActiveTab] = useState<'theory' | 'quiz' | 'exercise'>('theory');
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const [loading,   setLoading]  = useState(true);
+    const [error,     setError]    = useState<string | null>(null);
 
-    // Reader bar state
-    const [scrollProgress, setScrollProgress] = useState(0);
-    const hasAutoMarked = useRef(false);
+    const [openTask,       setOpenTask]       = useState<number>(0);
+    const [showStickyBar,  setShowStickyBar]  = useState(false);
+    const heroRef = useRef<HTMLDivElement>(null);
 
-    // Quiz state
     const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({});
-    const [quizResult, setQuizResult] = useState<QuizSubmissionResult | null>(null);
-    const [submitting, setSubmitting] = useState(false);
+    const [quizResult,  setQuizResult]  = useState<QuizSubmissionResult | null>(null);
+    const [submitting,  setSubmitting]  = useState(false);
 
-    // Exercise auto-correction state
-    const [exerciseAnswer, setExerciseAnswer] = useState('');
-    const [exerciseResult, setExerciseResult] = useState<{
+    const [activeExercise,    setActiveExercise]    = useState(0);
+    const [exerciseAnswer,    setExerciseAnswer]    = useState('');
+    const [exerciseResult,    setExerciseResult]    = useState<{
         score: number; feedback: string; matchedConcepts: string[]; missingConcepts: string[];
         attemptCount: number; solutionEligible: boolean;
     } | null>(null);
-    const [exerciseSolution, setExerciseSolution] = useState<string | null>(null);
-    const [loadingSolution, setLoadingSolution] = useState(false);
+    const [exerciseSolution,  setExerciseSolution]  = useState<string | null>(null);
+    const [loadingSolution,   setLoadingSolution]   = useState(false);
 
+    /* ── Computed ── */
+    const totalMinutes    = chapters.reduce((s, c) => s + (c.estimated_minutes || 0), 0);
+    const validQuestions  = (quiz?.questions ?? []).filter((q): q is QuizQuestion => q !== null);
+    const ctfCategory     = getCtfCategory(moduleId);
+    const emoji           = MODULE_EMOJIS[(module_?.module_order ?? 1) % MODULE_EMOJIS.length];
+    const totalTasks      = chapters.length + (validQuestions.length > 0 ? 1 : 0) + exercises.length;
+    const completedTasks  = completedIds.length + (quizResult?.passed ? 1 : 0);
+    const moduleProgress  = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+    /* ── API calls ── */
     const markChapterComplete = useCallback(async (chapterId: string) => {
         try {
             const token = localStorage.getItem('token');
             if (!token) return;
-
             await fetch(`/api/cursus/${cursusId}/progress`, {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ moduleId, chapterId }),
             });
-
             setCompletedIds((prev) => (prev.includes(chapterId) ? prev : [...prev, chapterId]));
-        } catch (err) {
-            console.error(err);
-        }
+        } catch (err) { console.error(err); }
     }, [cursusId, moduleId]);
 
     useEffect(() => {
-        const fetch_ = async () => {
+        const fetchModule = async () => {
             try {
                 setError(null);
                 setLoading(true);
                 const token = localStorage.getItem('token');
-                if (!token) {
-                    setError('Session expirée. Merci de vous reconnecter.');
-                    return;
-                }
-
+                if (!token) { setError('Session expirée.'); return; }
                 const res = await fetch(`/api/cursus/${cursusId}/module/${moduleId}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
@@ -166,126 +261,78 @@ export default function ModuleContentPage() {
                     const payload = await res.json().catch(() => ({}));
                     throw new Error(payload.error || 'Impossible de charger le module.');
                 }
-
                 const data = await res.json();
-                if (!data.success) {
-                    throw new Error(data.error || 'Impossible de charger le module.');
-                }
-
-                const nextChapters: Chapter[] = data.chapters || [];
-                const nextQuiz: Quiz | null = data.quiz || null;
+                if (!data.success) throw new Error(data.error || 'Impossible de charger le module.');
+                const nextChapters: Chapter[] = Array.isArray(data.units)
+                    ? data.units
+                    : (data.chapters || []);
                 const nextExercises: Exercise[] = Array.isArray(data.exercises)
-                    ? data.exercises
-                    : (data.exercise ? [data.exercise] : []);
-
+                    ? data.exercises : (data.exercise ? [data.exercise] : []);
                 setModule(data.module || null);
                 setChapters(nextChapters);
-                setQuiz(nextQuiz);
+                setQuiz(data.quiz || null);
                 setExercises(nextExercises);
                 setActiveExercise(0);
                 setCompletedIds(data.completedChapterIds || []);
-                setActiveChapter(0);
+                setOpenTask(0);
                 setQuizResult(null);
                 setQuizAnswers({});
-
-                if (nextChapters.length === 0) {
-                    if (nextQuiz) {
-                        setActiveTab('quiz');
-                    } else if (nextExercises.length > 0) {
-                        setActiveTab('exercise');
-                    }
-                }
-
-                if (!data.module || (nextChapters.length === 0 && !nextQuiz && nextExercises.length === 0)) {
-                    setError('Ce module ne contient pas encore de contenu publiable.');
+                if (!data.module || (nextChapters.length === 0 && !data.quiz && nextExercises.length === 0)) {
+                    setError('Ce module ne contient pas encore d’UA publiable.');
                 }
             } catch (err) {
-                console.error('Failed to fetch module', err);
                 setError(err instanceof Error ? err.message : 'Erreur de chargement du module.');
-            } finally {
-                setLoading(false);
-            }
+            } finally { setLoading(false); }
         };
         if (authLoading) return;
-        if (cursusId && moduleId) fetch_();
+        if (cursusId && moduleId) fetchModule();
     }, [authLoading, cursusId, moduleId]);
 
-    // Scroll progress tracking
     useEffect(() => {
         const handleScroll = () => {
-            const scrolled = window.scrollY;
-            const total = document.documentElement.scrollHeight - window.innerHeight;
-            setScrollProgress(total > 0 ? Math.min(100, Math.round((scrolled / total) * 100)) : 0);
+            if (heroRef.current) {
+                const heroBottom = heroRef.current.getBoundingClientRect().bottom;
+                setShowStickyBar(heroBottom < 0);
+            }
         };
         window.addEventListener('scroll', handleScroll, { passive: true });
-        handleScroll();
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
-
-    // Reset auto-mark flag when chapter changes
-    useEffect(() => {
-        hasAutoMarked.current = false;
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }, [activeChapter]);
-
-    // Auto-mark chapter complete at 90% scroll
-    useEffect(() => {
-        if (
-            activeTab === 'theory' &&
-            scrollProgress >= 90 &&
-            chapters[activeChapter] &&
-            !completedIds.includes(chapters[activeChapter].id) &&
-            !hasAutoMarked.current
-        ) {
-            hasAutoMarked.current = true;
-            void markChapterComplete(chapters[activeChapter].id);
-        }
-    }, [scrollProgress, activeChapter, activeTab, chapters, completedIds, markChapterComplete]);
 
     useEffect(() => {
         setExerciseAnswer('');
         setExerciseResult(null);
         setExerciseSolution(null);
-    }, [activeExercise, exercises.length]);
+    }, [activeExercise]);
 
     const submitQuiz = async () => {
         if (!quiz) return;
         setSubmitting(true);
         try {
             const token = localStorage.getItem('token');
-            if (!token) {
-                setError('Session expirée. Merci de vous reconnecter.');
-                return;
-            }
-
-            const answers = (quiz.questions ?? []).filter((q): q is QuizQuestion => q !== null).map((_, i) => quizAnswers[i] ?? -1);
+            if (!token) { setError('Session expirée.'); return; }
+            const answers = validQuestions.map((_, i) => quizAnswers[i] ?? -1);
             const res = await fetch(`/api/cursus/${cursusId}/quiz/${quiz.id}`, {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ answers }),
             });
-            if (!res.ok) {
-                const payload = await res.json().catch(() => ({}));
-                throw new Error(payload.error || 'Impossible de soumettre le quiz.');
-            }
+            if (!res.ok) { const p = await res.json().catch(() => ({})); throw new Error(p.error || 'Erreur submit quiz.'); }
             const data = await res.json();
             if (data.success) setQuizResult(data);
-            else throw new Error(data.error || 'Impossible de soumettre le quiz.');
-        } catch (err) {
-            console.error(err);
-            setError(err instanceof Error ? err.message : 'Erreur lors de la soumission du quiz.');
-        }
+            else throw new Error(data.error || 'Erreur submit quiz.');
+        } catch (err) { setError(err instanceof Error ? err.message : 'Erreur quiz.'); }
         finally { setSubmitting(false); }
     };
 
     const submitExercise = async () => {
-        const currentExercise = exercises[activeExercise];
-        if (!currentExercise || !exerciseAnswer.trim()) return;
+        const ex = exercises[activeExercise];
+        if (!ex || !exerciseAnswer.trim()) return;
         setSubmitting(true);
         try {
             const token = localStorage.getItem('token');
             if (!token) return;
-            const res = await fetch(`/api/cursus/${cursusId}/exercise/${currentExercise.id}/submit`, {
+            const res = await fetch(`/api/cursus/${cursusId}/exercise/${ex.id}/submit`, {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ answerText: exerciseAnswer }),
@@ -298,13 +345,13 @@ export default function ModuleContentPage() {
     };
 
     const loadExerciseSolution = async () => {
-        const currentExercise = exercises[activeExercise];
-        if (!currentExercise) return;
+        const ex = exercises[activeExercise];
+        if (!ex) return;
         setLoadingSolution(true);
         try {
             const token = localStorage.getItem('token');
             if (!token) return;
-            const res = await fetch(`/api/cursus/${cursusId}/exercise/${currentExercise.id}/solution`, {
+            const res = await fetch(`/api/cursus/${cursusId}/exercise/${ex.id}/solution`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (!res.ok) throw new Error('Not eligible');
@@ -314,616 +361,648 @@ export default function ModuleContentPage() {
         finally { setLoadingSolution(false); }
     };
 
+    const handleTaskComplete = (chapterId: string, chapterIndex: number) => {
+        markChapterComplete(chapterId);
+        setTimeout(() => {
+            if (chapterIndex < chapters.length - 1) {
+                setOpenTask(chapterIndex + 1);
+            } else if (validQuestions.length > 0) {
+                setOpenTask(chapters.length);
+            } else if (exercises.length > 0) {
+                setOpenTask(chapters.length + 1);
+            }
+        }, 400);
+    };
+
+    /* ── Loading ── */
     if (authLoading || loading) {
         return (
-            <CoursePageShell
-                title="Chargement du module…"
-                description="Récupération du contenu et de votre progression."
-                icon={<BookOpen className="h-8 w-8 text-emerald-300" />}
-                crumbs={[
-                    { label: 'Mon Parcours', href: '/student' },
-                    { label: 'Cursus', href: '/student/cursus' },
-                    { label: 'Module' },
-                ]}
-                backHref="/student/cursus"
-                backLabel="Retour aux cursus"
-            >
-                <CourseCard className="p-8">
-                    <div className="flex items-center gap-3 text-slate-300">
-                        <RefreshCw className="h-5 w-5 animate-spin text-emerald-400" />
-                        <span className="text-sm">Chargement…</span>
-                    </div>
-                    <div className="mt-6 space-y-3 animate-pulse">
-                        <div className="h-3 w-1/2 rounded bg-slate-800/70" />
-                        <div className="h-3 w-full rounded bg-slate-800/50" />
-                        <div className="h-3 w-5/6 rounded bg-slate-800/40" />
-                    </div>
-                </CourseCard>
-            </CoursePageShell>
-        );
-    }
-
-    if (!module_) {
-        return (
-            <CoursePageShell
-                title="Module indisponible"
-                description={error || 'Le module demandé est introuvable ou non publié.'}
-                icon={<AlertCircle className="h-8 w-8 text-red-200" />}
-                crumbs={[
-                    { label: 'Mon Parcours', href: '/student' },
-                    { label: 'Cursus', href: '/student/cursus' },
-                    { label: 'Erreur' },
-                ]}
-                backHref="/student/cursus"
-                backLabel="Retour aux cursus"
-            >
-                <CourseCard className="border border-red-500/20 bg-red-500/5">
-                    <div className="flex items-start gap-3">
-                        <AlertCircle className="mt-0.5 h-5 w-5 text-red-300" />
-                        <div className="min-w-0">
-                            <h2 className="text-lg font-semibold text-white">Impossible de charger le module</h2>
-                            <p className="mt-1 text-sm text-red-100/90">
-                                {error || 'Le module demandé est introuvable ou non publié.'}
-                            </p>
-                            <div className="mt-4 flex flex-wrap items-center gap-2">
-                                <Link
-                                    href={`/student/cursus/${cursusId}`}
-                                    className="px-4 py-2.5 rounded-xl border border-white/10 bg-slate-900/40 text-sm font-semibold hover:bg-slate-900/60"
-                                >
-                                    Retour au cursus
-                                </Link>
-                                <button
-                                    onClick={() => window.location.reload()}
-                                    className="px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-500"
-                                >
-                                    Réessayer
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </CourseCard>
-            </CoursePageShell>
-        );
-    }
-
-    const currentChapter = chapters[activeChapter];
-    const currentExercise = exercises[activeExercise] || null;
-    const completedPercent = chapters.length > 0
-        ? Math.round((completedIds.length / chapters.length) * 100)
-        : 0;
-    const totalMinutes = Math.round(chapters.reduce((sum, chapter) => sum + (chapter.estimated_minutes || 0), 0));
-    const aside = (
-        <div className="space-y-4">
-            <CourseCard className="p-2">
-                <p className="px-3 pt-3 pb-2 text-[11px] text-slate-500 font-semibold uppercase tracking-[0.2em]">
-                    Mode
-                </p>
-                <div className="space-y-1 px-2 pb-2">
-                    {[
-                        { key: 'theory' as const, label: 'Théorie', icon: <BookOpen size={16} /> },
-                        ...(quiz ? [{ key: 'quiz' as const, label: 'Quiz', icon: <FileQuestion size={16} /> }] : []),
-                        ...(exercises.length > 0 ? [{ key: 'exercise' as const, label: 'Exercice', icon: <Code2 size={16} /> }] : []),
-                    ].map((tab) => (
-                        <button
-                            key={tab.key}
-                            onClick={() => setActiveTab(tab.key)}
-                            className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border transition-colors ${activeTab === tab.key
-                                    ? 'bg-white text-slate-950 border-white/10'
-                                    : 'bg-transparent border-transparent text-slate-300 hover:bg-white/5 hover:border-white/10'
-                                }`}
-                        >
-                            {tab.icon} {tab.label}
-                        </button>
-                    ))}
+            <div style={{ padding: 'var(--n-space-8) var(--n-space-6)', maxWidth: '1120px', margin: '0 auto' }}>
+                <div style={{ marginBottom: 'var(--n-space-5)' }}>
+                    <NotionSkeleton type="line" width="200px" height="28px" />
+                    <div style={{ marginTop: 'var(--n-space-2)' }}><NotionSkeleton type="line" width="280px" height="14px" /></div>
                 </div>
-            </CourseCard>
-
-            {activeTab === 'theory' && chapters.length > 0 && (
-                <CourseCard className="p-4">
-                    <p className="text-[11px] text-slate-500 font-semibold uppercase tracking-[0.2em] mb-3">
-                        Chapitres
-                    </p>
-                    <div className="lg:hidden">
-                        <select
-                            value={activeChapter}
-                            onChange={(e) => setActiveChapter(Number(e.target.value))}
-                            className="w-full rounded-xl bg-slate-950/40 border border-white/10 px-3 py-2 text-sm text-slate-200"
-                        >
-                            {chapters.map((ch, idx) => (
-                                <option key={ch.id} value={idx}>
-                                    {idx + 1}. {ch.title}
-                                </option>
-                            ))}
-                        </select>
+                <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 'var(--n-space-6)' }}>
+                    <NotionSkeleton type="card" />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--n-space-3)' }}>
+                        {[...Array(4)].map((_, i) => <NotionSkeleton key={i} type="list" />)}
                     </div>
-                    <div className="hidden lg:block space-y-1">
-                        {chapters.map((ch, idx) => (
-                            <button
-                                key={ch.id}
-                                onClick={() => setActiveChapter(idx)}
-                                className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-left text-sm transition-colors border ${idx === activeChapter
-                                        ? 'bg-emerald-500/10 text-emerald-200 border-emerald-500/20'
-                                        : 'bg-transparent text-slate-300 border-transparent hover:bg-white/5 hover:border-white/10'
-                                    }`}
-                            >
-                                {completedIds.includes(ch.id) ? (
-                                    <CheckCircle2 size={16} className="text-emerald-300 flex-shrink-0" />
-                                ) : (
-                                    <span className="h-3.5 w-3.5 rounded-full border border-slate-600 flex-shrink-0" />
-                                )}
-                                <span className="truncate">{ch.title}</span>
-                            </button>
-                        ))}
-                    </div>
-                </CourseCard>
-            )}
+                </div>
+            </div>
+        );
+    }
 
-            {/* CTF Cross-link */}
-            {(() => {
-                const ctfInfo = getCtfCategory(moduleId);
-                return ctfInfo ? (
-                    <CourseCard className="p-4">
-                        <p className="text-[11px] text-slate-500 font-semibold uppercase tracking-[0.2em] mb-3">
-                            Pratique
-                        </p>
+    if (error && !chapters.length && !quiz) {
+        return (
+            <div style={{ padding: 'var(--n-space-8) var(--n-space-6)', maxWidth: '600px', margin: '0 auto' }}>
+                <NotionEmptyState
+                    icon={<AlertCircle size={28} />}
+                    title="Module indisponible"
+                    description={error}
+                    action={
                         <Link
-                            href={`/student/ctf?category=${encodeURIComponent(ctfInfo.category)}`}
-                            className="w-full inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-sm font-semibold text-emerald-200 hover:bg-emerald-500/15 hover:border-emerald-500/30 transition"
+                            href={`/student/cursus/${cursusId}`}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--n-space-2)', padding: '7px 16px', borderRadius: 'var(--n-radius-sm)', border: '1px solid var(--n-border)', color: 'var(--n-text-secondary)', fontSize: 'var(--n-text-sm)', fontFamily: 'var(--n-font-sans)', textDecoration: 'none' }}
                         >
-                            <Beaker className="h-4 w-4 text-emerald-300" />
-                            Challenges CTF – {ctfInfo.label}
+                            <ArrowLeft size={14} /> Retour au cursus
                         </Link>
-                        <p className="mt-2 text-xs text-slate-500">
-                            Mettez en pratique ces concepts dans des labs interactifs.
-                        </p>
-                    </CourseCard>
-                ) : null;
-            })()}
-        </div>
-    );
+                    }
+                />
+            </div>
+        );
+    }
 
+    /* ── Render ── */
     return (
-        <CoursePageShell
-            title={module_?.title || 'Module'}
-            description={module_?.cursus_title || 'Cursus'}
-            icon={<BookOpen className="h-8 w-8 text-emerald-300" />}
-            crumbs={[
-                { label: 'Mon Parcours', href: '/student' },
-                { label: 'Cursus', href: '/student/cursus' },
-                { label: module_?.cursus_title || 'Cursus', href: `/student/cursus/${cursusId}` },
-                { label: `Module ${module_?.module_order ?? ''} — ${module_?.title || ''}`.replace(/—\s*$/, '').trim() },
-            ]}
-            backHref={`/student/cursus/${cursusId}`}
-            backLabel="Retour au cursus"
-            meta={
-                <>
-                    <CoursePill tone="emerald">Module {module_?.module_order}</CoursePill>
-                    <CoursePill tone="slate">
-                        <BookOpen className="h-4 w-4 text-slate-300" />
-                        {chapters.length} chapitres
-                    </CoursePill>
-                    <CoursePill tone="slate">
-                        <CheckCircle2 className="h-4 w-4 text-emerald-300" />
-                        {completedIds.length}/{chapters.length} lus
-                    </CoursePill>
-                    <CoursePill tone="slate">
-                        <Clock className="h-4 w-4 text-slate-300" />
-                        ~{totalMinutes} min
-                    </CoursePill>
-                </>
-            }
-            headerFooter={
-                chapters.length > 0 ? (
-                    <div className="flex items-center gap-3">
-                        <div className="h-2 flex-1 bg-slate-800/70 rounded-full overflow-hidden">
-                            <div
-                                className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-cyan-400 transition-all duration-700"
-                                style={{ width: `${completedPercent}%` }}
-                            />
-                        </div>
-                        <span className="text-xs font-mono text-emerald-200">{completedPercent}%</span>
+        <div>
+            {/* ── STICKY PROGRESS BAR ─────────────────────────────────── */}
+            <div style={{
+                position: 'fixed', top: '48px', left: 0, right: 0, zIndex: 40,
+                transition: 'transform 0.25s ease',
+                transform: showStickyBar ? 'translateY(0)' : 'translateY(-110%)',
+            }}>
+                <div style={{ height: '2px', background: 'var(--n-border)' }}>
+                    <div style={{ height: '100%', background: 'var(--n-accent)', width: `${moduleProgress}%`, transition: 'width 0.5s' }} />
+                </div>
+                <div style={{ padding: '6px var(--n-space-5)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--n-bg-primary)', borderBottom: '1px solid var(--n-border)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-4)' }}>
+                        <Link href={`/student/cursus/${cursusId}`} style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--n-text-secondary)', fontSize: 'var(--n-text-sm)', fontFamily: 'var(--n-font-sans)', textDecoration: 'none' }}>
+                            <ArrowLeft size={13} /> Retour
+                        </Link>
+                        <span style={{ color: 'var(--n-border)', fontSize: '12px' }}>|</span>
+                        <span style={{ color: 'var(--n-text-primary)', fontSize: 'var(--n-text-sm)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], fontFamily: 'var(--n-font-sans)', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {module_?.title}
+                        </span>
                     </div>
-                ) : null
-            }
-            actions={
-                <Link
-                    href={`/student/cursus/${cursusId}`}
-                    className="px-4 py-2.5 rounded-xl border border-white/10 bg-slate-900/40 hover:bg-slate-900/60 text-sm font-semibold inline-flex items-center gap-2"
-                >
-                    <ArrowLeft className="h-4 w-4" />
-                    Cursus
-                </Link>
-            }
-            aside={aside}
-        >
-            <div className="space-y-6">
-                {error && (
-                    <CourseCard className="border border-red-500/20 bg-red-500/5 p-4 md:p-5">
-                        <div className="flex items-start gap-3">
-                            <AlertCircle className="mt-0.5 h-5 w-5 text-red-300" />
-                            <p className="text-sm text-red-100/90">{error}</p>
-                        </div>
-                    </CourseCard>
-                )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-3)' }}>
+                        <span style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)' }}>
+                            {completedTasks}/{totalTasks} tâches
+                        </span>
+                        <NotionBadge variant="accent" size="sm">{moduleProgress}%</NotionBadge>
+                    </div>
+                </div>
+            </div>
 
-                {/* ===== THEORY TAB ===== */}
-                {activeTab === 'theory' && currentChapter && (() => {
-                    const wordCount = (currentChapter.content || '').split(/\s+/).filter(Boolean).length;
-                    const minutesRemaining = Math.max(1, Math.ceil((wordCount * Math.max(0, 100 - scrollProgress) / 100) / 200));
-                    return (
-                    <div className="min-w-0">
-                        {/* Fixed reading progress bar */}
-                        <div className="fixed top-0 left-0 right-0 z-50 h-1 bg-slate-900/50">
-                            <div
-                                className="h-full bg-gradient-to-r from-emerald-500 to-cyan-400 transition-all duration-200"
-                                style={{ width: `${scrollProgress}%` }}
-                            />
-                        </div>
+            {/* ── MODULE HEADER ────────────────────────────────────────── */}
+            <div ref={heroRef} style={{ padding: 'var(--n-space-8) var(--n-space-6) var(--n-space-5)', borderBottom: '1px solid var(--n-border)', background: 'var(--n-bg-primary)', position: 'relative', overflow: 'hidden' }}>
+                {/* Decorative emoji */}
+                <div style={{ position: 'absolute', right: '32px', top: '50%', transform: 'translateY(-50%)', fontSize: '5rem', opacity: 0.06, userSelect: 'none', pointerEvents: 'none' }}>
+                    {emoji}
+                </div>
 
-                        <CourseCard className="p-6 md:p-8 mb-5">
-                            <div className="flex items-start justify-between gap-4 mb-1">
-                                <h2 className="text-lg md:text-xl font-bold text-white">
-                                    {currentChapter.title}
-                                </h2>
-                                <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                                    <span className="text-xs text-slate-500 flex items-center gap-1">
-                                        <Clock size={11} /> ~{minutesRemaining} min restantes
-                                    </span>
-                                    <div className="w-20 h-1 bg-slate-800 rounded-full overflow-hidden">
-                                        <div className="h-full bg-emerald-500 transition-all duration-200" style={{ width: `${scrollProgress}%` }} />
-                                    </div>
-                                </div>
+                <div style={{ maxWidth: '1120px', margin: '0 auto', position: 'relative' }}>
+                    {/* Back link */}
+                    <Link
+                        href={`/student/cursus/${cursusId}`}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--n-space-2)', color: 'var(--n-text-secondary)', fontSize: 'var(--n-text-sm)', fontFamily: 'var(--n-font-sans)', textDecoration: 'none', marginBottom: 'var(--n-space-4)' }}
+                    >
+                        <ArrowLeft size={14} />
+                        {module_?.cursus_title || 'Retour au cursus'}
+                    </Link>
+
+                    {/* Module label */}
+                    <div style={{ marginBottom: 'var(--n-space-3)' }}>
+                        <NotionBadge variant="accent" size="sm">MODULE {module_?.module_order}</NotionBadge>
+                    </div>
+
+                    <h1 style={{ fontSize: '28px', fontWeight: 'var(--n-weight-bold)' as React.CSSProperties['fontWeight'], color: 'var(--n-text-primary)', fontFamily: 'var(--n-font-sans)', letterSpacing: '-0.02em', marginBottom: 'var(--n-space-4)', maxWidth: '680px', lineHeight: 1.2 }}>
+                        {module_?.title || 'Module'}
+                    </h1>
+
+                    {/* Stats row */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--n-space-5)', fontSize: 'var(--n-text-sm)', color: 'var(--n-text-secondary)', fontFamily: 'var(--n-font-sans)', marginBottom: 'var(--n-space-5)' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <Clock size={13} style={{ color: 'var(--n-accent)' }} />
+                            {totalMinutes > 0 ? `~${totalMinutes} min` : 'Durée variable'}
+                        </span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <BookOpen size={13} style={{ color: 'var(--n-accent)' }} />
+                            {chapters.length} UA
+                        </span>
+                        {validQuestions.length > 0 && (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                <FileQuestion size={13} style={{ color: 'var(--n-info)' }} />
+                                {validQuestions.length} questions
+                            </span>
+                        )}
+                        {exercises.length > 0 && (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                <Code2 size={13} style={{ color: 'var(--n-text-tertiary)' }} />
+                                {exercises.length} exercice{exercises.length > 1 ? 's' : ''}
+                            </span>
+                        )}
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <CheckCircle2 size={13} style={{ color: 'var(--n-success)' }} />
+                            {completedIds.length}/{chapters.length} validées
+                        </span>
+                    </div>
+
+                    {/* Progress bar */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-4)' }}>
+                        <span style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)', flexShrink: 0, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            Progression
+                        </span>
+                        <div style={{ flex: 1 }}>
+                            <NotionProgress value={moduleProgress} variant={moduleProgress === 100 ? 'success' : 'accent'} size="thick" />
+                        </div>
+                        <span style={{ fontSize: 'var(--n-text-xs)', fontFamily: 'var(--n-font-mono)', fontWeight: 600, color: moduleProgress === 100 ? 'var(--n-success)' : 'var(--n-accent)', flexShrink: 0 }}>
+                            {moduleProgress}%
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            {/* ── 2-COLUMN LAYOUT ──────────────────────────────────────── */}
+            <div style={{ maxWidth: '1120px', margin: '0 auto', padding: 'var(--n-space-7) var(--n-space-6)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 'var(--n-space-6)', alignItems: 'start' }}>
+
+                    {/* ── LEFT SIDEBAR ─────────────────────────────────── */}
+                    <aside style={{ position: 'sticky', top: '80px', height: 'fit-content', display: 'flex', flexDirection: 'column', gap: 'var(--n-space-4)' }}>
+
+                        {/* Task navigator */}
+                        <NotionCard variant="default" padding="none">
+                            <div style={{ padding: 'var(--n-space-3) var(--n-space-4)', borderBottom: '1px solid var(--n-border)' }}>
+                                <h3 style={{ fontSize: 'var(--n-text-xs)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)', margin: 0 }}>
+                                    Contenu du module
+                                </h3>
                             </div>
-                            <div className="h-px bg-white/5 my-4" />
+                            <div style={{ padding: 'var(--n-space-1) 0' }}>
+                                {chapters.map((ch, i) => {
+                                    const isDone   = completedIds.includes(ch.id);
+                                    const isActive = openTask === i;
+                                    return (
+                                        <button
+                                            key={ch.id}
+                                            onClick={() => setOpenTask(isActive ? -1 : i)}
+                                            style={{ width: '100%', display: 'flex', alignItems: 'flex-start', gap: 'var(--n-space-3)', padding: 'var(--n-space-2) var(--n-space-4)', textAlign: 'left', background: isActive ? 'var(--n-accent-light)' : 'transparent', border: 'none', cursor: 'pointer' }}
+                                            onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'var(--n-bg-elevated)'; }}
+                                            onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                                        >
+                                            <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                                                {isDone ? (
+                                                    <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: 'var(--n-success)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                        <Check style={{ width: '10px', height: '10px', color: '#fff' }} strokeWidth={3} />
+                                                    </div>
+                                                ) : (
+                                                    <div style={{ width: '18px', height: '18px', borderRadius: '50%', border: `2px solid ${isActive ? 'var(--n-accent)' : 'var(--n-border)'}` }} />
+                                                )}
+                                            </div>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: isActive ? 'var(--n-accent)' : 'var(--n-text-tertiary)', marginBottom: '1px', fontFamily: 'var(--n-font-sans)' }}>
+                                                    TÂCHE {i + 1}
+                                                </div>
+                                                <div style={{ fontSize: 'var(--n-text-xs)', color: isActive ? 'var(--n-text-primary)' : isDone ? 'var(--n-text-tertiary)' : 'var(--n-text-secondary)', fontFamily: 'var(--n-font-sans)', lineHeight: 1.3, textDecoration: isDone ? 'line-through' : 'none' }}>
+                                                    {ch.title}
+                                                </div>
+                                            </div>
+                                        </button>
+                                    );
+                                })}
 
-                            {/* Rendered Markdown */}
-                            <CourseRichRenderer content={currentChapter.content} />
-                        </CourseCard>
+                                {validQuestions.length > 0 && (
+                                    <button
+                                        onClick={() => setOpenTask(openTask === chapters.length ? -1 : chapters.length)}
+                                        style={{ width: '100%', display: 'flex', alignItems: 'flex-start', gap: 'var(--n-space-3)', padding: 'var(--n-space-2) var(--n-space-4)', textAlign: 'left', background: openTask === chapters.length ? 'var(--n-info-bg)' : 'transparent', border: 'none', cursor: 'pointer' }}
+                                        onMouseEnter={e => { if (openTask !== chapters.length) (e.currentTarget as HTMLElement).style.background = 'var(--n-bg-elevated)'; }}
+                                        onMouseLeave={e => { if (openTask !== chapters.length) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                                    >
+                                        <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                                            {quizResult?.passed ? (
+                                                <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: 'var(--n-success)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                    <Check style={{ width: '10px', height: '10px', color: '#fff' }} strokeWidth={3} />
+                                                </div>
+                                            ) : (
+                                                <div style={{ width: '18px', height: '18px', borderRadius: '50%', border: `2px solid ${openTask === chapters.length ? 'var(--n-info)' : 'var(--n-border)'}` }} />
+                                            )}
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: openTask === chapters.length ? 'var(--n-info)' : 'var(--n-text-tertiary)', marginBottom: '1px', fontFamily: 'var(--n-font-sans)' }}>ÉVALUATION</div>
+                                            <div style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-text-secondary)', fontFamily: 'var(--n-font-sans)' }}>{quiz?.title || 'Quiz final'}</div>
+                                        </div>
+                                    </button>
+                                )}
 
-                        {/* Key points */}
-                        {currentChapter.key_points && currentChapter.key_points.length > 0 && (
-                            <div className="rounded-xl bg-emerald-500/5 border border-emerald-500/10 p-5 mb-5">
-                                <p className="text-emerald-400 text-sm font-semibold mb-3 flex items-center gap-2">
-                                    <Lightbulb size={15} /> Points clés
-                                </p>
-                                <ul className="space-y-1.5 text-sm text-slate-400 leading-relaxed">
-                                    {currentChapter.key_points.map((kp, i) => (
-                                        <li key={i} className="flex items-start gap-2">
-                                            <span className="text-emerald-500 mt-1.5">&#8226;</span>
-                                            <span>{kp}</span>
-                                        </li>
-                                    ))}
-                                </ul>
+                                {exercises.map((ex, i) => {
+                                    const taskIdx  = chapters.length + (validQuestions.length > 0 ? 1 : 0) + i;
+                                    const isActive = openTask === taskIdx;
+                                    return (
+                                        <button
+                                            key={ex.id}
+                                            onClick={() => setOpenTask(isActive ? -1 : taskIdx)}
+                                            style={{ width: '100%', display: 'flex', alignItems: 'flex-start', gap: 'var(--n-space-3)', padding: 'var(--n-space-2) var(--n-space-4)', textAlign: 'left', background: isActive ? 'var(--n-bg-elevated)' : 'transparent', border: 'none', cursor: 'pointer' }}
+                                            onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'var(--n-bg-elevated)'; }}
+                                            onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                                        >
+                                            <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                                                <div style={{ width: '18px', height: '18px', borderRadius: '50%', border: `2px solid ${isActive ? 'var(--n-border-strong)' : 'var(--n-border)'}` }} />
+                                            </div>
+                                            <div>
+                                                <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--n-text-tertiary)', marginBottom: '1px', fontFamily: 'var(--n-font-sans)' }}>EXERCICE</div>
+                                                <div style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-text-secondary)', fontFamily: 'var(--n-font-sans)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '160px' }}>{ex.title}</div>
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </NotionCard>
+
+                        {/* Progress summary */}
+                        <NotionCard variant="default" padding="md">
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--n-space-2)' }}>
+                                <span style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-text-secondary)', fontFamily: 'var(--n-font-sans)' }}>Progression</span>
+                                <span style={{ fontSize: 'var(--n-text-xs)', fontWeight: 700, color: 'var(--n-accent)', fontFamily: 'var(--n-font-mono)' }}>{moduleProgress}%</span>
+                            </div>
+                            <NotionProgress value={moduleProgress} variant={moduleProgress === 100 ? 'success' : 'accent'} size="default" />
+                            <div style={{ marginTop: 'var(--n-space-2)', fontSize: 'var(--n-text-xs)', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)' }}>
+                                {completedTasks} / {totalTasks} tâches terminées
+                            </div>
+                        </NotionCard>
+
+                        {/* CTF cross-link */}
+                        {ctfCategory && (
+                            <Link
+                                href={`/student/ctf?category=${ctfCategory.category}`}
+                                style={{ display: 'block', textDecoration: 'none', borderRadius: 'var(--n-radius)', padding: 'var(--n-space-4)', background: 'var(--n-info-bg)', border: '1px solid var(--n-info-border)', transition: 'border-color 0.15s' }}
+                                onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = 'var(--n-info)'}
+                                onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = 'var(--n-info-border)'}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)', marginBottom: 'var(--n-space-1)' }}>
+                                    <Terminal size={13} style={{ color: 'var(--n-info)' }} />
+                                    <span style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--n-info)', fontFamily: 'var(--n-font-sans)' }}>Lab CTF</span>
+                                </div>
+                                <div style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-text-secondary)', fontFamily: 'var(--n-font-sans)', marginBottom: 'var(--n-space-2)' }}>{ctfCategory.label}</div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: 'var(--n-text-xs)', color: 'var(--n-info)', fontFamily: 'var(--n-font-sans)' }}>
+                                    Accéder au défi <ChevronRight size={12} />
+                                </div>
+                            </Link>
+                        )}
+                    </aside>
+
+                    {/* ── TASK ACCORDIONS ──────────────────────────────── */}
+                    <main style={{ display: 'flex', flexDirection: 'column', gap: 'var(--n-space-3)', minWidth: 0 }}>
+
+                        {/* Error banner */}
+                        {error && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-3)', padding: 'var(--n-space-3) var(--n-space-4)', borderRadius: 'var(--n-radius-sm)', background: 'var(--n-danger-bg)', border: '1px solid var(--n-danger-border)', marginBottom: 'var(--n-space-2)' }}>
+                                <AlertCircle size={15} style={{ color: 'var(--n-danger)', flexShrink: 0 }} />
+                                <p style={{ fontSize: 'var(--n-text-sm)', color: 'var(--n-danger)', fontFamily: 'var(--n-font-sans)', margin: 0 }}>{error}</p>
                             </div>
                         )}
 
-                        {/* Navigation + mark complete */}
-                        <div className="flex items-center justify-between gap-3 flex-wrap">
-                            <button
-                                disabled={activeChapter === 0}
-                                onClick={() => setActiveChapter(activeChapter - 1)}
-                                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm border transition-colors ${activeChapter === 0
-                                    ? 'border-white/5 text-slate-600 cursor-not-allowed'
-                                    : 'border-white/10 text-slate-400 hover:text-white hover:border-white/20 bg-slate-900/50'
-                                    }`}>
-                                <ChevronLeft size={14} /> Précédent
-                            </button>
+                        {/* Empty state */}
+                        {chapters.length === 0 && !quiz && exercises.length === 0 && !loading && (
+                            <NotionEmptyState
+                                icon={<BookOpen size={28} />}
+                                title="Ce module ne contient pas encore de contenu."
+                                description=""
+                            />
+                        )}
 
-                            <button
-                                onClick={() => {
-                                    markChapterComplete(currentChapter.id);
-                                    if (activeChapter < chapters.length - 1) setActiveChapter(activeChapter + 1);
-                                }}
-                                className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all ${completedIds.includes(currentChapter.id)
-                                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/15'
-                                    : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/15'
-                                    }`}>
-                                {completedIds.includes(currentChapter.id)
-                                    ? <><CheckCircle2 size={14} /> Lu</>
-                                    : 'Marquer comme lu ✓'}
-                            </button>
-
-                            <button
-                                disabled={activeChapter === chapters.length - 1}
-                                onClick={() => setActiveChapter(activeChapter + 1)}
-                                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm border transition-colors ${activeChapter === chapters.length - 1
-                                    ? 'border-white/5 text-slate-600 cursor-not-allowed'
-                                    : 'border-white/10 text-slate-400 hover:text-white hover:border-white/20 bg-slate-900/50'
-                                    }`}>
-                                Suivant <ChevronRight size={14} />
-                            </button>
-                        </div>
-                    </div>
-                    );
-                })()}
-
-                {activeTab === 'theory' && !currentChapter && (
-                    <CourseCard className="p-6 md:p-8">
-                        <div className="flex items-start gap-3">
-                            <AlertCircle size={18} className="text-amber-400 mt-0.5" />
-                            <div>
-                                <h2 className="text-lg font-semibold text-white mb-2">Contenu théorique indisponible</h2>
-                                <p className="text-sm text-slate-400 mb-4">
-                                    Aucun chapitre n&apos;est disponible pour ce module.
-                                </p>
-                                <div className="flex flex-wrap items-center gap-2">
-                                    {quiz && (
-                                        <button
-                                            onClick={() => setActiveTab('quiz')}
-                                            className="px-3 py-2 rounded-lg bg-violet-500/10 border border-violet-500/20 text-violet-300 text-sm"
-                                        >
-                                            Aller au quiz
-                                        </button>
-                                    )}
-                                    {exercises.length > 0 && (
-                                        <button
-                                            onClick={() => setActiveTab('exercise')}
-                                            className="px-3 py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-sm"
-                                        >
-                                            Aller à l&apos;exercice
-                                        </button>
-                                    )}
+                        {/* ── CHAPTER TASKS ─────────────────────────── */}
+                        {chapters.map((ch, i) => (
+                            <TaskAccordion
+                                key={ch.id}
+                                taskN={i + 1}
+                                title={ch.title}
+                                isOpen={openTask === i}
+                                isCompleted={completedIds.includes(ch.id)}
+                                type="chapter"
+                                onToggle={() => setOpenTask(openTask === i ? -1 : i)}
+                                estimatedMinutes={ch.estimated_minutes}
+                            >
+                                {/* Chapter content */}
+                                <div className="prose prose-sm max-w-none mb-6">
+                                    <CourseRichRenderer content={ch.content} />
                                 </div>
-                            </div>
-                        </div>
-                    </CourseCard>
-                )}
 
-                {/* ===== QUIZ TAB ===== */}
-                {activeTab === 'quiz' && quiz && (
-                    <CourseCard className="p-6 md:p-8">
-                        <h2 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                            <FileQuestion size={20} className="text-violet-400" /> {quiz.title}
-                        </h2>
-
-                        {quizResult ? (
-                            <div>
-                                {/* Result banner */}
-                                <div className={`rounded-xl p-6 mb-6 border ${quizResult.passed
-                                    ? 'bg-emerald-500/5 border-emerald-500/15'
-                                    : 'bg-rose-500/5 border-rose-500/15'
-                                    }`}>
-                                    <div className="flex items-center gap-3 mb-2">
-                                        {quizResult.passed
-                                            ? <Award size={24} className="text-emerald-400" />
-                                            : <FileQuestion size={24} className="text-rose-400" />}
-                                        <span className={`text-xl font-bold ${quizResult.passed ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                            {quizResult.passed ? 'Réussi ! 🎉' : 'Non réussi'}
-                                        </span>
+                                {/* Key points */}
+                                {ch.key_points?.length > 0 && (
+                                    <div style={{ borderRadius: 'var(--n-radius-sm)', padding: 'var(--n-space-4)', marginBottom: 'var(--n-space-5)', background: 'var(--n-accent-light)', border: '1px solid var(--n-accent-border)' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)', marginBottom: 'var(--n-space-3)' }}>
+                                            <Lightbulb size={14} style={{ color: 'var(--n-accent)' }} />
+                                            <span style={{ fontSize: 'var(--n-text-xs)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--n-accent)', fontFamily: 'var(--n-font-sans)' }}>Points clés</span>
+                                        </div>
+                                        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--n-space-1)' }}>
+                                            {ch.key_points.map((pt, j) => (
+                                                <li key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--n-space-2)', fontSize: 'var(--n-text-sm)', color: 'var(--n-text-secondary)', fontFamily: 'var(--n-font-sans)' }}>
+                                                    <span style={{ color: 'var(--n-accent)', marginTop: '2px', flexShrink: 0 }}>▸</span>
+                                                    {pt}
+                                                </li>
+                                            ))}
+                                        </ul>
                                     </div>
-                                    <p className="text-slate-400 text-sm">
-                                        Score : <strong className="text-white">{quizResult.score}/{quizResult.maxScore}</strong> ({quizResult.percentage}%) — Seuil : {quizResult.passPercentage}%
-                                    </p>
-                                </div>
+                                )}
 
-                                {/* Question results */}
-                                <div className="space-y-3">
-                                    {quizResult.results.map((r, i) => {
-                                        const validQuestions = (quiz.questions ?? []).filter((q): q is QuizQuestion => q !== null);
-                                        return (
-                                            <div key={i} className={`rounded-lg p-4 border ${r.correct ? 'bg-emerald-500/5 border-emerald-500/10' : 'bg-rose-500/5 border-rose-500/10'}`}>
-                                                <p className="text-sm text-white mb-1">
-                                                    {r.correct ? '\u2705' : '\u274C'} {validQuestions[i]?.question}
-                                                </p>
-                                                {r.explanation && (
-                                                    <p className="text-xs text-slate-500 italic flex items-start gap-1">
-                                                        <Lightbulb size={12} className="text-amber-400 mt-0.5 flex-shrink-0" />
-                                                        {r.explanation}
-                                                    </p>
-                                                )}
+                                {/* Complete task */}
+                                <div style={{ marginTop: 'var(--n-space-5)', paddingTop: 'var(--n-space-4)', borderTop: '1px solid var(--n-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--n-space-4)' }}>
+                                    <div>
+                                        {completedIds.includes(ch.id) ? (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)', color: 'var(--n-success)', fontSize: 'var(--n-text-sm)', fontFamily: 'var(--n-font-sans)' }}>
+                                                <Check size={14} />
+                                                <span>Tâche terminée</span>
                                             </div>
-                                        );
-                                    })}
+                                        ) : (
+                                            <p style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)', margin: 0 }}>
+                                                Marque cette tâche comme terminée pour progresser
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-3)' }}>
+                                        {!completedIds.includes(ch.id) && (
+                                            <button
+                                                onClick={() => handleTaskComplete(ch.id, i)}
+                                                style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)', padding: '7px 14px', borderRadius: 'var(--n-radius-sm)', background: 'var(--n-accent)', color: '#fff', fontSize: 'var(--n-text-sm)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], fontFamily: 'var(--n-font-sans)', border: 'none', cursor: 'pointer' }}
+                                            >
+                                                <Check size={14} /> Terminer cette tâche
+                                            </button>
+                                        )}
+                                        {i < chapters.length - 1 && (
+                                            <button
+                                                onClick={() => { setOpenTask(i + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                                                style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)', padding: '7px 14px', borderRadius: 'var(--n-radius-sm)', border: '1px solid var(--n-border)', background: 'var(--n-bg-primary)', color: 'var(--n-text-secondary)', fontSize: 'var(--n-text-sm)', fontFamily: 'var(--n-font-sans)', cursor: 'pointer' }}
+                                            >
+                                                Suivant <ChevronRight size={14} />
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </TaskAccordion>
+                        ))}
+
+                        {/* ── QUIZ TASK ──────────────────────────────── */}
+                        {quiz && validQuestions.length > 0 && (
+                            <TaskAccordion
+                                taskN={chapters.length + 1}
+                                title={quiz.title || 'Évaluation finale'}
+                                isOpen={openTask === chapters.length}
+                                isCompleted={quizResult?.passed === true}
+                                type="quiz"
+                                onToggle={() => setOpenTask(openTask === chapters.length ? -1 : chapters.length)}
+                            >
+                                {/* Separator */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-4)', marginBottom: 'var(--n-space-5)' }}>
+                                    <span style={{ fontSize: 'var(--n-text-sm)', fontStyle: 'italic', color: 'var(--n-info)', fontFamily: 'var(--n-font-sans)' }}>
+                                        Répondez aux questions ci-dessous
+                                    </span>
+                                    <div style={{ flex: 1, height: '1px', background: 'var(--n-info-border)' }} />
                                 </div>
 
-                                <button onClick={() => { setQuizResult(null); setQuizAnswers({}); }}
-                                    className="mt-6 px-4 py-2.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-medium hover:bg-blue-500/15 transition-colors">
-                                    Retenter le quiz
-                                </button>
-                            </div>
-                        ) : (
-                            <div>
-                                {(() => {
-                                    const validQuestions = (quiz.questions ?? []).filter((q): q is QuizQuestion => q !== null);
-                                    return (
-                                        <>
-                                            {validQuestions.length === 0 && (
-                                                <div className="rounded-lg p-4 border border-amber-500/20 bg-amber-500/5 mb-6">
-                                                    <p className="text-sm text-amber-300">Aucune question disponible pour ce quiz.</p>
+                                {/* Quiz result */}
+                                {quizResult && (
+                                    <div style={{ borderRadius: 'var(--n-radius-sm)', padding: 'var(--n-space-5)', marginBottom: 'var(--n-space-5)', background: quizResult.passed ? 'var(--n-success-bg)' : 'var(--n-danger-bg)', border: `1px solid ${quizResult.passed ? 'var(--n-success-border)' : 'var(--n-danger-border)'}` }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-3)', marginBottom: 'var(--n-space-4)' }}>
+                                            {quizResult.passed
+                                                ? <Award size={22} style={{ color: 'var(--n-success)' }} />
+                                                : <AlertCircle size={22} style={{ color: 'var(--n-danger)' }} />
+                                            }
+                                            <div>
+                                                <div style={{ fontSize: 'var(--n-text-base)', fontWeight: 'var(--n-weight-bold)' as React.CSSProperties['fontWeight'], color: quizResult.passed ? 'var(--n-success)' : 'var(--n-danger)', fontFamily: 'var(--n-font-sans)' }}>
+                                                    {quizResult.passed ? 'Réussi ! 🎉' : 'Pas encore…'}
                                                 </div>
-                                            )}
-                                            {validQuestions.map((q, qIdx) => (
-                                                <div key={q.id} className="mb-6 pb-5 border-b border-white/5 last:border-0">
-                                                    <p className="text-white text-sm font-medium mb-3">
-                                                        <span className="text-slate-500 mr-2">{qIdx + 1}.</span>
-                                                        {q.question}
-                                                    </p>
-                                                    <div className="space-y-2">
-                                                        {q.options.map((opt, oIdx) => (
-                                                            <label key={oIdx}
-                                                                className={`flex items-center gap-3 cursor-pointer p-3 rounded-lg text-sm transition-all border ${quizAnswers[qIdx] === oIdx
-                                                                    ? 'bg-blue-500/10 border-blue-500/20 text-white'
-                                                                    : 'bg-slate-800/30 border-white/5 text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
-                                                                    }`}>
-                                                                <input type="radio" name={`q-${qIdx}`}
-                                                                    checked={quizAnswers[qIdx] === oIdx}
-                                                                    onChange={() => setQuizAnswers({ ...quizAnswers, [qIdx]: oIdx })}
-                                                                    className="accent-blue-500"
-                                                                />
-                                                                {opt}
-                                                            </label>
-                                                        ))}
+                                                <div style={{ fontSize: 'var(--n-text-sm)', color: 'var(--n-text-secondary)', fontFamily: 'var(--n-font-sans)' }}>
+                                                    Score : {quizResult.score}/{quizResult.maxScore} ({quizResult.percentage}%) — Seuil : {quizResult.passPercentage}%
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Per-question review */}
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--n-space-2)' }}>
+                                            {quizResult.results.map((r, j) => (
+                                                <div key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--n-space-3)', padding: 'var(--n-space-3)', borderRadius: 'var(--n-radius-sm)', background: r.correct ? 'var(--n-success-bg)' : 'var(--n-danger-bg)' }}>
+                                                    {r.correct
+                                                        ? <Check size={14} style={{ color: 'var(--n-success)', flexShrink: 0, marginTop: '2px' }} />
+                                                        : <AlertCircle size={14} style={{ color: 'var(--n-danger)', flexShrink: 0, marginTop: '2px' }} />
+                                                    }
+                                                    <div style={{ fontSize: 'var(--n-text-sm)', color: 'var(--n-text-secondary)', fontFamily: 'var(--n-font-sans)' }}>
+                                                        <span style={{ fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], color: 'var(--n-text-primary)' }}>Q{j + 1} : </span>
+                                                        {validQuestions[j]?.question}
+                                                        {r.explanation && (
+                                                            <p style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-text-tertiary)', marginTop: '4px', fontStyle: 'italic', margin: '4px 0 0' }}>{r.explanation}</p>
+                                                        )}
                                                     </div>
                                                 </div>
                                             ))}
-                                            <button onClick={submitQuiz} disabled={submitting}
-                                                className={`px-6 py-3 rounded-xl text-sm font-bold transition-all ${submitting
-                                                    ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                                                    : 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white shadow-lg shadow-blue-500/15'
-                                                    }`}>
-                                                {submitting ? 'Envoi...' : 'Soumettre le quiz'}
+                                        </div>
+
+                                        {!quizResult.passed && (
+                                            <button
+                                                onClick={() => { setQuizResult(null); setQuizAnswers({}); }}
+                                                style={{ marginTop: 'var(--n-space-4)', display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)', padding: '7px 14px', borderRadius: 'var(--n-radius-sm)', border: '1px solid var(--n-border)', background: 'var(--n-bg-primary)', color: 'var(--n-text-secondary)', fontSize: 'var(--n-text-sm)', fontFamily: 'var(--n-font-sans)', cursor: 'pointer' }}
+                                            >
+                                                <RefreshCw size={14} /> Réessayer
                                             </button>
-                                        </>
-                                    );
-                                })()}
-                            </div>
-                        )}
-                    </CourseCard>
-                )}
+                                        )}
+                                    </div>
+                                )}
 
-                {activeTab === 'quiz' && !quiz && (
-                    <CourseCard className="p-6 md:p-8">
-                        <p className="text-sm text-slate-400">Aucun quiz n&apos;est disponible pour ce module.</p>
-                    </CourseCard>
-                )}
+                                {/* Quiz questions */}
+                                {!quizResult && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--n-space-6)' }}>
+                                        {validQuestions.map((q, qi) => (
+                                            <div key={q.id}>
+                                                <p style={{ fontSize: 'var(--n-text-sm)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], color: 'var(--n-text-primary)', fontFamily: 'var(--n-font-sans)', marginBottom: 'var(--n-space-3)' }}>
+                                                    <span style={{ color: 'var(--n-info)', fontWeight: 700, marginRight: '6px' }}>Q{qi + 1}.</span>
+                                                    {q.question}
+                                                </p>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--n-space-2)' }}>
+                                                    {q.options.map((opt, oi) => {
+                                                        const isSelected = quizAnswers[qi] === oi;
+                                                        return (
+                                                            <button
+                                                                key={oi}
+                                                                onClick={() => setQuizAnswers((prev) => ({ ...prev, [qi]: oi }))}
+                                                                style={{
+                                                                    width: '100%', textAlign: 'left',
+                                                                    padding: 'var(--n-space-3) var(--n-space-4)',
+                                                                    borderRadius: 'var(--n-radius-sm)',
+                                                                    fontSize: 'var(--n-text-sm)',
+                                                                    fontFamily: 'var(--n-font-sans)',
+                                                                    cursor: 'pointer',
+                                                                    background: isSelected ? 'var(--n-accent-light)' : 'var(--n-bg-primary)',
+                                                                    border: `${isSelected ? '2px' : '1px'} solid ${isSelected ? 'var(--n-accent-border)' : 'var(--n-border)'}`,
+                                                                    color: isSelected ? 'var(--n-text-primary)' : 'var(--n-text-secondary)',
+                                                                    transition: 'all 0.1s',
+                                                                }}
+                                                            >
+                                                                <span style={{ fontFamily: 'var(--n-font-mono)', marginRight: '8px', fontSize: 'var(--n-text-xs)', color: isSelected ? 'var(--n-accent)' : 'var(--n-text-tertiary)', fontWeight: 700 }}>
+                                                                    {String.fromCharCode(65 + oi)}.
+                                                                </span>
+                                                                {opt}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        ))}
 
-                {/* ===== EXERCISE TAB ===== */}
-                {activeTab === 'exercise' && currentExercise && (
-                    <CourseCard className="p-6 md:p-8">
-                        <h2 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
-                            <Code2 size={20} className="text-cyan-400" /> {currentExercise.title}
-                        </h2>
-                        {exercises.length > 1 && (
-                            <div className="mb-4 flex flex-wrap items-center gap-2">
-                                {exercises.map((ex, idx) => (
-                                    <button
-                                        key={ex.id}
-                                        onClick={() => setActiveExercise(idx)}
-                                        className={`px-2.5 py-1 rounded-md text-xs border transition-colors ${
-                                            idx === activeExercise
-                                                ? 'bg-cyan-500/20 border-cyan-500/30 text-cyan-200'
-                                                : 'bg-slate-900/50 border-white/10 text-slate-400 hover:text-slate-200'
-                                        }`}
-                                    >
-                                        Exercice {idx + 1}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                        <div className="flex gap-3 mb-5 flex-wrap">
-                            <span className="px-2.5 py-1 rounded-md bg-cyan-500/10 text-cyan-400 text-xs font-medium border border-cyan-500/15">
-                                {currentExercise.type}
-                            </span>
-                            <span className="text-xs text-slate-500 flex items-center gap-1">
-                                <Clock size={11} /> ~{currentExercise.estimated_minutes} min
-                            </span>
-                        </div>
-
-                        <p className="text-slate-300 text-sm leading-relaxed mb-6">
-                            {currentExercise.description}
-                        </p>
-
-                        {/* Instructions */}
-                        <h3 className="text-white font-semibold text-sm mb-4 flex items-center gap-2">
-                            <Sparkles size={14} className="text-amber-400" /> Instructions
-                        </h3>
-                        <div className="space-y-2 mb-6">
-                            {currentExercise.instructions.map((inst, i) => (
-                                <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-slate-800/30 border border-white/5 text-sm text-slate-300">
-                                    <span className="w-6 h-6 rounded-full bg-emerald-500/10 border border-emerald-500/15 text-emerald-400 font-semibold flex items-center justify-center flex-shrink-0 text-xs">
-                                        {i + 1}
-                                    </span>
-                                    <span className="leading-relaxed">{inst}</span>
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* Hints */}
-                        {currentExercise.hints && currentExercise.hints.length > 0 && (
-                            <div className="rounded-xl bg-amber-500/5 border border-amber-500/10 p-5 mb-5">
-                                <p className="text-amber-400 text-sm font-semibold mb-3 flex items-center gap-2">
-                                    <Lightbulb size={15} /> Indices
-                                </p>
-                                <ul className="space-y-1.5 text-sm text-slate-400 leading-relaxed">
-                                    {currentExercise.hints.map((h, i) => (
-                                        <li key={i} className="flex items-start gap-2">
-                                            <span className="text-amber-500 mt-1.5">&#8226;</span>
-                                            <span>{h}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
+                                        <button
+                                            onClick={submitQuiz}
+                                            disabled={submitting || validQuestions.some((_, i) => quizAnswers[i] === undefined)}
+                                            style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)', padding: '9px 20px', borderRadius: 'var(--n-radius-sm)', background: 'var(--n-accent)', color: '#fff', fontSize: 'var(--n-text-sm)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], fontFamily: 'var(--n-font-sans)', border: 'none', cursor: (submitting || validQuestions.some((_, i) => quizAnswers[i] === undefined)) ? 'not-allowed' : 'pointer', opacity: (submitting || validQuestions.some((_, i) => quizAnswers[i] === undefined)) ? 0.45 : 1 }}
+                                        >
+                                            {submitting
+                                                ? <><RefreshCw size={14} /> Soumission…</>
+                                                : <><Sparkles size={14} /> Soumettre le quiz</>
+                                            }
+                                        </button>
+                                    </div>
+                                )}
+                            </TaskAccordion>
                         )}
 
-                        {/* Answer submission form */}
-                        <div className="mt-4">
-                            <h3 className="text-white font-semibold text-sm mb-3 flex items-center gap-2">
-                                <Award size={14} className="text-violet-400" /> Votre réponse
-                            </h3>
-                            <textarea
-                                value={exerciseAnswer}
-                                onChange={(e) => setExerciseAnswer(e.target.value)}
-                                placeholder="Rédigez votre analyse ici…"
-                                rows={6}
-                                className="w-full px-4 py-3 rounded-xl bg-slate-950/40 border border-white/10 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 resize-y"
-                            />
-                            <div className="mt-3 flex flex-wrap items-center gap-3">
-                                <button
-                                    onClick={() => void submitExercise()}
-                                    disabled={submitting || !exerciseAnswer.trim()}
-                                    className="px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white text-sm font-semibold inline-flex items-center gap-2"
+                        {/* ── EXERCISE TASKS ────────────────────────── */}
+                        {exercises.map((ex, i) => {
+                            const taskIdx = chapters.length + (validQuestions.length > 0 ? 1 : 0) + i;
+                            return (
+                                <TaskAccordion
+                                    key={ex.id}
+                                    taskN={taskIdx + 1}
+                                    title={ex.title}
+                                    isOpen={openTask === taskIdx}
+                                    type="exercise"
+                                    onToggle={() => {
+                                        setOpenTask(openTask === taskIdx ? -1 : taskIdx);
+                                        setActiveExercise(i);
+                                    }}
+                                    estimatedMinutes={ex.estimated_minutes}
                                 >
-                                    {submitting ? <RefreshCw size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                                    {submitting ? 'Correction…' : 'Soumettre'}
-                                </button>
-                                {(exerciseResult?.solutionEligible) && (
-                                    <button
-                                        onClick={() => void loadExerciseSolution()}
-                                        disabled={loadingSolution}
-                                        className="px-4 py-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-300 text-sm font-semibold hover:bg-amber-500/15 inline-flex items-center gap-2"
-                                    >
-                                        <Lightbulb size={14} />
-                                        {loadingSolution ? 'Chargement…' : 'Voir le corrigé'}
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Auto-correction result */}
-                        {exerciseResult && (
-                            <div className={`mt-5 rounded-2xl border p-5 ${exerciseResult.score >= 80 ? 'bg-emerald-500/10 border-emerald-500/20' : exerciseResult.score >= 50 ? 'bg-amber-500/10 border-amber-500/20' : 'bg-rose-500/10 border-rose-500/20'}`}>
-                                <div className="flex items-center justify-between mb-3">
-                                    <span className="font-bold text-white">Score : {exerciseResult.score}/100</span>
-                                    <span className="text-xs text-slate-400">{exerciseResult.attemptCount} tentative{exerciseResult.attemptCount > 1 ? 's' : ''}</span>
-                                </div>
-                                <p className="text-sm text-slate-200 mb-3">{exerciseResult.feedback}</p>
-                                {exerciseResult.matchedConcepts.length > 0 && (
-                                    <div className="flex flex-wrap gap-1.5 mb-2">
-                                        <span className="text-xs text-emerald-400 font-semibold">✓</span>
-                                        {exerciseResult.matchedConcepts.map((kw) => (
-                                            <span key={kw} className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 text-xs">{kw}</span>
-                                        ))}
+                                    {/* Type badge */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-3)', marginBottom: 'var(--n-space-5)' }}>
+                                        <NotionBadge variant="default">{ex.type || 'Pratique'}</NotionBadge>
+                                        {ex.estimated_minutes > 0 && (
+                                            <span style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                <Clock size={11} /> ~{ex.estimated_minutes} min
+                                            </span>
+                                        )}
                                     </div>
-                                )}
-                                {exerciseResult.missingConcepts.length > 0 && (
-                                    <div className="flex flex-wrap gap-1.5">
-                                        <span className="text-xs text-rose-400 font-semibold">À approfondir :</span>
-                                        {exerciseResult.missingConcepts.map((kw) => (
-                                            <span key={kw} className="px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-300 text-xs">{kw}</span>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        )}
 
-                        {/* Sample solution */}
-                        {exerciseSolution && (
-                            <div className="mt-5 rounded-2xl border border-violet-500/20 bg-violet-500/5 p-5">
-                                <p className="text-violet-400 text-sm font-semibold mb-3 flex items-center gap-2">
-                                    <Lightbulb size={14} /> Corrigé
+                                    <p style={{ fontSize: 'var(--n-text-sm)', color: 'var(--n-text-secondary)', fontFamily: 'var(--n-font-sans)', marginBottom: 'var(--n-space-5)', lineHeight: 'var(--n-leading-relaxed)' }}>{ex.description}</p>
+
+                                    {/* Instructions */}
+                                    {ex.instructions?.length > 0 && (
+                                        <div style={{ marginBottom: 'var(--n-space-5)' }}>
+                                            <div style={{ fontSize: 'var(--n-text-xs)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)', marginBottom: 'var(--n-space-3)' }}>Instructions</div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--n-space-2)' }}>
+                                                {ex.instructions.map((instr, j) => (
+                                                    <div key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--n-space-3)', padding: 'var(--n-space-3)', borderRadius: 'var(--n-radius-sm)', background: 'var(--n-bg-elevated)', border: '1px solid var(--n-border)' }}>
+                                                        <span style={{ flexShrink: 0, width: '20px', height: '20px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 700, background: 'var(--n-border)', color: 'var(--n-text-secondary)', fontFamily: 'var(--n-font-sans)' }}>
+                                                            {j + 1}
+                                                        </span>
+                                                        <p style={{ fontSize: 'var(--n-text-sm)', color: 'var(--n-text-secondary)', fontFamily: 'var(--n-font-sans)', margin: 0, lineHeight: 'var(--n-leading-relaxed)' }}>{instr}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Hints */}
+                                    {ex.hints?.length > 0 && (
+                                        <div style={{ padding: 'var(--n-space-4)', borderRadius: 'var(--n-radius-sm)', marginBottom: 'var(--n-space-5)', background: 'var(--n-accent-light)', border: '1px solid var(--n-accent-border)' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)', marginBottom: 'var(--n-space-2)' }}>
+                                                <Lightbulb size={13} style={{ color: 'var(--n-accent)' }} />
+                                                <span style={{ fontSize: 'var(--n-text-xs)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--n-accent)', fontFamily: 'var(--n-font-sans)' }}>Indices</span>
+                                            </div>
+                                            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                {ex.hints.map((h, j) => (
+                                                    <li key={j} style={{ fontSize: 'var(--n-text-sm)', color: 'var(--n-text-secondary)', fontFamily: 'var(--n-font-sans)', display: 'flex', alignItems: 'flex-start', gap: 'var(--n-space-2)' }}>
+                                                        <span style={{ color: 'var(--n-accent)', marginTop: '2px', flexShrink: 0 }}>▸</span>{h}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+
+                                    {/* Answer textarea */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--n-space-3)' }}>
+                                        <div style={{ fontSize: 'var(--n-text-xs)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)' }}>
+                                            Votre réponse
+                                        </div>
+                                        <textarea
+                                            value={exerciseAnswer}
+                                            onChange={(e) => setExerciseAnswer(e.target.value)}
+                                            rows={5}
+                                            placeholder="Rédigez votre analyse ici…"
+                                            style={{ width: '100%', resize: 'vertical', fontSize: 'var(--n-text-sm)', color: 'var(--n-text-primary)', fontFamily: 'var(--n-font-sans)', background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)', borderRadius: 'var(--n-radius-sm)', padding: 'var(--n-space-3) var(--n-space-4)', outline: 'none', boxSizing: 'border-box' }}
+                                            onFocus={e => (e.target as HTMLTextAreaElement).style.borderColor = 'var(--n-border-strong)'}
+                                            onBlur={e  => (e.target as HTMLTextAreaElement).style.borderColor = 'var(--n-border)'}
+                                        />
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-3)' }}>
+                                            <button
+                                                onClick={submitExercise}
+                                                disabled={submitting || !exerciseAnswer.trim()}
+                                                style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)', padding: '7px 18px', borderRadius: 'var(--n-radius-sm)', background: 'var(--n-accent)', color: '#fff', fontSize: 'var(--n-text-sm)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], fontFamily: 'var(--n-font-sans)', border: 'none', cursor: (submitting || !exerciseAnswer.trim()) ? 'not-allowed' : 'pointer', opacity: (submitting || !exerciseAnswer.trim()) ? 0.45 : 1 }}
+                                            >
+                                                {submitting ? <RefreshCw size={14} /> : <Sparkles size={14} />}
+                                                Soumettre
+                                            </button>
+                                            {exerciseResult?.solutionEligible && !exerciseSolution && (
+                                                <button
+                                                    onClick={loadExerciseSolution}
+                                                    disabled={loadingSolution}
+                                                    style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)', padding: '7px 14px', borderRadius: 'var(--n-radius-sm)', border: '1px solid var(--n-border)', background: 'var(--n-bg-primary)', color: 'var(--n-text-secondary)', fontSize: 'var(--n-text-sm)', fontFamily: 'var(--n-font-sans)', cursor: loadingSolution ? 'default' : 'pointer' }}
+                                                >
+                                                    {loadingSolution ? <RefreshCw size={13} /> : <Lightbulb size={13} />}
+                                                    Voir la solution
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Exercise result */}
+                                    {exerciseResult && (
+                                        <div style={{ marginTop: 'var(--n-space-5)', borderRadius: 'var(--n-radius-sm)', padding: 'var(--n-space-5)', background: 'var(--n-bg-elevated)', border: '1px solid var(--n-border)', display: 'flex', flexDirection: 'column', gap: 'var(--n-space-3)' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-3)' }}>
+                                                <div style={{ fontSize: '22px', fontWeight: 'var(--n-weight-bold)' as React.CSSProperties['fontWeight'], color: 'var(--n-text-primary)', fontFamily: 'var(--n-font-mono)' }}>{exerciseResult.score}/100</div>
+                                                <div>
+                                                    <div style={{ fontSize: 'var(--n-text-sm)', color: 'var(--n-text-primary)', fontFamily: 'var(--n-font-sans)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'] }}>{exerciseResult.feedback}</div>
+                                                    <div style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)' }}>{exerciseResult.attemptCount} tentative(s)</div>
+                                                </div>
+                                            </div>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--n-space-2)' }}>
+                                                {exerciseResult.matchedConcepts?.map((c, j) => (
+                                                    <NotionBadge key={j} variant="success" size="sm">✓ {c}</NotionBadge>
+                                                ))}
+                                                {exerciseResult.missingConcepts?.map((c, j) => (
+                                                    <NotionBadge key={j} variant="danger" size="sm">✗ {c}</NotionBadge>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Solution */}
+                                    {exerciseSolution && (
+                                        <div style={{ marginTop: 'var(--n-space-4)', borderRadius: 'var(--n-radius-sm)', padding: 'var(--n-space-5)', background: 'var(--n-success-bg)', border: '1px solid var(--n-success-border)' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)', fontSize: 'var(--n-text-xs)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--n-success)', fontFamily: 'var(--n-font-sans)', marginBottom: 'var(--n-space-3)' }}>
+                                                <Star size={13} /> Correction officielle
+                                            </div>
+                                            <p style={{ fontSize: 'var(--n-text-sm)', color: 'var(--n-text-secondary)', fontFamily: 'var(--n-font-sans)', whiteSpace: 'pre-wrap', lineHeight: 'var(--n-leading-relaxed)', margin: 0 }}>{exerciseSolution}</p>
+                                        </div>
+                                    )}
+                                </TaskAccordion>
+                            );
+                        })}
+
+                        {/* ── COMPLETION BANNER ─────────────────────── */}
+                        {moduleProgress === 100 && (
+                            <div style={{ borderRadius: 'var(--n-radius)', padding: 'var(--n-space-8)', textAlign: 'center', background: 'var(--n-success-bg)', border: '1px solid var(--n-success-border)' }}>
+                                <div style={{ fontSize: '3rem', marginBottom: 'var(--n-space-3)' }}>🏆</div>
+                                <h3 style={{ fontSize: 'var(--n-text-lg)', fontWeight: 'var(--n-weight-bold)' as React.CSSProperties['fontWeight'], color: 'var(--n-success)', fontFamily: 'var(--n-font-sans)', marginBottom: 'var(--n-space-2)' }}>
+                                    Module complété !
+                                </h3>
+                                <p style={{ fontSize: 'var(--n-text-sm)', color: 'var(--n-text-secondary)', fontFamily: 'var(--n-font-sans)', marginBottom: 'var(--n-space-5)' }}>
+                                    Félicitations, tu as terminé toutes les UA et l&apos;évaluation.
                                 </p>
-                                <div className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{exerciseSolution}</div>
+                                <Link
+                                    href={`/student/cursus/${cursusId}`}
+                                    style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--n-space-2)', padding: '9px 20px', borderRadius: 'var(--n-radius-sm)', background: 'var(--n-success)', color: '#fff', fontSize: 'var(--n-text-sm)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], fontFamily: 'var(--n-font-sans)', textDecoration: 'none' }}
+                                >
+                                    Module suivant <ChevronRight size={14} />
+                                </Link>
                             </div>
                         )}
-                    </CourseCard>
-                )}
-
-                {activeTab === 'exercise' && !currentExercise && (
-                    <CourseCard className="p-6 md:p-8">
-                        <p className="text-sm text-slate-400">Aucun exercice n&apos;est disponible pour ce module.</p>
-                    </CourseCard>
-                )}
+                    </main>
+                </div>
             </div>
-        </CoursePageShell>
+        </div>
     );
 }

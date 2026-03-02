@@ -1,13 +1,31 @@
+/* ═══════════════════════════════════════════════════════════
+   MoneBank — Global Styles
+   Import order : Tailwind → bank tokens → bank theme → utilities
+   NE PAS importer notion-tokens/themes ici (apps banking isolées)
+   ═══════════════════════════════════════════════════════════ */
 @import "tailwindcss";
-@import "../../shared/styles/design-tokens.css";
-@import "../../shared/styles/themes.css";
-
-/* 
- * WALLET SPECIFIC STYLES 
- */
+@import "../../shared/styles/bank-tokens.css";
+@import "../../shared/styles/bank-theme.css";
+@import "../../shared/styles/bank-utilities.css";
 
 @layer base {
+  /* La police chargée via next/font est exposée en variable CSS.
+     On surcharge --bank-font-sans pour en bénéficier. */
+  :root {
+    --bank-font-sans: var(--font-outfit, var(--font-inter, 'Inter', -apple-system, sans-serif));
+  }
+
+  /* Reset body — fond et couleur gérés par .bk-root sur le wrapper BankShell */
   body {
-    background: radial-gradient(ellipse at top left, var(--bg-surface) 0%, var(--bg-deep) 100%);
+    margin: 0;
+    padding: 0;
+    /* Fond de base dark par défaut — évite le flash blanc avant hydration client */
+    background-color: #0C0E1A;
+  }
+
+  /* Sélection de texte (accent indigo client) */
+  ::selection {
+    background-color: rgba(129, 140, 248, 0.25);
+    color: inherit;
   }
 }

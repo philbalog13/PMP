@@ -1,18 +1,20 @@
-﻿'use client';
+'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     Book, CheckCircle, Zap, Target, Award, Play, History, Shield,
     GraduationCap, ChevronRight, BookOpen, Code, Terminal, Beaker, Lock,
-    Clock, TrendingUp, Star, Trophy, BarChart3, RefreshCw, ArrowRight, Sparkles
+    Clock, TrendingUp, Star, BarChart3, RefreshCw, ArrowRight,
+    Sparkles, Check,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../auth/useAuth';
 import { isOnboardingDoneLocally, markOnboardingDoneLocally } from '../../lib/onboarding';
 import { FIRST_CTF_ROOM_CODE } from '../../lib/ctf-code-map';
+import { NotionCard, NotionBadge, NotionProgress, NotionSkeleton, NotionEmptyState, NotionTag } from '@shared/components/notion';
 
-/* â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Types ──────────────────────────────────────────────────────────────── */
 
 interface WorkshopProgress {
     workshop_id: string;
@@ -55,26 +57,60 @@ interface LeaderboardEntry {
     workshops_completed: number;
 }
 
-/* â”€â”€ Workshop metadata for icons/colors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Workshop metadata ──────────────────────────────────────────────────── */
 
-const WORKSHOP_META: Record<string, { icon: typeof BookOpen; color: string; difficulty: string; duration: string }> = {
-    'intro': { icon: BookOpen, color: 'blue', difficulty: 'DÃ©butant', duration: '45 min' },
-    'iso8583': { icon: Code, color: 'purple', difficulty: 'IntermÃ©diaire', duration: '1h 30min' },
-    'hsm-keys': { icon: Terminal, color: 'amber', difficulty: 'AvancÃ©', duration: '2h' },
-    '3ds-flow': { icon: Zap, color: 'emerald', difficulty: 'AvancÃ©', duration: '1h' },
-    'fraud-detection': { icon: Shield, color: 'red', difficulty: 'IntermÃ©diaire', duration: '1h 15min' },
-    'emv': { icon: Beaker, color: 'indigo', difficulty: 'Expert', duration: '3h' },
+const WORKSHOP_META: Record<string, {
+    icon: typeof BookOpen;
+    accentColor: string;
+    difficulty: string;
+    duration: string;
+    description: string;
+}> = {
+    'intro':           { icon: BookOpen,  accentColor: '#f59e0b', difficulty: 'Débutant',     duration: '45 min',    description: 'Fondamentaux de la monétique et des paiements' },
+    'iso8583':         { icon: Code,      accentColor: '#06b6d4', difficulty: 'Intermédiaire', duration: '1h 30min',  description: 'Protocole ISO 8583 et messages de paiement' },
+    'hsm-keys':        { icon: Terminal,  accentColor: '#f59e0b', difficulty: 'Avancé',        duration: '2h',        description: 'HSM et gestion des clés cryptographiques' },
+    '3ds-flow':        { icon: Code,      accentColor: '#10b981', difficulty: 'Avancé',        duration: '1h',        description: 'Protocole 3D Secure et authentification forte' },
+    'fraud-detection': { icon: Shield,    accentColor: '#ef4444', difficulty: 'Intermédiaire', duration: '1h 15min',  description: 'Détection et prévention de la fraude' },
+    'emv':             { icon: Beaker,    accentColor: '#a855f7', difficulty: 'Expert',         duration: '3h',        description: 'Standard EMV et transactions par carte à puce' },
 };
 
-const BADGE_ICONS: Record<string, string> = {
-    'star': '\u{1F3AF}', 'clipboard-check': '\u{1F4CB}', 'award': '\u{1F3C5}', 'trophy': '\u{1F3C6}',
-    'book-open': '\u{1F4D6}', 'graduation-cap': '\u{1F393}', 'zap': '\u26A1', 'flame': '\u{1F525}',
-};
-
-/* â”€â”€ Workshop ordering â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const WORKSHOP_ORDER = ['intro', 'iso8583', 'hsm-keys', '3ds-flow', 'fraud-detection', 'emv'];
 
-/* â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+const BADGE_ICONS: Record<string, string> = {
+    'star': '🎯', 'clipboard-check': '📋', 'award': '🏅', 'trophy': '🏆',
+    'book-open': '📖', 'graduation-cap': '🎓', 'zap': '⚡', 'flame': '🔥',
+};
+
+// Maps difficulty string → NotionBadge variant
+const DIFF_VARIANT: Record<string, 'beginner' | 'inter' | 'advanced' | 'expert'> = {
+    'Débutant':      'beginner',
+    'Intermédiaire': 'inter',
+    'Avancé':        'advanced',
+    'Expert':        'expert',
+};
+
+/* ── Count-up hook ──────────────────────────────────────────────────────── */
+
+function useCountUp(target: number, duration = 900, delay = 0): number {
+    const [value, setValue] = useState(0);
+    useEffect(() => {
+        if (target === 0) return;
+        let frame: number;
+        const start = performance.now() + delay;
+        const tick = (now: number) => {
+            const elapsed = Math.max(0, now - start);
+            const progress = Math.min(elapsed / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            setValue(Math.round(eased * target));
+            if (progress < 1) frame = requestAnimationFrame(tick);
+        };
+        frame = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(frame);
+    }, [target, duration, delay]);
+    return value;
+}
+
+/* ── Main Component ─────────────────────────────────────────────────────── */
 
 export default function StudentDashboard() {
     const { user, isLoading } = useAuth(true);
@@ -94,7 +130,6 @@ export default function StudentDashboard() {
     const fetchData = useCallback(async () => {
         const token = localStorage.getItem('token');
         if (!token) return;
-
         const headers = { Authorization: `Bearer ${token}` };
 
         const [progressRes, statsRes, badgesRes, leaderboardRes, ctfProgressRes] = await Promise.all([
@@ -129,26 +164,13 @@ export default function StudentDashboard() {
             });
             setWorkshops(workshopList);
         }
-
-        if (statsRes?.ok) {
-            const data = await statsRes.json();
-            setStats(data.stats || null);
-        }
-
-        if (badgesRes?.ok) {
-            const data = await badgesRes.json();
-            setBadges(data.badges || []);
-        }
-
-        if (leaderboardRes?.ok) {
-            const data = await leaderboardRes.json();
-            setLeaderboard(data.leaderboard || []);
-        }
-
+        if (statsRes?.ok)       { const d = await statsRes.json();       setStats(d.stats || null); }
+        if (badgesRes?.ok)      { const d = await badgesRes.json();      setBadges(d.badges || []); }
+        if (leaderboardRes?.ok) { const d = await leaderboardRes.json(); setLeaderboard(d.leaderboard || []); }
         if (ctfProgressRes?.ok) {
-            const data = await ctfProgressRes.json();
-            setCtfPoints(Number(data.summary?.totalPoints || 0));
-            setCtfSolved(Number(data.summary?.solvedChallenges || 0));
+            const d = await ctfProgressRes.json();
+            setCtfPoints(Number(d.summary?.totalPoints || 0));
+            setCtfSolved(Number(d.summary?.solvedChallenges || 0));
         }
     }, []);
 
@@ -157,8 +179,8 @@ export default function StudentDashboard() {
             setIsRefreshing(true);
             setError(null);
             await fetchData();
-        } catch (error: any) {
-            setError(error instanceof Error ? error.message : 'Erreur de chargement');
+        } catch (e: any) {
+            setError(e instanceof Error ? e.message : 'Erreur de chargement');
         } finally {
             setDataLoading(false);
             setIsRefreshing(false);
@@ -167,396 +189,356 @@ export default function StudentDashboard() {
 
     useEffect(() => {
         if (isLoading) return;
-
         let cancelled = false;
-
-        const bootstrapStudentDashboard = async () => {
-            if (isOnboardingDoneLocally(user)) {
-                await refreshData();
-                return;
-            }
-
+        const boot = async () => {
+            if (isOnboardingDoneLocally(user)) { await refreshData(); return; }
             try {
                 const token = localStorage.getItem('token');
                 if (token) {
-                    const response = await fetch('/api/users/me', {
-                        headers: { Authorization: `Bearer ${token}` }
-                    });
-
-                    if (response.ok) {
-                        const payload = await response.json().catch(() => null);
-                        const onboardingDone = payload?.user?.onboardingDone === true;
-                        if (onboardingDone) {
+                    const res = await fetch('/api/users/me', { headers: { Authorization: `Bearer ${token}` } });
+                    if (res.ok) {
+                        const payload = await res.json().catch(() => null);
+                        if (payload?.user?.onboardingDone === true) {
                             markOnboardingDoneLocally(user);
-                            if (!cancelled) {
-                                await refreshData();
-                            }
+                            if (!cancelled) await refreshData();
                             return;
                         }
                     }
                 }
-            } catch {
-                // Best-effort check; fallback below redirects to onboarding.
-            }
-
-            if (!cancelled) {
-                router.push('/student/onboarding');
-            }
+            } catch { /* fallback below */ }
+            if (!cancelled) router.push('/student/onboarding');
         };
-
-        void bootstrapStudentDashboard();
-
-        return () => {
-            cancelled = true;
-        };
+        void boot();
+        return () => { cancelled = true; };
     }, [isLoading, refreshData, router, user]);
 
-    /* â”€â”€ Computed values â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── Computed ─────────────────────────────────────────────────────── */
 
     const computed = useMemo(() => {
-        const totalXP = stats?.totalXP ?? 0;
-        const completedCount = stats?.workshops.completed ?? 0;
-        const totalWorkshops = stats?.workshops.total ?? workshops.length;
-        const avgScore = stats?.quizzes.avgScore ?? 0;
-        const badgesEarned = stats?.badges.earned ?? 0;
-
-        const overallProgress = totalWorkshops > 0
+        const totalXP          = stats?.totalXP ?? 0;
+        const completedCount   = stats?.workshops.completed ?? 0;
+        const totalWorkshops   = stats?.workshops.total ?? workshops.length;
+        const avgScore         = stats?.quizzes.avgScore ?? 0;
+        const badgesEarned     = stats?.badges.earned ?? 0;
+        const overallProgress  = totalWorkshops > 0
             ? Math.round(workshops.reduce((acc, w) => acc + (w.progress_percent || 0), 0) / totalWorkshops)
             : 0;
-
         const inProgressWorkshop = workshops.find(w => w.status === 'IN_PROGRESS');
-
-        const currentUserId = user?.id || '';
-        const myRank = currentUserId ? leaderboard.find((entry) => entry.id === currentUserId) : undefined;
-
+        const currentUserId    = user?.id || '';
+        const myRank           = currentUserId ? leaderboard.find(e => e.id === currentUserId) : undefined;
         return { totalXP, completedCount, totalWorkshops, avgScore, badgesEarned, overallProgress, inProgressWorkshop, myRank };
     }, [stats, workshops, leaderboard, user]);
 
-    /* â”€â”€ Determine locked workshops â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── Workshop lock statuses ───────────────────────────────────────── */
+
     const workshopStatuses = useMemo(() => {
         const statuses: Record<string, 'completed' | 'in-progress' | 'not-started' | 'locked'> = {};
         let previousCompleted = true;
-
         for (const w of workshops) {
-            if (w.status === 'COMPLETED') {
-                statuses[w.workshop_id] = 'completed';
-                previousCompleted = true;
-            } else if (w.status === 'IN_PROGRESS') {
-                statuses[w.workshop_id] = 'in-progress';
-                previousCompleted = false;
-            } else if (previousCompleted) {
-                statuses[w.workshop_id] = 'not-started';
-                previousCompleted = false;
-            } else {
-                statuses[w.workshop_id] = 'locked';
-            }
+            if (w.status === 'COMPLETED')        { statuses[w.workshop_id] = 'completed';    previousCompleted = true;  }
+            else if (w.status === 'IN_PROGRESS') { statuses[w.workshop_id] = 'in-progress'; previousCompleted = false; }
+            else if (previousCompleted)          { statuses[w.workshop_id] = 'not-started'; previousCompleted = false; }
+            else                                 { statuses[w.workshop_id] = 'locked'; }
         }
         return statuses;
     }, [workshops]);
 
-    /* â”€â”€ Loading â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── Loading ──────────────────────────────────────────────────────── */
 
     if (isLoading || dataLoading) {
         return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">
-                <div className="flex flex-col items-center gap-4">
-                    <GraduationCap className="animate-bounce w-12 h-12 text-emerald-500" />
-                    <span className="text-sm text-slate-500">Chargement de votre espace...</span>
+            <div style={{ padding: 'var(--n-space-8) var(--n-space-6)', maxWidth: '1200px', margin: '0 auto' }}>
+                {/* Skeleton hero */}
+                <div style={{ marginBottom: 'var(--n-space-8)' }}>
+                    <NotionSkeleton type="line" width="120px" height="22px" />
+                    <div style={{ marginTop: 'var(--n-space-3)' }}>
+                        <NotionSkeleton type="line" width="280px" height="32px" />
+                    </div>
+                    <div style={{ marginTop: 'var(--n-space-2)' }}>
+                        <NotionSkeleton type="line" width="380px" height="16px" />
+                    </div>
+                </div>
+                {/* Skeleton stat cards */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 'var(--n-space-3)', marginBottom: 'var(--n-space-8)' }}>
+                    {[...Array(5)].map((_, i) => <NotionSkeleton key={i} type="stat" />)}
+                </div>
+                {/* Skeleton content */}
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 'var(--n-space-8)' }}>
+                    <NotionSkeleton type="card" />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--n-space-3)' }}>
+                        <NotionSkeleton type="stat" />
+                        <NotionSkeleton type="list" rows={5} />
+                    </div>
                 </div>
             </div>
         );
     }
 
+    /* ── Render ───────────────────────────────────────────────────────── */
+
     return (
-        <div className="min-h-screen bg-slate-950 text-white pt-24 pb-12">
-            <div className="relative z-10 max-w-7xl mx-auto px-6">
-                {/* Breadcrumb */}
-                <div className="text-xs text-slate-500 mb-6">
-                    <Link href="/" className="hover:text-emerald-400">Accueil</Link>
-                    <ChevronRight size={12} className="inline mx-1" />
-                    <span className="text-emerald-400">Espace Ã‰tudiant</span>
+        <div style={{ padding: 'var(--n-space-8) var(--n-space-6)', maxWidth: '1200px', margin: '0 auto' }}>
+
+            {/* ── HERO ──────────────────────────────────────────────── */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 'var(--n-space-5)', marginBottom: 'var(--n-space-8)' }}>
+                <div>
+                    <NotionTag variant="accent" icon={<GraduationCap size={12} />}>
+                        Parcours Monétique
+                    </NotionTag>
+                    <h1 style={{
+                        marginTop: 'var(--n-space-3)',
+                        marginBottom: 'var(--n-space-2)',
+                        fontSize: '28px',
+                        fontWeight: 'var(--n-weight-bold)' as React.CSSProperties['fontWeight'],
+                        color: 'var(--n-text-primary)',
+                        fontFamily: 'var(--n-font-sans)',
+                        letterSpacing: '-0.02em',
+                        lineHeight: 1.2,
+                    }}>
+                        Bonjour, {user?.firstName || 'Étudiant'}
+                    </h1>
+                    <p style={{ color: 'var(--n-text-secondary)', fontSize: 'var(--n-text-sm)', fontFamily: 'var(--n-font-sans)' }}>
+                        Plateforme de simulation monétique — maîtrisez la sécurité des paiements.
+                    </p>
                 </div>
 
-                {/* Header */}
-                <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
-                    <div>
-                        <div className="flex items-center gap-3 mb-3">
-                            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-xs font-medium">
-                                <GraduationCap size={14} /> Parcours MonÃ©tique
-                            </div>
-                            {computed.overallProgress > 0 && (
-                                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-800 border border-white/10 rounded-full text-xs font-mono">
-                                    <div className="w-16 h-1.5 bg-slate-700 rounded-full overflow-hidden">
-                                        <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${computed.overallProgress}%` }} />
-                                    </div>
-                                    <span className="text-emerald-400">{computed.overallProgress}%</span>
-                                </div>
-                            )}
-                        </div>
-                        <h1 className="text-3xl font-bold text-white mb-2">
-                            Bonjour, {user?.firstName || 'Ã‰tudiant'}
-                        </h1>
-                        <p className="text-slate-400">
-                            Suivez votre progression et validez vos compÃ©tences en monÃ©tique.
-                        </p>
-                    </div>
+                {/* Progress ring + refresh */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-4)' }}>
+                    <ProgressRing pct={computed.overallProgress} />
                     <button
                         onClick={refreshData}
-                        className={`flex items-center gap-2 px-4 py-2 bg-slate-800 border border-white/10 text-white rounded-xl hover:bg-slate-700 ${isRefreshing ? 'animate-pulse' : ''}`}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)',
+                            padding: '6px 14px',
+                            borderRadius: 'var(--n-radius-sm)',
+                            border: '1px solid var(--n-border)',
+                            background: 'var(--n-bg-primary)',
+                            color: 'var(--n-text-secondary)',
+                            fontSize: 'var(--n-text-sm)',
+                            fontFamily: 'var(--n-font-sans)',
+                            cursor: 'pointer',
+                            transition: 'border-color var(--n-duration-xs)',
+                        }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--n-border-strong)'; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--n-border)'; }}
                     >
-                        <RefreshCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
-                        Actualiser
+                        <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
+                        <span>Actualiser</span>
                     </button>
                 </div>
+            </div>
 
-                {error && (
-                    <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-sm mb-6">
-                        {error}
+            {/* Error callout */}
+            {error && (
+                <div style={{
+                    marginBottom: 'var(--n-space-5)',
+                    padding: 'var(--n-space-3) var(--n-space-4)',
+                    borderRadius: 'var(--n-radius-md)',
+                    background: 'var(--n-danger-bg)',
+                    border: '1px solid var(--n-danger-border)',
+                    color: 'var(--n-danger)',
+                    fontSize: 'var(--n-text-sm)',
+                    fontFamily: 'var(--n-font-sans)',
+                }}>
+                    {error}
+                </div>
+            )}
+
+            {/* ── STAT CARDS ──────────────────────────────────────── */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 'var(--n-space-3)', marginBottom: 'var(--n-space-7)' }}>
+                <StatCard icon={Zap}    label="XP Total"    rawValue={computed.totalXP}  suffix="pts"  />
+                <StatCard icon={Target} label="Ateliers"    value={`${computed.completedCount}/${computed.totalWorkshops}`} />
+                <StatCard icon={Star}   label="Score Moyen" rawValue={computed.avgScore} suffix="%" />
+                <StatCard icon={Award}  label="Badges"      value={`${computed.badgesEarned}/${badges.length || 8}`} />
+                <StatCard icon={Shield} label="CTF"         rawValue={ctfPoints} suffix="pts"
+                          subValue={ctfSolved > 0 ? `${ctfSolved} résolu${ctfSolved > 1 ? 's' : ''}` : undefined} />
+            </div>
+
+            {/* ── NEXT STEP BANNER ────────────────────────────────── */}
+            <NextStepBanner
+                inProgressWorkshop={computed.inProgressWorkshop}
+                workshops={workshops}
+                ctfSolved={ctfSolved}
+            />
+
+            {/* ── MAIN CONTENT ────────────────────────────────────── */}
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 'var(--n-space-7)' }}>
+
+                {/* Left — tabs + content */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--n-space-4)' }}>
+
+                    {/* Tab nav */}
+                    <div style={{
+                        display: 'flex', gap: '2px', padding: '3px',
+                        borderRadius: 'var(--n-radius-sm)',
+                        border: '1px solid var(--n-border)',
+                        background: 'var(--n-bg-secondary)',
+                    }}>
+                        <TabButton active={activeTab === 'ateliers'}    onClick={() => setActiveTab('ateliers')}    icon={<Book size={14} />}     label="Mon Parcours" />
+                        <TabButton active={activeTab === 'progression'} onClick={() => setActiveTab('progression')} icon={<BarChart3 size={14} />} label="Progression"  />
+                        <TabButton active={activeTab === 'badges'}      onClick={() => setActiveTab('badges')}      icon={<Award size={14} />}    label="Badges"       />
                     </div>
-                )}
 
-                {/* Header Stats */}
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-                    <StatCard icon={<Trophy className="text-amber-400" />} label="XP Total" value={computed.totalXP} suffix="pts" color="amber" />
-                    <StatCard icon={<Target className="text-emerald-400" />} label="Ateliers" value={`${computed.completedCount}/${computed.totalWorkshops}`} color="emerald" />
-                    <StatCard icon={<Star className="text-blue-400" />} label="Score Moyen" value={computed.avgScore} suffix="%" color="blue" />
-                    <StatCard icon={<Award className="text-purple-400" />} label="Badges" value={`${computed.badgesEarned}/${badges.length || 8}`} color="purple" />
-                    <StatCard icon={<Shield className="text-orange-400" />} label="CTF Points" value={`${ctfPoints} (${ctfSolved})`} color="amber" />
+                    {/* Tab content */}
+                    {activeTab === 'ateliers' && (
+                        <WorkshopRoadmap workshops={workshops} workshopStatuses={workshopStatuses} />
+                    )}
+                    {activeTab === 'progression' && (
+                        <ProgressView stats={stats} workshops={workshops} computed={computed} />
+                    )}
+                    {activeTab === 'badges' && (
+                        <BadgesGrid badges={badges} />
+                    )}
                 </div>
 
-                {/* Next Step Banner */}
-                <NextStepBanner
-                    inProgressWorkshop={computed.inProgressWorkshop}
-                    workshops={workshops}
-                    ctfSolved={ctfSolved}
-                />
-
-                {/* Main Content */}
-                <div className="grid lg:grid-cols-3 gap-8">
-                    {/* Left Column - Main Content */}
-                    <div className="lg:col-span-2 space-y-6">
-                        {/* Tabs */}
-                        <div className="flex gap-2 p-1 bg-slate-900/50 rounded-2xl border border-white/5">
-                            <TabButton active={activeTab === 'ateliers'} onClick={() => setActiveTab('ateliers')} icon={<Book size={16} />} label="Mes Ateliers" />
-                            <TabButton active={activeTab === 'progression'} onClick={() => setActiveTab('progression')} icon={<BarChart3 size={16} />} label="Progression" />
-                            <TabButton active={activeTab === 'badges'} onClick={() => setActiveTab('badges')} icon={<Award size={16} />} label="Badges" />
-                        </div>
-
-                        {/* Tab Content */}
-                        {activeTab === 'ateliers' && (
-                            <div className="space-y-4">
-                                {workshops.map((workshop, idx) => (
-                                    <WorkshopCard
-                                        key={workshop.workshop_id}
-                                        workshop={workshop}
-                                        displayStatus={workshopStatuses[workshop.workshop_id] || 'locked'}
-                                        number={String(idx + 1).padStart(2, '0')}
-                                    />
-                                ))}
-                                {workshops.length === 0 && (
-                                    <div className="text-center py-12 text-slate-500">
-                                        Aucun atelier disponible pour le moment.
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {activeTab === 'progression' && (
-                            <div className="space-y-6">
-                                <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-8">
-                                    <h3 className="text-xl font-bold mb-6">Progression Globale</h3>
-                                    <div className="space-y-4">
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-slate-400">Parcours Complet</span>
-                                            <span className="font-mono font-bold">{computed.overallProgress}%</span>
-                                        </div>
-                                        <div className="h-4 bg-slate-800 rounded-full overflow-hidden">
-                                            <div
-                                                className="h-full bg-gradient-to-r from-emerald-500 to-blue-500 transition-all duration-1000"
-                                                style={{ width: `${computed.overallProgress}%` }}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-3 gap-4 mt-8">
-                                        {workshops.map((w) => (
-                                            <div key={w.workshop_id} className="text-center p-4 bg-slate-900/50 rounded-xl">
-                                                <div className={`text-2xl font-bold mb-1 ${w.status === 'COMPLETED' ? 'text-emerald-400' :
-                                                    w.status === 'IN_PROGRESS' ? 'text-amber-400' : 'text-slate-600'
-                                                    }`}>
-                                                    {w.progress_percent || 0}%
-                                                </div>
-                                                <div className="text-xs text-slate-500 truncate">{w.title}</div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Quiz Scores */}
-                                {stats && (
-                                    <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-8">
-                                        <h3 className="text-xl font-bold mb-6">Statistiques Quiz</h3>
-                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                            <MiniStat label="Total passÃ©s" value={stats.quizzes.total} />
-                                            <MiniStat label="RÃ©ussis" value={stats.quizzes.passed} />
-                                            <MiniStat label="Score moyen" value={`${stats.quizzes.avgScore}%`} />
-                                            <MiniStat label="Meilleur score" value={`${stats.quizzes.bestScore}%`} />
-                                        </div>
-                                        {stats.workshops.totalTime > 0 && (
-                                            <div className="mt-6 p-4 bg-slate-900/50 rounded-xl flex items-center gap-3">
-                                                <Clock className="text-slate-400" size={18} />
-                                                <span className="text-sm text-slate-400">
-                                                    Temps total d&apos;Ã©tude : <strong className="text-white">{stats.workshops.totalTime} min</strong>
-                                                </span>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {activeTab === 'badges' && (
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                {badges.map((badge) => (
-                                    <div
-                                        key={badge.type}
-                                        className={`p-6 rounded-2xl border transition-all ${badge.earned
-                                            ? 'bg-slate-800/50 border-amber-500/20 hover:border-amber-500/40'
-                                            : 'bg-slate-900/30 border-white/5 opacity-50'
-                                            }`}
-                                    >
-                                        <div className="text-4xl mb-3">{BADGE_ICONS[badge.icon] || '\u{1F396}\uFE0F'}</div>
-                                        <h4 className="font-bold mb-1">{badge.name}</h4>
-                                        <p className="text-xs text-slate-500 mb-2">{badge.description}</p>
-                                        <div className="text-xs text-amber-400/60 mb-1">+{badge.xp} XP</div>
-                                        {badge.earned && badge.earnedAt && (
-                                            <div className="text-xs text-emerald-400">
-                                                DÃ©bloquÃ© le {new Date(badge.earnedAt).toLocaleDateString('fr-FR')}
-                                            </div>
-                                        )}
-                                        {!badge.earned && (
-                                            <div className="flex items-center gap-1 text-xs text-slate-600">
-                                                <Lock size={12} /> VerrouillÃ©
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                                {badges.length === 0 && (
-                                    <div className="col-span-full text-center py-12 text-slate-500">
-                                        Aucun badge disponible pour le moment.
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Right Column - Sidebar */}
-                    <div className="space-y-6">
-                        {/* Continue Learning */}
-                        {computed.inProgressWorkshop && (
-                            <div className="bg-gradient-to-br from-emerald-600/20 to-teal-600/10 rounded-2xl border border-emerald-500/20 p-6">
-                                <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-4">
-                                    <Play size={14} /> Continuer
-                                </div>
-                                <h3 className="text-xl font-bold mb-2">{computed.inProgressWorkshop.title}</h3>
-                                <p className="text-sm text-slate-400 mb-4">
-                                    Vous Ãªtes Ã  {computed.inProgressWorkshop.progress_percent}% â€” Continuez lÃ  oÃ¹ vous vous Ãªtes arrÃªtÃ©.
-                                </p>
-                                <div className="h-2 bg-slate-800 rounded-full overflow-hidden mb-4">
-                                    <div className="h-full bg-emerald-500" style={{ width: `${computed.inProgressWorkshop.progress_percent}%` }} />
-                                </div>
-                                <Link
-                                    href={`/student/theory/${computed.inProgressWorkshop.workshop_id}`}
-                                    className="block w-full py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-center font-bold transition-colors"
-                                >
-                                    Reprendre l&apos;atelier
-                                </Link>
-                            </div>
-                        )}
-
-                        {/* Quick Actions */}
-                        <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
-                            <h3 className="font-bold mb-4">AccÃ¨s Rapide</h3>
-                            <div className="space-y-2">
-                                <QuickAction href="/student/cursus" icon={<GraduationCap size={18} />} label="Mes Cursus" />
-                                <QuickAction href="/student/quizzes" icon={<Target size={18} />} label="Mes Quiz" />
-                                <QuickAction href="/student/progress" icon={<BarChart3 size={18} />} label="Ma Progression" />
-                                <QuickAction href="/student/badges" icon={<Award size={18} />} label="Mes Badges" />
-                                <QuickAction href="/student/transactions" icon={<History size={18} />} label="Transactions" />
-                                <QuickAction href="/student/defense" icon={<Shield size={18} />} label="Sandbox DÃ©fense" />
-                            </div>
-                        </div>
-
-                        {/* Leaderboard */}
-                        <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
-                            <h3 className="font-bold mb-4 flex items-center gap-2">
-                                <TrendingUp size={18} className="text-amber-400" />
-                                Classement
-                            </h3>
-                            {leaderboard.length > 0 ? (
-                                <div className="space-y-2">
-                                    {leaderboard.slice(0, 5).map((entry) => {
-                                        const name = [entry.first_name, entry.last_name].filter(Boolean).join(' ') || entry.username;
-                                        const isMe = entry.id === (user?.id || '');
-                                        return (
-                                            <div key={entry.id} className={`flex items-center gap-3 p-2 rounded-lg ${isMe ? 'bg-emerald-500/10' : ''}`}>
-                                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${entry.rank === 1 ? 'bg-amber-500 text-slate-950' :
-                                                    entry.rank === 2 ? 'bg-slate-400 text-slate-950' :
-                                                        entry.rank === 3 ? 'bg-amber-700 text-white' :
-                                                            'bg-slate-800 text-slate-400'
-                                                    }`}>
-                                                    {entry.rank}
-                                                </div>
-                                                <span className={`flex-1 text-sm truncate ${isMe ? 'font-bold text-emerald-400' : ''}`}>
-                                                    {isMe ? 'Vous' : name}
-                                                </span>
-                                                <span className="text-xs font-mono text-slate-500">{entry.total_xp} XP</span>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            ) : (
-                                <p className="text-sm text-slate-500">Pas encore de classement.</p>
-                            )}
-                        </div>
-                    </div>
+                {/* Right — sidebar */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--n-space-4)' }}>
+                    {computed.inProgressWorkshop && (
+                        <ContinueLearningCard workshop={computed.inProgressWorkshop} />
+                    )}
+                    <QuickActions />
+                    <LeaderboardWidget entries={leaderboard} currentUserId={user?.id || ''} />
                 </div>
             </div>
         </div>
     );
 }
 
-/* â”€â”€ Sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ══════════════════════════════════════════════════════════════════════════
+ *   SUB-COMPONENTS
+ * ══════════════════════════════════════════════════════════════════════════ */
 
-function StatCard({ icon, label, value, suffix, color }: { icon: React.ReactNode; label: string; value: string | number; suffix?: string; color: string }) {
-    const colors: Record<string, string> = {
-        amber: 'from-amber-500/10 to-amber-600/5 border-amber-500/20',
-        emerald: 'from-emerald-500/10 to-emerald-600/5 border-emerald-500/20',
-        blue: 'from-blue-500/10 to-blue-600/5 border-blue-500/20',
-        purple: 'from-purple-500/10 to-purple-600/5 border-purple-500/20',
-    };
+/* ── Progress ring ─────────────────────────────────────────────────────── */
+
+function ProgressRing({ pct }: { pct: number }) {
+    const r = 34;
+    const circ = 2 * Math.PI * r;
+    const offset = circ - (pct / 100) * circ;
+    const countedPct = useCountUp(pct, 1200, 500);
 
     return (
-        <div className={`p-5 rounded-2xl bg-gradient-to-br ${colors[color]} border`}>
-            <div className="flex items-center gap-3 mb-2">
-                {icon}
-                <span className="text-xs text-slate-500 uppercase tracking-wider">{label}</span>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+            <div style={{ position: 'relative', width: '80px', height: '80px' }}>
+                <svg width="80" height="80" viewBox="0 0 80 80" style={{ transform: 'rotate(-90deg)', position: 'absolute', inset: 0 }}>
+                    {/* Track */}
+                    <circle cx="40" cy="40" r={r} fill="none" stroke="var(--n-bg-tertiary)" strokeWidth="4" />
+                    {/* Progress */}
+                    <circle
+                        cx="40" cy="40" r={r}
+                        fill="none"
+                        stroke="var(--n-accent)"
+                        strokeWidth="4"
+                        strokeLinecap="round"
+                        strokeDasharray={circ}
+                        strokeDashoffset={offset}
+                        style={{ transition: 'stroke-dashoffset 1.2s var(--n-ease-out)' }}
+                    />
+                </svg>
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{
+                        fontSize: '15px',
+                        fontWeight: 'var(--n-weight-bold)' as React.CSSProperties['fontWeight'],
+                        color: 'var(--n-text-primary)',
+                        fontFamily: 'var(--n-font-mono)',
+                        letterSpacing: '-0.02em',
+                    }}>
+                        {countedPct}%
+                    </span>
+                </div>
             </div>
-            <div className="text-2xl font-bold font-mono">
-                {value}{suffix && <span className="text-sm text-slate-500 ml-1">{suffix}</span>}
-            </div>
+            <span style={{
+                fontSize: 'var(--n-text-xs)',
+                color: 'var(--n-text-tertiary)',
+                fontFamily: 'var(--n-font-sans)',
+                marginTop: 'var(--n-space-1)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+            }}>
+                Progression
+            </span>
         </div>
     );
 }
+
+/* ── Stat card ─────────────────────────────────────────────────────────── */
+
+function StatCard({
+    icon: Icon, label, rawValue, value, suffix, subValue
+}: {
+    icon: React.ElementType;
+    label: string;
+    rawValue?: number;
+    value?: string;
+    suffix?: string;
+    subValue?: string;
+}) {
+    const animated = useCountUp(rawValue ?? 0, 900, 300);
+    const displayValue = rawValue !== undefined ? animated : value;
+
+    return (
+        <NotionCard variant="hover" padding="sm">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--n-space-2)', padding: 'var(--n-space-2)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{
+                        width: '28px', height: '28px', borderRadius: 'var(--n-radius-xs)',
+                        background: 'var(--n-accent-light)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                    }}>
+                        <Icon size={14} style={{ color: 'var(--n-accent)' }} />
+                    </div>
+                    <span style={{
+                        fontSize: 'var(--n-text-xs)',
+                        color: 'var(--n-text-tertiary)',
+                        fontFamily: 'var(--n-font-sans)',
+                        fontWeight: 'var(--n-weight-medium)' as React.CSSProperties['fontWeight'],
+                        textAlign: 'right',
+                        lineHeight: 1.2,
+                    }}>
+                        {label}
+                    </span>
+                </div>
+                <div style={{
+                    fontSize: '20px',
+                    fontWeight: 'var(--n-weight-bold)' as React.CSSProperties['fontWeight'],
+                    color: 'var(--n-text-primary)',
+                    fontFamily: 'var(--n-font-mono)',
+                    letterSpacing: '-0.02em',
+                    lineHeight: 1,
+                }}>
+                    {displayValue}
+                    {suffix && rawValue !== undefined && (
+                        <span style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-text-tertiary)', marginLeft: '3px', fontFamily: 'var(--n-font-sans)' }}>{suffix}</span>
+                    )}
+                </div>
+                {subValue && (
+                    <div style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-text-secondary)', fontFamily: 'var(--n-font-sans)' }}>{subValue}</div>
+                )}
+            </div>
+        </NotionCard>
+    );
+}
+
+/* ── Tab button ────────────────────────────────────────────────────────── */
 
 function TabButton({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
     return (
         <button
             onClick={onClick}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-sm transition-all ${active
-                ? 'bg-white text-slate-950'
-                : 'text-slate-400 hover:text-white hover:bg-white/5'
-                }`}
+            style={{
+                flex: 1,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--n-space-2)',
+                padding: '6px 12px',
+                borderRadius: '5px',
+                border: active ? '1px solid var(--n-accent-border)' : '1px solid transparent',
+                background: active ? 'var(--n-bg-primary)' : 'transparent',
+                color: active ? 'var(--n-accent)' : 'var(--n-text-secondary)',
+                fontSize: 'var(--n-text-sm)',
+                fontWeight: active ? ('var(--n-weight-semibold)' as React.CSSProperties['fontWeight']) : ('var(--n-weight-regular)' as React.CSSProperties['fontWeight']),
+                fontFamily: 'var(--n-font-sans)',
+                cursor: 'pointer',
+                transition: 'all var(--n-duration-xs)',
+                whiteSpace: 'nowrap',
+            }}
         >
             {icon}
             {label}
@@ -564,133 +546,281 @@ function TabButton({ active, onClick, icon, label }: { active: boolean; onClick:
     );
 }
 
-function MiniStat({ label, value }: { label: string; value: string | number }) {
+/* ── Workshop Roadmap ─────────────────────────────────────────────────── */
+
+function WorkshopRoadmap({
+    workshops,
+    workshopStatuses,
+}: {
+    workshops: WorkshopProgress[];
+    workshopStatuses: Record<string, 'completed' | 'in-progress' | 'not-started' | 'locked'>;
+}) {
+    const completedCount = workshops.filter(w => workshopStatuses[w.workshop_id] === 'completed').length;
+    const progressFraction = workshops.length > 0 ? completedCount / workshops.length : 0;
+
+    if (workshops.length === 0) {
+        return (
+            <NotionEmptyState
+                icon={<BookOpen size={28} />}
+                title="Aucun atelier disponible"
+                description="Les ateliers apparaîtront ici dès qu'ils seront disponibles."
+            />
+        );
+    }
+
     return (
-        <div className="text-center p-4 bg-slate-900/50 rounded-xl">
-            <div className="text-2xl font-bold text-white mb-1">{value}</div>
-            <div className="text-xs text-slate-500">{label}</div>
-        </div>
+        <NotionCard variant="default" padding="lg">
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--n-space-5)' }}>
+                <div>
+                    <h3 style={{
+                        fontSize: 'var(--n-text-base)',
+                        fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'],
+                        color: 'var(--n-text-primary)',
+                        fontFamily: 'var(--n-font-sans)',
+                        marginBottom: 'var(--n-space-1)',
+                    }}>
+                        Votre Parcours
+                    </h3>
+                    <p style={{ fontSize: 'var(--n-text-sm)', color: 'var(--n-text-secondary)', fontFamily: 'var(--n-font-sans)' }}>
+                        {completedCount} / {workshops.length} ateliers complétés
+                    </p>
+                </div>
+                <NotionBadge variant="accent">
+                    {Math.round(progressFraction * 100)}% complet
+                </NotionBadge>
+            </div>
+
+            {/* Progress bar */}
+            <div style={{ marginBottom: 'var(--n-space-6)' }}>
+                <NotionProgress value={Math.round(progressFraction * 100)} variant="accent" size="default" />
+            </div>
+
+            {/* Roadmap */}
+            <div style={{ position: 'relative' }}>
+                {/* Spine track */}
+                <div style={{
+                    position: 'absolute',
+                    left: '50%', top: '20px', bottom: '20px', width: '1px',
+                    transform: 'translateX(-50%)',
+                    background: 'var(--n-border)',
+                }} />
+
+                {/* Spine progress fill */}
+                {completedCount > 0 && (
+                    <div style={{
+                        position: 'absolute',
+                        left: '50%', top: '20px', width: '1px',
+                        transform: 'translateX(-50%)',
+                        height: `${progressFraction * 100}%`,
+                        background: 'var(--n-success)',
+                        transition: 'height 0.8s var(--n-ease-out)',
+                    }} />
+                )}
+
+                {workshops.map((workshop, idx) => {
+                    const status = workshopStatuses[workshop.workshop_id] || 'locked';
+                    const isLeft = idx % 2 === 0;
+                    const meta = WORKSHOP_META[workshop.workshop_id];
+
+                    return (
+                        <div key={workshop.workshop_id}
+                             style={{ position: 'relative', display: 'flex', alignItems: 'center', marginBottom: idx < workshops.length - 1 ? '28px' : '0' }}>
+                            {/* Left side */}
+                            <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', paddingRight: 'var(--n-space-5)' }}>
+                                {isLeft ? (
+                                    <RoadmapCard workshop={workshop} status={status} meta={meta} align="right" />
+                                ) : (
+                                    <div style={{ width: '100%' }} />
+                                )}
+                            </div>
+
+                            {/* Center spine node */}
+                            <div style={{ position: 'relative', zIndex: 10, flexShrink: 0, width: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <SpineNode status={status} number={idx + 1} />
+                            </div>
+
+                            {/* Right side */}
+                            <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-start', paddingLeft: 'var(--n-space-5)' }}>
+                                {!isLeft ? (
+                                    <RoadmapCard workshop={workshop} status={status} meta={meta} align="left" />
+                                ) : (
+                                    <div style={{ width: '100%' }} />
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </NotionCard>
     );
 }
 
-function WorkshopCard({ workshop, displayStatus, number }: { workshop: WorkshopProgress; displayStatus: string; number: string }) {
-    const meta = WORKSHOP_META[workshop.workshop_id] || { icon: BookOpen, color: 'blue', difficulty: '-', duration: '-' };
-    const Icon = meta.icon;
+/* ── Spine node ────────────────────────────────────────────────────────── */
 
-    const colors: Record<string, { bg: string; text: string; border: string }> = {
-        blue: { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/20' },
-        purple: { bg: 'bg-purple-500/10', text: 'text-purple-400', border: 'border-purple-500/20' },
-        amber: { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/20' },
-        emerald: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20' },
-        red: { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/20' },
-        indigo: { bg: 'bg-indigo-500/10', text: 'text-indigo-400', border: 'border-indigo-500/20' },
+function SpineNode({ status, number }: { status: string; number: number }) {
+    const base: React.CSSProperties = {
+        width: '32px', height: '32px',
+        borderRadius: '50%',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 'var(--n-text-xs)',
+        fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'],
+        fontFamily: 'var(--n-font-sans)',
+        flexShrink: 0,
+        position: 'relative', zIndex: 10,
     };
 
-    const colorScheme = colors[meta.color] || colors.blue;
-    const isLocked = displayStatus === 'locked';
-
-    return (
-        <div className={`p-6 rounded-2xl border transition-all ${isLocked
-            ? 'bg-slate-900/30 border-white/5 opacity-60'
-            : 'bg-slate-800/50 border-white/10 hover:border-white/20'
-            }`}>
-            <div className="flex items-start gap-4">
-                <div className={`p-3 rounded-xl ${colorScheme.bg} ${colorScheme.border} border`}>
-                    <Icon className={colorScheme.text} size={24} />
-                </div>
-
-                <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-4">
-                        <div>
-                            <div className="flex items-center gap-2 mb-1">
-                                <span className="text-xs text-slate-500 font-mono">#{number}</span>
-                                <span className={`text-xs px-2 py-0.5 rounded-full ${meta.difficulty === 'DÃ©butant' ? 'bg-green-500/10 text-green-400' :
-                                    meta.difficulty === 'IntermÃ©diaire' ? 'bg-blue-500/10 text-blue-400' :
-                                        meta.difficulty === 'AvancÃ©' ? 'bg-amber-500/10 text-amber-400' :
-                                            'bg-purple-500/10 text-purple-400'
-                                    }`}>
-                                    {meta.difficulty}
-                                </span>
-                            </div>
-                            <h3 className="font-bold text-lg">{workshop.title}</h3>
-                        </div>
-
-                        <div className="text-right">
-                            <div className="text-xs text-slate-500 flex items-center gap-1 justify-end">
-                                <Clock size={12} />
-                                {meta.duration}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Progress bar */}
-                    {!isLocked && (
-                        <div className="mt-4">
-                            <div className="flex items-center justify-between text-xs mb-1">
-                                <span className="text-slate-500">
-                                    Section {workshop.current_section || 0}/{workshop.total_sections || '?'}
-                                </span>
-                                <span className={displayStatus === 'completed' ? 'text-emerald-400' : 'text-slate-400'}>
-                                    {workshop.progress_percent || 0}%
-                                </span>
-                            </div>
-                            <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                                <div
-                                    className={`h-full transition-all ${displayStatus === 'completed' ? 'bg-emerald-500' : 'bg-amber-500'
-                                        }`}
-                                    style={{ width: `${workshop.progress_percent || 0}%` }}
-                                />
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-3 mt-4">
-                        {isLocked ? (
-                            <div className="flex items-center gap-2 text-sm text-slate-600">
-                                <Lock size={14} />
-                                ComplÃ©tez l&apos;atelier prÃ©cÃ©dent pour dÃ©bloquer
-                            </div>
-                        ) : (
-                            <>
-                                <Link
-                                    href={`/student/theory/${workshop.workshop_id}`}
-                                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${displayStatus === 'completed'
-                                        ? 'bg-slate-800 hover:bg-slate-700 text-white'
-                                        : `${colorScheme.bg} ${colorScheme.text} hover:opacity-80`
-                                        }`}
-                                >
-                                    {displayStatus === 'completed' ? 'Revoir' : displayStatus === 'in-progress' ? 'Continuer' : 'Commencer'}
-                                </Link>
-                                {displayStatus === 'completed' && (
-                                    <CheckCircle size={20} className="text-emerald-500" />
-                                )}
-                            </>
-                        )}
-                    </div>
-                </div>
+    if (status === 'completed') {
+        return (
+            <div style={{ ...base, background: 'var(--n-success)', border: '2px solid var(--n-success)' }}>
+                <Check size={14} style={{ color: '#fff' }} />
             </div>
+        );
+    }
+    if (status === 'in-progress') {
+        return (
+            <div style={{ ...base, background: 'var(--n-accent)', border: '2px solid var(--n-accent)', color: '#fff' }}>
+                {number}
+            </div>
+        );
+    }
+    if (status === 'not-started') {
+        return (
+            <div style={{ ...base, background: 'var(--n-bg-primary)', border: '2px solid var(--n-border-strong)', color: 'var(--n-text-secondary)' }}>
+                {number}
+            </div>
+        );
+    }
+    return (
+        <div style={{ ...base, background: 'var(--n-bg-secondary)', border: '2px solid var(--n-border)', color: 'var(--n-text-tertiary)' }}>
+            <Lock size={11} />
         </div>
     );
 }
 
-function QuickAction({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) {
-    return (
-        <Link
-            href={href}
-            className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors group"
-        >
-            <div className="text-slate-400 group-hover:text-white transition-colors">{icon}</div>
-            <span className="text-sm">{label}</span>
-            <ChevronRight size={14} className="ml-auto text-slate-600 group-hover:text-slate-400 transition-colors" />
-        </Link>
+/* ── Roadmap card ──────────────────────────────────────────────────────── */
+
+function RoadmapCard({
+    workshop, status, meta, align
+}: {
+    workshop: WorkshopProgress;
+    status: string;
+    meta: typeof WORKSHOP_META[string] | undefined;
+    align: 'left' | 'right';
+}) {
+    const Icon = meta?.icon || BookOpen;
+    const isLocked    = status === 'locked';
+    const isActive    = status === 'in-progress';
+    const isDone      = status === 'completed';
+    const diffVariant = DIFF_VARIANT[meta?.difficulty || ''] ?? 'beginner';
+
+    const cardContent = (
+        <div style={{
+            maxWidth: '220px', width: '100%',
+            padding: 'var(--n-space-3) var(--n-space-4)',
+            borderRadius: 'var(--n-radius-md)',
+            background: isLocked ? 'var(--n-bg-secondary)' : 'var(--n-bg-elevated)',
+            border: isDone
+                ? '1px solid var(--n-success-border)'
+                : isActive
+                    ? '1px solid var(--n-accent-border)'
+                    : '1px solid var(--n-border)',
+            opacity: isLocked ? 0.5 : 1,
+            textAlign: align === 'right' ? 'right' : 'left',
+            marginLeft: align === 'left' ? 0 : 'auto',
+            transition: 'border-color var(--n-duration-sm), box-shadow var(--n-duration-sm), transform var(--n-duration-sm)',
+            boxShadow: isActive ? 'var(--n-shadow-sm)' : 'none',
+        }}
+        onMouseEnter={e => {
+            if (!isLocked) {
+                (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)';
+                (e.currentTarget as HTMLElement).style.boxShadow = 'var(--n-shadow-md)';
+            }
+        }}
+        onMouseLeave={e => {
+            if (!isLocked) {
+                (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
+                (e.currentTarget as HTMLElement).style.boxShadow = isActive ? 'var(--n-shadow-sm)' : 'none';
+            }
+        }}>
+            {/* Top row: icon + difficulty badge */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)', marginBottom: 'var(--n-space-2)', flexDirection: align === 'right' ? 'row-reverse' : 'row' }}>
+                <div style={{
+                    width: '24px', height: '24px', borderRadius: 'var(--n-radius-xs)',
+                    background: 'var(--n-bg-tertiary)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                }}>
+                    <Icon size={13} style={{ color: 'var(--n-text-secondary)' }} />
+                </div>
+                <NotionBadge variant={diffVariant} size="sm">{meta?.difficulty || '—'}</NotionBadge>
+                {isDone && <CheckCircle size={13} style={{ color: 'var(--n-success)', marginLeft: 'auto' }} />}
+            </div>
+
+            {/* Title */}
+            <p style={{
+                fontSize: 'var(--n-text-sm)',
+                fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'],
+                color: 'var(--n-text-primary)',
+                fontFamily: 'var(--n-font-sans)',
+                marginBottom: 'var(--n-space-1)',
+                lineHeight: 'var(--n-leading-snug)',
+            }}>
+                {workshop.title}
+            </p>
+
+            {/* Description */}
+            {meta?.description && (
+                <p style={{
+                    fontSize: 'var(--n-text-xs)',
+                    color: 'var(--n-text-tertiary)',
+                    fontFamily: 'var(--n-font-sans)',
+                    lineHeight: 'var(--n-leading-relaxed)',
+                    marginBottom: 'var(--n-space-3)',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical' as React.CSSProperties['WebkitBoxOrient'],
+                    overflow: 'hidden',
+                }}>
+                    {meta.description}
+                </p>
+            )}
+
+            {/* Progress bar */}
+            {!isLocked && (
+                <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--n-space-1)' }}>
+                        <span style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)' }}>{meta?.duration}</span>
+                    </div>
+                    <NotionProgress
+                        value={workshop.progress_percent || 0}
+                        variant={isDone ? 'success' : 'accent'}
+                        size="thin"
+                    />
+                </div>
+            )}
+
+            {/* Locked message */}
+            {isLocked && (
+                <div style={{
+                    display: 'flex', alignItems: 'center', gap: 'var(--n-space-1)',
+                    fontSize: 'var(--n-text-xs)', color: 'var(--n-text-tertiary)',
+                    fontFamily: 'var(--n-font-sans)',
+                    justifyContent: align === 'right' ? 'flex-end' : 'flex-start',
+                }}>
+                    <Lock size={10} /> Terminez l&apos;atelier précédent
+                </div>
+            )}
+        </div>
     );
+
+    if (isLocked) return cardContent;
+    return <Link href={`/student/theory/${workshop.workshop_id}`} style={{ display: 'block', textDecoration: 'none' }}>{cardContent}</Link>;
 }
 
+/* ── Next step banner ──────────────────────────────────────────────────── */
+
 function NextStepBanner({
-    inProgressWorkshop,
-    workshops,
-    ctfSolved,
+    inProgressWorkshop, workshops, ctfSolved,
 }: {
     inProgressWorkshop?: WorkshopProgress;
     workshops: WorkshopProgress[];
@@ -698,62 +828,468 @@ function NextStepBanner({
 }) {
     let href = '/student/cursus';
     let label = 'Commencer le Cursus';
-    let sublabel = 'DÃ©marrez votre parcours monÃ©tique';
-    let tone: 'emerald' | 'amber' | 'cyan' = 'emerald';
+    let sublabel = 'Démarrez votre parcours monétique';
 
     if (inProgressWorkshop) {
         href = `/student/theory/${inProgressWorkshop.workshop_id}`;
-        label = `Continuer â€” ${inProgressWorkshop.title}`;
-        sublabel = `${inProgressWorkshop.progress_percent || 0}% complÃ©tÃ©`;
-        tone = 'amber';
+        label = `Continuer — ${inProgressWorkshop.title}`;
+        sublabel = `${inProgressWorkshop.progress_percent || 0}% complété`;
     } else if (ctfSolved === 0) {
         href = `/student/ctf/${FIRST_CTF_ROOM_CODE}`;
         label = 'Lancer ton premier challenge CTF';
-        sublabel = 'PAY-001 - The Unsecured Payment Terminal - BEGINNER - 150 pts';
-        tone = 'cyan';
+        sublabel = 'PAY-001 · The Unsecured Payment Terminal · 150 pts';
     } else {
-        const nextWorkshop = workshops.find(w => w.status === 'NOT_STARTED');
-        if (nextWorkshop) {
-            href = `/student/theory/${nextWorkshop.workshop_id}`;
-            label = `Commencer â€” ${nextWorkshop.title}`;
+        const next = workshops.find(w => w.status === 'NOT_STARTED');
+        if (next) {
+            href = `/student/theory/${next.workshop_id}`;
+            label = `Commencer — ${next.title}`;
             sublabel = 'Prochain atelier du parcours';
-            tone = 'emerald';
         } else {
             href = '/student/ctf';
-            label = 'Explorer les challenges avancÃ©s';
-            sublabel = `${ctfSolved} challenge${ctfSolved > 1 ? 's' : ''} rÃ©solu${ctfSolved > 1 ? 's' : ''} â€” continue !`;
-            tone = 'cyan';
+            label = 'Explorer les challenges avancés';
+            sublabel = `${ctfSolved} challenge${ctfSolved > 1 ? 's' : ''} résolu${ctfSolved > 1 ? 's' : ''} — continue !`;
         }
     }
 
-    const gradients = {
-        emerald: 'from-emerald-500/10 via-emerald-600/5 to-transparent border-emerald-500/20',
-        amber: 'from-amber-500/10 via-amber-600/5 to-transparent border-amber-500/20',
-        cyan: 'from-cyan-500/10 via-cyan-600/5 to-transparent border-cyan-500/20',
-    };
-    const textColors = {
-        emerald: 'text-emerald-400',
-        amber: 'text-amber-400',
-        cyan: 'text-cyan-400',
-    };
-
     return (
-        <Link
-            href={href}
-            className={`flex items-center justify-between gap-4 mb-8 px-6 py-4 rounded-2xl bg-gradient-to-r ${gradients[tone]} border hover:brightness-110 transition-all group`}
-        >
-            <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-xl bg-slate-900/60 ${textColors[tone]}`}>
-                    <Sparkles size={20} />
+        <Link href={href} style={{ textDecoration: 'none', display: 'block', marginBottom: 'var(--n-space-7)' }}>
+            <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--n-space-4)',
+                padding: 'var(--n-space-4) var(--n-space-5)',
+                borderRadius: 'var(--n-radius-md)',
+                background: 'var(--n-accent-light)',
+                border: '1px solid var(--n-accent-border)',
+                transition: 'box-shadow var(--n-duration-sm), transform var(--n-duration-sm)',
+            }}
+            onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.boxShadow = 'var(--n-shadow-md)';
+                (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)';
+            }}
+            onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.boxShadow = 'none';
+                (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-3)' }}>
+                    <div style={{
+                        width: '36px', height: '36px', borderRadius: 'var(--n-radius-sm)',
+                        background: 'var(--n-accent)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                    }}>
+                        <Sparkles size={16} style={{ color: '#fff' }} />
+                    </div>
+                    <div>
+                        <p style={{
+                            fontSize: 'var(--n-text-xs)',
+                            color: 'var(--n-text-secondary)',
+                            fontFamily: 'var(--n-font-sans)',
+                            fontWeight: 'var(--n-weight-medium)' as React.CSSProperties['fontWeight'],
+                            marginBottom: '2px',
+                        }}>
+                            Prochaine étape recommandée
+                        </p>
+                        <p style={{
+                            fontSize: 'var(--n-text-sm)',
+                            fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'],
+                            color: 'var(--n-accent)',
+                            fontFamily: 'var(--n-font-sans)',
+                        }}>
+                            {label}
+                        </p>
+                        <p style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)' }}>
+                            {sublabel}
+                        </p>
+                    </div>
                 </div>
-                <div>
-                    <p className="text-[11px] text-slate-500 uppercase tracking-widest font-medium mb-0.5">Prochaine Ã©tape recommandÃ©e</p>
-                    <p className={`font-bold text-sm md:text-base ${textColors[tone]}`}>{label}</p>
-                    <p className="text-xs text-slate-500 mt-0.5">{sublabel}</p>
-                </div>
+                <ArrowRight size={18} style={{ color: 'var(--n-accent)', flexShrink: 0 }} />
             </div>
-            <ArrowRight size={20} className={`shrink-0 ${textColors[tone]} opacity-60 group-hover:opacity-100 group-hover:translate-x-1 transition-all`} />
         </Link>
     );
 }
 
+/* ── Progress view ─────────────────────────────────────────────────────── */
+
+function ProgressView({
+    stats, workshops, computed
+}: {
+    stats: Stats | null;
+    workshops: WorkshopProgress[];
+    computed: { overallProgress: number; completedCount: number; totalWorkshops: number };
+}) {
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--n-space-4)' }}>
+            {/* Global progress */}
+            <NotionCard variant="default" padding="lg">
+                <h3 style={{
+                    fontSize: 'var(--n-text-base)',
+                    fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'],
+                    color: 'var(--n-text-primary)',
+                    fontFamily: 'var(--n-font-sans)',
+                    marginBottom: 'var(--n-space-5)',
+                }}>
+                    Progression Globale
+                </h3>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--n-space-2)' }}>
+                    <span style={{ fontSize: 'var(--n-text-sm)', color: 'var(--n-text-secondary)', fontFamily: 'var(--n-font-sans)' }}>
+                        Parcours Complet
+                    </span>
+                    <span style={{
+                        fontSize: 'var(--n-text-sm)',
+                        fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'],
+                        color: 'var(--n-accent)',
+                        fontFamily: 'var(--n-font-mono)',
+                    }}>
+                        {computed.overallProgress}%
+                    </span>
+                </div>
+                <div style={{ marginBottom: 'var(--n-space-6)' }}>
+                    <NotionProgress value={computed.overallProgress} variant="accent" size="thick" />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--n-space-3)' }}>
+                    {workshops.map((w) => (
+                        <div key={w.workshop_id} style={{
+                            textAlign: 'center', padding: 'var(--n-space-3)',
+                            borderRadius: 'var(--n-radius-sm)',
+                            background: 'var(--n-bg-secondary)',
+                            border: '1px solid var(--n-border)',
+                        }}>
+                            <div style={{
+                                fontSize: '18px',
+                                fontWeight: 'var(--n-weight-bold)' as React.CSSProperties['fontWeight'],
+                                fontFamily: 'var(--n-font-mono)',
+                                color: w.status === 'COMPLETED' ? 'var(--n-success)' : w.status === 'IN_PROGRESS' ? 'var(--n-accent)' : 'var(--n-text-tertiary)',
+                                marginBottom: 'var(--n-space-1)',
+                            }}>
+                                {w.progress_percent || 0}%
+                            </div>
+                            <div style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {w.title}
+                            </div>
+                            <div style={{ marginTop: 'var(--n-space-2)' }}>
+                                <NotionProgress
+                                    value={w.progress_percent || 0}
+                                    variant={w.status === 'COMPLETED' ? 'success' : 'accent'}
+                                    size="thin"
+                                />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </NotionCard>
+
+            {/* Quiz stats */}
+            {stats && (
+                <NotionCard variant="default" padding="lg">
+                    <h3 style={{
+                        fontSize: 'var(--n-text-base)',
+                        fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'],
+                        color: 'var(--n-text-primary)',
+                        fontFamily: 'var(--n-font-sans)',
+                        marginBottom: 'var(--n-space-5)',
+                    }}>
+                        Statistiques Quiz
+                    </h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--n-space-3)' }}>
+                        {[
+                            { label: 'Total passés',  value: stats.quizzes.total },
+                            { label: 'Réussis',       value: stats.quizzes.passed },
+                            { label: 'Score moyen',   value: `${stats.quizzes.avgScore}%` },
+                            { label: 'Meilleur score',value: `${stats.quizzes.bestScore}%` },
+                        ].map(({ label, value }) => (
+                            <div key={label} style={{
+                                textAlign: 'center', padding: 'var(--n-space-3)',
+                                borderRadius: 'var(--n-radius-sm)',
+                                background: 'var(--n-bg-secondary)',
+                                border: '1px solid var(--n-border)',
+                            }}>
+                                <div style={{
+                                    fontSize: '20px',
+                                    fontWeight: 'var(--n-weight-bold)' as React.CSSProperties['fontWeight'],
+                                    color: 'var(--n-text-primary)',
+                                    fontFamily: 'var(--n-font-mono)',
+                                    marginBottom: 'var(--n-space-1)',
+                                }}>{value}</div>
+                                <div style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)' }}>{label}</div>
+                            </div>
+                        ))}
+                    </div>
+                    {stats.workshops.totalTime > 0 && (
+                        <div style={{
+                            display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)',
+                            marginTop: 'var(--n-space-4)',
+                            padding: 'var(--n-space-3)',
+                            borderRadius: 'var(--n-radius-sm)',
+                            background: 'var(--n-bg-secondary)',
+                            border: '1px solid var(--n-border)',
+                        }}>
+                            <Clock size={14} style={{ color: 'var(--n-text-tertiary)', flexShrink: 0 }} />
+                            <span style={{ fontSize: 'var(--n-text-sm)', color: 'var(--n-text-secondary)', fontFamily: 'var(--n-font-sans)' }}>
+                                Temps total d&apos;étude :{' '}
+                                <strong style={{ color: 'var(--n-text-primary)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'] }}>
+                                    {stats.workshops.totalTime} min
+                                </strong>
+                            </span>
+                        </div>
+                    )}
+                </NotionCard>
+            )}
+        </div>
+    );
+}
+
+/* ── Badges grid ───────────────────────────────────────────────────────── */
+
+function BadgesGrid({ badges }: { badges: Badge[] }) {
+    if (badges.length === 0) {
+        return (
+            <NotionEmptyState
+                icon={<Award size={28} />}
+                title="Aucun badge disponible"
+                description="Complétez des ateliers et des quiz pour débloquer vos badges."
+            />
+        );
+    }
+
+    return (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 'var(--n-space-3)' }}>
+            {badges.map((badge) => (
+                <NotionCard
+                    key={badge.type}
+                    variant={badge.earned ? 'hover' : 'default'}
+                    padding="md"
+                    style={{ opacity: badge.earned ? 1 : 0.45 }}
+                >
+                    <div style={{ fontSize: '32px', marginBottom: 'var(--n-space-2)', lineHeight: 1 }}>
+                        {BADGE_ICONS[badge.icon] || '🏅'}
+                    </div>
+                    <h4 style={{
+                        fontSize: 'var(--n-text-sm)',
+                        fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'],
+                        color: 'var(--n-text-primary)',
+                        fontFamily: 'var(--n-font-sans)',
+                        marginBottom: 'var(--n-space-1)',
+                    }}>
+                        {badge.name}
+                    </h4>
+                    <p style={{
+                        fontSize: 'var(--n-text-xs)',
+                        color: 'var(--n-text-tertiary)',
+                        fontFamily: 'var(--n-font-sans)',
+                        lineHeight: 'var(--n-leading-relaxed)',
+                        marginBottom: 'var(--n-space-3)',
+                    }}>
+                        {badge.description}
+                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <NotionBadge variant="accent" size="sm">+{badge.xp} XP</NotionBadge>
+                        {badge.earned ? (
+                            <NotionBadge variant="success" size="sm">
+                                {badge.earnedAt ? new Date(badge.earnedAt).toLocaleDateString('fr-FR') : 'Débloqué'}
+                            </NotionBadge>
+                        ) : (
+                            <NotionBadge variant="default" size="sm"><Lock size={9} /> Verrouillé</NotionBadge>
+                        )}
+                    </div>
+                </NotionCard>
+            ))}
+        </div>
+    );
+}
+
+/* ── Continue learning card ────────────────────────────────────────────── */
+
+function ContinueLearningCard({ workshop }: { workshop: WorkshopProgress }) {
+    const meta = WORKSHOP_META[workshop.workshop_id];
+    return (
+        <NotionCard variant="selected" padding="md">
+            <div style={{
+                display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)',
+                marginBottom: 'var(--n-space-3)',
+                fontSize: 'var(--n-text-xs)',
+                fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'],
+                color: 'var(--n-accent)',
+                fontFamily: 'var(--n-font-sans)',
+                textTransform: 'uppercase', letterSpacing: '0.06em',
+            }}>
+                <Play size={11} /> Continuer
+            </div>
+            <h3 style={{
+                fontSize: 'var(--n-text-base)',
+                fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'],
+                color: 'var(--n-text-primary)',
+                fontFamily: 'var(--n-font-sans)',
+                marginBottom: 'var(--n-space-1)',
+                lineHeight: 'var(--n-leading-snug)',
+            }}>
+                {workshop.title}
+            </h3>
+            <p style={{
+                fontSize: 'var(--n-text-sm)',
+                color: 'var(--n-text-secondary)',
+                fontFamily: 'var(--n-font-sans)',
+                marginBottom: 'var(--n-space-4)',
+            }}>
+                Vous êtes à {workshop.progress_percent}% — reprenez là où vous vous êtes arrêté.
+            </p>
+            <div style={{ marginBottom: 'var(--n-space-4)' }}>
+                <NotionProgress value={workshop.progress_percent} variant="accent" size="default" showLabel />
+            </div>
+            <Link href={`/student/theory/${workshop.workshop_id}`}
+                  style={{
+                      display: 'block', width: '100%',
+                      padding: '8px',
+                      textAlign: 'center',
+                      borderRadius: 'var(--n-radius-sm)',
+                      background: 'var(--n-accent)',
+                      color: '#fff',
+                      fontSize: 'var(--n-text-sm)',
+                      fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'],
+                      fontFamily: 'var(--n-font-sans)',
+                      textDecoration: 'none',
+                      transition: 'opacity var(--n-duration-xs)',
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = '0.85'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}>
+                Reprendre l&apos;atelier
+            </Link>
+        </NotionCard>
+    );
+}
+
+/* ── Quick actions ─────────────────────────────────────────────────────── */
+
+function QuickActions() {
+    const links = [
+        { href: '/student/cursus',       icon: GraduationCap, label: 'Mes Cursus'     },
+        { href: '/student/quizzes',      icon: Target,        label: 'Mes Quiz'        },
+        { href: '/student/progress',     icon: BarChart3,     label: 'Ma Progression'  },
+        { href: '/student/badges',       icon: Award,         label: 'Mes Badges'      },
+        { href: '/student/transactions', icon: History,       label: 'Transactions'    },
+        { href: '/student/defense',      icon: Shield,        label: 'Sandbox Défense' },
+    ];
+
+    return (
+        <NotionCard variant="default" padding="md">
+            <h3 style={{
+                fontSize: 'var(--n-text-sm)',
+                fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'],
+                color: 'var(--n-text-primary)',
+                fontFamily: 'var(--n-font-sans)',
+                marginBottom: 'var(--n-space-3)',
+            }}>
+                Accès Rapide
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {links.map(({ href, icon: Icon, label }) => (
+                    <Link key={href} href={href}
+                          style={{
+                              display: 'flex', alignItems: 'center', gap: 'var(--n-space-3)',
+                              padding: 'var(--n-space-2) var(--n-space-2)',
+                              borderRadius: 'var(--n-radius-xs)',
+                              color: 'var(--n-text-secondary)',
+                              textDecoration: 'none',
+                              fontSize: 'var(--n-text-sm)',
+                              fontFamily: 'var(--n-font-sans)',
+                              transition: 'background var(--n-duration-xs), color var(--n-duration-xs)',
+                          }}
+                          onMouseEnter={e => {
+                              (e.currentTarget as HTMLElement).style.background = 'var(--n-bg-secondary)';
+                              (e.currentTarget as HTMLElement).style.color = 'var(--n-text-primary)';
+                          }}
+                          onMouseLeave={e => {
+                              (e.currentTarget as HTMLElement).style.background = 'transparent';
+                              (e.currentTarget as HTMLElement).style.color = 'var(--n-text-secondary)';
+                          }}>
+                        <Icon size={14} style={{ color: 'var(--n-text-tertiary)', flexShrink: 0 }} />
+                        <span style={{ flex: 1 }}>{label}</span>
+                        <ChevronRight size={12} style={{ color: 'var(--n-text-tertiary)', opacity: 0.6 }} />
+                    </Link>
+                ))}
+            </div>
+        </NotionCard>
+    );
+}
+
+/* ── Leaderboard widget ────────────────────────────────────────────────── */
+
+function LeaderboardWidget({ entries, currentUserId }: { entries: LeaderboardEntry[]; currentUserId: string }) {
+    const rankBadge = (rank: number) => {
+        if (rank === 1) return <span style={{ fontSize: '14px' }}>🥇</span>;
+        if (rank === 2) return <span style={{ fontSize: '14px' }}>🥈</span>;
+        if (rank === 3) return <span style={{ fontSize: '14px' }}>🥉</span>;
+        return (
+            <span style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                width: '20px', height: '20px',
+                borderRadius: '50%',
+                background: 'var(--n-bg-tertiary)',
+                fontSize: 'var(--n-text-xs)',
+                fontFamily: 'var(--n-font-mono)',
+                color: 'var(--n-text-tertiary)',
+                flexShrink: 0,
+            }}>
+                {rank}
+            </span>
+        );
+    };
+
+    return (
+        <NotionCard variant="default" padding="md">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)', marginBottom: 'var(--n-space-4)' }}>
+                <TrendingUp size={14} style={{ color: 'var(--n-accent)' }} />
+                <h3 style={{
+                    fontSize: 'var(--n-text-sm)',
+                    fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'],
+                    color: 'var(--n-text-primary)',
+                    fontFamily: 'var(--n-font-sans)',
+                }}>
+                    Classement
+                </h3>
+            </div>
+
+            {entries.length === 0 ? (
+                <p style={{ fontSize: 'var(--n-text-sm)', color: 'var(--n-text-tertiary)', textAlign: 'center', padding: 'var(--n-space-3) 0', fontFamily: 'var(--n-font-sans)' }}>
+                    Pas encore de classement.
+                </p>
+            ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    {entries.slice(0, 5).map((entry) => {
+                        const name = [entry.first_name, entry.last_name].filter(Boolean).join(' ') || entry.username;
+                        const isMe = entry.id === currentUserId;
+                        return (
+                            <div key={entry.id}
+                                 style={{
+                                     display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)',
+                                     padding: 'var(--n-space-2)',
+                                     borderRadius: 'var(--n-radius-xs)',
+                                     background: isMe ? 'var(--n-accent-light)' : 'transparent',
+                                     border: isMe ? '1px solid var(--n-accent-border)' : '1px solid transparent',
+                                 }}>
+                                {rankBadge(entry.rank)}
+                                <span style={{
+                                    flex: 1,
+                                    fontSize: 'var(--n-text-sm)',
+                                    color: isMe ? 'var(--n-accent)' : 'var(--n-text-secondary)',
+                                    fontWeight: isMe ? ('var(--n-weight-semibold)' as React.CSSProperties['fontWeight']) : undefined,
+                                    fontFamily: 'var(--n-font-sans)',
+                                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                }}>
+                                    {isMe ? 'Vous' : name}
+                                </span>
+                                <span style={{
+                                    fontSize: 'var(--n-text-xs)',
+                                    color: 'var(--n-text-tertiary)',
+                                    fontFamily: 'var(--n-font-mono)',
+                                    flexShrink: 0,
+                                }}>
+                                    {entry.total_xp} XP
+                                </span>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </NotionCard>
+    );
+}

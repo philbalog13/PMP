@@ -1,51 +1,26 @@
+/* ═══════════════════════════════════════════════════════════
+   TPE-Web — Global Styles
+   Terminal POS — accents merchant (teal via data-bank-role="merchant")
+   ═══════════════════════════════════════════════════════════ */
 @import "tailwindcss";
-@import "../../shared/styles/design-tokens.css";
-@import "../../shared/styles/themes.css";
-
-/* 
- * TPE-WEB SPECIFIC OVERRIDES 
- * Only put app-specific styles here
- */
+@import "../../shared/styles/bank-tokens.css";
+@import "../../shared/styles/bank-theme.css";
+@import "../../shared/styles/bank-utilities.css";
 
 @layer base {
-    body {
-        background: radial-gradient(circle at top center, var(--bg-surface) 0%, var(--bg-deep) 100%);
-    }
-}
+  :root {
+    --bank-font-sans: var(--font-outfit, var(--font-inter, 'Inter', -apple-system, sans-serif));
+  }
 
-/*
- * Input Styling - Dark Neon Glassmorphism Theme
- * Uses design tokens for theme consistency
- */
-input,
-input[type="text"],
-input[type="number"],
-input[type="password"] {
-    color: var(--text-primary);
-    background-color: var(--bg-surface);
-    border: 1px solid var(--border-color);
-    border-radius: 0.75rem;
-    padding: 0.75rem 1rem;
-    font-weight: 500;
-    transition: all 0.2s ease;
-}
+  body {
+    margin: 0;
+    padding: 0;
+    background-color: #0C0E1A;
+  }
 
-input:focus {
-    outline: none;
-    border-color: var(--primary-500);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    background-color: rgba(15, 23, 42, 0.8);
-}
-
-input:disabled,
-input[disabled] {
-    opacity: 0.5;
-    cursor: not-allowed;
-    background-color: var(--bg-tertiary);
-}
-
-/* Placeholder styling */
-input::placeholder {
-    color: var(--text-muted);
-    opacity: 0.7;
+  ::selection {
+    /* Accent teal pour le terminal merchant */
+    background-color: rgba(45, 212, 191, 0.20);
+    color: inherit;
+  }
 }

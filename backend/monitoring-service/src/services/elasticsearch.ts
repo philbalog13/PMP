@@ -3,6 +3,7 @@
  */
 
 import { Client } from '@elastic/elasticsearch';
+import { sanitizeForLogging } from '../utils/pan-masking.js';
 
 interface IndexedDocument {
     id: string;
@@ -153,15 +154,18 @@ export class ElasticsearchService {
 
     // Indexer un document
     async index(doc: IndexedDocument): Promise<boolean> {
+        // PCI-DSS Requirement 3.4: mask PANs before writing to any log/index
+        const sanitizedBody = sanitizeForLogging(doc.body) as Record<string, any>;
+
         if (!this.client || !this.connected) {
-            return this.simulateIndex(doc);
+            return this.simulateIndex({ ...doc, body: sanitizedBody });
         }
 
         try {
             await this.client.index({
                 index: doc.index,
                 id: doc.id,
-                body: doc.body
+                body: sanitizedBody
             });
             return true;
         } catch (error) {

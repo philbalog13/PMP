@@ -3,6 +3,9 @@ import cors from 'cors';
 import helmet from 'helmet';
 import cardRoutes from './routes/card.routes';
 import { config } from './config';
+import { bootstrapMTLS, startMTLSServer, patchAxiosWithMTLS } from './utils/mtls.helper';
+
+const SERVICE_NAME = 'sim-card-service';
 
 const app = express();
 
@@ -22,11 +25,23 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
     });
 });
 
-// Start server
-const PORT = config.port;
-app.listen(PORT, () => {
-    console.log(`💳 Sim-Card-Service running on port ${PORT}`);
-    console.log(`📋 Endpoints: POST/GET /cards, GET /cards/:pan, PATCH /cards/:pan/status`);
-});
+async function start() {
+    if (config.mtlsEnabled) {
+        try {
+            const ctx = await bootstrapMTLS(SERVICE_NAME, config.keyManagementUrl);
+            patchAxiosWithMTLS(ctx);
+            startMTLSServer(app, config.port, ctx);
+            console.log(`💳 Sim-Card-Service (🔒 mTLS) on port ${config.port}`);
+            return;
+        } catch (err: any) {
+            console.error(`[mTLS] ${err.message} — falling back to HTTP`);
+        }
+    }
+    app.listen(config.port, () => {
+        console.log(`💳 Sim-Card-Service running on port ${config.port}`);
+        console.log(`📋 Endpoints: POST/GET /cards, GET /cards/:pan, PATCH /cards/:pan/status`);
+    });
+}
 
+start().catch(console.error);
 export default app;

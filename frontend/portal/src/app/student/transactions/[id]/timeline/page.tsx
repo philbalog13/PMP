@@ -22,18 +22,24 @@ import {
     Server,
     type LucideIcon,
 } from 'lucide-react';
+import Link from 'next/link';
+import { NotionCard, NotionBadge, NotionSkeleton, NotionEmptyState } from '@shared/components/notion';
+
+/* ── Dynamic import ─────────────────────────────────────────────────────── */
 
 const TransactionTimeline = dynamic(
     () => import('@shared/components/TransactionTimeline'),
     {
         ssr: false,
         loading: () => (
-            <div className="flex items-center justify-center py-20">
-                <div className="h-8 w-8 border-2 border-violet-400/30 border-t-violet-400 rounded-full animate-spin" />
+            <div style={{ padding: 'var(--n-space-6)', display: 'flex', flexDirection: 'column', gap: 'var(--n-space-3)' }}>
+                {[...Array(5)].map((_, i) => <NotionSkeleton key={i} type="list" />)}
             </div>
         )
     }
 );
+
+/* ── Types ──────────────────────────────────────────────────────────────── */
 
 type TransactionSummary = {
     transaction_id: string;
@@ -62,19 +68,29 @@ type ServiceItem = {
     icon: LucideIcon;
     desc: string;
     color: string;
-    bg: string;
+    glowColor: string;
 };
 
+/* ── Constants ──────────────────────────────────────────────────────────── */
+
 const SERVICES: ServiceItem[] = [
-    { name: 'POS Terminal', icon: CreditCard, desc: 'Point de vente', color: 'text-sky-400', bg: 'bg-sky-500/10' },
-    { name: 'Acquirer', icon: Store, desc: 'Banque acquéreur', color: 'text-blue-400', bg: 'bg-blue-500/10' },
-    { name: 'Network Switch', icon: Server, desc: 'Réseau interbancaire', color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
-    { name: 'Fraud Detection', icon: Shield, desc: 'Analyse de fraude', color: 'text-amber-400', bg: 'bg-amber-500/10' },
-    { name: 'Auth Engine', icon: GitBranch, desc: 'Moteur autorisation', color: 'text-violet-400', bg: 'bg-violet-500/10' },
-    { name: 'Issuer', icon: Fingerprint, desc: 'Banque émettrice', color: 'text-pink-400', bg: 'bg-pink-500/10' },
-    { name: 'Ledger', icon: Database, desc: 'Comptabilité', color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-    { name: 'Settlement', icon: Hash, desc: 'Compensation', color: 'text-teal-400', bg: 'bg-teal-500/10' },
+    { name: 'POS Terminal',    icon: CreditCard, desc: 'Point de vente',       color: '#38bdf8', glowColor: 'rgba(56,189,248,0.15)'  },
+    { name: 'Acquirer',        icon: Store,      desc: 'Banque acquéreur',      color: '#60a5fa', glowColor: 'rgba(96,165,250,0.15)'  },
+    { name: 'Network Switch',  icon: Server,     desc: 'Réseau interbancaire',  color: '#818cf8', glowColor: 'rgba(129,140,248,0.15)' },
+    { name: 'Fraud Detection', icon: Shield,     desc: 'Analyse de fraude',     color: '#f59e0b', glowColor: 'rgba(245,158,11,0.15)'  },
+    { name: 'Auth Engine',     icon: GitBranch,  desc: 'Moteur autorisation',   color: '#a78bfa', glowColor: 'rgba(167,139,250,0.15)' },
+    { name: 'Issuer',          icon: Fingerprint,desc: 'Banque émettrice',      color: '#f472b6', glowColor: 'rgba(244,114,182,0.15)' },
+    { name: 'Ledger',          icon: Database,   desc: 'Comptabilité',          color: '#f59e0b', glowColor: 'rgba(245,158,11,0.15)'  },
+    { name: 'Settlement',      icon: Hash,       desc: 'Compensation',          color: '#2dd4bf', glowColor: 'rgba(45,212,191,0.15)'  },
 ];
+
+const STATUS_VARIANT: Record<string, 'success' | 'danger' | 'warning' | 'default'> = {
+    APPROVED: 'success',
+    DECLINED: 'danger',
+    PENDING:  'warning',
+};
+
+/* ── Helpers (business logic — unchanged) ───────────────────────────────── */
 
 const asObject = (value: unknown): Record<string, unknown> =>
     value !== null && typeof value === 'object' ? (value as Record<string, unknown>) : {};
@@ -86,9 +102,7 @@ const toNumber = (value: unknown): number => {
 
 const toCategory = (value: unknown): TimelineStep['category'] => {
     const category = String(value ?? '').toLowerCase();
-    if (category === 'security' || category === 'decision' || category === 'data') {
-        return category;
-    }
+    if (category === 'security' || category === 'decision' || category === 'data') return category;
     return 'process';
 };
 
@@ -100,28 +114,27 @@ const getErrorMessage = (error: unknown, fallback: string): string => {
 const normalizeTransaction = (raw: unknown): TransactionSummary | null => {
     const source = asObject(raw);
     if (Object.keys(source).length === 0) return null;
-
     const scoreRaw = source.fraud_score;
     return {
-        transaction_id: String(source.transaction_id || source.transactionId || ''),
-        status: String(source.status || ''),
-        amount: toNumber(source.amount),
-        currency: String(source.currency || 'EUR'),
-        response_code: String(source.response_code || source.responseCode || ''),
-        authorization_code: String(source.authorization_code || source.authorizationCode || ''),
-        stan: String(source.stan || ''),
-        terminal_id: String(source.terminal_id || source.terminalId || ''),
-        merchant_mcc: String(source.merchant_mcc || source.merchantMcc || ''),
-        fraud_score: scoreRaw === null || scoreRaw === undefined ? null : toNumber(scoreRaw),
-        client_first_name: String(source.client_first_name || source.clientFirstName || ''),
-        client_last_name: String(source.client_last_name || source.clientLastName || ''),
-        client_username: String(source.client_username || source.clientUsername || ''),
-        merchant_name: String(source.merchant_name || source.merchantName || ''),
-        merchant_first_name: String(source.merchant_first_name || source.merchantFirstName || ''),
-        merchant_last_name: String(source.merchant_last_name || source.merchantLastName || ''),
+        transaction_id:    String(source.transaction_id    || source.transactionId    || ''),
+        status:            String(source.status            || ''),
+        amount:            toNumber(source.amount),
+        currency:          String(source.currency          || 'EUR'),
+        response_code:     String(source.response_code     || source.responseCode     || ''),
+        authorization_code:String(source.authorization_code|| source.authorizationCode|| ''),
+        stan:              String(source.stan               || ''),
+        terminal_id:       String(source.terminal_id       || source.terminalId       || ''),
+        merchant_mcc:      String(source.merchant_mcc      || source.merchantMcc      || ''),
+        fraud_score:       scoreRaw === null || scoreRaw === undefined ? null : toNumber(scoreRaw),
+        client_first_name: String(source.client_first_name || source.clientFirstName  || ''),
+        client_last_name:  String(source.client_last_name  || source.clientLastName   || ''),
+        client_username:   String(source.client_username   || source.clientUsername   || ''),
+        merchant_name:     String(source.merchant_name     || source.merchantName     || ''),
+        merchant_first_name:String(source.merchant_first_name||source.merchantFirstName||''),
+        merchant_last_name: String(source.merchant_last_name ||source.merchantLastName ||''),
         merchant_username: String(source.merchant_username || source.merchantUsername || ''),
-        masked_pan: String(source.masked_pan || source.maskedPan || ''),
-        processing_steps: source.processing_steps,
+        masked_pan:        String(source.masked_pan        || source.maskedPan        || ''),
+        processing_steps:  source.processing_steps,
     };
 };
 
@@ -131,33 +144,33 @@ const normalizeTimeline = (raw: unknown, fallback: unknown): TimelineStep[] => {
         const row = asObject(step);
         const stepNumber = Number.parseInt(String(row.step ?? index + 1), 10);
         const details = asObject(row.details);
-
         return {
-            step: Number.isFinite(stepNumber) ? stepNumber : index + 1,
-            name: String(row.name || row.step_name || `Step ${index + 1}`),
-            category: toCategory(row.category),
-            status: String(row.status || 'pending'),
-            timestamp: String(row.timestamp || ''),
+            step:        Number.isFinite(stepNumber) ? stepNumber : index + 1,
+            name:        String(row.name || row.step_name || `Step ${index + 1}`),
+            category:    toCategory(row.category),
+            status:      String(row.status || 'pending'),
+            timestamp:   String(row.timestamp || ''),
             duration_ms: toNumber(row.duration_ms),
             details,
         };
     });
 };
 
+/* ── Component ──────────────────────────────────────────────────────────── */
+
 export default function StudentTransactionTimelinePage() {
     const params = useParams();
     const router = useRouter();
-    const id = params.id as string;
+    const id     = params.id as string;
 
-    const [txn, setTxn] = useState<TransactionSummary | null>(null);
-    const [timeline, setTimeline] = useState<TimelineStep[]>([]);
+    const [txn,     setTxn]     = useState<TransactionSummary | null>(null);
+    const [timeline,setTimeline] = useState<TimelineStep[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const [error,   setError]   = useState<string | null>(null);
     const [showRaw, setShowRaw] = useState(false);
 
     useEffect(() => {
         if (!id) return;
-
         const token = typeof window !== 'undefined' ? (localStorage.getItem('token') || '') : '';
         void fetch(`/api/platform/transactions/${id}/timeline`, {
             headers: { Authorization: `Bearer ${token}` }
@@ -165,10 +178,7 @@ export default function StudentTransactionTimelinePage() {
             .then((res) => res.json() as Promise<unknown>)
             .then((payload) => {
                 const data = asObject(payload);
-                if (data.success === false) {
-                    throw new Error(String(data.error || 'Échec du chargement'));
-                }
-
+                if (data.success === false) throw new Error(String(data.error || 'Échec du chargement'));
                 const transaction = normalizeTransaction(data.transaction);
                 setTxn(transaction);
                 setTimeline(normalizeTimeline(data.timeline, transaction?.processing_steps));
@@ -177,159 +187,193 @@ export default function StudentTransactionTimelinePage() {
             .finally(() => setLoading(false));
     }, [id]);
 
+    /* ── Loading ── */
     if (loading) {
         return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-                <div className="text-center">
-                    <div className="h-10 w-10 border-2 border-violet-400/30 border-t-violet-400 rounded-full animate-spin mx-auto mb-4" />
-                    <p className="text-sm text-slate-400">Chargement de la timeline...</p>
+            <div style={{ padding: 'var(--n-space-8) var(--n-space-6)', maxWidth: '960px', margin: '0 auto' }}>
+                <div style={{ marginBottom: 'var(--n-space-5)' }}><NotionSkeleton type="line" width="140px" height="14px" /></div>
+                <NotionSkeleton type="card" />
+                <div style={{ marginTop: 'var(--n-space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--n-space-2)' }}>
+                    {[...Array(6)].map((_, i) => <NotionSkeleton key={i} type="list" />)}
                 </div>
             </div>
         );
     }
 
+    /* ── Error ── */
     if (error || !txn) {
         return (
-            <div className="min-h-screen bg-slate-950 p-8">
-                <div className="max-w-2xl mx-auto text-center py-20">
-                    <Activity size={40} className="mx-auto mb-4 text-slate-600" />
-                    <p className="text-amber-400 mb-2 font-medium">{error || 'Transaction introuvable'}</p>
-                    <p className="text-xs text-slate-500 mb-6">Vérifiez que vous êtes bien connecté et que la transaction existe.</p>
-                    <button onClick={() => router.back()} className="text-blue-400 text-sm hover:underline">Retour</button>
-                </div>
+            <div style={{ padding: 'var(--n-space-8) var(--n-space-6)', maxWidth: '960px', margin: '0 auto' }}>
+                <NotionEmptyState
+                    icon={<Activity size={28} />}
+                    title={error || 'Transaction introuvable'}
+                    description="Vérifiez que vous êtes connecté et que la transaction existe."
+                    action={
+                        <button
+                            onClick={() => router.back()}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--n-space-2)', padding: '7px 16px', borderRadius: 'var(--n-radius-sm)', border: '1px solid var(--n-border)', background: 'var(--n-bg-primary)', color: 'var(--n-text-secondary)', fontSize: 'var(--n-text-sm)', fontFamily: 'var(--n-font-sans)', cursor: 'pointer' }}
+                        >
+                            <ArrowLeft size={14} /> Retour
+                        </button>
+                    }
+                />
             </div>
         );
     }
 
-    const isApproved = txn.status === 'APPROVED';
-    const amount = txn.amount;
+    /* ── Derived values ── */
+    const isApproved    = txn.status === 'APPROVED';
     const totalDuration = timeline.reduce((sum, step) => sum + step.duration_ms, 0);
-    const clientName = txn.client_first_name
+    const clientName    = txn.client_first_name
         ? `${txn.client_first_name} ${txn.client_last_name || ''}`.trim()
         : (txn.client_username || 'Client');
-    const merchantName = txn.merchant_name
+    const merchantName  = txn.merchant_name
         || (txn.merchant_first_name
             ? `${txn.merchant_first_name} ${txn.merchant_last_name || ''}`.trim()
             : (txn.merchant_username || 'Marchand'));
 
+    /* ── Info pills data ── */
+    type Pill = { label: string; value: string; variant: 'success' | 'danger' | 'warning' | 'default' };
+    const pills: Pill[] = [
+        ...(txn.response_code ? [{ label: 'Réponse', value: txn.response_code, variant: (txn.response_code === '00' ? 'success' : 'danger') as Pill['variant'] }] : []),
+        ...(txn.authorization_code ? [{ label: 'Auth',     value: txn.authorization_code, variant: 'default' as Pill['variant'] }] : []),
+        ...(txn.stan               ? [{ label: 'STAN',     value: txn.stan,               variant: 'default' as Pill['variant'] }] : []),
+        ...(txn.terminal_id        ? [{ label: 'Terminal', value: txn.terminal_id,        variant: 'default' as Pill['variant'] }] : []),
+        ...(txn.merchant_mcc       ? [{ label: 'MCC',      value: txn.merchant_mcc,       variant: 'default' as Pill['variant'] }] : []),
+        ...(txn.fraud_score !== null ? [{ label: 'Score fraude', value: `${txn.fraud_score}/100`, variant: (txn.fraud_score < 30 ? 'success' : txn.fraud_score < 70 ? 'warning' : 'danger') as Pill['variant'] }] : []),
+    ];
+
+    /* ── Render ── */
     return (
-        <div className="min-h-screen bg-slate-950">
-            <div className="border-b border-white/5 bg-slate-900/50 backdrop-blur-sm sticky top-0 z-50">
-                <div className="max-w-6xl mx-auto px-4 md:px-8 py-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <button onClick={() => router.push('/student/transactions')} className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition">
-                                <ArrowLeft size={16} />
-                                Transactions
-                            </button>
-                            <div className="h-6 w-px bg-white/10" />
-                            <h1 className="text-lg font-bold text-white flex items-center gap-2">
-                                <Activity size={20} className="text-violet-400" />
-                                Cycle de vie
-                            </h1>
-                        </div>
-                        <div className="flex items-center gap-3 text-sm">
-                            <span className="text-slate-500 hidden md:inline font-mono text-xs">{txn.transaction_id}</span>
-                            <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${isApproved ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}`}>
-                                {txn.status}
+        <div style={{ padding: 'var(--n-space-8) var(--n-space-6)', maxWidth: '960px', margin: '0 auto' }}>
+
+            {/* ── BACK LINK ────────────────────────────────────────────── */}
+            <Link
+                href="/student/transactions"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--n-space-2)', fontSize: 'var(--n-text-sm)', color: 'var(--n-text-secondary)', fontFamily: 'var(--n-font-sans)', textDecoration: 'none', marginBottom: 'var(--n-space-5)' }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = 'var(--n-text-primary)'}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'var(--n-text-secondary)'}
+            >
+                <ArrowLeft size={14} /> Transactions
+            </Link>
+
+            {/* ── PAGE HEADER ──────────────────────────────────────────── */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--n-space-4)', marginBottom: 'var(--n-space-7)' }}>
+                <div>
+                    <h1 style={{ fontSize: '26px', fontWeight: 'var(--n-weight-bold)' as React.CSSProperties['fontWeight'], color: 'var(--n-text-primary)', fontFamily: 'var(--n-font-sans)', letterSpacing: '-0.02em', marginBottom: 'var(--n-space-1)' }}>
+                        Timeline Transaction
+                    </h1>
+                    <p style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-mono)' }}>
+                        {txn.transaction_id}
+                    </p>
+                </div>
+                <NotionBadge variant={STATUS_VARIANT[txn.status] || 'default'}>{txn.status}</NotionBadge>
+            </div>
+
+            {/* ── SUMMARY CARDS ────────────────────────────────────────── */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--n-space-3)', marginBottom: 'var(--n-space-6)' }}>
+                {[
+                    { Icon: CreditCard, label: 'Montant',   value: `${txn.amount.toFixed(2)} ${txn.currency || 'EUR'}` },
+                    { Icon: Store,      label: 'Marchand',  value: merchantName },
+                    { Icon: CreditCard, label: 'Carte',     value: txn.masked_pan || 'N/A' },
+                    { Icon: Clock,      label: 'Traitement',value: `${totalDuration}ms` },
+                ].map(({ Icon, label, value }) => (
+                    <NotionCard key={label} variant="default" padding="sm">
+                        <div style={{ padding: 'var(--n-space-1)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-1)', marginBottom: '4px' }}>
+                                <Icon size={11} style={{ color: 'var(--n-text-tertiary)' }} />
+                                <span style={{ fontSize: '10px', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>{label}</span>
+                            </div>
+                            <span style={{ fontSize: 'var(--n-text-sm)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], color: 'var(--n-text-primary)', fontFamily: 'var(--n-font-sans)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {value}
                             </span>
                         </div>
-                    </div>
-                </div>
+                    </NotionCard>
+                ))}
             </div>
 
-            <div className="max-w-6xl mx-auto px-4 md:px-8 py-6">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                    <SummaryCard icon={CreditCard} label="Montant" value={`${amount.toFixed(2)} ${txn.currency || 'EUR'}`} highlight />
-                    <SummaryCard icon={Store} label="Marchand" value={merchantName} />
-                    <SummaryCard icon={CreditCard} label="Carte" value={txn.masked_pan || 'N/A'} />
-                    <SummaryCard icon={Clock} label="Traitement total" value={`${totalDuration}ms`} />
-                </div>
-
-                {txn.response_code && (
-                    <div className="flex flex-wrap gap-3 mb-6">
-                        <InfoPill label="Code réponse" value={txn.response_code} color={txn.response_code === '00' ? 'text-emerald-400' : 'text-red-400'} />
-                        {txn.authorization_code && <InfoPill label="Code autorisation" value={txn.authorization_code} />}
-                        {txn.stan && <InfoPill label="STAN" value={txn.stan} />}
-                        {txn.terminal_id && <InfoPill label="Terminal" value={txn.terminal_id} />}
-                        {txn.merchant_mcc && <InfoPill label="MCC" value={txn.merchant_mcc} />}
-                        {txn.fraud_score !== null && (
-                            <InfoPill
-                                label="Score fraude"
-                                value={`${txn.fraud_score}/100`}
-                                color={txn.fraud_score < 30 ? 'text-emerald-400' : txn.fraud_score < 70 ? 'text-amber-400' : 'text-red-400'}
-                            />
-                        )}
-                    </div>
-                )}
-
-                <div className="mb-6 p-4 rounded-2xl border border-white/10 bg-slate-800/20">
-                    <div className="flex items-center gap-2 mb-3">
-                        <Server size={14} className="text-slate-400" />
-                        <span className="text-[10px] text-slate-400 uppercase tracking-wider font-medium">Services impliqués dans le flux</span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                        {SERVICES.map((service) => (
-                            <div key={service.name} className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg ${service.bg} border border-white/5`}>
-                                <service.icon size={12} className={service.color} />
-                                <span className="text-[11px] text-white font-medium">{service.name}</span>
-                                <span className="text-[9px] text-slate-500 hidden md:inline">{service.desc}</span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-slate-900/30 overflow-hidden mb-6">
-                    {timeline.length > 0 ? (
-                        <TransactionTimeline steps={timeline} />
-                    ) : (
-                        <div className="text-center py-20 text-slate-500">
-                            <Activity size={32} className="mx-auto mb-3 opacity-50" />
-                            <p className="text-sm">Aucune donnée de timeline disponible</p>
+            {/* ── INFO PILLS ───────────────────────────────────────────── */}
+            {pills.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--n-space-2)', marginBottom: 'var(--n-space-5)' }}>
+                    {pills.map((pill) => (
+                        <div key={pill.label} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)' }}>{pill.label}:</span>
+                            <NotionBadge variant={pill.variant} size="sm">{pill.value}</NotionBadge>
                         </div>
-                    )}
+                    ))}
                 </div>
+            )}
 
-                <button onClick={() => setShowRaw(!showRaw)} className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-300 transition mb-4">
-                    <Code size={14} />
-                    Données brutes (ISO 8583)
-                    {showRaw ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                </button>
+            {/* ── SERVICES ─────────────────────────────────────────────── */}
+            <NotionCard variant="default" padding="sm" style={{ marginBottom: 'var(--n-space-5)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)', marginBottom: 'var(--n-space-3)', padding: 'var(--n-space-1) var(--n-space-2) 0' }}>
+                    <Server size={12} style={{ color: 'var(--n-text-tertiary)' }} />
+                    <span style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
+                        Services impliqués dans le flux
+                    </span>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--n-space-2)', padding: '0 var(--n-space-2) var(--n-space-1)' }}>
+                    {SERVICES.map((service) => (
+                        <div
+                            key={service.name}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: 'var(--n-radius-sm)', background: 'var(--n-bg-elevated)', border: '1px solid var(--n-border)' }}
+                        >
+                            <service.icon size={12} style={{ color: service.color, flexShrink: 0 }} />
+                            <span style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-text-secondary)', fontFamily: 'var(--n-font-sans)', fontWeight: 500 }}>{service.name}</span>
+                        </div>
+                    ))}
+                </div>
+            </NotionCard>
 
-                {showRaw && (
-                    <div className="rounded-xl border border-white/10 bg-black/40 p-4 overflow-x-auto">
-                        <pre className="text-xs text-slate-400 font-mono whitespace-pre-wrap">
-                            {JSON.stringify(timeline, null, 2)}
-                        </pre>
+            {/* ── TIMELINE ─────────────────────────────────────────────── */}
+            <NotionCard variant="default" padding="none" style={{ marginBottom: 'var(--n-space-5)', overflow: 'hidden' }}>
+                {timeline.length > 0 ? (
+                    <TransactionTimeline steps={timeline} />
+                ) : (
+                    <div style={{ padding: 'var(--n-space-8)', textAlign: 'center' }}>
+                        <Activity size={28} style={{ color: 'var(--n-text-tertiary)', margin: '0 auto var(--n-space-3)' }} />
+                        <p style={{ fontSize: 'var(--n-text-sm)', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)' }}>
+                            Aucune donnée de timeline disponible
+                        </p>
                     </div>
                 )}
+            </NotionCard>
 
-                <div className="mt-4 text-xs text-slate-500 inline-flex items-center gap-1">
+            {/* ── RAW DATA TOGGLE ──────────────────────────────────────── */}
+            <button
+                onClick={() => setShowRaw(!showRaw)}
+                style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)', fontSize: 'var(--n-text-sm)', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)', background: 'none', border: 'none', cursor: 'pointer', marginBottom: 'var(--n-space-3)', padding: 0 }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = 'var(--n-text-secondary)'}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'var(--n-text-tertiary)'}
+            >
+                <Code size={14} />
+                Données brutes (ISO 8583)
+                {showRaw ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+
+            {showRaw && (
+                <NotionCard variant="default" padding="md" style={{ marginBottom: 'var(--n-space-5)', overflowX: 'auto' }}>
+                    <pre style={{ fontSize: 'var(--n-text-xs)', fontFamily: 'var(--n-font-mono)', color: 'var(--n-text-secondary)', whiteSpace: 'pre-wrap', margin: 0 }}>
+                        {JSON.stringify(timeline, null, 2)}
+                    </pre>
+                </NotionCard>
+            )}
+
+            {/* ── FOOTER ───────────────────────────────────────────────── */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 'var(--n-space-4)', borderTop: '1px solid var(--n-border)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)', fontSize: 'var(--n-text-xs)', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)' }}>
                     <User size={12} />
-                    Client: <span className="text-slate-300">{clientName}</span>
+                    Client : <span style={{ color: 'var(--n-text-secondary)' }}>{clientName}</span>
                 </div>
+                <button
+                    onClick={() => router.push('/student/transactions')}
+                    style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)', fontSize: 'var(--n-text-sm)', color: 'var(--n-text-secondary)', fontFamily: 'var(--n-font-sans)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = 'var(--n-text-primary)'}
+                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'var(--n-text-secondary)'}
+                >
+                    <ArrowLeft size={14} /> Retour aux transactions
+                </button>
             </div>
-        </div>
-    );
-}
-
-function SummaryCard({ icon: Icon, label, value, highlight }: { icon: LucideIcon; label: string; value: string; highlight?: boolean }) {
-    return (
-        <div className={`rounded-xl border p-3.5 ${highlight ? 'border-violet-500/30 bg-violet-500/5' : 'border-white/10 bg-slate-800/30'}`}>
-            <div className="flex items-center gap-1.5 mb-1.5">
-                <Icon size={12} className="text-slate-500" />
-                <span className="text-[10px] text-slate-500 uppercase tracking-wider">{label}</span>
-            </div>
-            <span className="text-sm font-bold text-white truncate block">{value}</span>
-        </div>
-    );
-}
-
-function InfoPill({ label, value, color }: { label: string; value: string; color?: string }) {
-    return (
-        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800/50 border border-white/5">
-            <span className="text-[10px] text-slate-500">{label}:</span>
-            <span className={`text-xs font-bold font-mono ${color || 'text-white'}`}>{value}</span>
         </div>
     );
 }

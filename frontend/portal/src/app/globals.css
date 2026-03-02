@@ -1,71 +1,154 @@
 @import "tailwindcss";
+@import "../../../shared/styles/notion-tokens.css";
+@import "../../../shared/styles/notion-utilities.css";
 @import "../../../shared/styles/design-tokens.css";
 @import "../../../shared/styles/themes.css";
+/* ── Banking design system (scoped via [data-bank-theme], 0 conflit Notion) ── */
+@import "../../../shared/styles/bank-tokens.css";
+@import "../../../shared/styles/bank-theme.css";
+@import "../../../shared/styles/bank-utilities.css";
 
-/* 
- * PORTAL SPECIFIC STYLES 
+/*
+ * ═══════════════════════════════════════════════════
+ *   PORTAL — GLOBAL STYLES
+ *   Phase 1 : animations décoratives supprimées
+ *   Conservé : utilitaires de révélation + spine roadmap
+ * ═══════════════════════════════════════════════════
  */
 
+/* ── Base body ──────────────────────────────────── */
 @layer base {
   body {
-    background: radial-gradient(ellipse at top, var(--bg-surface) 0%, var(--bg-deep) 100%);
+    background-color: var(--bg-deep);
     min-height: 100vh;
+    font-family: var(--n-font-sans);
   }
 }
 
-/* Hero gradient effects */
-.hero-gradient {
-  background: radial-gradient(ellipse at 50% 0%, rgba(59, 130, 246, 0.15) 0%, transparent 50%);
+/* ── Gradient text (landing page) ──────────────── */
+.text-gradient-gold {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-/* Card hover animations */
-.feature-card {
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.feature-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 20px 40px -15px var(--primary-glow);
-}
-
-/* Animated background grid */
+/* ── Background grid (landing page) ─────────────── */
 .bg-grid {
   background-image:
-    linear-gradient(rgba(59, 130, 246, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(59, 130, 246, 0.05) 1px, transparent 1px);
-  background-size: 60px 60px;
+    linear-gradient(rgba(99, 102, 241, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99, 102, 241, 0.04) 1px, transparent 1px);
+  background-size: 64px 64px;
 }
 
-/* Floating animation */
-@keyframes floating {
-
-  0%,
-  100% {
-    transform: translateY(0px);
-  }
-
-  50% {
-    transform: translateY(-20px);
-  }
+/* ── Hero gradient (landing page) ───────────────── */
+.hero-gradient {
+  background: radial-gradient(ellipse at 50% 0%, rgba(99, 102, 241, 0.18) 0%, transparent 55%);
 }
 
-.animate-floating {
-  animation: floating 6s ease-in-out infinite;
+/* ═══════════════════════════════════════════════════
+ *   ANIMATIONS UTILITAIRES — conservées
+ * ═══════════════════════════════════════════════════ */
+
+/* ── Fade up — reveal on load ── */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(24px) scale(0.97); filter: blur(4px); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    filter: blur(0);   }
+}
+.animate-fade-up {
+  animation: fade-up 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Pulse glow */
-@keyframes pulse-glow {
-
-  0%,
-  100% {
-    box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
-  }
-
-  50% {
-    box-shadow: 0 0 40px rgba(59, 130, 246, 0.6);
-  }
+/* ── Fade left / right ── */
+@keyframes fade-left {
+  from { opacity: 0; transform: translateX(-20px); filter: blur(4px); }
+  to   { opacity: 1; transform: translateX(0);     filter: blur(0);   }
+}
+.animate-fade-left {
+  animation: fade-left 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-.animate-pulse-glow {
-  animation: pulse-glow 3s ease-in-out infinite;
+@keyframes fade-right {
+  from { opacity: 0; transform: translateX(20px); filter: blur(4px); }
+  to   { opacity: 1; transform: translateX(0);    filter: blur(0);   }
 }
+.animate-fade-right {
+  animation: fade-right 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ── Stagger cascade ── */
+.animate-stagger > * { opacity: 0; }
+.animate-stagger > *:nth-child(1) { animation: fade-up 0.55s cubic-bezier(0.16,1,0.3,1) 0.05s forwards; }
+.animate-stagger > *:nth-child(2) { animation: fade-up 0.55s cubic-bezier(0.16,1,0.3,1) 0.12s forwards; }
+.animate-stagger > *:nth-child(3) { animation: fade-up 0.55s cubic-bezier(0.16,1,0.3,1) 0.19s forwards; }
+.animate-stagger > *:nth-child(4) { animation: fade-up 0.55s cubic-bezier(0.16,1,0.3,1) 0.26s forwards; }
+.animate-stagger > *:nth-child(5) { animation: fade-up 0.55s cubic-bezier(0.16,1,0.3,1) 0.33s forwards; }
+.animate-stagger > *:nth-child(6) { animation: fade-up 0.55s cubic-bezier(0.16,1,0.3,1) 0.40s forwards; }
+
+/* ── Scale in — modals / popovers ── */
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); filter: blur(2px); }
+  to   { opacity: 1; transform: scale(1);    filter: blur(0);   }
+}
+.animate-scale-in {
+  animation: scale-in 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+/* ── Spine fill — progress roadmap ── */
+@keyframes spine-fill {
+  from { transform: scaleY(0); opacity: 0; }
+  20%  { opacity: 1; }
+  to   { transform: scaleY(1); opacity: 1; }
+}
+.spine-fill {
+  transform-origin: top center;
+  animation: spine-fill 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both;
+}
+
+/* ── Stat appear — nombres dashboard ── */
+@keyframes stat-appear {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+.stat-appear { animation: stat-appear 0.5s cubic-bezier(0.16,1,0.3,1) 0.1s both; }
+
+/* ── Banner slide ── */
+@keyframes banner-slide {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+.animate-banner { animation: banner-slide 0.4s cubic-bezier(0.16,1,0.3,1) 0.2s both; }
+
+/* ═══════════════════════════════════════════════════
+ *   COMPOSANTS MISSION CIPHER — landing page uniquement
+ *   (ne pas utiliser dans les pages /student/*)
+ * ═══════════════════════════════════════════════════ */
+
+/* Apex card — base (landing page features) */
+.apex-card {
+  background: var(--bg-surface);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s cubic-bezier(0.16,1,0.3,1);
+}
+.apex-card:hover {
+  border-color: rgba(255, 255, 255, 0.14);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.5);
+}
+
+/* Glass panel — landing sections */
+.glass-panel {
+  background: var(--bg-glass);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Noise texture */
+.bg-noise {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+}
+
+/* Roadmap spine (progress pages) */
+.roadmap-spine-bg   { background: rgba(255, 255, 255, 0.05); }
+.roadmap-spine-fill { background: linear-gradient(180deg, #f59e0b 0%, #06b6d4 100%); }

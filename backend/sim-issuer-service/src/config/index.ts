@@ -21,5 +21,7 @@ export const config = {
         timeout: 2000
     },
 
-    issuerId: process.env.ISSUER_ID || 'ISS001'
+    issuerId: process.env.ISSUER_ID || 'ISS001',
+    keyManagementUrl: process.env.KEY_MANAGEMENT_URL || 'http://localhost:8012',
+    mtlsEnabled: process.env.MTLS_ENABLED === 'true'
 };

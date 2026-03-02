@@ -1,0 +1,220 @@
+/* ═══════════════════════════════════════════════════════════════════
+   BANKING THEME — dark/light × client/merchant
+   Appliqué via data-bank-theme="dark|light" + data-bank-role="merchant"
+   sur le wrapper BankShell (jamais sur <html> pour isoler du thème Notion)
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ══════════════════════════════════════════════════════
+   DARK THEME — "Luxury" (défaut)
+   Deep navy, pas noir pur — sensation premium trust
+   ══════════════════════════════════════════════════════ */
+[data-bank-theme="dark"] {
+  color-scheme: dark;
+
+  /* ── Backgrounds ── */
+  --bank-bg-base:       #0C0E1A;   /* fond principal — deep navy */
+  --bank-bg-surface:    #141828;   /* surfaces : cards, panels */
+  --bank-bg-elevated:   #1C2038;   /* éléments au-dessus : modaux, dropdowns */
+  --bank-bg-sunken:     #090B15;   /* inputs, zones enfoncées */
+  --bank-bg-hover:      rgba(255, 255, 255, 0.04);
+  --bank-bg-active:     rgba(255, 255, 255, 0.07);
+  --bank-bg-overlay:    rgba(9, 11, 21, 0.82);   /* fond modal */
+  --bank-bg-sidebar:    #0F1120;   /* sidebar légèrement distincte */
+
+  /* ── Borders ── */
+  --bank-border-subtle:   rgba(255, 255, 255, 0.05);
+  --bank-border-default:  rgba(255, 255, 255, 0.09);
+  --bank-border-strong:   rgba(255, 255, 255, 0.18);
+  --bank-border-focus:    var(--bank-accent);       /* dynamique */
+
+  /* ── Text ── */
+  --bank-text-primary:    #F0F2FA;
+  --bank-text-secondary:  #9AA0B8;
+  --bank-text-tertiary:   #555B78;
+  --bank-text-disabled:   #363B55;
+  --bank-text-inverse:    #0C0E1A;   /* texte sur fond accent */
+  --bank-text-on-accent:  #FFFFFF;
+
+  /* ── Accent CLIENT (indigo) — surchargé pour merchant ── */
+  --bank-accent:          #818CF8;   /* indigo-400 */
+  --bank-accent-subtle:   rgba(129, 140, 248, 0.08);
+  --bank-accent-dim:      rgba(129, 140, 248, 0.14);
+  --bank-accent-hover:    #A5B4FC;   /* indigo-300 */
+  --bank-accent-press:    #6366F1;   /* indigo-500 */
+  --bank-accent-solid:    #4F46E5;   /* indigo-600 — pour texte sur fond clair */
+
+  /* ── Semantic — Succès ── */
+  --bank-success:         #4ADE80;   /* green-400 */
+  --bank-success-dim:     rgba(74, 222, 128, 0.10);
+  --bank-success-subtle:  rgba(74, 222, 128, 0.06);
+  --bank-success-text:    #86EFAC;   /* green-300 */
+  --bank-success-border:  rgba(74, 222, 128, 0.25);
+
+  /* ── Semantic — Danger ── */
+  --bank-danger:          #F87171;   /* red-400 */
+  --bank-danger-dim:      rgba(248, 113, 113, 0.10);
+  --bank-danger-subtle:   rgba(248, 113, 113, 0.06);
+  --bank-danger-text:     #FCA5A5;   /* red-300 */
+  --bank-danger-border:   rgba(248, 113, 113, 0.25);
+
+  /* ── Semantic — Warning ── */
+  --bank-warning:         #FBBF24;   /* amber-400 */
+  --bank-warning-dim:     rgba(251, 191, 36, 0.10);
+  --bank-warning-subtle:  rgba(251, 191, 36, 0.06);
+  --bank-warning-text:    #FDE68A;   /* amber-200 */
+  --bank-warning-border:  rgba(251, 191, 36, 0.25);
+
+  /* ── Semantic — Info ── */
+  --bank-info:            #60A5FA;   /* blue-400 */
+  --bank-info-dim:        rgba(96, 165, 250, 0.10);
+  --bank-info-subtle:     rgba(96, 165, 250, 0.06);
+  --bank-info-text:       #93C5FD;   /* blue-300 */
+  --bank-info-border:     rgba(96, 165, 250, 0.25);
+
+  /* ── Semantic — Pending (transactions en attente) ── */
+  --bank-pending:         #FBBF24;
+  --bank-pending-dim:     rgba(251, 191, 36, 0.10);
+  --bank-pending-text:    #FDE68A;
+
+  /* ── Shadows — soft depth, jamais agressifs ── */
+  --bank-shadow-xs:    0 1px 2px rgba(0, 0, 0, 0.4);
+  --bank-shadow-sm:    0 2px 4px rgba(0, 0, 0, 0.4),
+                       0 1px 2px rgba(0, 0, 0, 0.3);
+  --bank-shadow-md:    0 4px 12px rgba(0, 0, 0, 0.45),
+                       0 2px 4px rgba(0, 0, 0, 0.3);
+  --bank-shadow-lg:    0 8px 24px rgba(0, 0, 0, 0.5),
+                       0 4px 8px rgba(0, 0, 0, 0.3);
+  --bank-shadow-xl:    0 16px 48px rgba(0, 0, 0, 0.6),
+                       0 8px 16px rgba(0, 0, 0, 0.35);
+  /* Card : border hairline + ombre douce — signature du design */
+  --bank-shadow-card:  0 0 0 1px rgba(255, 255, 255, 0.06),
+                       0 4px 16px rgba(0, 0, 0, 0.4);
+  --bank-shadow-card-hover: 0 0 0 1px rgba(255, 255, 255, 0.10),
+                             0 8px 24px rgba(0, 0, 0, 0.45);
+  /* Glow accent (très subtil — pas gadget) */
+  --bank-shadow-glow:  0 0 24px rgba(129, 140, 248, 0.15),
+                       0 0 8px rgba(129, 140, 248, 0.08);
+  /* Modal */
+  --bank-shadow-modal: 0 24px 64px rgba(0, 0, 0, 0.7),
+                       0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+/* ══════════════════════════════════════════════════════
+   MERCHANT OVERRIDE — dark — accent teal
+   ══════════════════════════════════════════════════════ */
+[data-bank-theme="dark"][data-bank-role="merchant"] {
+  --bank-accent:          #2DD4BF;   /* teal-400 */
+  --bank-accent-subtle:   rgba(45, 212, 191, 0.08);
+  --bank-accent-dim:      rgba(45, 212, 191, 0.14);
+  --bank-accent-hover:    #5EEAD4;   /* teal-300 */
+  --bank-accent-press:    #14B8A6;   /* teal-500 */
+  --bank-accent-solid:    #0D9488;   /* teal-600 */
+  --bank-shadow-glow:     0 0 24px rgba(45, 212, 191, 0.12),
+                           0 0 8px rgba(45, 212, 191, 0.06);
+}
+
+/* ══════════════════════════════════════════════════════
+   LIGHT THEME — "Clean Premium"
+   Blanc aéré, pas stérile — chaleur du slate clair
+   ══════════════════════════════════════════════════════ */
+[data-bank-theme="light"] {
+  color-scheme: light;
+
+  /* ── Backgrounds ── */
+  --bank-bg-base:       #F4F6FB;   /* fond légèrement bleuté, pas blanc pur */
+  --bank-bg-surface:    #FFFFFF;
+  --bank-bg-elevated:   #FFFFFF;
+  --bank-bg-sunken:     #EDF0F7;
+  --bank-bg-hover:      rgba(0, 0, 0, 0.03);
+  --bank-bg-active:     rgba(0, 0, 0, 0.06);
+  --bank-bg-overlay:    rgba(244, 246, 251, 0.88);
+  --bank-bg-sidebar:    #FFFFFF;
+
+  /* ── Borders ── */
+  --bank-border-subtle:   rgba(0, 0, 0, 0.04);
+  --bank-border-default:  rgba(0, 0, 0, 0.08);
+  --bank-border-strong:   rgba(0, 0, 0, 0.16);
+  --bank-border-focus:    var(--bank-accent);
+
+  /* ── Text ── */
+  --bank-text-primary:    #0F1117;
+  --bank-text-secondary:  #525775;
+  --bank-text-tertiary:   #8890A8;
+  --bank-text-disabled:   #B5BBCC;
+  --bank-text-inverse:    #FFFFFF;
+  --bank-text-on-accent:  #FFFFFF;
+
+  /* ── Accent CLIENT (indigo) ── */
+  --bank-accent:          #4F46E5;   /* indigo-600 */
+  --bank-accent-subtle:   rgba(79, 70, 229, 0.06);
+  --bank-accent-dim:      rgba(79, 70, 229, 0.10);
+  --bank-accent-hover:    #4338CA;   /* indigo-700 */
+  --bank-accent-press:    #3730A3;   /* indigo-800 */
+  --bank-accent-solid:    #4F46E5;
+
+  /* ── Semantic — Succès ── */
+  --bank-success:         #16A34A;   /* green-600 */
+  --bank-success-dim:     rgba(22, 163, 74, 0.08);
+  --bank-success-subtle:  rgba(22, 163, 74, 0.05);
+  --bank-success-text:    #15803D;   /* green-700 */
+  --bank-success-border:  rgba(22, 163, 74, 0.20);
+
+  /* ── Semantic — Danger ── */
+  --bank-danger:          #DC2626;   /* red-600 */
+  --bank-danger-dim:      rgba(220, 38, 38, 0.08);
+  --bank-danger-subtle:   rgba(220, 38, 38, 0.05);
+  --bank-danger-text:     #B91C1C;   /* red-700 */
+  --bank-danger-border:   rgba(220, 38, 38, 0.20);
+
+  /* ── Semantic — Warning ── */
+  --bank-warning:         #D97706;   /* amber-600 */
+  --bank-warning-dim:     rgba(217, 119, 6, 0.08);
+  --bank-warning-subtle:  rgba(217, 119, 6, 0.05);
+  --bank-warning-text:    #B45309;   /* amber-700 */
+  --bank-warning-border:  rgba(217, 119, 6, 0.20);
+
+  /* ── Semantic — Info ── */
+  --bank-info:            #2563EB;   /* blue-600 */
+  --bank-info-dim:        rgba(37, 99, 235, 0.08);
+  --bank-info-subtle:     rgba(37, 99, 235, 0.05);
+  --bank-info-text:       #1D4ED8;   /* blue-700 */
+  --bank-info-border:     rgba(37, 99, 235, 0.20);
+
+  /* ── Semantic — Pending ── */
+  --bank-pending:         #D97706;
+  --bank-pending-dim:     rgba(217, 119, 6, 0.08);
+  --bank-pending-text:    #B45309;
+
+  /* ── Shadows — discrets en light ── */
+  --bank-shadow-xs:    0 1px 2px rgba(0, 0, 0, 0.05);
+  --bank-shadow-sm:    0 2px 4px rgba(0, 0, 0, 0.06),
+                       0 1px 2px rgba(0, 0, 0, 0.04);
+  --bank-shadow-md:    0 4px 12px rgba(0, 0, 0, 0.08),
+                       0 2px 4px rgba(0, 0, 0, 0.04);
+  --bank-shadow-lg:    0 8px 24px rgba(0, 0, 0, 0.10),
+                       0 4px 8px rgba(0, 0, 0, 0.05);
+  --bank-shadow-xl:    0 16px 48px rgba(0, 0, 0, 0.12),
+                       0 8px 16px rgba(0, 0, 0, 0.06);
+  --bank-shadow-card:  0 0 0 1px rgba(0, 0, 0, 0.06),
+                       0 4px 16px rgba(0, 0, 0, 0.07);
+  --bank-shadow-card-hover: 0 0 0 1px rgba(0, 0, 0, 0.10),
+                             0 8px 24px rgba(0, 0, 0, 0.10);
+  --bank-shadow-glow:  0 0 20px rgba(79, 70, 229, 0.10),
+                       0 0 6px rgba(79, 70, 229, 0.06);
+  --bank-shadow-modal: 0 24px 64px rgba(0, 0, 0, 0.18),
+                       0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+
+/* ══════════════════════════════════════════════════════
+   MERCHANT OVERRIDE — light — accent teal
+   ══════════════════════════════════════════════════════ */
+[data-bank-theme="light"][data-bank-role="merchant"] {
+  --bank-accent:          #0F766E;   /* teal-700 */
+  --bank-accent-subtle:   rgba(15, 118, 110, 0.06);
+  --bank-accent-dim:      rgba(15, 118, 110, 0.10);
+  --bank-accent-hover:    #0D6B63;
+  --bank-accent-press:    #0A5A53;
+  --bank-accent-solid:    #0F766E;
+  --bank-shadow-glow:     0 0 20px rgba(15, 118, 110, 0.08),
+                           0 0 6px rgba(15, 118, 110, 0.04);
+}

@@ -1,6 +1,6 @@
-# Analyse Comparative : Plateforme MoneTIC vs Document PMP (ENSICAEN)
+# Analyse Comparative : Plateforme MoneTIC vs Document PMP (MoneTIC)
 
-Ce rapport évalue dans quelle mesure la plateforme actuelle "MoneTIC" répond aux exigences et architectures décrites dans l'article "Mise en œuvre et sécurisation d'une plateforme monétique pédagogique" (Sulmont, Pasquet, Reynaud - ENSICAEN).
+Ce rapport évalue dans quelle mesure la plateforme actuelle "MoneTIC" répond aux exigences et architectures décrites dans l'article "Mise en œuvre et sécurisation d'une plateforme monétique pédagogique" (Sulmont, Pasquet, Reynaud - MoneTIC).
 
 ## 1. Architecture de Base et Cinématique (✅ Couvert / Amélioré)
 **Document :** Exige une transaction de bout en bout simulant une banque émettrice (ENSIBANK A) et une banque acquéreur (ENSIBANK B), avec routage, acquisition et autorisation.
@@ -35,10 +35,10 @@ Ce rapport évalue dans quelle mesure la plateforme actuelle "MoneTIC" répond a
 **MoneTIC :** 
 - Dépasse les concepts du document de base en intégrant une dimension ludique et moderne avec un **réel portail étudiant complet** (`Cusus`, `portal/student`).
 - Les étudiants disposent de "Labs", d'exercices avec hints, d'un terminal d'attaque (AttackBox pour des CTFs), et de validation automatique de scores (≥80% passe au module suivant). 
-- Le formateur dispose d'un **Monitoring Live** sur WebSockets pour superviser la promotion et peut injecter de la latence ou de la fraude sur le réseau de laboratoire (`Portal/instructor/lab-control`) - ce qui est bien plus dynamique que le concept de base ENSICAEN.
+- Le formateur dispose d'un **Monitoring Live** sur WebSockets pour superviser la promotion et peut injecter de la latence ou de la fraude sur le réseau de laboratoire (`Portal/instructor/lab-control`) - ce qui est bien plus dynamique que le concept de base MoneTIC.
 
 ---
 
 ### Conclusion Générale
 La plateforme **MoneTIC fait tout ce que le document décrit d'un point de vue logiciel, architectural, et cryptographique.** Elle respecte rigoureusement la logique des transactions et des couches de sécurité.
-La seule différence réside dans l'abstraction du "matériel" : là où l'ENSICAEN utilisait de vrais terminaux et de vrais automates, MoneTIC virtualise ces équipements (Web POS, Cartes Virtuelles, Simulateur HSM). En contrepartie, **l'aspect pédagogique de MoneTIC est beaucoup plus automatisé, moderne, distribué et interactif (CTF, Parcours en ligne, Monitoring temps réel).**
+La seule différence réside dans l'abstraction du "matériel" : là où l'MoneTIC utilisait de vrais terminaux et de vrais automates, MoneTIC virtualise ces équipements (Web POS, Cartes Virtuelles, Simulateur HSM). En contrepartie, **l'aspect pédagogique de MoneTIC est beaucoup plus automatisé, moderne, distribué et interactif (CTF, Parcours en ligne, Monitoring temps réel).**

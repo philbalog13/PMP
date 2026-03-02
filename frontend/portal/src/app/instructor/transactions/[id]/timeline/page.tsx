@@ -122,10 +122,10 @@ export default function InstructorTimelinePage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-                <div className="text-center">
-                    <div className="h-10 w-10 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin mx-auto mb-4" />
-                    <p className="text-sm text-slate-400">Chargement de la timeline...</p>
+            <div style={{ minHeight: '100vh', background: 'var(--n-bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ textAlign: 'center' }}>
+                    <div style={{ width: '40px', height: '40px', border: '2px solid var(--n-border)', borderTopColor: 'var(--n-accent)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 12px' }} />
+                    <p style={{ fontSize: '13px', color: 'var(--n-text-tertiary)' }}>Chargement de la timeline...</p>
                 </div>
             </div>
         );
@@ -133,10 +133,10 @@ export default function InstructorTimelinePage() {
 
     if (error || !txn) {
         return (
-            <div className="min-h-screen bg-slate-950 p-8">
-                <div className="max-w-2xl mx-auto text-center py-20">
-                    <p className="text-amber-400 mb-4">{error}</p>
-                    <button onClick={() => router.back()} className="text-blue-400 text-sm">Retour</button>
+            <div style={{ minHeight: '100vh', background: 'var(--n-bg-secondary)', padding: '32px' }}>
+                <div style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center', paddingTop: '80px' }}>
+                    <p style={{ color: 'var(--n-warning)', marginBottom: '16px' }}>{error}</p>
+                    <button onClick={() => router.back()} style={{ color: 'var(--n-accent)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px' }}>Retour</button>
                 </div>
             </div>
         );
@@ -151,33 +151,37 @@ export default function InstructorTimelinePage() {
     const merchantName = txn.merchant_name || 'Marchand';
 
     return (
-        <div className="min-h-screen bg-slate-950">
-            <div className="border-b border-white/5 bg-slate-900/50 backdrop-blur-sm sticky top-0 z-50">
-                <div className="max-w-7xl mx-auto px-4 md:px-8 py-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <button onClick={() => router.push('/instructor/transactions')} className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition">
-                                <ArrowLeft size={16} />
-                                Transactions
-                            </button>
-                            <div className="h-6 w-px bg-white/10" />
-                            <h1 className="text-lg font-bold text-white flex items-center gap-2">
-                                <Activity size={20} className="text-blue-400" />
-                                Timeline Transaction
-                            </h1>
-                        </div>
-                        <div className="flex items-center gap-4 text-sm">
-                            <span className="text-slate-500 hidden md:inline">{txn.transaction_id}</span>
-                            <span className={`px-2 py-0.5 rounded text-xs font-bold ${isApproved ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
-                                {txn.status}
-                            </span>
-                        </div>
+        <div style={{ minHeight: '100vh', background: 'var(--n-bg-secondary)' }}>
+            {/* Header sticky */}
+            <div style={{ borderBottom: '1px solid var(--n-border)', background: 'var(--n-bg-primary)', position: 'sticky', top: 0, zIndex: 50 }}>
+                <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <button onClick={() => router.push('/instructor/transactions')} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--n-text-secondary)', background: 'none', border: 'none', cursor: 'pointer' }}>
+                            <ArrowLeft size={14} />
+                            Transactions
+                        </button>
+                        <div style={{ width: '1px', height: '20px', background: 'var(--n-border)' }} />
+                        <h1 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--n-text-primary)', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                            <Activity size={18} style={{ color: 'var(--n-accent)' }} />
+                            Timeline Transaction
+                        </h1>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '13px' }}>
+                        <span style={{ color: 'var(--n-text-tertiary)' }} className="hidden md:inline">{txn.transaction_id}</span>
+                        <span style={{
+                            padding: '3px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 700,
+                            background: isApproved ? 'var(--n-success-bg)' : 'var(--n-danger-bg)',
+                            color: isApproved ? 'var(--n-success)' : 'var(--n-danger)'
+                        }}>
+                            {txn.status}
+                        </span>
                     </div>
                 </div>
             </div>
 
-            <div className="max-w-7xl mx-auto px-4 md:px-8 py-6">
-                <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
+            <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>
+                {/* Summary cards */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '10px', marginBottom: '20px' }}>
                     <SummaryCard icon={CreditCard} label="Montant" value={`${amount.toFixed(2)} EUR`} />
                     <SummaryCard icon={Store} label="Marchand" value={merchantName} />
                     <SummaryCard icon={User} label="Client" value={clientName} />
@@ -186,37 +190,40 @@ export default function InstructorTimelinePage() {
                     <SummaryCard icon={Activity} label="Étapes" value={`${timeline.length}`} />
                 </div>
 
-                <div className="flex flex-wrap gap-3 mb-6">
-                    <LegendItem color="bg-blue-500" label="Process" />
-                    <LegendItem color="bg-amber-500" label="Sécurité" />
-                    <LegendItem color="bg-violet-500" label="Decision" />
-                    <LegendItem color="bg-emerald-500" label="Données" />
-                    <div className="h-4 w-px bg-white/10" />
-                    <LegendItem color="bg-emerald-500" label="Succès" border />
-                    <LegendItem color="bg-red-500" label="Échec" border />
-                    <LegendItem color="bg-blue-500" label="En attente" dashed />
+                {/* Légende */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
+                    <LegendItem color="#3b82f6" label="Process" />
+                    <LegendItem color="#f59e0b" label="Sécurité" />
+                    <LegendItem color="#8b5cf6" label="Decision" />
+                    <LegendItem color="#10b981" label="Données" />
+                    <div style={{ width: '1px', height: '16px', background: 'var(--n-border)' }} />
+                    <LegendItem color="#10b981" label="Succès" border />
+                    <LegendItem color="#ef4444" label="Échec" border />
+                    <LegendItem color="#3b82f6" label="En attente" dashed />
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-slate-900/30 overflow-hidden mb-6">
+                {/* Timeline */}
+                <div style={{ borderRadius: '8px', border: '1px solid var(--n-border)', background: 'var(--n-bg-primary)', overflow: 'hidden', marginBottom: '20px' }}>
                     {timeline.length > 0 ? (
                         <TransactionTimeline steps={timeline} />
                     ) : (
-                        <div className="text-center py-20 text-slate-500">
-                            <Activity size={32} className="mx-auto mb-3" />
+                        <div style={{ textAlign: 'center', padding: '60px', color: 'var(--n-text-tertiary)' }}>
+                            <Activity size={32} style={{ margin: '0 auto 12px' }} />
                             <p>Aucune donnée de timeline disponible</p>
                         </div>
                     )}
                 </div>
 
-                <button onClick={() => setShowRaw(!showRaw)} className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-300 transition mb-4">
-                    <Code size={14} />
+                {/* Raw data */}
+                <button onClick={() => setShowRaw(!showRaw)} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--n-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer', marginBottom: '12px' }}>
+                    <Code size={13} />
                     Données brutes
-                    {showRaw ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    {showRaw ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                 </button>
 
                 {showRaw && (
-                    <div className="rounded-xl border border-white/10 bg-black/40 p-4 overflow-x-auto">
-                        <pre className="text-xs text-slate-400 font-mono whitespace-pre-wrap">
+                    <div style={{ borderRadius: '8px', border: '1px solid var(--n-border)', background: 'var(--n-bg-secondary)', padding: '16px', overflowX: 'auto' }}>
+                        <pre style={{ fontSize: '12px', color: 'var(--n-text-secondary)', fontFamily: 'monospace', whiteSpace: 'pre-wrap', margin: 0 }}>
                             {JSON.stringify(timeline, null, 2)}
                         </pre>
                     </div>
@@ -228,21 +235,26 @@ export default function InstructorTimelinePage() {
 
 function SummaryCard({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
     return (
-        <div className="rounded-xl border border-white/10 bg-slate-800/30 p-3">
-            <div className="flex items-center gap-1.5 mb-1">
-                <Icon size={12} className="text-slate-500" />
-                <span className="text-[10px] text-slate-500 uppercase tracking-wider">{label}</span>
+        <div style={{ borderRadius: '8px', border: '1px solid var(--n-border)', background: 'var(--n-bg-primary)', padding: '10px 14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                <Icon size={12} style={{ color: 'var(--n-text-tertiary)' }} />
+                <span style={{ fontSize: '11px', color: 'var(--n-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
             </div>
-            <span className="text-sm font-bold text-white truncate block">{value}</span>
+            <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--n-text-primary)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</span>
         </div>
     );
 }
 
 function LegendItem({ color, label, border, dashed }: { color: string; label: string; border?: boolean; dashed?: boolean }) {
+    const style: React.CSSProperties = {
+        width: '12px', height: '12px', borderRadius: '3px', flexShrink: 0,
+        background: border || dashed ? 'transparent' : color,
+        border: border ? `2px solid ${color}` : dashed ? `1px dashed ${color}` : 'none'
+    };
     return (
-        <div className="flex items-center gap-1.5">
-            <div className={`w-3 h-3 rounded-sm ${border ? `border-2 ${color.replace('bg-', 'border-')} bg-transparent` : dashed ? `border ${color.replace('bg-', 'border-')} bg-transparent border-dashed` : color}`} />
-            <span className="text-[10px] text-slate-500">{label}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={style} />
+            <span style={{ fontSize: '11px', color: 'var(--n-text-tertiary)' }}>{label}</span>
         </div>
     );
 }

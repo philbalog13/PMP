@@ -73,14 +73,49 @@ router.post('/export-key', controller.exportKey);
 // ─── CVV Operations ──────────────────────────────────────────────────────────
 router.post('/generate-cvv', controller.generateCvv);
 
+// ─── Cold Boot / N.A.C Key Exchange ──────────────────────────────────────────
+// Derives a Zone PIN Key (ZPK) for a POS terminal Cold Boot sequence.
+// Called by sim-network-switch during NAC initialization flow.
+router.post('/session-key', (req: Request, res: Response) => {
+    const { terminalId, sessionId } = req.body as { terminalId?: string; sessionId?: string };
+    // Generate a cryptographically-realistic ZPK (32 random hex bytes = 256-bit AES key)
+    const crypto = require('crypto');
+    const zpk = crypto.randomBytes(32).toString('hex').toUpperCase();
+    const zmkId = `ZMK_MoneTIC_${new Date().getFullYear()}`;
+    const kcv = zpk.substring(0, 6); // Key Check Value (first 3 bytes of ECB encrypt)
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24h
+
+    console.log(`[HSM] Cold Boot: ZPK generated for terminal ${terminalId || 'UNKNOWN'}`);
+
+    res.json({
+        success: true,
+        data: {
+            zpk,
+            zpkKcv: kcv,
+            zmkId,
+            sessionId: sessionId || crypto.randomUUID(),
+            terminalId: terminalId || 'UNKNOWN',
+            expiresAt,
+            algorithm: 'AES-256',
+            keyUsage: 'PIN_ENCRYPTION'
+        },
+        _educational: {
+            description: 'Zone PIN Key (ZPK) — Clé de session dérivée du ZMK pour chiffrement PIN du TPE',
+            flow: 'NAC (Nouvelle Architecture Cryptographique): TPE→Acquéreur→Switch→HSM',
+            note: 'En production, le ZPK est chiffré sous ZMK avant transmission. Ici affiché en clair à des fins pédagogiques.'
+        }
+    });
+});
+
 // ─── Discoverable Admin Routes (CTF targets) ─────────────────────────────────
-// NOTE: /hsm/config (GET + POST) has been REMOVED.
-// Vulnerabilities are no longer self-activated by students.
-// They are pre-configured per challenge by the gateway.
 router.get('/keys', controller.listKeys);
+router.delete('/keys/:label', controller.deleteKey);
+router.get('/logs', controller.getLogs);
 router.get('/backup', controller.backup);
 router.get('/terminal-keys', controller.terminalKeys);
 router.get('/status', controller.status);
+router.get('/config', controller.getConfig);
+router.post('/config', controller.setConfig);
 
 // /hsm/pin/verify and /hsm/pin/generate-block are on the root app (legacy routes)
 

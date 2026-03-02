@@ -1,23 +1,25 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import dynamic from 'next/dynamic';
 import { useAuth } from '../../../../auth/useAuth';
-import { ArrowLeft, Activity, Clock, Store, CreditCard, ChevronDown, ChevronUp, Code, type LucideIcon } from 'lucide-react';
-import type { TimelineStep } from '@shared/components/TransactionTimeline';
-
-const TransactionTimeline = dynamic(
-    () => import('@shared/components/TransactionTimeline'),
-    {
-        ssr: false,
-        loading: () => (
-            <div className="flex items-center justify-center py-20">
-                <div className="h-8 w-8 border-2 border-purple-400/30 border-t-purple-400 rounded-full animate-spin" />
-            </div>
-        )
-    }
-);
+import {
+    Activity,
+    AlertTriangle,
+    ArrowLeft,
+    Clock,
+    CreditCard,
+    Hash,
+    Store,
+} from 'lucide-react';
+import { formatDateTimeString, formatMoney } from '@shared/lib/formatting';
+import { BankPageHeader } from '@shared/components/banking/layout/BankPageHeader';
+import { BankButton } from '@shared/components/banking/primitives/BankButton';
+import { BankBadge } from '@shared/components/banking/primitives/BankBadge';
+import { BankSpinner } from '@shared/components/banking/primitives/BankSpinner';
+import { BankEmptyState } from '@shared/components/banking/feedback/BankEmptyState';
+import { StatCard } from '@shared/components/banking/data-display/StatCard';
+import { BankTable, type BankTableColumn } from '@shared/components/banking/data-display/BankTable';
 
 type TransactionSummary = {
     transaction_id: string;
@@ -26,6 +28,19 @@ type TransactionSummary = {
     merchant_name: string;
     masked_pan: string;
     processing_steps: unknown;
+    currency?: string;
+};
+
+type TimelineCategory = 'process' | 'security' | 'decision' | 'data';
+
+type TimelineStep = {
+    step: number;
+    name: string;
+    category: TimelineCategory;
+    status: string;
+    timestamp: string;
+    duration_ms: number;
+    details: Record<string, unknown>;
 };
 
 const asObject = (value: unknown): Record<string, unknown> =>
@@ -36,7 +51,12 @@ const toNumber = (value: unknown): number => {
     return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const toCategory = (value: unknown): TimelineStep['category'] => {
+const getErrorMessage = (error: unknown, fallback: string): string => {
+    if (error instanceof Error && error.message) return error.message;
+    return fallback;
+};
+
+const toCategory = (value: unknown): TimelineCategory => {
     const category = String(value ?? '').toLowerCase();
     if (category === 'security' || category === 'decision' || category === 'data') {
         return category;
@@ -44,22 +64,17 @@ const toCategory = (value: unknown): TimelineStep['category'] => {
     return 'process';
 };
 
-const getErrorMessage = (error: unknown, fallback: string): string => {
-    if (error instanceof Error && error.message) return error.message;
-    return fallback;
-};
-
 const normalizeTransaction = (raw: unknown): TransactionSummary | null => {
     const source = asObject(raw);
     if (Object.keys(source).length === 0) return null;
-
     return {
         transaction_id: String(source.transaction_id || source.transactionId || ''),
-        status: String(source.status || ''),
+        status: String(source.status || 'PENDING'),
         amount: toNumber(source.amount),
         merchant_name: String(source.merchant_name || source.merchantName || ''),
         masked_pan: String(source.masked_pan || source.maskedPan || ''),
         processing_steps: source.processing_steps,
+        currency: String(source.currency || 'EUR'),
     };
 };
 
@@ -68,25 +83,48 @@ const normalizeTimeline = (raw: unknown, fallback: unknown): TimelineStep[] => {
     return source.map((step, index) => {
         const row = asObject(step);
         const stepNumber = Number.parseInt(String(row.step ?? index + 1), 10);
-        const details = asObject(row.details);
-
         return {
             step: Number.isFinite(stepNumber) ? stepNumber : index + 1,
             name: String(row.name || row.step_name || `Step ${index + 1}`),
             category: toCategory(row.category),
             status: String(row.status || 'pending'),
-            timestamp: String(row.timestamp || ''),
-            duration_ms: toNumber(row.duration_ms),
-            details,
+            timestamp: String(row.timestamp || row.created_at || ''),
+            duration_ms: toNumber(row.duration_ms ?? row.durationMs),
+            details: asObject(row.details),
         };
     });
+};
+
+const statusToVariant = (status: string) => {
+    const s = status.toUpperCase();
+    if (s === 'SUCCESS' || s === 'APPROVED' || s === 'SETTLED') return 'success' as const;
+    if (s === 'FAILED' || s === 'DECLINED' || s === 'ERROR') return 'danger' as const;
+    if (s === 'PENDING' || s === 'QUEUED' || s === 'PROCESSING') return 'pending' as const;
+    if (s === 'SKIPPED' || s === 'VOIDED') return 'neutral' as const;
+    return 'info' as const;
+};
+
+const categoryToVariant = (category: TimelineCategory) => {
+    if (category === 'security') return 'warning' as const;
+    if (category === 'decision') return 'accent' as const;
+    if (category === 'data') return 'info' as const;
+    return 'neutral' as const;
+};
+
+const detailsToText = (details: Record<string, unknown>) => {
+    const entries = Object.entries(details);
+    if (entries.length === 0) return '-';
+    return entries
+        .slice(0, 3)
+        .map(([key, value]) => `${key}: ${String(value)}`)
+        .join(' | ');
 };
 
 export default function MerchantTimelinePage() {
     const params = useParams();
     const router = useRouter();
     const { isLoading } = useAuth(true);
-    const id = params.id as string;
+    const id = String(params.id || '');
 
     const [txn, setTxn] = useState<TransactionSummary | null>(null);
     const [timeline, setTimeline] = useState<TimelineStep[]>([]);
@@ -96,140 +134,238 @@ export default function MerchantTimelinePage() {
 
     useEffect(() => {
         if (!id || isLoading) return;
+        let active = true;
 
-        const token = typeof window !== 'undefined' ? (localStorage.getItem('token') || '') : '';
-        void fetch(`/api/merchant/transactions/${id}/timeline`, {
-            headers: { Authorization: `Bearer ${token}` }
-        })
-            .then((res) => res.json() as Promise<unknown>)
-            .then((payload) => {
+        const load = async () => {
+            try {
+                setLoading(true);
+                setError(null);
+                const token = typeof window !== 'undefined' ? (localStorage.getItem('token') || '') : '';
+                const response = await fetch(`/api/merchant/transactions/${id}/timeline`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                const payload = await response.json() as unknown;
                 const data = asObject(payload);
                 if (data.success === false) {
                     throw new Error(String(data.error || 'Failed'));
                 }
 
+                if (!active) return;
                 const transaction = normalizeTransaction(data.transaction);
                 setTxn(transaction);
                 setTimeline(normalizeTimeline(data.timeline, transaction?.processing_steps));
-            })
-            .catch((loadError: unknown) => setError(getErrorMessage(loadError, 'Impossible de charger la timeline')))
-            .finally(() => setLoading(false));
+            } catch (loadError: unknown) {
+                if (!active) return;
+                setError(getErrorMessage(loadError, 'Impossible de charger la timeline'));
+            } finally {
+                if (active) setLoading(false);
+            }
+        };
+
+        void load();
+        return () => {
+            active = false;
+        };
     }, [id, isLoading]);
+
+    const totalDuration = useMemo(
+        () => timeline.reduce((sum, step) => sum + step.duration_ms, 0),
+        [timeline]
+    );
+
+    const timelineColumns = useMemo<BankTableColumn<TimelineStep>[]>(() => ([
+        {
+            key: 'step',
+            header: '#',
+            align: 'right',
+            sortable: true,
+            render: (row) => <span style={{ fontFamily: 'var(--bank-font-mono)' }}>{row.step}</span>,
+        },
+        {
+            key: 'name',
+            header: 'Etape',
+            sortable: true,
+            render: (row) => <span style={{ fontWeight: 600 }}>{row.name}</span>,
+        },
+        {
+            key: 'category',
+            header: 'Categorie',
+            render: (row) => (
+                <BankBadge
+                    variant={categoryToVariant(row.category)}
+                    label={row.category.toUpperCase()}
+                />
+            ),
+        },
+        {
+            key: 'status',
+            header: 'Statut',
+            render: (row) => (
+                <BankBadge
+                    variant={statusToVariant(row.status)}
+                    label={row.status.toUpperCase()}
+                    dot
+                />
+            ),
+        },
+        {
+            key: 'duration_ms',
+            header: 'Duree',
+            align: 'right',
+            sortable: true,
+            render: (row) => `${row.duration_ms}ms`,
+        },
+        {
+            key: 'timestamp',
+            header: 'Horodatage',
+            render: (row) => formatDateTimeString(row.timestamp),
+        },
+        {
+            key: 'details',
+            header: 'Details',
+            render: (row) => (
+                <span
+                    style={{
+                        color: 'var(--bank-text-secondary)',
+                        fontSize: 'var(--bank-text-xs)',
+                        whiteSpace: 'normal',
+                        wordBreak: 'break-word',
+                    }}
+                >
+                    {detailsToText(row.details)}
+                </span>
+            ),
+        },
+    ]), []);
 
     if (isLoading || loading) {
         return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-                <div className="text-center">
-                    <div className="h-10 w-10 border-2 border-purple-400/30 border-t-purple-400 rounded-full animate-spin mx-auto mb-4" />
-                    <p className="text-sm text-slate-400">Chargement de la timeline...</p>
-                </div>
+            <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <BankSpinner size={40} />
             </div>
         );
     }
 
     if (error || !txn) {
         return (
-            <div className="min-h-screen bg-slate-950 p-8">
-                <div className="max-w-2xl mx-auto text-center py-20">
-                    <p className="text-amber-400 mb-4">{error}</p>
-                    <button onClick={() => router.back()} className="text-purple-400 text-sm">Retour</button>
-                </div>
+            <div style={{ maxWidth: 960, margin: '0 auto', padding: 'var(--bank-space-6)' }}>
+                <BankEmptyState
+                    icon={<AlertTriangle size={20} aria-hidden="true" />}
+                    title="Timeline indisponible"
+                    description={error || 'Transaction introuvable.'}
+                    action={(
+                        <BankButton variant="ghost" onClick={() => router.push('/merchant/transactions')}>
+                            Retour transactions
+                        </BankButton>
+                    )}
+                />
             </div>
         );
     }
 
-    const isApproved = txn.status === 'APPROVED';
-    const amount = txn.amount;
-    const totalDuration = timeline.reduce((sum, step) => sum + step.duration_ms, 0);
-
     return (
-        <div className="min-h-screen bg-slate-950">
-            <div className="border-b border-white/5 bg-slate-900/50 backdrop-blur-sm sticky top-0 z-50">
-                <div className="max-w-7xl mx-auto px-4 md:px-8 py-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <button onClick={() => router.push('/merchant/transactions')} className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition">
-                                <ArrowLeft size={16} />
-                                Transactions
-                            </button>
-                            <div className="h-6 w-px bg-white/10" />
-                            <h1 className="text-lg font-bold text-white flex items-center gap-2">
-                                <Activity size={20} className="text-purple-400" />
-                                Timeline Transaction
-                            </h1>
-                        </div>
-                        <div className="flex items-center gap-4 text-sm">
-                            <span className="text-slate-500 hidden md:inline">{txn.transaction_id}</span>
-                            <span className={`px-2 py-0.5 rounded text-xs font-bold ${isApproved ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
-                                {txn.status}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div className="max-w-7xl mx-auto px-4 md:px-8 py-6">
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-                    <SummaryCard icon={CreditCard} label="Montant" value={`${amount.toFixed(2)} EUR`} />
-                    <SummaryCard icon={Store} label="Marchand" value={txn.merchant_name || 'N/A'} />
-                    <SummaryCard icon={CreditCard} label="Carte" value={txn.masked_pan || 'N/A'} />
-                    <SummaryCard icon={Clock} label="Durée totale" value={`${totalDuration}ms`} />
-                    <SummaryCard icon={Activity} label="Étapes" value={`${timeline.length}`} />
-                </div>
-
-                <div className="flex flex-wrap gap-3 mb-6">
-                    <LegendItem color="bg-blue-500" label="Process" />
-                    <LegendItem color="bg-amber-500" label="Sécurité" />
-                    <LegendItem color="bg-violet-500" label="Decision" />
-                    <LegendItem color="bg-emerald-500" label="Données" />
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-slate-900/30 overflow-hidden mb-6">
-                    {timeline.length > 0 ? (
-                        <TransactionTimeline steps={timeline} />
-                    ) : (
-                        <div className="text-center py-20 text-slate-500">
-                            <Activity size={32} className="mx-auto mb-3" />
-                            <p>Aucune donnée de timeline disponible</p>
-                        </div>
-                    )}
-                </div>
-
-                <button onClick={() => setShowRaw(!showRaw)} className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-300 transition mb-4">
-                    <Code size={14} />
-                    Données brutes
-                    {showRaw ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                </button>
-
-                {showRaw && (
-                    <div className="rounded-xl border border-white/10 bg-black/40 p-4 overflow-x-auto">
-                        <pre className="text-xs text-slate-400 font-mono whitespace-pre-wrap">
-                            {JSON.stringify(timeline, null, 2)}
-                        </pre>
+        <div style={{ maxWidth: 1320, margin: '0 auto', padding: 'var(--bank-space-6)' }}>
+            <BankPageHeader
+                title="Timeline transaction"
+                subtitle="Suivi detaille du traitement marchand, etape par etape."
+                actions={(
+                    <div style={{ display: 'flex', gap: 'var(--bank-space-2)', flexWrap: 'wrap' }}>
+                        <BankButton variant="ghost" size="sm" icon={ArrowLeft} onClick={() => router.push('/merchant/transactions')}>
+                            Retour liste
+                        </BankButton>
+                        <BankButton variant="ghost" size="sm" onClick={() => setShowRaw((value) => !value)}>
+                            {showRaw ? 'Masquer brut' : 'Afficher brut'}
+                        </BankButton>
                     </div>
                 )}
-            </div>
-        </div>
-    );
-}
+            />
 
-function SummaryCard({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
-    return (
-        <div className="rounded-xl border border-white/10 bg-slate-800/30 p-3">
-            <div className="flex items-center gap-1.5 mb-1">
-                <Icon size={12} className="text-slate-500" />
-                <span className="text-[10px] text-slate-500 uppercase tracking-wider">{label}</span>
+            <div
+                style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                    gap: 'var(--bank-space-4)',
+                    marginBottom: 'var(--bank-space-5)',
+                }}
+            >
+                <StatCard label="Montant" value={formatMoney(txn.amount, txn.currency || 'EUR')} icon={CreditCard} index={0} />
+                <StatCard label="Etapes" value={String(timeline.length)} icon={Activity} index={1} />
+                <StatCard label="Duree totale" value={`${totalDuration}ms`} icon={Clock} index={2} />
+                <StatCard label="Statut final" value={txn.status.toUpperCase()} icon={AlertTriangle} accent={txn.status.toUpperCase() === 'APPROVED'} index={3} />
             </div>
-            <span className="text-sm font-bold text-white truncate block">{value}</span>
-        </div>
-    );
-}
 
-function LegendItem({ color, label }: { color: string; label: string }) {
-    return (
-        <div className="flex items-center gap-1.5">
-            <div className={`w-3 h-3 rounded-sm ${color}`} />
-            <span className="text-[10px] text-slate-500">{label}</span>
+            <section
+                className="bk-card"
+                style={{
+                    marginBottom: 'var(--bank-space-4)',
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                    gap: 'var(--bank-space-4)',
+                }}
+            >
+                <div>
+                    <p className="bk-label-upper" style={{ marginBottom: 6 }}>Transaction ID</p>
+                    <p style={{ margin: 0, display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                        <Hash size={14} aria-hidden="true" />
+                        <code>{txn.transaction_id || id}</code>
+                    </p>
+                </div>
+                <div>
+                    <p className="bk-label-upper" style={{ marginBottom: 6 }}>Marchand</p>
+                    <p style={{ margin: 0, display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                        <Store size={14} aria-hidden="true" />
+                        {txn.merchant_name || 'N/A'}
+                    </p>
+                </div>
+                <div>
+                    <p className="bk-label-upper" style={{ marginBottom: 6 }}>Carte</p>
+                    <p style={{ margin: 0, display: 'inline-flex', gap: 6, alignItems: 'center', fontFamily: 'var(--bank-font-mono)' }}>
+                        <CreditCard size={14} aria-hidden="true" />
+                        {txn.masked_pan || 'N/A'}
+                    </p>
+                </div>
+            </section>
+
+            {timeline.length === 0 ? (
+                <div className="bk-card">
+                    <BankEmptyState
+                        icon={<Activity size={20} aria-hidden="true" />}
+                        title="Aucune etape disponible"
+                        description="La transaction existe mais la timeline detaillee est vide."
+                    />
+                </div>
+            ) : (
+                <BankTable
+                    columns={timelineColumns}
+                    data={timeline}
+                    rowKey={(row) => `${row.step}-${row.timestamp}`}
+                    caption="Timeline transaction marchand"
+                    emptyTitle="Timeline vide"
+                    emptyDesc="Aucune information de traitement disponible."
+                />
+            )}
+
+            {showRaw && (
+                <section className="bk-card" style={{ marginTop: 'var(--bank-space-4)' }}>
+                    <h2 style={{ marginTop: 0, marginBottom: 'var(--bank-space-3)', fontSize: 'var(--bank-text-base)' }}>
+                        Donnees brutes
+                    </h2>
+                    <pre
+                        style={{
+                            margin: 0,
+                            overflowX: 'auto',
+                            fontSize: 'var(--bank-text-xs)',
+                            background: 'var(--bank-bg-sunken)',
+                            border: '1px solid var(--bank-border-subtle)',
+                            borderRadius: 'var(--bank-radius-md)',
+                            padding: 'var(--bank-space-3)',
+                            color: 'var(--bank-text-secondary)',
+                        }}
+                    >
+                        {JSON.stringify(timeline, null, 2)}
+                    </pre>
+                </section>
+            )}
         </div>
     );
 }

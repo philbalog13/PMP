@@ -18,7 +18,7 @@ import cursusRoutes from './routes/cursus.routes';
 import adminRoutes from './routes/admin.routes';
 import { logger } from './utils/logger';
 
-const app: Application = express();
+const app = express();
 
 // Security middleware - Advanced Helmet configuration
 app.use(helmet({

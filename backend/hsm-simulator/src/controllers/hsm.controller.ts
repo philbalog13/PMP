@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { Request, Response } from 'express';
 import { HSMSimulator } from '../core/HSMSimulator';
 import { HsmError, isHsmError } from '../core/errors';
@@ -136,6 +138,45 @@ export class HSMController {
         }
 
         res.json(response);
+    };
+
+    public deleteKey = async (req: Request, res: Response): Promise<void> => {
+        const { label } = req.params;
+        if (!label) {
+            res.status(400).json({ success: false, error: 'Key label is required' });
+            return;
+        }
+
+        const deleted = hsm.keyStorage.deleteKey(label);
+        if (deleted) {
+            res.json({ success: true, message: `Key '${label}' deleted successfully` });
+        } else {
+            res.status(404).json({ success: false, error: `Key '${label}' not found` });
+        }
+    };
+
+    public getLogs = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const logPath = path.resolve(process.cwd(), 'hsm-audit.log');
+            if (!fs.existsSync(logPath)) {
+                res.json({ success: true, logs: [] });
+                return;
+            }
+
+            const content = fs.readFileSync(logPath, 'utf8');
+            const lines = content.trim().split('\n').filter(Boolean);
+            const logs = lines.map(line => {
+                try {
+                    return JSON.parse(line);
+                } catch {
+                    return { message: line, timestamp: new Date().toISOString() };
+                }
+            }).reverse().slice(0, 100); // Return last 100 logs
+
+            res.json({ success: true, logs });
+        } catch (error: any) {
+            res.status(500).json({ success: false, error: 'Failed to read logs', details: error.message });
+        }
     };
 
     public backup = (req: Request, res: Response): void => {

@@ -14,7 +14,10 @@ export function CourseCard({
     className?: string;
 }) {
     return (
-        <section className={`glass-panel rounded-2xl p-6 md:p-8 ${className}`.trim()}>
+        <section
+            className={`rounded-2xl p-6 md:p-8 ${className}`.trim()}
+            style={{ background: 'var(--bg-surface)', border: '1px solid rgba(255,255,255,0.06)' }}
+        >
             {children}
         </section>
     );
@@ -31,7 +34,7 @@ export function CoursePill({
 }) {
     const tones: Record<string, string> = {
         slate: 'bg-slate-800/60 border-white/10 text-slate-200',
-        emerald: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300',
+        emerald: 'bg-amber-500/10 border-amber-500/20 text-amber-300',
         cyan: 'bg-cyan-500/10 border-cyan-500/20 text-cyan-200',
         amber: 'bg-amber-500/10 border-amber-500/20 text-amber-200',
         rose: 'bg-rose-500/10 border-rose-500/20 text-rose-200',
@@ -48,12 +51,13 @@ export function CoursePill({
 function CourseBackground() {
     return (
         <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-            <div className="absolute inset-0 bg-slate-950" />
-            <div className="absolute inset-0 bg-grid opacity-40" />
-            <div className="absolute -top-32 left-1/2 h-[420px] w-[900px] -translate-x-1/2 rounded-full bg-gradient-to-r from-emerald-500/20 via-cyan-500/10 to-blue-500/20 blur-3xl" />
-            <div className="absolute top-[45%] -left-40 h-[360px] w-[360px] rounded-full bg-gradient-to-br from-fuchsia-500/10 to-sky-500/10 blur-3xl" />
-            <div className="absolute -bottom-36 -right-44 h-[420px] w-[420px] rounded-full bg-gradient-to-br from-amber-500/10 to-emerald-500/10 blur-3xl" />
-            <div className="absolute inset-0 bg-noise opacity-30" />
+            <div className="absolute inset-0" style={{ background: 'var(--bg-deep)' }} />
+            <div className="absolute -top-32 left-1/2 h-[420px] w-[900px] -translate-x-1/2 rounded-full blur-3xl"
+                 style={{ background: 'radial-gradient(ellipse,rgba(245,158,11,0.12) 0%,rgba(6,182,212,0.06) 50%,transparent 70%)' }} />
+            <div className="absolute top-[45%] -left-40 h-[360px] w-[360px] rounded-full blur-3xl"
+                 style={{ background: 'radial-gradient(circle,rgba(168,85,247,0.06),transparent 70%)' }} />
+            <div className="absolute -bottom-36 -right-44 h-[420px] w-[420px] rounded-full blur-3xl"
+                 style={{ background: 'radial-gradient(circle,rgba(6,182,212,0.07),transparent 70%)' }} />
         </div>
     );
 }
@@ -90,19 +94,21 @@ export function CoursePageShell({
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 md:py-10">
                 <div className="space-y-6">
                     {crumbs.length > 0 && (
-                        <nav className="text-xs text-slate-500 flex items-center gap-1.5 flex-wrap">
+                        <nav className="text-xs flex items-center gap-1.5 flex-wrap" style={{ color: 'var(--text-muted)' }}>
                             {crumbs.map((crumb, index) => (
                                 <React.Fragment key={`${crumb.label}-${index}`}>
                                     {crumb.href ? (
-                                        <Link href={crumb.href} className="hover:text-emerald-400 transition-colors">
+                                        <Link href={crumb.href} className="transition-colors hover:text-white">
                                             {crumb.label}
                                         </Link>
                                     ) : (
-                                        <span className={index === crumbs.length - 1 ? 'text-emerald-300' : 'text-slate-400'}>
+                                        <span style={index === crumbs.length - 1 ? { color: '#fbbf24' } : { color: 'var(--text-secondary)' }}>
                                             {crumb.label}
                                         </span>
                                     )}
-                                    {index < crumbs.length - 1 && <ChevronRight size={12} className="text-slate-600" />}
+                                    {index < crumbs.length - 1 && (
+                                        <ChevronRight size={12} style={{ opacity: 0.35 }} />
+                                    )}
                                 </React.Fragment>
                             ))}
                         </nav>
@@ -111,30 +117,43 @@ export function CoursePageShell({
                     {backHref && (
                         <Link
                             href={backHref}
-                            className="inline-flex items-center gap-2 text-base text-slate-400 hover:text-white transition"
+                            className="inline-flex items-center gap-2 text-sm transition-colors"
+                            style={{ color: 'var(--text-secondary)' }}
+                            onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#fff'}
+                            onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'}
                         >
                             <ArrowLeft className="h-4 w-4" />
                             {backLabel}
                         </Link>
                     )}
 
-                    <header className="glass-panel rounded-3xl p-6 md:p-8 relative overflow-hidden">
-                        <div className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-emerald-500/10 blur-3xl" />
-                        <div className="pointer-events-none absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-cyan-500/10 blur-3xl" />
+                    <header className="rounded-3xl p-6 md:p-8 relative overflow-hidden"
+                            style={{
+                                background: 'var(--bg-surface)',
+                                border: '1px solid rgba(255,255,255,0.07)',
+                            }}>
+                        <div className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full blur-3xl"
+                             style={{ background: 'radial-gradient(circle,rgba(245,158,11,0.1),transparent 70%)' }} />
+                        <div className="pointer-events-none absolute -bottom-24 -left-24 h-64 w-64 rounded-full blur-3xl"
+                             style={{ background: 'radial-gradient(circle,rgba(6,182,212,0.07),transparent 70%)' }} />
 
                         <div className="relative flex flex-col md:flex-row md:items-start md:justify-between gap-6">
                             <div className="flex items-start gap-4 min-w-0">
                                 {icon && (
-                                    <div className="shrink-0 rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/15 to-cyan-500/10 p-4 shadow-[0_20px_45px_rgba(16,185,129,0.08)]">
+                                    <div className="shrink-0 rounded-2xl p-4"
+                                         style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.28)',
+                                                  boxShadow: '0 0 24px -6px rgba(245,158,11,0.35)' }}>
                                         {icon}
                                     </div>
                                 )}
                                 <div className="min-w-0">
-                                    <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white leading-tight">
+                                    <h1 className="text-3xl md:text-4xl font-black tracking-tight text-white leading-tight"
+                                        style={{ letterSpacing: '-0.02em' }}>
                                         {title}
                                     </h1>
                                     {description && (
-                                        <p className="text-slate-300/90 mt-2 leading-relaxed text-base md:text-lg">
+                                        <p className="mt-2 leading-relaxed text-sm md:text-base"
+                                           style={{ color: 'var(--text-secondary)' }}>
                                             {description}
                                         </p>
                                     )}

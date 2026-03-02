@@ -302,219 +302,149 @@ export default function LabControlPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">
-                <div className="flex flex-col items-center gap-4">
-                    <Beaker className="animate-bounce w-12 h-12 text-orange-500" />
-                    <span className="text-sm text-slate-500">Chargement des conditions du lab...</span>
+            <div style={{ minHeight: '100vh', background: 'var(--n-bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+                    <Beaker style={{ width: '40px', height: '40px', color: 'var(--n-warning)', animation: 'bounce 1s infinite' }} />
+                    <span style={{ fontSize: '13px', color: 'var(--n-text-tertiary)' }}>Chargement des conditions du lab...</span>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-slate-950 text-white pt-24 pb-12 px-6">
-            <div className="fixed top-20 right-6 z-50 flex flex-col gap-2">
+        <div style={{ minHeight: '100vh', background: 'var(--n-bg-secondary)', padding: '32px 24px' }}>
+            {/* Toasts */}
+            <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 50, display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {toasts.map((toast) => (
-                    <div
-                        key={toast.id}
-                        className={`flex items-center gap-3 px-4 py-3 rounded-xl border shadow-lg animate-in slide-in-from-right backdrop-blur-sm ${
-                            toast.type === 'success'
-                                ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300'
-                                : 'bg-blue-500/20 border-blue-500/30 text-blue-300'
-                        }`}
-                    >
-                        <CheckCircle2 size={18} />
-                        <span className="text-sm font-medium">{toast.message}</span>
-                        <button onClick={() => dismissToast(toast.id)} className="ml-2 opacity-60 hover:opacity-100">
-                            <X size={14} />
+                    <div key={toast.id} style={{
+                        display: 'flex', alignItems: 'center', gap: '10px',
+                        padding: '10px 16px', borderRadius: '8px', border: '1px solid',
+                        background: toast.type === 'success' ? 'var(--n-success-bg)' : 'var(--n-accent-light)',
+                        borderColor: toast.type === 'success' ? 'var(--n-success)' : 'var(--n-accent)',
+                        color: toast.type === 'success' ? 'var(--n-success)' : 'var(--n-accent)',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: '13px', fontWeight: 500
+                    }}>
+                        <CheckCircle2 size={16} />
+                        <span>{toast.message}</span>
+                        <button onClick={() => dismissToast(toast.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.6, marginLeft: '4px', display: 'flex' }}>
+                            <X size={13} />
                         </button>
                     </div>
                 ))}
             </div>
 
-            <div className="max-w-5xl mx-auto space-y-8">
-                <div className="text-xs text-slate-500">
-                    <Link href="/instructor" className="hover:text-blue-400">Dashboard</Link>
-                    <ChevronRight size={12} className="inline mx-1" />
-                    <span className="text-blue-400">Controle Lab</span>
-                </div>
+            <div style={{ maxWidth: '900px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
-                <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                        <div className="p-3 bg-orange-500/20 rounded-xl border border-orange-500/30">
-                            <Beaker className="w-7 h-7 text-orange-400" />
+                {/* Header */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                        <div style={{ padding: '10px', background: 'var(--n-warning-bg)', borderRadius: '8px', border: '1px solid var(--n-warning)', display: 'flex' }}>
+                            <Beaker style={{ width: '24px', height: '24px', color: 'var(--n-warning)' }} />
                         </div>
                         <div>
-                            <h1 className="text-3xl font-bold">Controle Laboratoire</h1>
-                            <p className="text-slate-400 mt-1">
-                                Injection de conditions d&apos;erreur pour tests pedagogiques
-                            </p>
+                            <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--n-text-primary)', margin: 0 }}>Contrôle Laboratoire</h1>
+                            <p style={{ color: 'var(--n-text-secondary)', fontSize: '13px', marginTop: '4px' }}>Injection de conditions d&apos;erreur pour tests pédagogiques</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <button
-                            onClick={() => {
-                                void refreshAll();
-                            }}
-                            className="px-4 py-2 bg-slate-800 rounded-xl font-medium hover:bg-slate-700 transition flex items-center gap-2"
-                        >
-                            <RefreshCw className="w-4 h-4" />
-                            Actualiser
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                        <button onClick={() => { void refreshAll(); }} style={{
+                            display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px',
+                            background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)',
+                            borderRadius: '6px', cursor: 'pointer', fontSize: '13px', color: 'var(--n-text-primary)'
+                        }}>
+                            <RefreshCw style={{ width: '14px', height: '14px' }} /> Actualiser
                         </button>
                         {activeCount > 0 && (
-                            <div className="flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-full">
-                                <Zap className="w-4 h-4 text-amber-400" />
-                                <span className="text-xs font-bold text-amber-400">
-                                    {activeCount} condition{activeCount > 1 ? 's' : ''} active{activeCount > 1 ? 's' : ''}
-                                </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', background: 'var(--n-warning-bg)', border: '1px solid var(--n-warning)', borderRadius: '20px' }}>
+                                <Zap style={{ width: '13px', height: '13px', color: 'var(--n-warning)' }} />
+                                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--n-warning)' }}>{activeCount} condition{activeCount > 1 ? 's' : ''} active{activeCount > 1 ? 's' : ''}</span>
                             </div>
                         )}
                         {activeVulnerabilityCount > 0 && (
-                            <div className="flex items-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-full">
-                                <AlertTriangle className="w-4 h-4 text-red-300" />
-                                <span className="text-xs font-bold text-red-300">
-                                    {activeVulnerabilityCount} vuln CTF active{activeVulnerabilityCount > 1 ? 's' : ''}
-                                </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', background: 'var(--n-danger-bg)', border: '1px solid var(--n-danger)', borderRadius: '20px' }}>
+                                <AlertTriangle style={{ width: '13px', height: '13px', color: 'var(--n-danger)' }} />
+                                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--n-danger)' }}>{activeVulnerabilityCount} vuln CTF active{activeVulnerabilityCount > 1 ? 's' : ''}</span>
                             </div>
                         )}
                     </div>
                 </div>
 
                 {error && (
-                    <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl text-sm text-red-300">
+                    <div style={{ padding: '12px 16px', background: 'var(--n-danger-bg)', border: '1px solid var(--n-danger)', borderRadius: '6px', fontSize: '13px', color: 'var(--n-danger)' }}>
                         {error}
                     </div>
                 )}
 
-                <div className="bg-orange-500/10 border border-orange-500/30 p-4 rounded-xl flex items-start gap-3">
-                    <AlertTriangle className="w-5 h-5 text-orange-400 flex-shrink-0 mt-0.5" />
-                    <div className="text-sm">
-                        <p className="font-bold text-orange-400">Mode Formateur Actif</p>
-                        <p className="text-slate-300 mt-1">
-                            Les conditions appliquees ici affectent les sessions de tous les etudiants connectes.
-                        </p>
+                {/* Avertissement formateur */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '14px 16px', background: 'var(--n-warning-bg)', border: '1px solid var(--n-warning)', borderRadius: '8px' }}>
+                    <AlertTriangle style={{ width: '16px', height: '16px', color: 'var(--n-warning)', flexShrink: 0, marginTop: '2px' }} />
+                    <div style={{ fontSize: '13px' }}>
+                        <p style={{ fontWeight: 600, color: 'var(--n-warning)', margin: '0 0 4px' }}>Mode Formateur Actif</p>
+                        <p style={{ color: 'var(--n-text-secondary)', margin: 0 }}>Les conditions appliquées ici affectent les sessions de tous les étudiants connectés.</p>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <ControlCard
-                        title="Latence Reseau"
-                        icon={<Clock className="w-6 h-6" />}
-                        color="blue"
-                        active={conditions.latencyMs > 0}
-                    >
-                        <div className="space-y-4">
+                {/* Grille contrôles */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
+                    <ControlCard title="Latence Réseau" icon={<Clock className="w-5 h-5" />} color="accent" active={conditions.latencyMs > 0}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                             <div>
-                                <div className="flex justify-between mb-2">
-                                    <label className="text-sm font-medium">Delai (ms)</label>
-                                    <span className="text-sm font-bold text-blue-400">{conditions.latencyMs} ms</span>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                    <label style={{ fontSize: '13px', fontWeight: 500, color: 'var(--n-text-primary)' }}>Délai (ms)</label>
+                                    <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--n-accent)' }}>{conditions.latencyMs} ms</span>
                                 </div>
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="500"
-                                    step="10"
-                                    value={conditions.latencyMs}
+                                <input type="range" min="0" max="500" step="10" value={conditions.latencyMs}
                                     onChange={(e) => setConditions((prev) => ({ ...prev, latencyMs: Number(e.target.value) }))}
-                                    className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
-                                />
-                                <div className="flex justify-between text-xs text-slate-500 mt-1">
-                                    <span>0ms</span>
-                                    <span>500ms</span>
-                                </div>
+                                    style={{ width: '100%', accentColor: 'var(--n-accent)' }} />
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--n-text-tertiary)', marginTop: '4px' }}><span>0ms</span><span>500ms</span></div>
                             </div>
-                            <p className="text-xs text-slate-400">Simule une connexion lente pour tester la resilience des applications.</p>
+                            <p style={{ fontSize: '12px', color: 'var(--n-text-tertiary)', margin: 0 }}>Simule une connexion lente pour tester la résilience des applications.</p>
                         </div>
                     </ControlCard>
 
-                    <ControlCard
-                        title="Echecs d'Authentification"
-                        icon={<Shield className="w-6 h-6" />}
-                        color="red"
-                        active={conditions.authFailureRate > 0}
-                    >
-                        <div className="space-y-4">
+                    <ControlCard title="Échecs d'Authentification" icon={<Shield className="w-5 h-5" />} color="danger" active={conditions.authFailureRate > 0}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                             <div>
-                                <div className="flex justify-between mb-2">
-                                    <label className="text-sm font-medium">Taux d&apos;echec (%)</label>
-                                    <span className="text-sm font-bold text-red-400">{conditions.authFailureRate}%</span>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                    <label style={{ fontSize: '13px', fontWeight: 500, color: 'var(--n-text-primary)' }}>Taux d&apos;échec (%)</label>
+                                    <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--n-danger)' }}>{conditions.authFailureRate}%</span>
                                 </div>
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="100"
-                                    step="5"
-                                    value={conditions.authFailureRate}
+                                <input type="range" min="0" max="100" step="5" value={conditions.authFailureRate}
                                     onChange={(e) => setConditions((prev) => ({ ...prev, authFailureRate: Number(e.target.value) }))}
-                                    className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
-                                />
-                                <div className="flex justify-between text-xs text-slate-500 mt-1">
-                                    <span>0%</span>
-                                    <span>100%</span>
-                                </div>
+                                    style={{ width: '100%', accentColor: 'var(--n-danger)' }} />
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--n-text-tertiary)', marginTop: '4px' }}><span>0%</span><span>100%</span></div>
                             </div>
-                            <p className="text-xs text-slate-400">Simule des refus d&apos;autorisation aleatoires (05, 51, 54...).</p>
+                            <p style={{ fontSize: '12px', color: 'var(--n-text-tertiary)', margin: 0 }}>Simule des refus d&apos;autorisation aléatoires (05, 51, 54...).</p>
                         </div>
                     </ControlCard>
 
-                    <ControlCard
-                        title="Latence HSM"
-                        icon={<Shield className="w-6 h-6" />}
-                        color="purple"
-                        active={conditions.hsmLatencyMs > 0}
-                    >
-                        <div className="space-y-4">
+                    <ControlCard title="Latence HSM" icon={<Shield className="w-5 h-5" />} color="purple" active={conditions.hsmLatencyMs > 0}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                             <div>
-                                <div className="flex justify-between mb-2">
-                                    <label className="text-sm font-medium">Delai cryptographique (ms)</label>
-                                    <span className="text-sm font-bold text-purple-400">{conditions.hsmLatencyMs} ms</span>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                    <label style={{ fontSize: '13px', fontWeight: 500, color: 'var(--n-text-primary)' }}>Délai cryptographique (ms)</label>
+                                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#9333ea' }}>{conditions.hsmLatencyMs} ms</span>
                                 </div>
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="300"
-                                    step="10"
-                                    value={conditions.hsmLatencyMs}
+                                <input type="range" min="0" max="300" step="10" value={conditions.hsmLatencyMs}
                                     onChange={(e) => setConditions((prev) => ({ ...prev, hsmLatencyMs: Number(e.target.value) }))}
-                                    className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
-                                />
-                                <div className="flex justify-between text-xs text-slate-500 mt-1">
-                                    <span>0ms</span>
-                                    <span>300ms</span>
-                                </div>
+                                    style={{ width: '100%', accentColor: '#9333ea' }} />
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--n-text-tertiary)', marginTop: '4px' }}><span>0ms</span><span>300ms</span></div>
                             </div>
-                            <p className="text-xs text-slate-400">Simule un HSM surcharge.</p>
+                            <p style={{ fontSize: '12px', color: 'var(--n-text-tertiary)', margin: 0 }}>Simule un HSM surchargé.</p>
                         </div>
                     </ControlCard>
 
-                    <ControlCard
-                        title="Injection Fraude"
-                        icon={<AlertTriangle className="w-6 h-6" />}
-                        color="yellow"
-                        active={conditions.fraudInjection}
-                    >
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium">Mode Fraude Actif</span>
-                                <button
-                                    onClick={() => setConditions((prev) => ({ ...prev, fraudInjection: !prev.fraudInjection }))}
-                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
-                                        conditions.fraudInjection ? 'bg-yellow-500' : 'bg-slate-700'
-                                    }`}
-                                >
-                                    <span
-                                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                                            conditions.fraudInjection ? 'translate-x-6' : 'translate-x-1'
-                                        }`}
-                                    />
-                                </button>
+                    <ControlCard title="Injection Fraude" icon={<AlertTriangle className="w-5 h-5" />} color="warning" active={conditions.fraudInjection}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--n-text-primary)' }}>Mode Fraude Actif</span>
+                                <Toggle enabled={conditions.fraudInjection} color="var(--n-warning)" onToggle={() => setConditions((prev) => ({ ...prev, fraudInjection: !prev.fraudInjection }))} />
                             </div>
-                            <p className="text-xs text-slate-400">Injecte des patterns detectables (velocity abuse, geolocalisation suspecte).</p>
+                            <p style={{ fontSize: '12px', color: 'var(--n-text-tertiary)', margin: 0 }}>Injecte des patterns détectables (velocity abuse, géolocalisation suspecte).</p>
                             {conditions.fraudInjection && (
-                                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
-                                    <p className="text-xs text-yellow-400 font-bold flex items-center gap-2">
-                                        <AlertTriangle size={14} />
-                                        Actif: les etudiants verront des alertes de fraude
+                                <div style={{ padding: '10px 12px', background: 'var(--n-warning-bg)', border: '1px solid var(--n-warning)', borderRadius: '6px' }}>
+                                    <p style={{ fontSize: '12px', color: 'var(--n-warning)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
+                                        <AlertTriangle size={12} /> Actif: les étudiants verront des alertes de fraude
                                     </p>
                                 </div>
                             )}
@@ -522,141 +452,87 @@ export default function LabControlPage() {
                     </ControlCard>
                 </div>
 
-                <div className="bg-slate-900/60 border border-white/10 rounded-2xl p-6 space-y-4">
-                    <h2 className="text-xl font-bold">Options Avancees</h2>
-
-                    <div className="flex items-center justify-between">
+                {/* Options avancées */}
+                <div style={{ background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)', borderRadius: '8px', padding: '20px 24px' }}>
+                    <h2 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--n-text-primary)', margin: '0 0 16px' }}>Options Avancées</h2>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <div>
-                            <p className="font-medium">Erreurs Reseau Aleatoires</p>
-                            <p className="text-xs text-slate-400 mt-1">
-                                Simule des timeouts et connexions refusees.
-                            </p>
+                            <p style={{ fontWeight: 500, color: 'var(--n-text-primary)', margin: '0 0 3px', fontSize: '14px' }}>Erreurs Réseau Aléatoires</p>
+                            <p style={{ fontSize: '12px', color: 'var(--n-text-tertiary)', margin: 0 }}>Simule des timeouts et connexions refusées.</p>
                         </div>
-                        <button
-                            onClick={() => setConditions((prev) => ({ ...prev, networkErrors: !prev.networkErrors }))}
-                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
-                                conditions.networkErrors ? 'bg-red-500' : 'bg-slate-700'
-                            }`}
-                        >
-                            <span
-                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                                    conditions.networkErrors ? 'translate-x-6' : 'translate-x-1'
-                                }`}
-                            />
+                        <Toggle enabled={conditions.networkErrors} color="var(--n-danger)" onToggle={() => setConditions((prev) => ({ ...prev, networkErrors: !prev.networkErrors }))} />
+                    </div>
+                </div>
+
+                {/* CTF Vulnerability Controls */}
+                <div style={{ background: 'var(--n-bg-primary)', border: '1px solid var(--n-danger)', borderRadius: '8px', padding: '20px 24px' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
+                        <div>
+                            <h2 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--n-danger)', margin: '0 0 4px' }}>CTF Vulnerability Controls</h2>
+                            <p style={{ fontSize: '12px', color: 'var(--n-text-tertiary)', margin: 0 }}>Pilotage direct de VulnEngine HSM pour les challenges REPLAY/HSM.</p>
+                        </div>
+                        <button onClick={() => { void fetchCtfVulnerabilities(); }} style={{
+                            display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px',
+                            background: 'var(--n-bg-secondary)', border: '1px solid var(--n-border)',
+                            borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: 'var(--n-text-secondary)'
+                        }}>
+                            <RefreshCw style={{ width: '13px', height: '13px' }} /> Lire état
+                        </button>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+                        <CtfToggleRow title="allowReplay" description="Autorise le rejeu d'une même transaction (room PAY-001)." enabled={ctfVulnerabilities.allowReplay} onToggle={() => setCtfVulnerabilities((prev) => ({ ...prev, allowReplay: !prev.allowReplay }))} />
+                        <CtfToggleRow title="weakKeysEnabled" description="Active des clés faibles/prévisibles (room PCI-001)." enabled={ctfVulnerabilities.weakKeysEnabled} onToggle={() => setCtfVulnerabilities((prev) => ({ ...prev, weakKeysEnabled: !prev.weakKeysEnabled }))} />
+                        <CtfToggleRow title="verboseErrors" description="Expose plus d'informations techniques dans les erreurs." enabled={ctfVulnerabilities.verboseErrors} onToggle={() => setCtfVulnerabilities((prev) => ({ ...prev, verboseErrors: !prev.verboseErrors }))} />
+                        <CtfToggleRow title="keyLeakInLogs" description="Journalise du matériel sensible dans les logs (room PAY-001)." enabled={ctfVulnerabilities.keyLeakInLogs} onToggle={() => setCtfVulnerabilities((prev) => ({ ...prev, keyLeakInLogs: !prev.keyLeakInLogs }))} />
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <button onClick={handleApplyCtfVulnerabilities} disabled={applyingCtfVulns} style={{
+                            display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 18px',
+                            background: 'var(--n-danger)', color: '#fff', borderRadius: '6px',
+                            border: 'none', cursor: applyingCtfVulns ? 'not-allowed' : 'pointer',
+                            fontWeight: 600, fontSize: '13px', opacity: applyingCtfVulns ? 0.6 : 1
+                        }}>
+                            {applyingCtfVulns ? <><div style={{ width: '14px', height: '14px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%' }} />Application...</> : <><Zap style={{ width: '14px', height: '14px' }} />Appliquer toggles CTF</>}
+                        </button>
+                        <button onClick={handleResetCtfVulnerabilities} disabled={applyingCtfVulns} style={{
+                            display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 18px',
+                            background: 'var(--n-bg-secondary)', border: '1px solid var(--n-border)',
+                            borderRadius: '6px', cursor: 'pointer', fontWeight: 500, fontSize: '13px',
+                            color: 'var(--n-text-primary)', opacity: applyingCtfVulns ? 0.6 : 1
+                        }}>
+                            <RefreshCw style={{ width: '14px', height: '14px' }} /> Reset CTF
                         </button>
                     </div>
                 </div>
 
-                <div className="bg-slate-900/60 border border-white/10 rounded-2xl p-6 space-y-4">
-                    <div className="flex items-center justify-between gap-4">
-                        <div>
-                            <h2 className="text-xl font-bold">CTF Vulnerability Controls</h2>
-                            <p className="text-xs text-slate-400 mt-1">
-                                Pilotage direct de VulnEngine HSM pour les challenges REPLAY/HSM.
-                            </p>
-                        </div>
-                        <button
-                            onClick={() => {
-                                void fetchCtfVulnerabilities();
-                            }}
-                            className="px-3 py-2 bg-slate-800 rounded-lg text-xs hover:bg-slate-700 transition flex items-center gap-2"
-                        >
-                            <RefreshCw className="w-4 h-4" />
-                            Lire etat
-                        </button>
-                    </div>
-
-                    <div className="space-y-3">
-                        <CtfToggleRow
-                            title="allowReplay"
-                            description="Autorise le rejeu d'une meme transaction (room PAY-001)."
-                            enabled={ctfVulnerabilities.allowReplay}
-                            onToggle={() => setCtfVulnerabilities((prev) => ({ ...prev, allowReplay: !prev.allowReplay }))}
-                        />
-                        <CtfToggleRow
-                            title="weakKeysEnabled"
-                            description="Active des cles faibles/predictibles (room PCI-001)."
-                            enabled={ctfVulnerabilities.weakKeysEnabled}
-                            onToggle={() => setCtfVulnerabilities((prev) => ({ ...prev, weakKeysEnabled: !prev.weakKeysEnabled }))}
-                        />
-                        <CtfToggleRow
-                            title="verboseErrors"
-                            description="Expose plus d'informations techniques dans les erreurs."
-                            enabled={ctfVulnerabilities.verboseErrors}
-                            onToggle={() => setCtfVulnerabilities((prev) => ({ ...prev, verboseErrors: !prev.verboseErrors }))}
-                        />
-                        <CtfToggleRow
-                            title="keyLeakInLogs"
-                            description="Journalise du materiel sensible dans les logs (room PAY-001)."
-                            enabled={ctfVulnerabilities.keyLeakInLogs}
-                            onToggle={() => setCtfVulnerabilities((prev) => ({ ...prev, keyLeakInLogs: !prev.keyLeakInLogs }))}
-                        />
-                    </div>
-
-                    <div className="flex gap-3">
-                        <button
-                            onClick={handleApplyCtfVulnerabilities}
-                            disabled={applyingCtfVulns}
-                            className="px-5 py-2.5 bg-red-600 rounded-xl font-bold hover:bg-red-500 transition flex items-center gap-2 text-sm disabled:opacity-60"
-                        >
-                            {applyingCtfVulns ? (
-                                <>
-                                    <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                    Application...
-                                </>
-                            ) : (
-                                <>
-                                    <Zap className="w-4 h-4" />
-                                    Appliquer toggles CTF
-                                </>
-                            )}
-                        </button>
-                        <button
-                            onClick={handleResetCtfVulnerabilities}
-                            disabled={applyingCtfVulns}
-                            className="px-5 py-2.5 bg-slate-800 rounded-xl font-bold hover:bg-slate-700 transition flex items-center gap-2 text-sm disabled:opacity-60"
-                        >
-                            <RefreshCw className="w-4 h-4" />
-                            Reset CTF
-                        </button>
-                    </div>
-                </div>
-
-                <div className="flex gap-4">
-                    <button
-                        onClick={handleApplyConditions}
-                        disabled={applying}
-                        className="flex-1 px-8 py-4 bg-emerald-600 rounded-2xl font-bold hover:bg-emerald-500 transition flex items-center justify-center gap-2 disabled:opacity-60"
-                    >
-                        {applying ? (
-                            <>
-                                <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                Application...
-                            </>
-                        ) : (
-                            <>
-                                <Zap className="w-5 h-5" />
-                                Appliquer les Conditions
-                            </>
-                        )}
+                {/* Boutons principaux */}
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    <button onClick={handleApplyConditions} disabled={applying} style={{
+                        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                        padding: '12px 24px', background: 'var(--n-success)', color: '#fff',
+                        borderRadius: '8px', border: 'none', cursor: applying ? 'not-allowed' : 'pointer',
+                        fontWeight: 700, fontSize: '15px', opacity: applying ? 0.6 : 1
+                    }}>
+                        {applying ? <><div style={{ width: '18px', height: '18px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%' }} />Application...</> : <><Zap style={{ width: '18px', height: '18px' }} />Appliquer les Conditions</>}
                     </button>
-                    <button
-                        onClick={handleReset}
-                        disabled={applying}
-                        className="px-8 py-4 bg-slate-800 rounded-2xl font-bold hover:bg-slate-700 transition flex items-center gap-2 disabled:opacity-60"
-                    >
-                        <RefreshCw className="w-5 h-5" />
-                        Reinitialiser
+                    <button onClick={handleReset} disabled={applying} style={{
+                        display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px',
+                        background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)',
+                        borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '15px',
+                        color: 'var(--n-text-primary)', opacity: applying ? 0.6 : 1
+                    }}>
+                        <RefreshCw style={{ width: '18px', height: '18px' }} /> Réinitialiser
                     </button>
                 </div>
 
-                <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-6">
-                    <h3 className="font-bold text-blue-400 mb-2">Cas d&apos;usage pedagogiques</h3>
-                    <ul className="space-y-2 text-sm text-slate-300">
-                        <li><strong>Latence 300ms</strong> - Gestion de timeout et retry logic</li>
-                        <li><strong>Echecs auth 20%</strong> - Lecture des codes de refus ISO 8583</li>
-                        <li><strong>Mode Fraude</strong> - Tests des detecteurs de patterns suspects</li>
-                        <li><strong>HSM lent</strong> - Impact des operations cryptographiques</li>
+                {/* Cas d'usage */}
+                <div style={{ padding: '16px 20px', background: 'var(--n-accent-light)', border: '1px solid var(--n-accent)', borderRadius: '8px' }}>
+                    <h3 style={{ fontWeight: 600, color: 'var(--n-accent)', margin: '0 0 10px', fontSize: '14px' }}>Cas d&apos;usage pédagogiques</h3>
+                    <ul style={{ margin: 0, paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <li style={{ fontSize: '13px', color: 'var(--n-text-secondary)' }}><strong>Latence 300ms</strong> - Gestion de timeout et retry logic</li>
+                        <li style={{ fontSize: '13px', color: 'var(--n-text-secondary)' }}><strong>Échecs auth 20%</strong> - Lecture des codes de refus ISO 8583</li>
+                        <li style={{ fontSize: '13px', color: 'var(--n-text-secondary)' }}><strong>Mode Fraude</strong> - Tests des détecteurs de patterns suspects</li>
+                        <li style={{ fontSize: '13px', color: 'var(--n-text-secondary)' }}><strong>HSM lent</strong> - Impact des opérations cryptographiques</li>
                     </ul>
                 </div>
             </div>
@@ -665,38 +541,31 @@ export default function LabControlPage() {
 }
 
 function ControlCard({
-    title,
-    icon,
-    color,
-    active,
-    children,
+    title, icon, color, active, children
 }: {
-    title: string;
-    icon: ReactNode;
-    color: string;
-    active?: boolean;
-    children: ReactNode;
+    title: string; icon: ReactNode; color: string; active?: boolean; children: ReactNode;
 }) {
-    const colors: Record<string, string> = {
-        blue: 'bg-blue-500/20 border-blue-500/30 text-blue-400',
-        red: 'bg-red-500/20 border-red-500/30 text-red-400',
-        purple: 'bg-purple-500/20 border-purple-500/30 text-purple-400',
-        yellow: 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400',
+    const colorMap: Record<string, { bg: string; border: string; text: string }> = {
+        accent: { bg: 'var(--n-accent-light)', border: 'var(--n-accent)', text: 'var(--n-accent)' },
+        danger: { bg: 'var(--n-danger-bg)', border: 'var(--n-danger)', text: 'var(--n-danger)' },
+        warning: { bg: 'var(--n-warning-bg)', border: 'var(--n-warning)', text: 'var(--n-warning)' },
+        purple: { bg: '#f5f3ff', border: '#9333ea', text: '#9333ea' },
     };
-
+    const c = colorMap[color] || colorMap.accent;
     return (
-        <div className={`bg-slate-900/60 border rounded-2xl p-6 space-y-4 transition ${
-            active ? 'border-white/20' : 'border-white/10'
-        }`}>
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg border ${colors[color]}`}>{icon}</div>
-                    <h3 className="text-lg font-bold">{title}</h3>
+        <div style={{
+            background: 'var(--n-bg-primary)',
+            border: `1px solid ${active ? c.border : 'var(--n-border)'}`,
+            borderRadius: '8px', padding: '18px 20px',
+            display: 'flex', flexDirection: 'column', gap: '14px'
+        }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ padding: '7px', background: c.bg, borderRadius: '6px', color: c.text, display: 'flex' }}>{icon}</div>
+                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--n-text-primary)', margin: 0 }}>{title}</h3>
                 </div>
                 {active && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 uppercase tracking-wider">
-                        Actif
-                    </span>
+                    <span style={{ fontSize: '10px', fontWeight: 700, padding: '3px 8px', borderRadius: '20px', background: 'var(--n-success-bg)', color: 'var(--n-success)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Actif</span>
                 )}
             </div>
             {children}
@@ -704,35 +573,34 @@ function ControlCard({
     );
 }
 
-function CtfToggleRow({
-    title,
-    description,
-    enabled,
-    onToggle,
-}: {
-    title: string;
-    description: string;
-    enabled: boolean;
-    onToggle: () => void;
-}) {
+function Toggle({ enabled, color, onToggle }: { enabled: boolean; color: string; onToggle: () => void }) {
     return (
-        <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 flex items-center justify-between gap-3">
+        <button onClick={onToggle} style={{
+            position: 'relative', width: '44px', height: '24px', flexShrink: 0,
+            background: enabled ? color : 'var(--n-border)', border: 'none',
+            borderRadius: '12px', cursor: 'pointer', transition: 'background 0.2s'
+        }}>
+            <span style={{
+                position: 'absolute', top: '4px', left: enabled ? '24px' : '4px',
+                width: '16px', height: '16px', background: '#fff',
+                borderRadius: '50%', transition: 'left 0.2s'
+            }} />
+        </button>
+    );
+}
+
+function CtfToggleRow({ title, description, enabled, onToggle }: { title: string; description: string; enabled: boolean; onToggle: () => void }) {
+    return (
+        <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
+            background: 'var(--n-bg-secondary)', border: '1px solid var(--n-border)',
+            borderRadius: '6px', padding: '10px 14px'
+        }}>
             <div>
-                <p className="font-mono text-sm text-slate-100">{title}</p>
-                <p className="text-xs text-slate-400 mt-0.5">{description}</p>
+                <p style={{ fontFamily: 'monospace', fontSize: '13px', color: 'var(--n-text-primary)', margin: '0 0 2px' }}>{title}</p>
+                <p style={{ fontSize: '12px', color: 'var(--n-text-tertiary)', margin: 0 }}>{description}</p>
             </div>
-            <button
-                onClick={onToggle}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
-                    enabled ? 'bg-red-500' : 'bg-slate-700'
-                }`}
-            >
-                <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                        enabled ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                />
-            </button>
+            <Toggle enabled={enabled} color="var(--n-danger)" onToggle={onToggle} />
         </div>
     );
 }

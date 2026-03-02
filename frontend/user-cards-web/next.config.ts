@@ -19,10 +19,13 @@ const nextConfig: NextConfig = {
     return config;
   },
   async rewrites() {
+    const apiUrl = process.env.INTERNAL_API_URL
+      || process.env.NEXT_PUBLIC_API_URL
+      || 'http://api-gateway:8000';
     return [
       {
         source: '/api/:path*',
-        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://api-gateway:8000'}/api/:path*`,
+        destination: `${apiUrl}/api/:path*`,
       },
     ];
   },

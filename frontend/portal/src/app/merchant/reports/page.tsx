@@ -1,21 +1,33 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useAuth } from '../../auth/useAuth';
 import {
     BarChart3,
     CheckCircle2,
     ChevronRight,
-    CreditCard,
     Download,
     FileText,
-    PieChart,
     RefreshCw,
     TrendingDown,
-    TrendingUp
+    TrendingUp,
 } from 'lucide-react';
-import Link from 'next/link';
-import { toRecord, toNumber, toText, formatMoney, getCardBrand } from '@shared/lib/formatting';
+import {
+    formatMoney,
+    getCardBrand,
+    toNumber,
+    toRecord,
+    toText,
+} from '@shared/lib/formatting';
+import { BankPageHeader } from '@shared/components/banking/layout/BankPageHeader';
+import { BankButton } from '@shared/components/banking/primitives/BankButton';
+import { BankBadge } from '@shared/components/banking/primitives/BankBadge';
+import { BankSpinner } from '@shared/components/banking/primitives/BankSpinner';
+import { BankSelect, type BankSelectOption } from '@shared/components/banking/forms/BankSelect';
+import { StatCard } from '@shared/components/banking/data-display/StatCard';
+import { BankTable, type BankTableColumn } from '@shared/components/banking/data-display/BankTable';
+import { MiniSparkline } from '@shared/components/banking/data-display/MiniSparkline';
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -53,10 +65,13 @@ interface ReconciliationData {
     status: string;
 }
 
+type ReportType = 'daily' | 'card' | 'reconciliation';
+
 const dateToIso = (value: Date) => value.toISOString().split('T')[0];
 
 const normalizeTransactions = (raw: unknown): MerchantTransaction[] => {
     if (!Array.isArray(raw)) return [];
+
     return raw.map((item) => {
         const row = toRecord(item);
         return {
@@ -65,25 +80,36 @@ const normalizeTransactions = (raw: unknown): MerchantTransaction[] => {
             type: toText(row.type, 'PURCHASE'),
             status: toText(row.status, 'PENDING'),
             maskedPan: toText(row.masked_pan || row.maskedPan, ''),
-            timestamp: toText(row.timestamp)
+            timestamp: toText(row.timestamp),
         };
     });
 };
 
 const mapRangeToDays = (range: string): number => {
-    switch (range) {
-        case 'today': return 1;
-        case 'week': return 7;
-        case 'month': return 30;
-        case 'quarter': return 90;
-        default: return 7;
-    }
+    if (range === 'today') return 1;
+    if (range === 'week') return 7;
+    if (range === 'month') return 30;
+    if (range === 'quarter') return 90;
+    return 7;
 };
+
+const dateRangeOptions: BankSelectOption[] = [
+    { value: 'today', label: 'Aujourd hui' },
+    { value: 'week', label: '7 jours' },
+    { value: 'month', label: '30 jours' },
+    { value: 'quarter', label: '3 mois' },
+];
+
+const reportTypeOptions: BankSelectOption[] = [
+    { value: 'daily', label: 'Journalier' },
+    { value: 'card', label: 'Reseaux carte' },
+    { value: 'reconciliation', label: 'Reconciliation' },
+];
 
 export default function MerchantReportsPage() {
     const { isLoading } = useAuth(true);
     const [dateRange, setDateRange] = useState('week');
-    const [reportType, setReportType] = useState<'daily' | 'card' | 'reconciliation'>('daily');
+    const [reportType, setReportType] = useState<ReportType>('daily');
     const [transactions, setTransactions] = useState<MerchantTransaction[]>([]);
     const [reconciliation, setReconciliation] = useState<ReconciliationData | null>(null);
     const [loading, setLoading] = useState(true);
@@ -103,15 +129,15 @@ export default function MerchantReportsPage() {
 
         const [transactionsResponse, reconciliationResponse] = await Promise.all([
             fetch(`/api/merchant/transactions?limit=1000&fromDate=${fromDateIso}&toDate=${toDateIso}T23:59:59`, {
-                headers: { Authorization: `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${token}` },
             }),
             fetch(`/api/merchant/reports/reconciliation?fromDate=${fromDateIso}&toDate=${toDateIso}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            })
+                headers: { Authorization: `Bearer ${token}` },
+            }),
         ]);
 
         if (!transactionsResponse.ok) {
-            throw new Error('Impossible de récupérer les transactions de reporting');
+            throw new Error('Impossible de recuperer les transactions de reporting');
         }
 
         const transactionsPayload = await transactionsResponse.json();
@@ -125,7 +151,7 @@ export default function MerchantReportsPage() {
                 totalDebits: toNumber(recon.totalDebits),
                 totalCredits: toNumber(recon.totalCredits),
                 netAmount: toNumber(recon.netAmount),
-                status: toText(recon.status, 'UNKNOWN')
+                status: toText(recon.status, 'UNKNOWN'),
             });
         } else {
             setReconciliation(null);
@@ -137,8 +163,9 @@ export default function MerchantReportsPage() {
             setRefreshing(true);
             await fetchReportsData();
             setError(null);
-        } catch (fetchError: any) {
-            setError(fetchError.message || 'Erreur chargement rapports');
+        } catch (fetchError: unknown) {
+            const message = fetchError instanceof Error ? fetchError.message : 'Erreur chargement rapports';
+            setError(message);
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -159,7 +186,7 @@ export default function MerchantReportsPage() {
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${token}`,
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
                     days: mapRangeToDays(dateRange),
@@ -167,18 +194,19 @@ export default function MerchantReportsPage() {
                     includeRefunds: true,
                     includeVoids: true,
                     includeSettlements: true,
-                    includePayouts: true
-                })
+                    includePayouts: true,
+                }),
             });
 
             const payload = await response.json();
             if (!response.ok) {
-                throw new Error(payload.error || 'Échec génération historique');
+                throw new Error(payload.error || 'Echec generation historique');
             }
 
             await refreshData();
-        } catch (generationError: any) {
-            setError(generationError.message || 'Erreur génération historique');
+        } catch (generationError: unknown) {
+            const message = generationError instanceof Error ? generationError.message : 'Erreur generation historique';
+            setError(message);
         } finally {
             setIsGenerating(false);
         }
@@ -197,7 +225,7 @@ export default function MerchantReportsPage() {
                     transactionCount: 0,
                     approvedCount: 0,
                     declinedCount: 0,
-                    averageTicket: 0
+                    averageTicket: 0,
                 });
             }
 
@@ -205,25 +233,21 @@ export default function MerchantReportsPage() {
             row.transactionCount += 1;
             if (tx.status === 'APPROVED') row.approvedCount += 1;
             if (tx.status === 'DECLINED') row.declinedCount += 1;
-
-            if (tx.type === 'PURCHASE' && tx.status === 'APPROVED') {
-                row.totalSales += tx.amount;
-            }
-            if (tx.type === 'REFUND' && tx.status === 'APPROVED') {
-                row.totalRefunds += tx.amount;
-            }
+            if (tx.type === 'PURCHASE' && tx.status === 'APPROVED') row.totalSales += tx.amount;
+            if (tx.type === 'REFUND' && tx.status === 'APPROVED') row.totalRefunds += tx.amount;
         }
 
         return Array.from(map.values())
-            .sort((a, b) => a.date < b.date ? 1 : -1)
+            .sort((a, b) => (a.date < b.date ? 1 : -1))
             .map((row) => ({
                 ...row,
-                averageTicket: row.approvedCount > 0 ? row.totalSales / row.approvedCount : 0
+                averageTicket: row.approvedCount > 0 ? row.totalSales / row.approvedCount : 0,
             }));
     }, [transactions]);
 
     const cardBreakdown = useMemo<CardBreakdown[]>(() => {
         const map = new Map<string, { count: number; amount: number }>();
+
         for (const tx of transactions) {
             if (tx.status !== 'APPROVED' || tx.type !== 'PURCHASE') continue;
             const brand = getCardBrand(tx.maskedPan);
@@ -238,7 +262,7 @@ export default function MerchantReportsPage() {
             type,
             count: values.count,
             amount: values.amount,
-            percentage: totalAmount > 0 ? Math.round((values.amount / totalAmount) * 100) : 0
+            percentage: totalAmount > 0 ? Math.round((values.amount / totalAmount) * 100) : 0,
         }));
     }, [transactions]);
 
@@ -251,200 +275,322 @@ export default function MerchantReportsPage() {
         return { totalSales, totalRefunds, totalTransactions, approvalRate };
     }, [dailyReports]);
 
-    const exportJson = () => {
-        const payload = {
-            generatedAt: new Date().toISOString(),
-            dateRange,
-            totals,
-            dailyReports,
-            cardBreakdown,
-            reconciliation
+    const trendSeries = useMemo(() => {
+        const sorted = [...dailyReports].sort((a, b) => (a.date > b.date ? 1 : -1));
+        return {
+            sales: sorted.map((row) => row.totalSales),
+            net: sorted.map((row) => row.totalSales - row.totalRefunds),
         };
-        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    }, [dailyReports]);
+
+    const exportCsv = () => {
+        const headers = ['date', 'transaction_id', 'type', 'status', 'masked_pan', 'amount'];
+        const rows = transactions.map((tx) => [
+            tx.timestamp ? tx.timestamp.split('T')[0] : '',
+            tx.id,
+            tx.type,
+            tx.status,
+            tx.maskedPan,
+            tx.amount.toFixed(2),
+        ]);
+
+        const escapeCsv = (value: string) => `"${String(value).replace(/"/g, '""')}"`;
+        const csv = [
+            headers.map(escapeCsv).join(','),
+            ...rows.map((row) => row.map((cell) => escapeCsv(cell)).join(',')),
+        ].join('\n');
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `merchant-report-${dateRange}.json`;
+        a.download = `merchant-report-${dateRange}.csv`;
         a.click();
         URL.revokeObjectURL(url);
     };
 
+    const dailyColumns = useMemo<BankTableColumn<DailyReport>[]>(() => {
+        return [
+            {
+                key: 'date',
+                header: 'Date',
+                sortable: true,
+                render: (row) => <span style={{ fontWeight: 600 }}>{row.date}</span>,
+            },
+            {
+                key: 'totalSales',
+                header: 'Ventes',
+                align: 'right',
+                render: (row) => <span style={{ color: 'var(--bank-success)' }}>+{formatMoney(row.totalSales)}</span>,
+            },
+            {
+                key: 'totalRefunds',
+                header: 'Remboursements',
+                align: 'right',
+                render: (row) => <span style={{ color: 'var(--bank-danger)' }}>-{formatMoney(row.totalRefunds)}</span>,
+            },
+            {
+                key: 'net',
+                header: 'Net',
+                align: 'right',
+                render: (row) => <span>{formatMoney(row.totalSales - row.totalRefunds)}</span>,
+            },
+            {
+                key: 'transactionCount',
+                header: 'Transactions',
+                align: 'right',
+                render: (row) => <span>{row.transactionCount}</span>,
+            },
+            {
+                key: 'approval',
+                header: 'Taux approb.',
+                align: 'right',
+                render: (row) => {
+                    const rate = row.transactionCount > 0 ? Math.round((row.approvedCount / row.transactionCount) * 100) : 0;
+                    return <BankBadge variant={rate >= 80 ? 'success' : rate >= 60 ? 'warning' : 'danger'} label={`${rate}%`} />;
+                },
+            },
+            {
+                key: 'averageTicket',
+                header: 'Panier moyen',
+                align: 'right',
+                render: (row) => <span>{formatMoney(row.averageTicket)}</span>,
+            },
+        ];
+    }, []);
+
+    const cardColumns = useMemo<BankTableColumn<CardBreakdown>[]>(() => {
+        return [
+            {
+                key: 'type',
+                header: 'Reseau',
+                render: (row) => <BankBadge variant="info" label={row.type} />,
+            },
+            {
+                key: 'count',
+                header: 'Transactions',
+                align: 'right',
+                render: (row) => <span>{row.count}</span>,
+            },
+            {
+                key: 'amount',
+                header: 'Montant',
+                align: 'right',
+                render: (row) => <span>{formatMoney(row.amount)}</span>,
+            },
+            {
+                key: 'percentage',
+                header: 'Part',
+                align: 'right',
+                render: (row) => <span>{row.percentage}%</span>,
+            },
+            {
+                key: 'spark',
+                header: 'Tendance',
+                render: (row) => (
+                    <MiniSparkline
+                        data={[Math.max(1, row.count), Math.max(1, Math.round(row.amount)), Math.max(1, row.percentage)]}
+                        width={90}
+                        height={30}
+                        filled
+                        dotEnd
+                    />
+                ),
+            },
+        ];
+    }, []);
+
     if (isLoading || loading) {
         return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+            <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <BankSpinner size={40} />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-slate-950 pt-24 pb-12">
-            <div className="max-w-7xl mx-auto px-6">
-                {/* Breadcrumb */}
-                <div className="text-xs text-slate-500 mb-6">
-                    <Link href="/merchant" className="hover:text-purple-400">Dashboard Marchand</Link>
-                    <ChevronRight size={12} className="inline mx-1" />
-                    <span className="text-purple-400">Rapports</span>
-                </div>
-
-                <div className="flex items-center justify-between mb-8">
-                    <div>
-                        <h1 className="text-3xl font-bold text-white mb-2">Rapports & Statistiques</h1>
-                        <p className="text-slate-400">Reporting calculé sur les transactions réelles.</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <select
-                            value={dateRange}
-                            onChange={(event) => setDateRange(event.target.value)}
-                            className="px-4 py-2 bg-slate-800 border border-white/10 rounded-xl text-white"
-                        >
-                            <option value="today">Aujourd&apos;hui</option>
-                            <option value="week">7 derniers jours</option>
-                            <option value="month">30 derniers jours</option>
-                            <option value="quarter">3 mois</option>
-                        </select>
-                        <button onClick={refreshData} className="flex items-center gap-2 px-4 py-2 bg-slate-800 border border-white/10 text-white rounded-xl hover:bg-slate-700">
-                            <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
-                            Actualiser
-                        </button>
-                        {isDev && (
-                            <button onClick={generateHistory} disabled={isGenerating} className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-white rounded-xl hover:bg-purple-600 disabled:opacity-60">
-                                <BarChart3 size={16} />
-                                {isGenerating ? 'Génération...' : 'Générer historique'}
-                            </button>
-                        )}
-                        <button onClick={exportJson} className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600">
-                            <Download size={16} />
-                            Export JSON
-                        </button>
-                    </div>
-                </div>
-
-                {error && (
-                    <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-sm">
-                        {error}
-                    </div>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                    <div className="bg-gradient-to-br from-purple-500/20 to-violet-500/10 border border-purple-500/30 rounded-2xl p-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="p-3 bg-purple-500/20 rounded-xl"><TrendingUp className="w-6 h-6 text-purple-400" /></div>
-                        </div>
-                        <p className="text-sm text-slate-400 mb-1">Chiffre d&apos;affaires</p>
-                        <p className="text-2xl font-bold text-white">{formatMoney(totals.totalSales)}</p>
-                    </div>
-                    <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
-                        <div className="p-3 bg-red-500/20 rounded-xl w-fit mb-4"><TrendingDown className="w-6 h-6 text-red-400" /></div>
-                        <p className="text-sm text-slate-400 mb-1">Remboursements</p>
-                        <p className="text-2xl font-bold text-white">{formatMoney(totals.totalRefunds)}</p>
-                    </div>
-                    <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
-                        <div className="p-3 bg-blue-500/20 rounded-xl w-fit mb-4"><CreditCard className="w-6 h-6 text-blue-400" /></div>
-                        <p className="text-sm text-slate-400 mb-1">Transactions</p>
-                        <p className="text-2xl font-bold text-white">{totals.totalTransactions}</p>
-                    </div>
-                    <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
-                        <div className="p-3 bg-emerald-500/20 rounded-xl w-fit mb-4"><CheckCircle2 className="w-6 h-6 text-emerald-400" /></div>
-                        <p className="text-sm text-slate-400 mb-1">Taux d&apos;approbation</p>
-                        <p className="text-2xl font-bold text-white">{totals.approvalRate.toFixed(1)}%</p>
-                    </div>
-                </div>
-
-                <div className="flex gap-2 mb-6">
-                    <button onClick={() => setReportType('daily')} className={`px-4 py-2 rounded-xl font-medium ${reportType === 'daily' ? 'bg-purple-500 text-white' : 'bg-slate-800 text-slate-300'}`}>
-                        Rapport journalier
-                    </button>
-                    <button onClick={() => setReportType('card')} className={`px-4 py-2 rounded-xl font-medium ${reportType === 'card' ? 'bg-purple-500 text-white' : 'bg-slate-800 text-slate-300'}`}>
-                        Par réseau carte
-                    </button>
-                    <button onClick={() => setReportType('reconciliation')} className={`px-4 py-2 rounded-xl font-medium ${reportType === 'reconciliation' ? 'bg-purple-500 text-white' : 'bg-slate-800 text-slate-300'}`}>
-                        Réconciliation
-                    </button>
-                </div>
-
-                {reportType === 'daily' && (
-                    <div className="bg-slate-800/50 border border-white/10 rounded-2xl overflow-hidden">
-                        <div className="p-4 border-b border-white/10"><h2 className="text-lg font-semibold text-white">Rapport journalier réel</h2></div>
-                        <div className="hidden md:grid grid-cols-7 gap-4 p-4 border-b border-white/10 text-sm text-slate-400 font-medium">
-                            <div>Date</div><div className="text-right">Ventes</div><div className="text-right">Remboursements</div><div className="text-right">Net</div><div className="text-center">Transactions</div><div className="text-center">Approuvées</div><div className="text-right">Panier moyen</div>
-                        </div>
-                        {dailyReports.map((report, index) => (
-                            <div key={report.date} className={`grid grid-cols-1 md:grid-cols-7 gap-4 p-4 items-center ${index !== 0 ? 'border-t border-white/5' : ''}`}>
-                                <div className="font-medium text-white">{report.date}</div>
-                                <div className="text-right text-emerald-400 font-medium">+{formatMoney(report.totalSales)}</div>
-                                <div className="text-right text-red-400">-{formatMoney(report.totalRefunds)}</div>
-                                <div className="text-right text-white font-bold">{formatMoney(report.totalSales - report.totalRefunds)}</div>
-                                <div className="text-center text-slate-300">{report.transactionCount}</div>
-                                <div className="text-center"><span className="text-emerald-400">{report.approvedCount}</span><span className="text-slate-500"> / </span><span className="text-red-400">{report.declinedCount}</span></div>
-                                <div className="text-right text-slate-300">{formatMoney(report.averageTicket)}</div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-
-                {reportType === 'card' && (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
-                            <h2 className="text-lg font-semibold text-white flex items-center gap-2 mb-6"><PieChart size={20} className="text-purple-400" /> Répartition par réseau</h2>
-                            <div className="space-y-4">
-                                {cardBreakdown.map((card) => (
-                                    <div key={card.type}>
-                                        <div className="flex justify-between text-sm mb-2"><span className="text-white font-medium">{card.type}</span><span className="text-slate-400">{card.percentage}%</span></div>
-                                        <div className="h-3 bg-slate-700 rounded-full overflow-hidden">
-                                            <div className="h-full rounded-full bg-purple-500" style={{ width: `${card.percentage}%` }}></div>
-                                        </div>
-                                    </div>
-                                ))}
-                                {cardBreakdown.length === 0 && <p className="text-slate-500 text-sm">Aucune donnée carte.</p>}
-                            </div>
-                        </div>
-
-                        <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
-                            <h2 className="text-lg font-semibold text-white flex items-center gap-2 mb-6"><CreditCard size={20} className="text-purple-400" /> Détail par réseau</h2>
-                            <div className="space-y-4">
-                                {cardBreakdown.map((card) => (
-                                    <div key={card.type} className="p-4 bg-slate-900/50 rounded-xl">
-                                        <div className="grid grid-cols-2 gap-4 text-sm">
-                                            <div><p className="text-slate-400">Réseau</p><p className="text-white font-bold">{card.type}</p></div>
-                                            <div><p className="text-slate-400">Transactions</p><p className="text-white font-bold">{card.count}</p></div>
-                                            <div><p className="text-slate-400">Montant</p><p className="text-white font-bold">{formatMoney(card.amount)}</p></div>
-                                            <div><p className="text-slate-400">Part</p><p className="text-white font-bold">{card.percentage}%</p></div>
-                                        </div>
-                                    </div>
-                                ))}
-                                {cardBreakdown.length === 0 && <p className="text-slate-500 text-sm">Aucune donnée carte.</p>}
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {reportType === 'reconciliation' && (
-                    <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-lg font-semibold text-white flex items-center gap-2"><FileText size={20} className="text-purple-400" /> Réconciliation bancaire</h2>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                            <div className="p-4 bg-slate-900/50 rounded-xl">
-                                <p className="text-sm text-slate-400 mb-2">Total transactions</p>
-                                <p className="text-2xl font-bold text-white">{reconciliation?.totalTransactions ?? totals.totalTransactions}</p>
-                            </div>
-                            <div className="p-4 bg-slate-900/50 rounded-xl">
-                                <p className="text-sm text-slate-400 mb-2">Total débits</p>
-                                <p className="text-2xl font-bold text-white">{formatMoney(reconciliation?.totalDebits ?? totals.totalSales)}</p>
-                            </div>
-                            <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
-                                <p className="text-sm text-slate-400 mb-2">Écart / Net</p>
-                                <p className="text-2xl font-bold text-emerald-400">{formatMoney(reconciliation?.netAmount ?? (totals.totalSales - totals.totalRefunds))}</p>
-                                <p className="text-sm text-emerald-400 mt-1 flex items-center gap-1">
-                                    <CheckCircle2 size={14} /> {reconciliation?.status || 'BALANCED'}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                )}
+        <div style={{ maxWidth: 1320, margin: '0 auto', padding: 'var(--bank-space-6)' }}>
+            <div className="bk-caption" style={{ marginBottom: 'var(--bank-space-4)' }}>
+                <Link href="/merchant" style={{ color: 'var(--bank-text-tertiary)', textDecoration: 'none' }}>Dashboard Marchand</Link>
+                <ChevronRight size={12} style={{ display: 'inline', margin: '0 6px' }} />
+                <span style={{ color: 'var(--bank-accent)' }}>Rapports</span>
             </div>
+
+            <BankPageHeader
+                title="Rapports et statistiques"
+                subtitle="Reporting calcule sur les transactions reelles."
+                actions={
+                    <div style={{ display: 'flex', gap: 'var(--bank-space-2)', flexWrap: 'wrap' }}>
+                        <BankButton variant="ghost" size="sm" icon={RefreshCw} onClick={refreshData} loading={refreshing}>
+                            Actualiser
+                        </BankButton>
+                        <BankButton variant="ghost" size="sm" icon={Download} onClick={exportCsv} disabled={transactions.length === 0}>
+                            Export CSV
+                        </BankButton>
+                        {isDev && (
+                            <BankButton size="sm" icon={BarChart3} onClick={generateHistory} loading={isGenerating}>
+                                {isGenerating ? 'Generation...' : 'Generer historique'}
+                            </BankButton>
+                        )}
+                    </div>
+                }
+            />
+
+            {error && (
+                <div
+                    style={{
+                        marginBottom: 'var(--bank-space-4)',
+                        borderRadius: 'var(--bank-radius-lg)',
+                        border: '1px solid color-mix(in srgb, var(--bank-danger) 30%, transparent)',
+                        background: 'color-mix(in srgb, var(--bank-danger) 8%, transparent)',
+                        color: 'var(--bank-danger)',
+                        padding: 'var(--bank-space-4)',
+                        fontSize: 'var(--bank-text-sm)',
+                    }}
+                >
+                    {error}
+                </div>
+            )}
+
+            <div
+                style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                    gap: 'var(--bank-space-4)',
+                    marginBottom: 'var(--bank-space-5)',
+                }}
+            >
+                <StatCard label="Chiffre d affaires" value={formatMoney(totals.totalSales)} icon={TrendingUp} loading={refreshing} index={0} accent />
+                <StatCard label="Remboursements" value={formatMoney(totals.totalRefunds)} icon={TrendingDown} loading={refreshing} index={1} />
+                <StatCard label="Transactions" value={String(totals.totalTransactions)} icon={FileText} loading={refreshing} index={2} />
+                <StatCard label="Taux approbation" value={`${totals.approvalRate.toFixed(1)}%`} icon={CheckCircle2} loading={refreshing} index={3} />
+            </div>
+
+            <section className="bk-card" style={{ marginBottom: 'var(--bank-space-4)' }}>
+                <div className="bk-reports-filters">
+                    <BankSelect
+                        label="Periode"
+                        value={dateRange}
+                        onChange={(value) => setDateRange(value)}
+                        options={dateRangeOptions}
+                    />
+                    <BankSelect
+                        label="Vue"
+                        value={reportType}
+                        onChange={(value) => setReportType(value as ReportType)}
+                        options={reportTypeOptions}
+                    />
+                </div>
+            </section>
+
+            {reportType === 'daily' && (
+                <>
+                    <section className="bk-card" style={{ marginBottom: 'var(--bank-space-4)' }}>
+                        <div className="bk-reports-trends">
+                            <div>
+                                <p className="bk-caption" style={{ marginBottom: 8 }}>Tendance ventes</p>
+                                <MiniSparkline data={trendSeries.sales.length > 1 ? trendSeries.sales : [0, 0]} width={180} height={48} />
+                            </div>
+                            <div>
+                                <p className="bk-caption" style={{ marginBottom: 8 }}>Tendance net</p>
+                                <MiniSparkline data={trendSeries.net.length > 1 ? trendSeries.net : [0, 0]} width={180} height={48} color="var(--bank-success)" />
+                            </div>
+                        </div>
+                    </section>
+
+                    <BankTable
+                        columns={dailyColumns}
+                        data={dailyReports}
+                        loading={refreshing}
+                        skeletonRows={6}
+                        emptyTitle="Aucune donnee journaliere"
+                        emptyDesc="Aucune transaction sur la periode selectionnee."
+                        rowKey={(row) => row.date}
+                        caption="Rapport journalier marchand"
+                    />
+                </>
+            )}
+
+            {reportType === 'card' && (
+                <BankTable
+                    columns={cardColumns}
+                    data={cardBreakdown}
+                    loading={refreshing}
+                    skeletonRows={4}
+                    emptyTitle="Aucune donnee carte"
+                    emptyDesc="Aucune transaction approuvee de type vente sur la periode."
+                    rowKey={(row) => row.type}
+                    caption="Repartition reseaux carte"
+                />
+            )}
+
+            {reportType === 'reconciliation' && (
+                <section className="bk-card">
+                    <div
+                        style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                            gap: 'var(--bank-space-4)',
+                        }}
+                    >
+                        <StatCard
+                            label="Total transactions"
+                            value={String(reconciliation?.totalTransactions ?? totals.totalTransactions)}
+                            icon={FileText}
+                            loading={refreshing}
+                            index={0}
+                        />
+                        <StatCard
+                            label="Total debits"
+                            value={formatMoney(reconciliation?.totalDebits ?? totals.totalSales)}
+                            icon={TrendingUp}
+                            loading={refreshing}
+                            index={1}
+                        />
+                        <StatCard
+                            label="Total credits"
+                            value={formatMoney(reconciliation?.totalCredits ?? totals.totalRefunds)}
+                            icon={TrendingDown}
+                            loading={refreshing}
+                            index={2}
+                        />
+                        <StatCard
+                            label="Net"
+                            value={formatMoney(reconciliation?.netAmount ?? (totals.totalSales - totals.totalRefunds))}
+                            icon={CheckCircle2}
+                            loading={refreshing}
+                            accent
+                            index={3}
+                        />
+                    </div>
+                    <div style={{ marginTop: 'var(--bank-space-4)' }}>
+                        <BankBadge
+                            variant={reconciliation?.status === 'BALANCED' ? 'success' : 'warning'}
+                            label={`Statut reconciliation: ${reconciliation?.status || 'BALANCED'}`}
+                        />
+                    </div>
+                </section>
+            )}
+
+            <style>{`
+              .bk-reports-filters {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: var(--bank-space-3);
+              }
+              .bk-reports-trends {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: var(--bank-space-4);
+              }
+              @media (max-width: 820px) {
+                .bk-reports-filters,
+                .bk-reports-trends {
+                  grid-template-columns: 1fr;
+                }
+              }
+            `}</style>
         </div>
     );
 }
+

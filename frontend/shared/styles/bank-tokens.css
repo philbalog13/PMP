@@ -1,0 +1,242 @@
+/* ═══════════════════════════════════════════════════════════════════
+   BANKING DESIGN TOKENS — namespace: --bank-
+   Ultra-premium fintech, Revolut/Wise-inspired
+   Tailwind v4 compatible (@layer base)
+
+   ⚠️  NE PAS MODIFIER LES TOKENS --n-* ICI — ce fichier est isolé.
+       Importer uniquement dans les apps banking (user-cards-web, tpe-web,
+       portal/merchant, portal/login). Ne pas importer dans student/instructor.
+   ═══════════════════════════════════════════════════════════════════ */
+
+@layer base {
+   :root {
+
+      /* ─────────────────────────────────────────────────
+     TYPOGRAPHIE
+     ───────────────────────────────────────────────── */
+      --bank-font-sans: 'Geist', 'Inter', -apple-system, BlinkMacSystemFont,
+         'Segoe UI', sans-serif;
+      --bank-font-mono: 'Geist Mono', 'JetBrains Mono', 'Fira Code',
+         ui-monospace, monospace;
+
+      /* Size scale */
+      --bank-text-xs: 0.75rem;
+      /*  12px — labels, captions, badges */
+      --bank-text-sm: 0.875rem;
+      /*  14px — secondary text, table cells */
+      --bank-text-base: 1rem;
+      /*  16px — body, form inputs */
+      --bank-text-lg: 1.125rem;
+      /*  18px — card titles */
+      --bank-text-xl: 1.25rem;
+      /*  20px — section titles */
+      --bank-text-2xl: 1.5rem;
+      /*  24px — page headers */
+      --bank-text-3xl: 1.875rem;
+      /*  30px — stat values */
+      --bank-text-4xl: 2.25rem;
+      /*  36px — balance display */
+      --bank-text-5xl: 3rem;
+      /*  48px — hero balance (dashboard) */
+
+      /* Weight */
+      --bank-font-normal: 400;
+      --bank-font-medium: 500;
+      --bank-font-semibold: 600;
+      --bank-font-bold: 700;
+
+      /* Line height */
+      --bank-leading-tight: 1.2;
+      /* grands montants, titres */
+      --bank-leading-snug: 1.35;
+      /* headings */
+      --bank-leading-normal: 1.5;
+      /* body text */
+      --bank-leading-loose: 1.7;
+      /* descriptions longues */
+
+      /* Letter spacing */
+      --bank-tracking-tight: -0.03em;
+      /* grands chiffres (balance) */
+      --bank-tracking-normal: 0em;
+      --bank-tracking-wide: 0.06em;
+      /* labels uppercase */
+      --bank-tracking-widest: 0.12em;
+      /* PAN masqué mono */
+
+      /* ─────────────────────────────────────────────────
+     SPACING — grille 8pt
+     ───────────────────────────────────────────────── */
+      --bank-space-px: 1px;
+      --bank-space-0-5: 0.125rem;
+      /*  2px */
+      --bank-space-1: 0.25rem;
+      /*  4px */
+      --bank-space-2: 0.5rem;
+      /*  8px */
+      --bank-space-3: 0.75rem;
+      /* 12px */
+      --bank-space-4: 1rem;
+      /* 16px */
+      --bank-space-5: 1.25rem;
+      /* 20px */
+      --bank-space-6: 1.5rem;
+      /* 24px */
+      --bank-space-7: 1.75rem;
+      /* 28px */
+      --bank-space-8: 2rem;
+      /* 32px */
+      --bank-space-10: 2.5rem;
+      /* 40px */
+      --bank-space-12: 3rem;
+      /* 48px */
+      --bank-space-14: 3.5rem;
+      /* 56px */
+      --bank-space-16: 4rem;
+      /* 64px */
+      --bank-space-20: 5rem;
+      /* 80px */
+      --bank-space-24: 6rem;
+      /* 96px */
+
+      /* ─────────────────────────────────────────────────
+     BORDER RADIUS
+     ───────────────────────────────────────────────── */
+      --bank-radius-xs: 4px;
+      /* badges inline, chips */
+      --bank-radius-sm: 6px;
+      /* boutons secondaires, small badges */
+      --bank-radius-md: 10px;
+      /* inputs, small cards */
+      --bank-radius-lg: 14px;
+      /* cards standards */
+      --bank-radius-xl: 18px;
+      /* cards prominentes, modal */
+      --bank-radius-2xl: 24px;
+      /* panels larges */
+      --bank-radius-3xl: 32px;
+      /* hero cards */
+      --bank-radius-full: 9999px;
+      /* pills, avatars, loaders */
+
+      /* ─────────────────────────────────────────────────
+     TRANSITIONS & EASING
+     ───────────────────────────────────────────────── */
+      --bank-ease: cubic-bezier(0.4, 0, 0.2, 1);
+      /* standard */
+      --bank-ease-in: cubic-bezier(0.4, 0, 1, 1);
+      /* exit */
+      --bank-ease-out: cubic-bezier(0, 0, 0.2, 1);
+      /* enter */
+      --bank-ease-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+      /* spring subtil */
+
+      --bank-t-instant: 80ms;
+      /* micro (hover bg) */
+      --bank-t-fast: 120ms;
+      /* hover interactions */
+      --bank-t-base: 200ms;
+      /* transitions standard */
+      --bank-t-slow: 300ms;
+      /* modaux, panels */
+      --bank-t-slower: 450ms;
+      /* page transitions */
+
+      /* ─────────────────────────────────────────────────
+     PALETTE PRIMITIVES — role-agnostic
+     ───────────────────────────────────────────────── */
+
+      /* Indigo — MoneBank (client) */
+      --bank-indigo-50: #EEF2FF;
+      --bank-indigo-100: #E0E7FF;
+      --bank-indigo-200: #C7D2FE;
+      --bank-indigo-300: #A5B4FC;
+      --bank-indigo-400: #818CF8;
+      --bank-indigo-500: #6366F1;
+      --bank-indigo-600: #4F46E5;
+      --bank-indigo-700: #4338CA;
+      --bank-indigo-800: #3730A3;
+      --bank-indigo-900: #312E81;
+      --bank-indigo-950: #1E1B4B;
+
+      /* Teal — SoluBank (merchant) */
+      --bank-teal-50: #F0FDFA;
+      --bank-teal-100: #CCFBF1;
+      --bank-teal-200: #99F6E4;
+      --bank-teal-300: #5EEAD4;
+      --bank-teal-400: #2DD4BF;
+      --bank-teal-500: #14B8A6;
+      --bank-teal-600: #0D9488;
+      --bank-teal-700: #0F766E;
+      --bank-teal-800: #115E59;
+      --bank-teal-900: #134E4A;
+      --bank-teal-950: #042F2E;
+
+      /* Slate — neutres */
+      --bank-slate-50: #F8FAFC;
+      --bank-slate-100: #F1F5F9;
+      --bank-slate-200: #E2E8F0;
+      --bank-slate-300: #CBD5E1;
+      --bank-slate-400: #94A3B8;
+      --bank-slate-500: #64748B;
+      --bank-slate-600: #475569;
+      --bank-slate-700: #334155;
+      --bank-slate-800: #1E293B;
+      --bank-slate-900: #0F172A;
+      --bank-slate-950: #020617;
+
+      /* Semantic — succès */
+      --bank-green-300: #86EFAC;
+      --bank-green-400: #4ADE80;
+      --bank-green-500: #22C55E;
+      --bank-green-600: #16A34A;
+      --bank-green-700: #15803D;
+
+      /* Semantic — danger */
+      --bank-red-300: #FCA5A5;
+      --bank-red-400: #F87171;
+      --bank-red-500: #EF4444;
+      --bank-red-600: #DC2626;
+      --bank-red-700: #B91C1C;
+
+      /* Semantic — warning */
+      --bank-amber-200: #FDE68A;
+      --bank-amber-300: #FCD34D;
+      --bank-amber-400: #FBBF24;
+      --bank-amber-500: #F59E0B;
+      --bank-amber-600: #D97706;
+      --bank-amber-700: #B45309;
+
+      /* Semantic — info */
+      --bank-blue-300: #93C5FD;
+      --bank-blue-400: #60A5FA;
+      --bank-blue-500: #3B82F6;
+      --bank-blue-600: #2563EB;
+
+      /* ─────────────────────────────────────────────────
+     DIMENSIONS LAYOUT
+     ───────────────────────────────────────────────── */
+      --bank-sidebar-width: 240px;
+      --bank-sidebar-width-collapsed: 64px;
+      --bank-topbar-height: 60px;
+      --bank-mobile-nav-height: 64px;
+      --bank-card-visual-width: 344px;
+      --bank-card-visual-height: 216px;
+
+      /* ─────────────────────────────────────────────────
+     Z-INDEX SCALE
+     ───────────────────────────────────────────────── */
+      --bank-z-base: 0;
+      --bank-z-raised: 10;
+      --bank-z-dropdown: 100;
+      --bank-z-sticky: 200;
+      --bank-z-overlay: 300;
+      --bank-z-modal: 400;
+      --bank-z-toast: 500;
+      --bank-z-tooltip: 600;
+   }
+
+   /* end :root */
+}
+
+/* end @layer base */

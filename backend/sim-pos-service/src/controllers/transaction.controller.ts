@@ -1,12 +1,26 @@
 import { Request, Response } from 'express';
 import * as transactionService from '../services/transaction.service';
 
+import { ODAService } from '../services/oda.service';
+
 /**
  * Create a new transaction
  */
 export const createTransaction = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { pan, amount, currency, merchantId, transactionType, cvv, expiryMonth, expiryYear } = req.body;
+        const { pan, amount, currency, merchantId, transactionType, cvv, expiryMonth, expiryYear, pkiCert } = req.body;
+
+        // Offline Data Authentication (ODA)
+        const odaService = ODAService.getInstance();
+        const isAuthentic = odaService.verifyCardCertificate(pkiCert);
+        if (!isAuthentic) {
+            res.status(403).json({
+                success: false,
+                error: 'Offline Data Authentication (ODA) failed. Card certificate is invalid, missing, or untrusted.',
+                responseCode: '05' // Do not honor
+            });
+            return;
+        }
 
         // Validation
         if (!pan) {
@@ -127,6 +141,24 @@ export const cancelTransaction = async (req: Request, res: Response): Promise<vo
             responseCode: reversal.responseCode
         }
     });
+};
+
+/**
+ * Trigger Telecollecte (End of day batch mapping)
+ */
+export const triggerTelecollecte = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { merchantId } = req.body;
+        const result = await transactionService.performTelecollecte(merchantId);
+
+        res.json(result);
+    } catch (error: any) {
+        console.error('Telecollecte error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message || 'Telecollecte processing failed'
+        });
+    }
 };
 
 /**

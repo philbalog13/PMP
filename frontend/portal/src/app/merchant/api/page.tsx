@@ -1,23 +1,30 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useAuth } from '../../auth/useAuth';
 import {
-    Key,
-    Webhook,
-    Plus,
-    Copy,
-    Trash2,
-    CheckCircle2,
-    XCircle,
     AlertTriangle,
+    CheckCircle2,
     ChevronRight,
+    Copy,
     ExternalLink,
-    Code,
+    Key,
+    Plus,
     Shield,
-    Clock
+    Trash2,
+    Webhook,
 } from 'lucide-react';
-import Link from 'next/link';
+import { formatDateTime } from '@shared/lib/formatting';
+import { BankPageHeader } from '@shared/components/banking/layout/BankPageHeader';
+import { BankButton } from '@shared/components/banking/primitives/BankButton';
+import { BankBadge } from '@shared/components/banking/primitives/BankBadge';
+import { BankFormField } from '@shared/components/banking/forms/BankFormField';
+import { BankSpinner } from '@shared/components/banking/primitives/BankSpinner';
+import { BankModal } from '@shared/components/banking/feedback/BankModal';
+import { BankEmptyState } from '@shared/components/banking/feedback/BankEmptyState';
+import { StatCard } from '@shared/components/banking/data-display/StatCard';
+import { BankTable, type BankTableColumn } from '@shared/components/banking/data-display/BankTable';
 
 interface APIKey {
     id: string;
@@ -47,9 +54,8 @@ const toStringArray = (value: unknown): string[] => {
             const parsed = JSON.parse(value);
             if (Array.isArray(parsed)) return parsed.map(String);
         } catch {
-            // Ignore parse error and fallback below
+            return value ? [value] : [];
         }
-        return value ? [value] : [];
     }
     return [];
 };
@@ -74,7 +80,7 @@ const normalizeApiKey = (raw: unknown): APIKey => {
         rateLimitPerMinute: Number(r.rateLimitPerMinute ?? r.rate_limit_per_minute ?? 60),
         isActive: Boolean(r.isActive ?? r.is_active),
         lastUsedAt: toNullableString(r.lastUsedAt ?? r.last_used_at),
-        createdAt: String(r.createdAt ?? r.created_at ?? '')
+        createdAt: String(r.createdAt ?? r.created_at ?? ''),
     };
 };
 
@@ -87,45 +93,52 @@ const normalizeWebhook = (raw: unknown): WebhookConfig => {
         isActive: Boolean(r.isActive ?? r.is_active),
         lastTriggeredAt: toNullableString(r.lastTriggeredAt ?? r.last_triggered_at),
         consecutiveFailures: Number(r.consecutiveFailures ?? r.consecutive_failures ?? 0),
-        createdAt: String(r.createdAt ?? r.created_at ?? '')
+        createdAt: String(r.createdAt ?? r.created_at ?? ''),
     };
 };
+
+const formatDateOrNever = (value: string | null) => (
+    value ? formatDateTime(value) : 'Jamais'
+);
 
 export default function MerchantAPIPage() {
     const { isLoading } = useAuth(true);
     const [apiKeys, setApiKeys] = useState<APIKey[]>([]);
     const [webhooks, setWebhooks] = useState<WebhookConfig[]>([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const [showNewKeyModal, setShowNewKeyModal] = useState(false);
     const [showNewWebhookModal, setShowNewWebhookModal] = useState(false);
     const [newKeyName, setNewKeyName] = useState('');
     const [newWebhookUrl, setNewWebhookUrl] = useState('');
     const [newlyCreatedKey, setNewlyCreatedKey] = useState<string | null>(null);
     const [copiedKey, setCopiedKey] = useState<string | null>(null);
+    const [saving, setSaving] = useState(false);
 
     useEffect(() => {
-        fetchAPIData();
+        void fetchAPIData();
     }, []);
 
     const fetchAPIData = async () => {
         try {
+            setRefreshing(true);
+            setError(null);
             const token = localStorage.getItem('token');
 
-            // Fetch API keys
-            const keysResponse = await fetch('/api/merchant/api-keys', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            // Fetch webhooks
-            const webhooksResponse = await fetch('/api/merchant/webhooks', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const [keysResponse, webhooksResponse] = await Promise.all([
+                fetch('/api/merchant/api-keys', {
+                    headers: { Authorization: `Bearer ${token}` },
+                }),
+                fetch('/api/merchant/webhooks', {
+                    headers: { Authorization: `Bearer ${token}` },
+                }),
+            ]);
 
             if (keysResponse.ok) {
                 const keysData = await keysResponse.json();
                 setApiKeys((keysData.apiKeys || []).map(normalizeApiKey));
             } else {
-                // Mock data
                 setApiKeys([
                     {
                         id: '1',
@@ -135,8 +148,8 @@ export default function MerchantAPIPage() {
                         rateLimitPerMinute: 60,
                         isActive: true,
                         lastUsedAt: '2024-01-15T14:30:00Z',
-                        createdAt: '2024-01-01T10:00:00Z'
-                    }
+                        createdAt: '2024-01-01T10:00:00Z',
+                    },
                 ]);
             }
 
@@ -144,7 +157,6 @@ export default function MerchantAPIPage() {
                 const webhooksData = await webhooksResponse.json();
                 setWebhooks((webhooksData.webhooks || []).map(normalizeWebhook));
             } else {
-                // Mock data
                 setWebhooks([
                     {
                         id: '1',
@@ -153,478 +165,569 @@ export default function MerchantAPIPage() {
                         isActive: true,
                         lastTriggeredAt: '2024-01-15T14:25:00Z',
                         consecutiveFailures: 0,
-                        createdAt: '2024-01-01T10:00:00Z'
-                    }
+                        createdAt: '2024-01-01T10:00:00Z',
+                    },
                 ]);
             }
-        } catch (error) {
-            console.error('Failed to fetch API data:', error);
+        } catch (fetchError: unknown) {
+            const message = fetchError instanceof Error ? fetchError.message : 'Erreur lors du chargement API';
+            setError(message);
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
     };
 
     const createAPIKey = async () => {
         if (!newKeyName.trim()) return;
-
         try {
+            setSaving(true);
+            setError(null);
             const token = localStorage.getItem('token');
             const response = await fetch('/api/merchant/api-keys', {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ keyName: newKeyName })
+                body: JSON.stringify({ keyName: newKeyName }),
             });
 
-            if (response.ok) {
-                const data = await response.json();
-                if (data?.apiKey?.key) {
-                    setNewlyCreatedKey(data.apiKey.key);
-                }
-                const createdKey = normalizeApiKey(data.apiKey || {});
-                if (createdKey.id) {
-                    setApiKeys([createdKey, ...apiKeys]);
-                }
+            if (!response.ok) {
+                throw new Error('Creation de cle API impossible');
             }
-        } catch (error) {
-            console.error('Failed to create API key:', error);
-        }
 
-        setNewKeyName('');
-        setShowNewKeyModal(false);
+            const data = await response.json();
+            if (data?.apiKey?.key) {
+                setNewlyCreatedKey(String(data.apiKey.key));
+            }
+
+            const createdKey = normalizeApiKey(data.apiKey || {});
+            if (createdKey.id) {
+                setApiKeys((prev) => [createdKey, ...prev]);
+            }
+            setShowNewKeyModal(false);
+            setNewKeyName('');
+        } catch (createError: unknown) {
+            const message = createError instanceof Error ? createError.message : 'Erreur creation cle API';
+            setError(message);
+        } finally {
+            setSaving(false);
+        }
     };
 
     const revokeAPIKey = async (keyId: string) => {
-        if (!confirm('Voulez-vous vraiment révoquer cette clé API ?')) return;
-
+        if (!confirm('Confirmer la revocation de cette cle API ?')) return;
         try {
+            setError(null);
             const token = localStorage.getItem('token');
-            await fetch(`/api/merchant/api-keys/${keyId}`, {
+            const response = await fetch(`/api/merchant/api-keys/${keyId}`, {
                 method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${token}` },
             });
-
-            setApiKeys(apiKeys.filter(key => key.id !== keyId));
-        } catch (error) {
-            console.error('Failed to revoke API key:', error);
+            if (!response.ok) {
+                throw new Error('Revocation impossible');
+            }
+            setApiKeys((prev) => prev.filter((key) => key.id !== keyId));
+        } catch (revokeError: unknown) {
+            const message = revokeError instanceof Error ? revokeError.message : 'Erreur revocation cle API';
+            setError(message);
         }
     };
 
     const createWebhook = async () => {
         if (!newWebhookUrl.trim()) return;
-
         try {
+            setSaving(true);
+            setError(null);
             const token = localStorage.getItem('token');
             const response = await fetch('/api/merchant/webhooks', {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ url: newWebhookUrl })
+                body: JSON.stringify({ url: newWebhookUrl }),
             });
 
-            if (response.ok) {
-                const data = await response.json();
-                const createdWebhook = normalizeWebhook(data.webhook || {});
-                if (createdWebhook.id) {
-                    setWebhooks([createdWebhook, ...webhooks]);
-                }
+            if (!response.ok) {
+                throw new Error('Creation webhook impossible');
             }
-        } catch (error) {
-            console.error('Failed to create webhook:', error);
-        }
 
-        setNewWebhookUrl('');
-        setShowNewWebhookModal(false);
+            const data = await response.json();
+            const createdWebhook = normalizeWebhook(data.webhook || {});
+            if (createdWebhook.id) {
+                setWebhooks((prev) => [createdWebhook, ...prev]);
+            }
+            setShowNewWebhookModal(false);
+            setNewWebhookUrl('');
+        } catch (createError: unknown) {
+            const message = createError instanceof Error ? createError.message : 'Erreur creation webhook';
+            setError(message);
+        } finally {
+            setSaving(false);
+        }
     };
 
     const deleteWebhook = async (webhookId: string) => {
-        if (!confirm('Voulez-vous vraiment supprimer ce webhook ?')) return;
-
+        if (!confirm('Confirmer la suppression de ce webhook ?')) return;
         try {
+            setError(null);
             const token = localStorage.getItem('token');
-            await fetch(`/api/merchant/webhooks/${webhookId}`, {
+            const response = await fetch(`/api/merchant/webhooks/${webhookId}`, {
                 method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${token}` },
             });
 
-            setWebhooks(webhooks.filter(wh => wh.id !== webhookId));
-        } catch (error) {
-            console.error('Failed to delete webhook:', error);
+            if (!response.ok) {
+                throw new Error('Suppression webhook impossible');
+            }
+
+            setWebhooks((prev) => prev.filter((wh) => wh.id !== webhookId));
+        } catch (deleteError: unknown) {
+            const message = deleteError instanceof Error ? deleteError.message : 'Erreur suppression webhook';
+            setError(message);
         }
     };
 
-    const copyToClipboard = (text: string, id: string) => {
-        navigator.clipboard.writeText(text);
-        setCopiedKey(id);
-        setTimeout(() => setCopiedKey(null), 2000);
+    const copyToClipboard = async (text: string, id: string) => {
+        try {
+            await navigator.clipboard.writeText(text);
+            setCopiedKey(id);
+            setTimeout(() => setCopiedKey(null), 2000);
+        } catch {
+            setError('Copie impossible');
+        }
     };
+
+    const keyColumns = useMemo<BankTableColumn<APIKey>[]>(() => ([
+        {
+            key: 'keyName',
+            header: 'Cle',
+            sortable: true,
+            render: (row) => (
+                <div style={{ display: 'grid', gap: 4 }}>
+                    <span style={{ fontWeight: 600 }}>{row.keyName || 'Sans nom'}</span>
+                    <span className="bk-caption">{formatDateOrNever(row.createdAt || null)}</span>
+                </div>
+            ),
+        },
+        {
+            key: 'apiKeyPrefix',
+            header: 'Prefixe',
+            render: (row) => (
+                <code style={{ color: 'var(--bank-text-secondary)', fontSize: 'var(--bank-text-xs)' }}>
+                    {row.apiKeyPrefix || 'N/A'}...
+                </code>
+            ),
+        },
+        {
+            key: 'permissions',
+            header: 'Permissions',
+            render: (row) => (
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', whiteSpace: 'normal' }}>
+                    {row.permissions.length > 0 ? (
+                        row.permissions.map((permission) => (
+                            <BankBadge key={permission} variant="neutral" label={permission} />
+                        ))
+                    ) : (
+                        <BankBadge variant="neutral" label="Aucune" />
+                    )}
+                </div>
+            ),
+        },
+        {
+            key: 'rateLimitPerMinute',
+            header: 'Rate limit',
+            align: 'right',
+            sortable: true,
+            render: (row) => `${row.rateLimitPerMinute} req/min`,
+        },
+        {
+            key: 'lastUsedAt',
+            header: 'Dernier usage',
+            render: (row) => formatDateOrNever(row.lastUsedAt),
+        },
+        {
+            key: 'isActive',
+            header: 'Statut',
+            align: 'center',
+            render: (row) => (
+                <BankBadge
+                    variant={row.isActive ? 'success' : 'danger'}
+                    label={row.isActive ? 'Actif' : 'Inactif'}
+                    dot
+                />
+            ),
+        },
+        {
+            key: 'actions',
+            header: 'Actions',
+            align: 'right',
+            render: (row) => (
+                <div style={{ display: 'inline-flex', gap: 'var(--bank-space-2)' }}>
+                    <BankButton
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => void copyToClipboard(row.apiKeyPrefix, row.id)}
+                        aria-label={`Copier ${row.keyName}`}
+                    >
+                        {copiedKey === row.id ? <CheckCircle2 size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
+                    </BankButton>
+                    <BankButton
+                        variant="danger"
+                        size="sm"
+                        onClick={() => void revokeAPIKey(row.id)}
+                        aria-label={`Revoquer ${row.keyName}`}
+                    >
+                        <Trash2 size={14} aria-hidden="true" />
+                    </BankButton>
+                </div>
+            ),
+        },
+    ]), [copiedKey]);
+
+    const webhookColumns = useMemo<BankTableColumn<WebhookConfig>[]>(() => ([
+        {
+            key: 'url',
+            header: 'URL',
+            render: (row) => (
+                <a
+                    href={row.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                        color: 'var(--bank-text-primary)',
+                        textDecoration: 'none',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        whiteSpace: 'normal',
+                        wordBreak: 'break-all',
+                    }}
+                >
+                    {row.url}
+                    <ExternalLink size={14} aria-hidden="true" />
+                </a>
+            ),
+        },
+        {
+            key: 'events',
+            header: 'Evenements',
+            render: (row) => (
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', whiteSpace: 'normal' }}>
+                    {row.events.length > 0 ? row.events.map((eventName) => (
+                        <BankBadge key={eventName} variant="accent" label={eventName} />
+                    )) : (
+                        <BankBadge variant="neutral" label="Aucun" />
+                    )}
+                </div>
+            ),
+        },
+        {
+            key: 'consecutiveFailures',
+            header: 'Echecs',
+            align: 'center',
+            sortable: true,
+            render: (row) => (
+                row.consecutiveFailures > 0
+                    ? <BankBadge variant="warning" label={`${row.consecutiveFailures}`} />
+                    : <BankBadge variant="success" label="0" />
+            ),
+        },
+        {
+            key: 'lastTriggeredAt',
+            header: 'Dernier envoi',
+            render: (row) => formatDateOrNever(row.lastTriggeredAt),
+        },
+        {
+            key: 'isActive',
+            header: 'Statut',
+            align: 'center',
+            render: (row) => (
+                <BankBadge
+                    variant={row.isActive ? 'success' : 'danger'}
+                    label={row.isActive ? 'Actif' : 'Inactif'}
+                    dot
+                />
+            ),
+        },
+        {
+            key: 'actions',
+            header: 'Actions',
+            align: 'right',
+            render: (row) => (
+                <BankButton
+                    variant="danger"
+                    size="sm"
+                    onClick={() => void deleteWebhook(row.id)}
+                    aria-label="Supprimer webhook"
+                >
+                    <Trash2 size={14} aria-hidden="true" />
+                </BankButton>
+            ),
+        },
+    ]), []);
+
+    const totalActiveKeys = apiKeys.filter((key) => key.isActive).length;
+    const totalActiveWebhooks = webhooks.filter((webhook) => webhook.isActive).length;
+    const totalFailures = webhooks.reduce((sum, webhook) => sum + webhook.consecutiveFailures, 0);
 
     if (isLoading || loading) {
         return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+            <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <BankSpinner size={40} />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-slate-950 pt-24 pb-12">
-            <div className="max-w-5xl mx-auto px-6">
-                {/* Header */}
-                <div className="mb-8">
-                    <div className="flex items-center gap-2 text-slate-400 text-sm mb-4">
-                        <Link href="/merchant" className="hover:text-purple-400">Dashboard</Link>
-                        <ChevronRight size={14} />
-                        <span className="text-white">Intégration API</span>
-                    </div>
-                    <h1 className="text-3xl font-bold text-white mb-2">Intégration API</h1>
-                    <p className="text-slate-400">
-                        Gérez vos clés API et configurez les webhooks pour l&apos;intégration avec votre système.
-                    </p>
-                </div>
-
-                {/* Newly Created Key Alert */}
-                {newlyCreatedKey && (
-                    <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-6 mb-8">
-                        <div className="flex items-start gap-4">
-                            <Shield className="w-6 h-6 text-emerald-400 flex-shrink-0" />
-                            <div className="flex-1">
-                                <h3 className="text-lg font-semibold text-white mb-2">Clé API créée avec succès</h3>
-                                <p className="text-sm text-slate-400 mb-4">
-                                    Copiez cette clé maintenant. Elle ne sera plus affichée par la suite.
-                                </p>
-                                <div className="flex items-center gap-2 p-3 bg-slate-900 rounded-lg font-mono text-sm">
-                                    <code className="text-emerald-400 flex-1 break-all">{newlyCreatedKey}</code>
-                                    <button
-                                        onClick={() => copyToClipboard(newlyCreatedKey, 'new')}
-                                        className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
-                                    >
-                                        {copiedKey === 'new' ? (
-                                            <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                                        ) : (
-                                            <Copy className="w-5 h-5 text-slate-400" />
-                                        )}
-                                    </button>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => setNewlyCreatedKey(null)}
-                                className="text-slate-400 hover:text-white"
-                            >
-                                <XCircle size={20} />
-                            </button>
-                        </div>
-                    </div>
-                )}
-
-                {/* API Keys Section */}
-                <div className="mb-10">
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-                            <Key className="w-5 h-5 text-purple-400" />
-                            Clés API
-                        </h2>
-                        <button
-                            onClick={() => setShowNewKeyModal(true)}
-                            className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-xl text-sm font-medium transition-colors"
-                        >
-                            <Plus size={18} />
-                            Nouvelle clé
-                        </button>
-                    </div>
-
-                    <div className="space-y-4">
-                        {apiKeys.length === 0 ? (
-                            <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-8 text-center">
-                                <Key className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-                                <p className="text-slate-400">Aucune clé API créée</p>
-                                <button
-                                    onClick={() => setShowNewKeyModal(true)}
-                                    className="mt-4 text-purple-400 hover:text-purple-300"
-                                >
-                                    Créer votre première clé
-                                </button>
-                            </div>
-                        ) : (
-                            apiKeys.map((key) => (
-                                <div key={key.id} className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
-                                    <div className="flex items-start justify-between mb-4">
-                                        <div>
-                                            <h3 className="text-lg font-medium text-white mb-1">{key.keyName}</h3>
-                                            <div className="flex items-center gap-2">
-                                                <code className="text-sm text-slate-400 font-mono">{key.apiKeyPrefix}...</code>
-                                                <button
-                                                    onClick={() => copyToClipboard(key.apiKeyPrefix, key.id)}
-                                                    className="p-1 hover:bg-slate-700 rounded transition-colors"
-                                                >
-                                                    {copiedKey === key.id ? (
-                                                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                                                    ) : (
-                                                        <Copy className="w-4 h-4 text-slate-500" />
-                                                    )}
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <span className={`px-3 py-1 rounded-full text-xs ${
-                                                key.isActive
-                                                    ? 'bg-emerald-500/20 text-emerald-400'
-                                                    : 'bg-red-500/20 text-red-400'
-                                            }`}>
-                                                {key.isActive ? 'Active' : 'Inactive'}
-                                            </span>
-                                            <button
-                                                onClick={() => revokeAPIKey(key.id)}
-                                                className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                                            >
-                                                <Trash2 size={18} />
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-3 gap-4 text-sm">
-                                        <div>
-                                            <p className="text-slate-500 mb-1">Permissions</p>
-                                            <div className="flex flex-wrap gap-1">
-                                                {key.permissions.map((perm, idx) => (
-                                                    <span key={idx} className="px-2 py-0.5 bg-slate-700 text-slate-300 rounded text-xs">
-                                                        {perm}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <p className="text-slate-500 mb-1">Rate Limit</p>
-                                            <p className="text-white">{key.rateLimitPerMinute} req/min</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-slate-500 mb-1">Dernière utilisation</p>
-                                            <p className="text-white">
-                                                {key.lastUsedAt
-                                                    ? new Date(key.lastUsedAt).toLocaleString('fr-FR')
-                                                    : 'Jamais'
-                                                }
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </div>
-
-                {/* Webhooks Section */}
-                <div className="mb-10">
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-                            <Webhook className="w-5 h-5 text-blue-400" />
-                            Webhooks
-                        </h2>
-                        <button
-                            onClick={() => setShowNewWebhookModal(true)}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm font-medium transition-colors"
-                        >
-                            <Plus size={18} />
-                            Nouveau webhook
-                        </button>
-                    </div>
-
-                    <div className="space-y-4">
-                        {webhooks.length === 0 ? (
-                            <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-8 text-center">
-                                <Webhook className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-                                <p className="text-slate-400">Aucun webhook configuré</p>
-                                <button
-                                    onClick={() => setShowNewWebhookModal(true)}
-                                    className="mt-4 text-blue-400 hover:text-blue-300"
-                                >
-                                    Configurer votre premier webhook
-                                </button>
-                            </div>
-                        ) : (
-                            webhooks.map((webhook) => (
-                                <div key={webhook.id} className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
-                                    <div className="flex items-start justify-between mb-4">
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <code className="text-sm text-white font-mono break-all">{webhook.url}</code>
-                                                <a
-                                                    href={webhook.url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="p-1 hover:bg-slate-700 rounded transition-colors"
-                                                >
-                                                    <ExternalLink className="w-4 h-4 text-slate-500" />
-                                                </a>
-                                            </div>
-                                            <div className="flex flex-wrap gap-2">
-                                                {webhook.events.map((event, idx) => (
-                                                    <span key={idx} className="px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded text-xs">
-                                                        {event}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            {webhook.consecutiveFailures > 0 && (
-                                                <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 text-xs rounded-full flex items-center gap-1">
-                                                    <AlertTriangle size={12} />
-                                                    {webhook.consecutiveFailures} échecs
-                                                </span>
-                                            )}
-                                            <span className={`px-3 py-1 rounded-full text-xs ${
-                                                webhook.isActive
-                                                    ? 'bg-emerald-500/20 text-emerald-400'
-                                                    : 'bg-red-500/20 text-red-400'
-                                            }`}>
-                                                {webhook.isActive ? 'Actif' : 'Inactif'}
-                                            </span>
-                                            <button
-                                                onClick={() => deleteWebhook(webhook.id)}
-                                                className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                                            >
-                                                <Trash2 size={18} />
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-4 text-sm text-slate-400">
-                                        <span className="flex items-center gap-1">
-                                            <Clock size={14} />
-                                            Dernier appel: {webhook.lastTriggeredAt
-                                                ? new Date(webhook.lastTriggeredAt).toLocaleString('fr-FR')
-                                                : 'Jamais'
-                                            }
-                                        </span>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </div>
-
-                {/* API Documentation */}
-                <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
-                    <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-                        <Code className="w-5 h-5 text-amber-400" />
-                        Documentation API
-                    </h2>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="p-4 bg-slate-900/50 rounded-xl">
-                            <h3 className="font-medium text-white mb-2">Authentification</h3>
-                            <p className="text-sm text-slate-400 mb-3">
-                                Incluez votre clé API dans le header Authorization.
-                            </p>
-                            <code className="block p-3 bg-slate-950 rounded-lg text-xs text-emerald-400 font-mono">
-                                Authorization: Bearer pmp_your_api_key
-                            </code>
-                        </div>
-
-                        <div className="p-4 bg-slate-900/50 rounded-xl">
-                            <h3 className="font-medium text-white mb-2">Base URL</h3>
-                            <p className="text-sm text-slate-400 mb-3">
-                                Tous les endpoints utilisent cette URL de base.
-                            </p>
-                            <code className="block p-3 bg-slate-950 rounded-lg text-xs text-emerald-400 font-mono">
-                                https://api.pmp.edu/v1
-                            </code>
-                        </div>
-
-                        <div className="p-4 bg-slate-900/50 rounded-xl">
-                            <h3 className="font-medium text-white mb-2">Créer une transaction</h3>
-                            <code className="block p-3 bg-slate-950 rounded-lg text-xs text-emerald-400 font-mono">
-                                POST /transactions
-                            </code>
-                        </div>
-
-                        <div className="p-4 bg-slate-900/50 rounded-xl">
-                            <h3 className="font-medium text-white mb-2">Lister les transactions</h3>
-                            <code className="block p-3 bg-slate-950 rounded-lg text-xs text-emerald-400 font-mono">
-                                GET /transactions?status=approved
-                            </code>
-                        </div>
-                    </div>
-
-                    <div className="mt-4 pt-4 border-t border-white/5">
-                        <a
-                            href="/documentation"
-                            className="text-purple-400 hover:text-purple-300 text-sm flex items-center gap-1"
-                        >
-                            Voir la documentation complète <ExternalLink size={14} />
-                        </a>
-                    </div>
-                </div>
+        <div style={{ maxWidth: 1320, margin: '0 auto', padding: 'var(--bank-space-6)' }}>
+            <div className="bk-caption" style={{ marginBottom: 'var(--bank-space-4)' }}>
+                <Link href="/merchant" style={{ color: 'var(--bank-text-tertiary)', textDecoration: 'none' }}>Dashboard Marchand</Link>
+                <ChevronRight size={12} style={{ display: 'inline', margin: '0 6px' }} />
+                <span style={{ color: 'var(--bank-accent)' }}>API</span>
             </div>
 
-            {/* New Key Modal */}
-            {showNewKeyModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-slate-800 border border-white/10 rounded-2xl p-6 max-w-md w-full">
-                        <h3 className="text-xl font-semibold text-white mb-4">Créer une nouvelle clé API</h3>
-                        <input
-                            type="text"
-                            value={newKeyName}
-                            onChange={(e) => setNewKeyName(e.target.value)}
-                            placeholder="Nom de la clé (ex: Production)"
-                            className="w-full px-4 py-3 bg-slate-900 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                        />
-                        <div className="flex justify-end gap-3 mt-6">
-                            <button
-                                onClick={() => setShowNewKeyModal(false)}
-                                className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
-                            >
-                                Annuler
-                            </button>
-                            <button
-                                onClick={createAPIKey}
-                                disabled={!newKeyName.trim()}
-                                className="px-4 py-2 bg-purple-500 hover:bg-purple-600 disabled:opacity-50 text-white rounded-xl font-medium transition-colors"
-                            >
-                                Créer
-                            </button>
-                        </div>
+            <BankPageHeader
+                title="Integration API"
+                subtitle="Gerer les cles d acces et les webhooks de votre systeme marchand."
+                actions={(
+                    <div style={{ display: 'flex', gap: 'var(--bank-space-2)', flexWrap: 'wrap' }}>
+                        <BankButton variant="ghost" size="sm" onClick={() => void fetchAPIData()} loading={refreshing}>
+                            Actualiser
+                        </BankButton>
+                        <BankButton size="sm" icon={Plus} onClick={() => setShowNewKeyModal(true)}>
+                            Nouvelle cle
+                        </BankButton>
+                        <BankButton size="sm" variant="ghost" icon={Webhook} onClick={() => setShowNewWebhookModal(true)}>
+                            Nouveau webhook
+                        </BankButton>
                     </div>
+                )}
+            />
+
+            {error && (
+                <div
+                    style={{
+                        marginBottom: 'var(--bank-space-4)',
+                        borderRadius: 'var(--bank-radius-lg)',
+                        border: '1px solid color-mix(in srgb, var(--bank-danger) 30%, transparent)',
+                        background: 'color-mix(in srgb, var(--bank-danger) 8%, transparent)',
+                        color: 'var(--bank-danger)',
+                        padding: 'var(--bank-space-4)',
+                        fontSize: 'var(--bank-text-sm)',
+                    }}
+                >
+                    {error}
                 </div>
             )}
 
-            {/* New Webhook Modal */}
-            {showNewWebhookModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-slate-800 border border-white/10 rounded-2xl p-6 max-w-md w-full">
-                        <h3 className="text-xl font-semibold text-white mb-4">Configurer un nouveau webhook</h3>
-                        <input
-                            type="url"
-                            value={newWebhookUrl}
-                            onChange={(e) => setNewWebhookUrl(e.target.value)}
-                            placeholder="https://votre-site.com/webhook"
-                            className="w-full px-4 py-3 bg-slate-900 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                        <p className="text-xs text-slate-400 mt-2">
-                            Les événements transaction.approved et transaction.declined seront envoyés à cette URL.
+            {newlyCreatedKey && (
+                <section className="bk-card" style={{ marginBottom: 'var(--bank-space-4)' }}>
+                    <div style={{ display: 'grid', gap: 'var(--bank-space-3)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--bank-space-2)' }}>
+                            <Shield size={16} aria-hidden="true" style={{ color: 'var(--bank-success)' }} />
+                            <strong style={{ color: 'var(--bank-text-primary)' }}>Cle API creee</strong>
+                        </div>
+                        <p className="bk-caption" style={{ margin: 0 }}>
+                            Copiez cette valeur maintenant. Elle ne sera plus affichee ensuite.
                         </p>
-                        <div className="flex justify-end gap-3 mt-6">
-                            <button
-                                onClick={() => setShowNewWebhookModal(false)}
-                                className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
-                            >
-                                Annuler
-                            </button>
-                            <button
-                                onClick={createWebhook}
-                                disabled={!newWebhookUrl.trim()}
-                                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white rounded-xl font-medium transition-colors"
-                            >
-                                Créer
-                            </button>
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 'var(--bank-space-2)',
+                                background: 'var(--bank-bg-sunken)',
+                                border: '1px solid var(--bank-border-subtle)',
+                                borderRadius: 'var(--bank-radius-md)',
+                                padding: 'var(--bank-space-3)',
+                            }}
+                        >
+                            <code style={{ flex: 1, wordBreak: 'break-all', fontSize: 'var(--bank-text-xs)' }}>{newlyCreatedKey}</code>
+                            <BankButton variant="ghost" size="sm" onClick={() => void copyToClipboard(newlyCreatedKey, 'new')}>
+                                {copiedKey === 'new' ? <CheckCircle2 size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
+                            </BankButton>
+                            <BankButton variant="ghost" size="sm" onClick={() => setNewlyCreatedKey(null)}>
+                                Fermer
+                            </BankButton>
                         </div>
                     </div>
-                </div>
+                </section>
             )}
+
+            <div
+                style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                    gap: 'var(--bank-space-4)',
+                    marginBottom: 'var(--bank-space-5)',
+                }}
+            >
+                <StatCard label="Cles actives" value={String(totalActiveKeys)} icon={Key} accent index={0} />
+                <StatCard label="Webhooks actifs" value={String(totalActiveWebhooks)} icon={Webhook} index={1} />
+                <StatCard label="Echecs webhook" value={String(totalFailures)} icon={AlertTriangle} index={2} />
+            </div>
+
+            <section style={{ marginBottom: 'var(--bank-space-5)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--bank-space-3)' }}>
+                    <h2 style={{ margin: 0, fontSize: 'var(--bank-text-lg)', display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+                        <Key size={18} aria-hidden="true" />
+                        Cles API
+                    </h2>
+                    <BankButton size="sm" icon={Plus} onClick={() => setShowNewKeyModal(true)}>
+                        Creer une cle
+                    </BankButton>
+                </div>
+                {apiKeys.length === 0 ? (
+                    <div className="bk-card">
+                        <BankEmptyState
+                            icon={<Key size={20} aria-hidden="true" />}
+                            title="Aucune cle API"
+                            description="Creez une premiere cle pour connecter votre backend marchand."
+                            action={(
+                                <BankButton size="sm" onClick={() => setShowNewKeyModal(true)}>
+                                    Creer une cle
+                                </BankButton>
+                            )}
+                        />
+                    </div>
+                ) : (
+                    <BankTable
+                        columns={keyColumns}
+                        data={apiKeys}
+                        rowKey={(row) => row.id}
+                        caption="Liste des cles API marchand"
+                        emptyTitle="Aucune cle"
+                        emptyDesc="Aucune cle API disponible."
+                    />
+                )}
+            </section>
+
+            <section style={{ marginBottom: 'var(--bank-space-5)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--bank-space-3)' }}>
+                    <h2 style={{ margin: 0, fontSize: 'var(--bank-text-lg)', display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+                        <Webhook size={18} aria-hidden="true" />
+                        Webhooks
+                    </h2>
+                    <BankButton size="sm" icon={Plus} onClick={() => setShowNewWebhookModal(true)}>
+                        Ajouter webhook
+                    </BankButton>
+                </div>
+                {webhooks.length === 0 ? (
+                    <div className="bk-card">
+                        <BankEmptyState
+                            icon={<Webhook size={20} aria-hidden="true" />}
+                            title="Aucun webhook"
+                            description="Configurez un endpoint pour recevoir les evenements de paiement."
+                            action={(
+                                <BankButton size="sm" onClick={() => setShowNewWebhookModal(true)}>
+                                    Ajouter webhook
+                                </BankButton>
+                            )}
+                        />
+                    </div>
+                ) : (
+                    <BankTable
+                        columns={webhookColumns}
+                        data={webhooks}
+                        rowKey={(row) => row.id}
+                        caption="Liste des webhooks marchand"
+                        emptyTitle="Aucun webhook"
+                        emptyDesc="Aucune configuration webhook active."
+                    />
+                )}
+            </section>
+
+            <section className="bk-card">
+                <h2 style={{ marginTop: 0, marginBottom: 'var(--bank-space-3)', fontSize: 'var(--bank-text-lg)' }}>
+                    Documentation API
+                </h2>
+                <div
+                    style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                        gap: 'var(--bank-space-3)',
+                    }}
+                >
+                    <div style={{ padding: 'var(--bank-space-3)', background: 'var(--bank-bg-sunken)', borderRadius: 'var(--bank-radius-md)' }}>
+                        <p className="bk-label-upper" style={{ margin: 0 }}>Authentification</p>
+                        <code style={{ display: 'block', marginTop: 8, fontSize: 'var(--bank-text-xs)' }}>
+                            Authorization: Bearer pmp_your_api_key
+                        </code>
+                    </div>
+                    <div style={{ padding: 'var(--bank-space-3)', background: 'var(--bank-bg-sunken)', borderRadius: 'var(--bank-radius-md)' }}>
+                        <p className="bk-label-upper" style={{ margin: 0 }}>Base URL</p>
+                        <code style={{ display: 'block', marginTop: 8, fontSize: 'var(--bank-text-xs)' }}>
+                            https://api.pmp.edu/v1
+                        </code>
+                    </div>
+                    <div style={{ padding: 'var(--bank-space-3)', background: 'var(--bank-bg-sunken)', borderRadius: 'var(--bank-radius-md)' }}>
+                        <p className="bk-label-upper" style={{ margin: 0 }}>Transactions</p>
+                        <code style={{ display: 'block', marginTop: 8, fontSize: 'var(--bank-text-xs)' }}>
+                            POST /transactions | GET /transactions
+                        </code>
+                    </div>
+                </div>
+                <div style={{ marginTop: 'var(--bank-space-3)' }}>
+                    <a
+                        href="/documentation"
+                        style={{ color: 'var(--bank-accent)', textDecoration: 'none', display: 'inline-flex', gap: 6, alignItems: 'center' }}
+                    >
+                        Ouvrir la documentation complete
+                        <ExternalLink size={14} aria-hidden="true" />
+                    </a>
+                </div>
+            </section>
+
+            <BankModal
+                open={showNewKeyModal}
+                onClose={() => setShowNewKeyModal(false)}
+                title="Creer une nouvelle cle API"
+                footer={(
+                    <>
+                        <BankButton variant="ghost" onClick={() => setShowNewKeyModal(false)}>
+                            Annuler
+                        </BankButton>
+                        <BankButton onClick={() => void createAPIKey()} loading={saving} disabled={!newKeyName.trim()}>
+                            Creer
+                        </BankButton>
+                    </>
+                )}
+            >
+                <BankFormField
+                    label="Nom de la cle"
+                    placeholder="Production backend"
+                    value={newKeyName}
+                    onChange={(event) => setNewKeyName(event.target.value)}
+                    hint="Cette cle sera utilisee pour signer les appels API."
+                />
+            </BankModal>
+
+            <BankModal
+                open={showNewWebhookModal}
+                onClose={() => setShowNewWebhookModal(false)}
+                title="Ajouter un webhook"
+                footer={(
+                    <>
+                        <BankButton variant="ghost" onClick={() => setShowNewWebhookModal(false)}>
+                            Annuler
+                        </BankButton>
+                        <BankButton onClick={() => void createWebhook()} loading={saving} disabled={!newWebhookUrl.trim()}>
+                            Ajouter
+                        </BankButton>
+                    </>
+                )}
+            >
+                <BankFormField
+                    type="url"
+                    label="URL endpoint"
+                    placeholder="https://votre-domaine.com/webhook"
+                    value={newWebhookUrl}
+                    onChange={(event) => setNewWebhookUrl(event.target.value)}
+                    hint="Evenements envoyes: transaction.approved et transaction.declined."
+                />
+            </BankModal>
         </div>
     );
 }

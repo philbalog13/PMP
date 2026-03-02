@@ -7,6 +7,144 @@ import { query } from '../config/database';
 import { logger } from '../utils/logger';
 import { awardQuizBadges } from '../services/ctfEvaluation.service';
 
+async function fetchCursusContentTotals(): Promise<Array<{ cursus_id: string; total: number }>> {
+    try {
+        const result = await query(
+            `WITH unit_counts AS (
+                SELECT module_id, COUNT(*)::int AS total
+                FROM learning.cursus_units
+                WHERE is_published = true
+                GROUP BY module_id
+            ),
+            chapter_counts AS (
+                SELECT module_id, COUNT(*)::int AS total
+                FROM learning.cursus_chapters
+                GROUP BY module_id
+            )
+            SELECT
+                cm.cursus_id,
+                SUM(COALESCE(uc.total, cc.total, 0))::int AS total
+            FROM learning.cursus_modules cm
+            LEFT JOIN unit_counts uc ON uc.module_id = cm.id
+            LEFT JOIN chapter_counts cc ON cc.module_id = cm.id
+            GROUP BY cm.cursus_id`
+        );
+
+        return result.rows.map((row) => ({
+            cursus_id: row.cursus_id,
+            total: Number(row.total || 0)
+        }));
+    } catch {
+        const fallback = await query(
+            `SELECT cm.cursus_id, COUNT(cc.id)::int AS total
+             FROM learning.cursus_modules cm
+             JOIN learning.cursus_chapters cc ON cc.module_id = cm.id
+             GROUP BY cm.cursus_id`
+        );
+        return fallback.rows.map((row) => ({
+            cursus_id: row.cursus_id,
+            total: Number(row.total || 0)
+        }));
+    }
+}
+
+async function fetchModulesWithContentCount(cursusId: string): Promise<any[]> {
+    try {
+        const result = await query(
+            `WITH unit_counts AS (
+                SELECT module_id, COUNT(*)::int AS total
+                FROM learning.cursus_units
+                WHERE is_published = true
+                GROUP BY module_id
+            ),
+            chapter_counts AS (
+                SELECT module_id, COUNT(*)::int AS total
+                FROM learning.cursus_chapters
+                GROUP BY module_id
+            )
+            SELECT
+                m.id,
+                m.title,
+                m.description,
+                m.module_order,
+                m.estimated_minutes,
+                m.difficulty,
+                COALESCE(uc.total, cc.total, m.chapter_count, 0)::int AS chapter_count
+            FROM learning.cursus_modules m
+            LEFT JOIN unit_counts uc ON uc.module_id = m.id
+            LEFT JOIN chapter_counts cc ON cc.module_id = m.id
+            WHERE m.cursus_id = $1
+            ORDER BY m.module_order ASC`,
+            [cursusId]
+        );
+        return result.rows;
+    } catch {
+        const fallback = await query(
+            `SELECT id, title, description, module_order, estimated_minutes,
+                    difficulty, chapter_count
+             FROM learning.cursus_modules
+             WHERE cursus_id = $1
+             ORDER BY module_order ASC`,
+            [cursusId]
+        );
+        return fallback.rows;
+    }
+}
+
+async function fetchModuleUnitsAsChapterRows(moduleId: string): Promise<any[]> {
+    try {
+        const unitsResult = await query(
+            `SELECT
+                id,
+                unit_code,
+                title,
+                content_markdown,
+                learning_objectives,
+                unit_order,
+                duration_minutes
+             FROM learning.cursus_units
+             WHERE module_id = $1 AND is_published = true
+             ORDER BY unit_order ASC`,
+            [moduleId]
+        );
+
+        if ((unitsResult.rowCount ?? 0) > 0) {
+            return unitsResult.rows.map((row) => {
+                const objectives = Array.isArray(row.learning_objectives)
+                    ? row.learning_objectives
+                        .filter((value: unknown) => typeof value === 'string')
+                        .map((value: string) => value.trim())
+                        .filter((value: string) => value.length > 0)
+                    : [];
+
+                const unitTitle = row.unit_code
+                    ? `${row.unit_code} - ${row.title}`
+                    : row.title;
+
+                return {
+                    id: row.id,
+                    title: unitTitle,
+                    content: row.content_markdown || '',
+                    key_points: objectives,
+                    chapter_order: Number(row.unit_order || 0),
+                    estimated_minutes: Number(row.duration_minutes || 0),
+                };
+            });
+        }
+    } catch {
+        // Legacy fallback below.
+    }
+
+    const chaptersResult = await query(
+        `SELECT id, title, content, key_points, chapter_order, estimated_minutes
+         FROM learning.cursus_chapters
+         WHERE module_id = $1
+         ORDER BY chapter_order ASC`,
+        [moduleId]
+    );
+    return chaptersResult.rows;
+}
+
 /* ------------------------------------------------------------------ */
 /*  LIST ALL PUBLISHED CURSUS                                          */
 /* ------------------------------------------------------------------ */
@@ -38,14 +176,8 @@ export const listCursus = async (req: Request, res: Response) => {
             }
         }
 
-        // Count total chapters per cursus
-        const chapterCounts = await query(
-            `SELECT cm.cursus_id, COUNT(cc.id)::int AS total
-             FROM learning.cursus_modules cm
-             JOIN learning.cursus_chapters cc ON cc.module_id = cm.id
-             GROUP BY cm.cursus_id`
-        );
-        for (const row of chapterCounts.rows) {
+        const contentCounts = await fetchCursusContentTotals();
+        for (const row of contentCounts) {
             if (!progressMap[row.cursus_id]) progressMap[row.cursus_id] = { completed: 0, total: 0 };
             progressMap[row.cursus_id].total = row.total;
         }
@@ -80,14 +212,7 @@ export const getCursusDetail = async (req: Request, res: Response) => {
             return res.status(404).json({ success: false, error: 'Cursus not found' });
         }
 
-        const modulesResult = await query(
-            `SELECT id, title, description, module_order, estimated_minutes,
-                    difficulty, chapter_count
-             FROM learning.cursus_modules
-             WHERE cursus_id = $1
-             ORDER BY module_order ASC`,
-            [id]
-        );
+        const modulesRows = await fetchModulesWithContentCount(id);
 
         // Quizzes for this cursus
         const quizzesResult = await query(
@@ -128,7 +253,7 @@ export const getCursusDetail = async (req: Request, res: Response) => {
             }
         }
 
-        const modules = modulesResult.rows.map((mod) => {
+        const modules = modulesRows.map((mod) => {
             const completed = completedByModule[mod.id] || 0;
             const total = mod.chapter_count || 1;
             const chapterPct = Math.round((completed / total) * 100);
@@ -181,14 +306,8 @@ export const getModuleContent = async (req: Request, res: Response) => {
             return res.status(404).json({ success: false, error: 'Module not found' });
         }
 
-        const [chaptersResult, quizResult, exerciseResult] = await Promise.all([
-            query(
-                `SELECT id, title, content, key_points, chapter_order, estimated_minutes
-                 FROM learning.cursus_chapters
-                 WHERE module_id = $1
-                 ORDER BY chapter_order ASC`,
-                [moduleId]
-            ),
+        const [chaptersRows, quizResult, exerciseResult] = await Promise.all([
+            fetchModuleUnitsAsChapterRows(moduleId),
             query(
                 `SELECT q.id, q.title, q.pass_percentage, q.time_limit_minutes,
                         COALESCE(
@@ -231,11 +350,16 @@ export const getModuleContent = async (req: Request, res: Response) => {
         }
 
         const exercises = exerciseResult.rows || [];
+        const modulePayload = {
+            ...modResult.rows[0],
+            chapter_count: chaptersRows.length
+        };
 
         res.json({
             success: true,
-            module: modResult.rows[0],
-            chapters: chaptersResult.rows,
+            module: modulePayload,
+            chapters: chaptersRows,
+            units: chaptersRows,
             quiz: quizResult.rows[0] || null,
             exercise: exercises[0] || null, // Backward compatibility for old clients
             exercises,

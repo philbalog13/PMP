@@ -19,6 +19,8 @@ export interface Card {
     updatedAt: Date;
     balance?: number;
     dailyLimit?: number;
+    pkiCert?: string;
+    pkiPrivateKey?: string;
 }
 
 export interface CreateCardRequest {
@@ -88,10 +90,31 @@ export const createCard = async (request: CreateCardRequest): Promise<Card> => {
     const cvvHash = `sha256_${cvv}`; // Placeholder
     const pinHash = `bcrypt_1234`;   // Placeholder default PIN
 
+    let pkiCert: string | null = null;
+    let pkiPrivateKey: string | null = null;
+
+    try {
+        const pkiRes = await fetch('http://key-management:8012/api/pki/cert', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subjectCN: 'EMV Card ' + pan, isEMVCard: true })
+        });
+        const pkiData = await pkiRes.json();
+        if (pkiData.success && pkiData.data) {
+            pkiCert = pkiData.data.cert;
+            pkiPrivateKey = pkiData.data.privateKey;
+            logger.info('PKI Certificate generated successfully for card ' + maskPan(pan));
+        } else {
+            logger.error('Failed to generate PKI cert from key-management: ' + pkiData.error);
+        }
+    } catch (e: any) {
+        logger.error('Could not contact key-management for PKI cert generation: ' + e.message);
+    }
+
     const result = await query(
         `INSERT INTO cards.virtual_cards 
-        (pan, cardholder_name, expiry_month, expiry_year, cvv_hash, pin_hash, balance, daily_limit, status, bin, user_id) 
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'ACTIVE', $9, $10)
+        (pan, cardholder_name, expiry_month, expiry_year, cvv_hash, pin_hash, balance, daily_limit, status, bin, user_id, pki_cert, pki_private_key) 
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'ACTIVE', $9, $10, $11, $12)
         RETURNING *`,
         [
             pan,
@@ -103,7 +126,9 @@ export const createCard = async (request: CreateCardRequest): Promise<Card> => {
             request.balance || 0, // Initial balance
             request.dailyLimit || 1000,
             bin,
-            request.userId || null
+            request.userId || null,
+            pkiCert,
+            pkiPrivateKey
         ]
     );
 
@@ -124,7 +149,9 @@ export const createCard = async (request: CreateCardRequest): Promise<Card> => {
         createdAt: row.created_at,
         updatedAt: row.updated_at,
         balance: parseFloat(row.balance),
-        dailyLimit: parseFloat(row.daily_limit)
+        dailyLimit: parseFloat(row.daily_limit),
+        pkiCert: row.pki_cert,
+        pkiPrivateKey: row.pki_private_key
     };
 };
 
@@ -156,7 +183,9 @@ export const getAllCards = async (page: number = 1, limit: number = 20): Promise
         createdAt: row.created_at,
         updatedAt: row.updated_at,
         balance: parseFloat(row.balance),
-        dailyLimit: parseFloat(row.daily_limit)
+        dailyLimit: parseFloat(row.daily_limit),
+        pkiCert: row.pki_cert,
+        pkiPrivateKey: row.pki_private_key
     }));
 
     return { cards, total };
@@ -185,7 +214,9 @@ export const getCardByPan = async (pan: string): Promise<Card | null> => {
         createdAt: row.created_at,
         updatedAt: row.updated_at,
         balance: parseFloat(row.balance),
-        dailyLimit: parseFloat(row.daily_limit)
+        dailyLimit: parseFloat(row.daily_limit),
+        pkiCert: row.pki_cert,
+        pkiPrivateKey: row.pki_private_key
     };
 };
 

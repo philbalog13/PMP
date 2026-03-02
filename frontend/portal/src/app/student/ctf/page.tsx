@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../auth/useAuth';
 import { APP_URLS } from '@shared/lib/app-urls';
+import { NotionSkeleton, NotionEmptyState, NotionProgress, NotionBadge } from '@shared/components/notion';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -67,48 +68,36 @@ const CATEGORY_LABELS: Record<string, string> = {
     BOSS: 'Boss Challenge',
 };
 
-const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string; glow: string }> = {
-    HSM_ATTACK:             { bg: 'bg-red-500/15',      text: 'text-red-300',     border: 'border-red-500/30',     glow: 'shadow-red-900/20' },
-    REPLAY_ATTACK:          { bg: 'bg-orange-500/15',   text: 'text-orange-300',  border: 'border-orange-500/30',  glow: 'shadow-orange-900/20' },
-    '3DS_BYPASS':           { bg: 'bg-rose-500/15',     text: 'text-rose-300',    border: 'border-rose-500/30',    glow: 'shadow-rose-900/20' },
-    FRAUD_CNP:              { bg: 'bg-yellow-500/15',   text: 'text-yellow-300',  border: 'border-yellow-500/30',  glow: 'shadow-yellow-900/20' },
-    ISO8583_MANIPULATION:   { bg: 'bg-sky-500/15',      text: 'text-sky-300',     border: 'border-sky-500/30',     glow: 'shadow-sky-900/20' },
-    PIN_CRACKING:           { bg: 'bg-fuchsia-500/15',  text: 'text-fuchsia-300', border: 'border-fuchsia-500/30', glow: 'shadow-fuchsia-900/20' },
-    MITM:                   { bg: 'bg-violet-500/15',   text: 'text-violet-300',  border: 'border-violet-500/30',  glow: 'shadow-violet-900/20' },
-    PRIVILEGE_ESCALATION:   { bg: 'bg-indigo-500/15',   text: 'text-indigo-300',  border: 'border-indigo-500/30',  glow: 'shadow-indigo-900/20' },
-    CRYPTO_WEAKNESS:        { bg: 'bg-pink-500/15',     text: 'text-pink-300',    border: 'border-pink-500/30',    glow: 'shadow-pink-900/20' },
-    EMV_CLONING:            { bg: 'bg-amber-500/15',    text: 'text-amber-300',   border: 'border-amber-500/30',   glow: 'shadow-amber-900/20' },
-    TOKEN_VAULT:            { bg: 'bg-teal-500/15',     text: 'text-teal-300',    border: 'border-teal-500/30',    glow: 'shadow-teal-900/20' },
-    NETWORK_ATTACK:         { bg: 'bg-cyan-500/15',     text: 'text-cyan-300',    border: 'border-cyan-500/30',    glow: 'shadow-cyan-900/20' },
-    KEY_MANAGEMENT:         { bg: 'bg-lime-500/15',     text: 'text-lime-300',    border: 'border-lime-500/30',    glow: 'shadow-lime-900/20' },
-    ADVANCED_FRAUD:         { bg: 'bg-red-600/15',      text: 'text-red-200',     border: 'border-red-600/30',     glow: 'shadow-red-900/30' },
-    SUPPLY_CHAIN:           { bg: 'bg-slate-500/15',    text: 'text-slate-300',   border: 'border-slate-500/30',   glow: 'shadow-slate-900/20' },
-    BOSS:                   { bg: 'bg-yellow-600/20',   text: 'text-yellow-200',  border: 'border-yellow-500/40',  glow: 'shadow-yellow-900/30' },
+const CATEGORY_COLORS: Record<string, { text: string; bg: string; border: string }> = {
+    HSM_ATTACK:             { text: '#dc2626', bg: 'rgba(220,38,38,0.08)',   border: 'rgba(220,38,38,0.2)' },
+    REPLAY_ATTACK:          { text: '#ea580c', bg: 'rgba(234,88,12,0.08)',   border: 'rgba(234,88,12,0.2)' },
+    '3DS_BYPASS':           { text: '#e11d48', bg: 'rgba(225,29,72,0.08)',   border: 'rgba(225,29,72,0.2)' },
+    FRAUD_CNP:              { text: '#ca8a04', bg: 'rgba(202,138,4,0.08)',   border: 'rgba(202,138,4,0.2)' },
+    ISO8583_MANIPULATION:   { text: '#0284c7', bg: 'rgba(2,132,199,0.08)',   border: 'rgba(2,132,199,0.2)' },
+    PIN_CRACKING:           { text: '#a21caf', bg: 'rgba(162,28,175,0.08)',  border: 'rgba(162,28,175,0.2)' },
+    MITM:                   { text: '#7c3aed', bg: 'rgba(124,58,237,0.08)',  border: 'rgba(124,58,237,0.2)' },
+    PRIVILEGE_ESCALATION:   { text: '#4338ca', bg: 'rgba(67,56,202,0.08)',   border: 'rgba(67,56,202,0.2)' },
+    CRYPTO_WEAKNESS:        { text: '#db2777', bg: 'rgba(219,39,119,0.08)',  border: 'rgba(219,39,119,0.2)' },
+    EMV_CLONING:            { text: '#b45309', bg: 'rgba(180,83,9,0.08)',    border: 'rgba(180,83,9,0.2)' },
+    TOKEN_VAULT:            { text: '#0f766e', bg: 'rgba(15,118,110,0.08)',  border: 'rgba(15,118,110,0.2)' },
+    NETWORK_ATTACK:         { text: '#0e7490', bg: 'rgba(14,116,144,0.08)',  border: 'rgba(14,116,144,0.2)' },
+    KEY_MANAGEMENT:         { text: '#4d7c0f', bg: 'rgba(77,124,15,0.08)',   border: 'rgba(77,124,15,0.2)' },
+    ADVANCED_FRAUD:         { text: '#b91c1c', bg: 'rgba(185,28,28,0.08)',   border: 'rgba(185,28,28,0.2)' },
+    SUPPLY_CHAIN:           { text: '#475569', bg: 'rgba(71,85,105,0.08)',   border: 'rgba(71,85,105,0.2)' },
+    BOSS:                   { text: '#a16207', bg: 'rgba(161,98,7,0.1)',     border: 'rgba(161,98,7,0.25)' },
 };
 
-const DIFFICULTY_STYLES: Record<string, { label: string; cls: string }> = {
-    BEGINNER:     { label: 'Easy',   cls: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' },
-    INTERMEDIATE: { label: 'Medium', cls: 'bg-amber-500/15   text-amber-300   border-amber-500/30'   },
-    ADVANCED:     { label: 'Hard',   cls: 'bg-orange-500/15  text-orange-300  border-orange-500/30'  },
-    EXPERT:       { label: 'Expert', cls: 'bg-red-500/20     text-red-300     border-red-500/40'     },
+const DIFFICULTY_STYLES: Record<string, { label: string; color: string; bg: string; border: string; dot: string }> = {
+    BEGINNER:     { label: 'Easy',   color: '#059669', bg: 'rgba(5,150,105,0.08)',   border: 'rgba(5,150,105,0.2)',   dot: '#34d399' },
+    INTERMEDIATE: { label: 'Medium', color: '#b45309', bg: 'rgba(180,83,9,0.08)',    border: 'rgba(180,83,9,0.2)',    dot: '#fbbf24' },
+    ADVANCED:     { label: 'Hard',   color: '#c2410c', bg: 'rgba(194,65,12,0.08)',   border: 'rgba(194,65,12,0.2)',   dot: '#fb923c' },
+    EXPERT:       { label: 'Expert', color: '#b91c1c', bg: 'rgba(185,28,28,0.08)',   border: 'rgba(185,28,28,0.2)',   dot: '#f87171' },
 };
 
-// ─── Category icon helper ─────────────────────────────────────────────────────
-
-function CategoryIcon({ category, size = 28 }: { category: string; size?: number }) {
-    const colors = CATEGORY_COLORS[category] || CATEGORY_COLORS.CRYPTO_WEAKNESS;
-    return (
-        <div className={`flex items-center justify-center rounded-xl ${colors.bg} ${colors.border} border`}
-            style={{ width: size + 16, height: size + 16 }}>
-            <Shield size={size} className={colors.text} />
-        </div>
-    );
-}
-
-// ─── RoomCard ────────────────────────────────────────────────────────────────
+// ─── RoomCard ─────────────────────────────────────────────────────────────────
 
 function RoomCard({ room }: { room: Room }) {
-    const diff = DIFFICULTY_STYLES[room.difficulty] || { label: room.difficulty, cls: 'bg-slate-700/60 text-slate-200 border-white/20' };
+    const diff = DIFFICULTY_STYLES[room.difficulty] || { label: room.difficulty, color: 'var(--n-text-secondary)', bg: 'var(--n-bg-elevated)', border: 'var(--n-border)', dot: 'var(--n-text-tertiary)' };
     const cat = CATEGORY_COLORS[room.category] || CATEGORY_COLORS.CRYPTO_WEAKNESS;
     const catLabel = CATEGORY_LABELS[room.category] || room.category;
 
@@ -124,92 +113,159 @@ function RoomCard({ room }: { room: Room }) {
     const isCompleted = room.status === 'COMPLETED';
     const isInProgress = room.status === 'IN_PROGRESS';
 
+    const borderColor = isCompleted ? 'var(--n-success-border)' : isInProgress ? 'var(--n-accent-border)' : 'var(--n-border)';
+
     const cardContent = (
-        <div className={`group relative flex flex-col rounded-2xl border bg-slate-900/60 backdrop-blur p-5 transition-all duration-200 ${
-            isLocked
-                ? 'border-white/8 opacity-55 cursor-not-allowed'
-                : isCompleted
-                    ? 'border-emerald-500/25 hover:border-emerald-400/40 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-emerald-900/20'
-                    : isInProgress
-                        ? 'border-amber-500/25 hover:border-amber-400/40 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-amber-900/20'
-                        : `${cat.border} border-opacity-20 hover:border-opacity-50 hover:-translate-y-0.5 hover:shadow-lg ${cat.glow}`
-        }`}>
+        <div
+            style={{
+                background: 'var(--n-bg-primary)',
+                border: `1px solid ${isLocked ? 'var(--n-border)' : borderColor}`,
+                borderRadius: '8px',
+                padding: '16px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
+                opacity: isLocked ? 0.55 : 1,
+                cursor: isLocked ? 'not-allowed' : 'pointer',
+                transition: 'box-shadow 0.15s, border-color 0.15s',
+            }}
+            onMouseEnter={e => {
+                if (!isLocked) {
+                    (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 16px -4px rgba(0,0,0,0.1)';
+                    (e.currentTarget as HTMLElement).style.borderColor = isCompleted ? 'var(--n-success)' : isInProgress ? 'var(--n-accent)' : 'var(--n-border-strong)';
+                }
+            }}
+            onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.boxShadow = 'none';
+                (e.currentTarget as HTMLElement).style.borderColor = isLocked ? 'var(--n-border)' : borderColor;
+            }}
+        >
             {/* Top row */}
-            <div className="flex items-start justify-between gap-3 mb-4">
-                <CategoryIcon category={room.category} size={22} />
-                <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-mono text-slate-500">{room.code}</p>
-                    <h3 className="font-bold text-base leading-tight mt-0.5 text-white group-hover:text-slate-100 line-clamp-2">
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                {/* Category icon chip */}
+                <div style={{
+                    flexShrink: 0,
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '7px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: cat.bg,
+                    border: `1px solid ${cat.border}`,
+                }}>
+                    <Shield size={18} style={{ color: cat.text }} />
+                </div>
+
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: '10px', fontFamily: 'var(--n-font-mono)', color: 'var(--n-text-tertiary)', marginBottom: '2px' }}>
+                        {room.code}
+                    </p>
+                    <h3 style={{
+                        fontSize: '14px',
+                        fontWeight: 600,
+                        color: 'var(--n-text-primary)',
+                        lineHeight: 1.3,
+                        overflow: 'hidden',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                    }}>
                         {room.title}
                     </h3>
                 </div>
-                {isCompleted && <CheckCircle2 size={18} className="text-emerald-400 flex-shrink-0 mt-1" />}
-                {isInProgress && <Flame size={18} className="text-amber-400 flex-shrink-0 mt-1" />}
-                {isLocked && <Lock size={18} className="text-slate-600 flex-shrink-0 mt-1" />}
-                {room.status === 'UNLOCKED' && <Zap size={18} className="text-cyan-400 flex-shrink-0 mt-1" />}
+
+                {/* Status icon */}
+                <div style={{ flexShrink: 0 }}>
+                    {isCompleted && <CheckCircle2 size={16} style={{ color: 'var(--n-success)' }} />}
+                    {isInProgress && <Flame size={16} style={{ color: 'var(--n-accent)' }} />}
+                    {isLocked && <Lock size={16} style={{ color: 'var(--n-text-tertiary)' }} />}
+                    {room.status === 'UNLOCKED' && <Zap size={16} style={{ color: 'var(--n-info)' }} />}
+                </div>
             </div>
 
             {/* Description */}
-            <p className="text-sm text-slate-400 leading-relaxed line-clamp-2 flex-1 mb-4">
+            <p style={{
+                fontSize: '13px',
+                color: 'var(--n-text-secondary)',
+                lineHeight: 1.5,
+                overflow: 'hidden',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                flex: 1,
+            }}>
                 {room.description}
             </p>
 
             {/* Progress bar */}
             {(isInProgress || isCompleted) && (
-                <div className="mb-3">
-                    <div className="flex items-center justify-between text-[11px] text-slate-500 mb-1">
-                        <span>{isCompleted ? 'Completed' : `Task ${currentStep}/${totalSteps}`}</span>
-                        <span>{progressPct}%</span>
+                <div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                        <span style={{ fontSize: '11px', color: 'var(--n-text-tertiary)' }}>
+                            {isCompleted ? '✓ Complété' : `Tâche ${currentStep}/${totalSteps}`}
+                        </span>
+                        <span style={{ fontSize: '11px', fontWeight: 700, color: isCompleted ? 'var(--n-success)' : 'var(--n-accent)' }}>
+                            {progressPct}%
+                        </span>
                     </div>
-                    <div className="h-1.5 w-full rounded-full bg-slate-800 overflow-hidden">
-                        <div
-                            className={`h-full rounded-full transition-all duration-700 ${isCompleted ? 'bg-emerald-500' : 'bg-amber-400'}`}
-                            style={{ width: `${progressPct}%` }}
-                        />
-                    </div>
+                    <NotionProgress value={progressPct} max={100} variant={isCompleted ? 'success' : 'accent'} size="default" />
                 </div>
             )}
 
-            {/* Footer badges */}
-            <div className="flex items-center justify-between gap-2 pt-3 border-t border-white/5">
-                <div className="flex items-center gap-2">
-                    <span className={`text-[11px] px-2 py-0.5 rounded-full border ${diff.cls}`}>
+            {/* Footer */}
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '8px',
+                paddingTop: '8px',
+                borderTop: '1px solid var(--n-border)',
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {/* Difficulty badge */}
+                    <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '2px 7px',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        fontWeight: 600,
+                        color: diff.color,
+                        background: diff.bg,
+                        border: `1px solid ${diff.border}`,
+                    }}>
+                        <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: diff.dot, flexShrink: 0 }} />
                         {diff.label}
                     </span>
-                    <span className={`text-[11px] px-2 py-0.5 rounded-full border ${cat.bg} ${cat.text} ${cat.border}`}>
+                    {/* Category badge */}
+                    <span style={{
+                        padding: '2px 7px',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        fontWeight: 500,
+                        color: cat.text,
+                        background: cat.bg,
+                        border: `1px solid ${cat.border}`,
+                    }}>
                         {catLabel}
                     </span>
                 </div>
-                <div className="flex items-center gap-3 text-[11px] text-slate-500">
-                    <span className="text-orange-300 font-semibold">{room.points} pts</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '11px', color: 'var(--n-text-tertiary)' }}>
+                    <span style={{ fontWeight: 700, color: 'var(--n-accent)' }}>{room.points} pts</span>
                     <span>{room.solveCount} solves</span>
                 </div>
             </div>
         </div>
     );
 
-    if (isLocked) {
-        return <div>{cardContent}</div>;
-    }
+    if (isLocked) return <div>{cardContent}</div>;
 
     return (
-        <Link href={`${APP_URLS.studentCtf}/${encodeURIComponent(room.code)}`}>
+        <Link href={`${APP_URLS.studentCtf}/${encodeURIComponent(room.code)}`} style={{ textDecoration: 'none', display: 'block' }}>
             {cardContent}
         </Link>
-    );
-}
-
-// ─── Stat pill ────────────────────────────────────────────────────────────────
-
-function StatPill({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-    return (
-        <div className="flex flex-col items-center gap-1 px-5 py-3 rounded-2xl border border-white/10 bg-slate-900/50">
-            <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                {icon}
-                <span>{label}</span>
-            </div>
-            <p className="text-2xl font-extrabold text-white">{value}</p>
-        </div>
     );
 }
 
@@ -218,10 +274,13 @@ function StatPill({ icon, label, value }: { icon: React.ReactNode; label: string
 export default function StudentCtfPage() {
     return (
         <Suspense fallback={
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                    <Swords className="h-10 w-10 animate-bounce text-orange-400" />
-                    <p className="text-sm text-slate-400">Chargement des rooms...</p>
+            <div style={{ padding: '40px 24px', maxWidth: '1200px', margin: '0 auto' }}>
+                <NotionSkeleton type="line" style={{ width: '200px', marginBottom: '24px' }} />
+                <NotionSkeleton type="stat" style={{ height: '80px', marginBottom: '24px' }} />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                    {Array.from({ length: 6 }).map((_, i) => (
+                        <NotionSkeleton key={i} type="card" style={{ height: '160px' }} />
+                    ))}
                 </div>
             </div>
         }>
@@ -320,134 +379,198 @@ function CtfRoomListPage() {
     }, [rooms, categoryFilter, difficultyFilter]);
 
     const completedCount = useMemo(() => rooms.filter((r) => r.status === 'COMPLETED').length, [rooms]);
-    const inProgressCount = useMemo(() => rooms.filter((r) => r.status === 'IN_PROGRESS').length, [rooms]);
 
     if (authLoading || loading) {
         return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                    <Swords className="h-10 w-10 animate-bounce text-orange-400" />
-                    <p className="text-sm text-slate-400">Chargement des rooms...</p>
+            <div style={{ padding: '40px 24px', maxWidth: '1200px', margin: '0 auto' }}>
+                <NotionSkeleton type="line" style={{ width: '200px', marginBottom: '24px' }} />
+                <NotionSkeleton type="stat" style={{ height: '80px', marginBottom: '24px' }} />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
+                    {Array.from({ length: 6 }).map((_, i) => (
+                        <NotionSkeleton key={i} type="card" style={{ height: '160px' }} />
+                    ))}
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-slate-950 text-white pt-24 pb-16">
-            <div className="max-w-7xl mx-auto px-6">
+        <div style={{ minHeight: 'calc(100vh - 48px)', background: 'var(--n-bg-primary)' }}>
 
-                {/* Breadcrumb */}
-                <div className="text-xs text-slate-500 mb-8 flex items-center gap-1">
-                    <Link href="/student" className="hover:text-orange-300 transition-colors">Mon Parcours</Link>
-                    <ChevronRight size={12} />
-                    <span className="text-orange-300">Security Labs</span>
-                </div>
+            {/* ── PAGE HEADER ── */}
+            <div style={{
+                borderBottom: '1px solid var(--n-border)',
+                padding: '32px 24px 24px',
+                background: 'var(--n-bg-primary)',
+            }}>
+                <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+                    {/* Breadcrumb */}
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        fontSize: '12px',
+                        color: 'var(--n-text-tertiary)',
+                        marginBottom: '14px',
+                    }}>
+                        <Link href="/student" style={{ color: 'var(--n-text-tertiary)', textDecoration: 'none' }}
+                              onMouseEnter={e => (e.currentTarget.style.color = 'var(--n-text-primary)')}
+                              onMouseLeave={e => (e.currentTarget.style.color = 'var(--n-text-tertiary)')}>
+                            Mon Parcours
+                        </Link>
+                        <ChevronRight size={12} />
+                        <span style={{ color: 'var(--n-text-secondary)' }}>Security Labs</span>
+                    </div>
 
-                {/* Hero */}
-                <div className="relative mb-10 rounded-3xl border border-white/10 overflow-hidden bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900">
-                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(255,100,50,0.18),transparent_50%),radial-gradient(ellipse_at_bottom_right,rgba(100,50,200,0.12),transparent_50%)]" />
-                    <div className="relative px-8 py-8">
-                        <div className="flex flex-wrap items-start justify-between gap-6">
-                            <div>
-                                <div className="flex items-center gap-4 mb-3">
-                                    <div className="w-14 h-14 rounded-2xl bg-red-500/15 border border-red-500/30 flex items-center justify-center">
-                                        <Target size={32} className="text-red-400" />
-                                    </div>
-                                    <div className="inline-flex items-center rounded-full bg-orange-500/15 border border-orange-500/25 px-3 py-1 text-xs text-orange-300">
-                                        Security Labs CTF
-                                    </div>
-                                </div>
-                                <h1 className="text-4xl font-black tracking-tight text-white">
-                                    Hack the Bank
-                                </h1>
-                                <p className="mt-2 text-slate-400 text-sm max-w-xl">
-                                    Rooms d&apos;attaque sur l&apos;infrastructure PMP. Compromettez les systèmes, trouvez les flags, apprenez les défenses.
-                                </p>
+                    <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '24px', flexWrap: 'wrap' }}>
+                        <div>
+                            {/* Label */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '8px' }}>
+                                <Target size={14} style={{ color: 'var(--n-danger)' }} />
+                                <span style={{
+                                    fontSize: '11px',
+                                    fontWeight: 700,
+                                    letterSpacing: '0.1em',
+                                    textTransform: 'uppercase',
+                                    color: 'var(--n-danger)',
+                                }}>Cyber Range · Security Labs CTF</span>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <Link
-                                    href={APP_URLS.studentCtfLeaderboard}
-                                    className="px-4 py-2 rounded-xl border border-white/15 bg-slate-800/60 hover:bg-slate-800 text-sm font-semibold inline-flex items-center gap-2 transition-colors"
-                                >
-                                    <Trophy size={15} className="text-amber-300" />
-                                    Leaderboard
-                                </Link>
-                                <button
-                                    onClick={() => void refresh()}
-                                    className={`px-4 py-2 rounded-xl border border-white/15 bg-slate-800/60 hover:bg-slate-800 text-sm font-semibold inline-flex items-center gap-2 transition-colors ${refreshing ? 'opacity-70' : ''}`}
-                                >
-                                    <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} />
-                                    Refresh
-                                </button>
-                            </div>
+
+                            <h1 style={{
+                                fontSize: '24px',
+                                fontWeight: 700,
+                                color: 'var(--n-text-primary)',
+                                marginBottom: '6px',
+                                letterSpacing: '-0.01em',
+                            }}>Hack the Bank 🏦</h1>
+
+                            <p style={{ fontSize: '13px', color: 'var(--n-text-secondary)', lineHeight: 1.5, maxWidth: '480px' }}>
+                                Rooms d'attaque sur l'infrastructure PMP. Compromettez les systèmes, trouvez les flags, apprenez les défenses.
+                            </p>
                         </div>
 
-                        {/* Stats row */}
-                        <div className="mt-6 flex flex-wrap gap-3">
-                            <StatPill
-                                icon={<Trophy size={13} className="text-amber-300" />}
-                                label="Points"
-                                value={`${summary.totalPoints}`}
-                            />
-                            <StatPill
-                                icon={<CheckCircle2 size={13} className="text-emerald-300" />}
-                                label="Rooms complétées"
-                                value={`${completedCount}/${summary.totalChallenges || rooms.length}`}
-                            />
-                            <StatPill
-                                icon={<Flame size={13} className="text-amber-300" />}
-                                label="En cours"
-                                value={`${inProgressCount}`}
-                            />
-                            <StatPill
-                                icon={<Target size={13} className="text-red-300" />}
-                                label="Classement"
-                                value={myEntry ? `#${myEntry.rank}` : '—'}
-                            />
+                        {/* Stats */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flexShrink: 0 }}>
+                            {[
+                                { value: summary.totalPoints > 0 ? `${summary.totalPoints}` : '0', label: 'Points', color: 'var(--n-accent)' },
+                                { value: `${completedCount}/${summary.totalChallenges || rooms.length}`, label: 'Rooms', color: 'var(--n-success)' },
+                                { value: myEntry ? `#${myEntry.rank}` : '—', label: 'Classement', color: 'var(--n-danger)' },
+                            ].map(({ value, label, color }) => (
+                                <div key={label} style={{ textAlign: 'center' }}>
+                                    <div style={{ fontSize: '22px', fontWeight: 800, color, letterSpacing: '-0.02em', lineHeight: 1 }}>{value}</div>
+                                    <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--n-text-tertiary)', marginTop: '2px' }}>{label}</div>
+                                </div>
+                            ))}
                         </div>
                     </div>
+
+                    {/* Action buttons */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '16px' }}>
+                        <Link href={APP_URLS.studentCtfLeaderboard} style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '7px 14px',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            color: 'var(--n-accent)',
+                            background: 'var(--n-accent-light)',
+                            border: '1px solid var(--n-accent-border)',
+                            textDecoration: 'none',
+                            transition: 'opacity 0.15s',
+                        }}
+                            onMouseEnter={e => (e.currentTarget.style.opacity = '0.8')}
+                            onMouseLeave={e => (e.currentTarget.style.opacity = '1')}>
+                            <Trophy size={13} /> Leaderboard
+                        </Link>
+                        <button
+                            onClick={() => void refresh()}
+                            disabled={refreshing}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                padding: '7px 14px',
+                                borderRadius: '6px',
+                                fontSize: '12px',
+                                fontWeight: 500,
+                                color: 'var(--n-text-secondary)',
+                                background: 'var(--n-bg-primary)',
+                                border: '1px solid var(--n-border)',
+                                cursor: refreshing ? 'not-allowed' : 'pointer',
+                                opacity: refreshing ? 0.6 : 1,
+                            }}
+                        >
+                            <RefreshCw size={13} style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
+                            Actualiser
+                        </button>
+                    </div>
                 </div>
+            </div>
+
+            {/* ── CONTENT ── */}
+            <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>
 
                 {error && (
-                    <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/8 text-red-200 text-sm p-4">
+                    <div style={{
+                        marginBottom: '16px',
+                        padding: '12px 16px',
+                        borderRadius: '6px',
+                        fontSize: '13px',
+                        color: 'var(--n-danger)',
+                        background: 'var(--n-danger-bg)',
+                        border: '1px solid var(--n-danger-border)',
+                    }}>
                         {error}
                     </div>
                 )}
 
                 {/* Filters */}
-                <div className="mb-6 flex flex-wrap items-center gap-2">
-                    {/* Category filter */}
-                    <div className="flex flex-wrap gap-2">
-                        {categoryList.map((cat) => {
-                            const active = categoryFilter === cat;
-                            const colors = cat !== 'ALL' ? CATEGORY_COLORS[cat] : null;
-                            return (
-                                <button
-                                    key={cat}
-                                    onClick={() => updateFilters(cat, difficultyFilter)}
-                                    className={`px-3 py-1.5 rounded-full text-xs border font-medium transition-all ${
-                                        active
-                                            ? colors
-                                                ? `${colors.bg} ${colors.text} ${colors.border}`
-                                                : 'bg-orange-500/20 text-orange-200 border-orange-400/30'
-                                            : 'bg-slate-800/50 border-white/10 text-slate-400 hover:text-slate-200 hover:border-white/20'
-                                    }`}
-                                >
-                                    {cat === 'ALL' ? 'All Rooms' : (CATEGORY_LABELS[cat] || cat)}
-                                </button>
-                            );
-                        })}
-                    </div>
+                <div style={{ marginBottom: '16px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px' }}>
+                    {categoryList.map((cat) => {
+                        const active = categoryFilter === cat;
+                        const colors = cat !== 'ALL' ? CATEGORY_COLORS[cat] : null;
+                        return (
+                            <button
+                                key={cat}
+                                onClick={() => updateFilters(cat, difficultyFilter)}
+                                style={{
+                                    padding: '5px 10px',
+                                    borderRadius: '5px',
+                                    fontSize: '11px',
+                                    fontWeight: 500,
+                                    cursor: 'pointer',
+                                    border: `1px solid ${active && colors ? colors.border : active ? 'var(--n-accent-border)' : 'var(--n-border)'}`,
+                                    background: active && colors ? colors.bg : active ? 'var(--n-accent-light)' : 'var(--n-bg-primary)',
+                                    color: active && colors ? colors.text : active ? 'var(--n-accent)' : 'var(--n-text-tertiary)',
+                                    transition: 'all 0.1s',
+                                }}
+                                onMouseEnter={e => { if (!active) e.currentTarget.style.borderColor = 'var(--n-border-strong)'; }}
+                                onMouseLeave={e => { if (!active) e.currentTarget.style.borderColor = 'var(--n-border)'; }}
+                            >
+                                {cat === 'ALL' ? 'Tous' : (CATEGORY_LABELS[cat] || cat)}
+                            </button>
+                        );
+                    })}
 
                     {/* Difficulty select */}
-                    <div className="ml-auto">
+                    <div style={{ marginLeft: 'auto' }}>
                         <select
                             value={difficultyFilter}
                             onChange={(e) => updateFilters(categoryFilter, e.target.value)}
-                            className="bg-slate-800/70 border border-white/10 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-orange-400/30"
+                            style={{
+                                background: 'var(--n-bg-primary)',
+                                border: '1px solid var(--n-border)',
+                                borderRadius: '5px',
+                                padding: '5px 10px',
+                                fontSize: '11px',
+                                color: 'var(--n-text-primary)',
+                                cursor: 'pointer',
+                                outline: 'none',
+                            }}
                         >
-                            <option value="ALL">All Difficulties</option>
+                            <option value="ALL">Toutes les difficultés</option>
                             <option value="BEGINNER">Easy</option>
                             <option value="INTERMEDIATE">Medium</option>
                             <option value="ADVANCED">Hard</option>
@@ -458,29 +581,46 @@ function CtfRoomListPage() {
 
                 {/* Results count */}
                 {filteredRooms.length > 0 && (
-                    <p className="text-xs text-slate-500 mb-4">
-                        {filteredRooms.length} room{filteredRooms.length > 1 ? 's' : ''} found
+                    <p style={{ fontSize: '12px', color: 'var(--n-text-tertiary)', marginBottom: '12px' }}>
+                        <span style={{ color: 'var(--n-text-primary)', fontWeight: 600 }}>{filteredRooms.length}</span>
+                        {' '}room{filteredRooms.length > 1 ? 's' : ''} affichée{filteredRooms.length > 1 ? 's' : ''}
                     </p>
                 )}
 
                 {/* Room grid */}
                 {filteredRooms.length > 0 ? (
-                    <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                        gap: '10px',
+                    }}>
                         {filteredRooms.map((room) => (
                             <RoomCard key={room.code} room={room} />
                         ))}
                     </div>
                 ) : (
-                    <div className="mt-16 text-center">
-                        <Shield size={40} className="text-slate-700 mx-auto mb-4" />
-                        <p className="text-slate-400">Aucune room pour ces filtres.</p>
-                        <button
-                            onClick={() => updateFilters('ALL', 'ALL')}
-                            className="mt-3 text-xs text-orange-300 hover:text-orange-200 underline"
-                        >
-                            Effacer les filtres
-                        </button>
-                    </div>
+                    <NotionEmptyState
+                        icon={<Swords size={28} />}
+                        title="Aucune room pour ces filtres"
+                        description="Essayez d'ajuster vos filtres pour trouver des challenges."
+                        action={
+                            <button
+                                onClick={() => updateFilters('ALL', 'ALL')}
+                                style={{
+                                    padding: '7px 16px',
+                                    borderRadius: '6px',
+                                    border: 'none',
+                                    background: 'var(--n-accent)',
+                                    color: '#fff',
+                                    fontSize: '12px',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                Effacer les filtres
+                            </button>
+                        }
+                    />
                 )}
             </div>
         </div>

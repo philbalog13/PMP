@@ -1,0 +1,270 @@
+/*
+ * ═══════════════════════════════════════════════════════
+ *   NOTION DESIGN TOKENS — PMP Platform
+ *   Style minimaliste / aéré / orienté contenu
+ *   Compatible Tailwind v4 · Importé par design-tokens.css
+ * ═══════════════════════════════════════════════════════
+ *
+ *   Usage : var(--n-*) dans tous les composants Notion-style
+ *   Ne remplace PAS les tokens MISSION CIPHER (--primary-*, --bg-*)
+ *   Les deux systèmes coexistent pendant la migration
+ */
+
+@layer base {
+  :root {
+    /* ══════════════════════════════════════
+     *  BACKGROUNDS — Light mode (défaut)
+     * ══════════════════════════════════════ */
+    --n-bg-primary:    #ffffff;       /* fond de page */
+    --n-bg-secondary:  #f7f7f5;       /* sidebar, code blocks */
+    --n-bg-tertiary:   #efefed;       /* hover states, dividers */
+    --n-bg-elevated:   #ffffff;       /* cards, popovers */
+
+    /* ══════════════════════════════════════
+     *  BORDERS & DIVIDERS
+     * ══════════════════════════════════════ */
+    --n-border:        #e6e6e4;       /* border standard */
+    --n-border-strong: #d0d0ce;       /* border emphasisé */
+    --n-divider:       #e9e9e7;       /* séparateurs HR */
+
+    /* ══════════════════════════════════════
+     *  TEXTE
+     * ══════════════════════════════════════ */
+    --n-text-primary:   #1a1a1a;      /* corps de texte */
+    --n-text-secondary: #6b7280;      /* labels, meta, timestamps */
+    --n-text-tertiary:  #9ca3af;      /* placeholders, disabled */
+    --n-text-inverse:   #ffffff;      /* texte sur fond sombre */
+
+    /* ══════════════════════════════════════
+     *  ACCENT — 1 seule couleur, utilisée sparingly
+     * ══════════════════════════════════════ */
+    --n-accent:         #2563eb;      /* blue-600, liens, focus, CTA */
+    --n-accent-hover:   #1d4ed8;      /* blue-700, hover */
+    --n-accent-light:   #eff4fe;      /* fond teinté, selected states */
+    --n-accent-border:  #c7d9fd;      /* borders avec accent */
+
+    /* ══════════════════════════════════════
+     *  SEMANTIC COLORS — désaturés, éditoriaux
+     * ══════════════════════════════════════ */
+    --n-success:        #0a7c4e;
+    --n-success-bg:     #f0faf6;
+    --n-success-border: #b7e5d5;
+
+    --n-warning:        #9e6b00;
+    --n-warning-bg:     #fef9ec;
+    --n-warning-border: #fae3a1;
+
+    --n-danger:         #c73a3a;
+    --n-danger-bg:      #fff1f1;
+    --n-danger-border:  #fbc8c8;
+
+    --n-info:           #1e6fa5;
+    --n-info-bg:        #eff7fd;
+    --n-info-border:    #b3d9f6;
+
+    /* ══════════════════════════════════════
+     *  LEVEL COLORS — désaturés pour cohérence
+     * ══════════════════════════════════════ */
+    --n-level-beginner:        #0a7c4e;
+    --n-level-beginner-bg:     #f0faf6;
+    --n-level-beginner-border: #b7e5d5;
+
+    --n-level-inter:        #9e6b00;
+    --n-level-inter-bg:     #fef9ec;
+    --n-level-inter-border: #fae3a1;
+
+    --n-level-advanced:        #c45b00;
+    --n-level-advanced-bg:     #fff4ed;
+    --n-level-advanced-border: #fdd0a8;
+
+    --n-level-expert:        #c73a3a;
+    --n-level-expert-bg:     #fff1f1;
+    --n-level-expert-border: #fbc8c8;
+
+    /* ══════════════════════════════════════
+     *  SEVERITY COLORS (defense lab)
+     * ══════════════════════════════════════ */
+    --n-severity-critical:        #b91c1c;
+    --n-severity-critical-bg:     #fef2f2;
+    --n-severity-critical-border: #fca5a5;
+
+    --n-severity-high:        #c45b00;
+    --n-severity-high-bg:     #fff4ed;
+    --n-severity-high-border: #fdd0a8;
+
+    --n-severity-medium:        #9e6b00;
+    --n-severity-medium-bg:     #fef9ec;
+    --n-severity-medium-border: #fae3a1;
+
+    --n-severity-low:        #0a7c4e;
+    --n-severity-low-bg:     #f0faf6;
+    --n-severity-low-border: #b7e5d5;
+
+    /* ══════════════════════════════════════
+     *  SHADOWS — portée légère, aucun glow
+     * ══════════════════════════════════════ */
+    --n-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --n-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+    --n-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.04);
+    --n-shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.08), 0 4px 8px rgba(0, 0, 0, 0.04);
+    --n-shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.10);
+
+    /* ══════════════════════════════════════
+     *  BORDER RADIUS — cohérent et modéré
+     * ══════════════════════════════════════ */
+    --n-radius-xs: 3px;    /* badges inline, tags petits */
+    --n-radius-sm: 4px;    /* boutons, inputs, items nav */
+    --n-radius-md: 6px;    /* cartes, popovers, tooltips */
+    --n-radius-lg: 8px;    /* modals, panels */
+    --n-radius-xl: 12px;   /* sections hero */
+
+    /* ══════════════════════════════════════
+     *  SPACING SCALE — base 4px
+     * ══════════════════════════════════════ */
+    --n-space-1:   4px;
+    --n-space-2:   8px;
+    --n-space-3:  12px;
+    --n-space-4:  16px;
+    --n-space-5:  20px;
+    --n-space-6:  24px;
+    --n-space-8:  32px;
+    --n-space-10: 40px;
+    --n-space-12: 48px;
+    --n-space-16: 64px;
+    --n-space-20: 80px;
+
+    /* ══════════════════════════════════════
+     *  TYPOGRAPHY
+     * ══════════════════════════════════════ */
+    --n-font-sans: var(--font-geist-sans, 'Inter', system-ui, -apple-system, sans-serif);
+    --n-font-mono: var(--font-geist-mono, 'JetBrains Mono', 'Fira Code', monospace);
+
+    /* Tailles — Notion utilise 14-15px pour le body */
+    --n-text-xs:   11px;    /* labels, timestamps, badges */
+    --n-text-sm:   13px;    /* secondary content, captions */
+    --n-text-base: 14px;    /* body text standard */
+    --n-text-md:   15px;    /* body accent, liste items */
+    --n-text-lg:   18px;    /* h3, section titles */
+    --n-text-xl:   22px;    /* h2, page sections */
+    --n-text-2xl:  28px;    /* h1 page title */
+    --n-text-3xl:  36px;    /* hero text */
+
+    /* Weights */
+    --n-weight-regular:  400;
+    --n-weight-medium:   500;
+    --n-weight-semibold: 600;
+    --n-weight-bold:     700;
+
+    /* Line heights */
+    --n-leading-tight:   1.25;
+    --n-leading-snug:    1.375;
+    --n-leading-normal:  1.5;
+    --n-leading-relaxed: 1.625;   /* body standard */
+    --n-leading-loose:   1.75;    /* leçons, théorie longue */
+
+    /* Letter spacing */
+    --n-tracking-tight:   -0.015em;
+    --n-tracking-normal:   0em;
+    --n-tracking-wide:     0.025em;   /* labels */
+    --n-tracking-widest:   0.08em;    /* section headers uppercase */
+
+    /* ══════════════════════════════════════
+     *  TRANSITIONS — courtes, utilitaires
+     * ══════════════════════════════════════ */
+    --n-ease:        cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    --n-ease-out:    cubic-bezier(0.0, 0.0, 0.2, 1.0);
+    --n-ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+    --n-duration-xs:  80ms;    /* focus ring, checkbox */
+    --n-duration-sm: 150ms;    /* hover states standard */
+    --n-duration-md: 200ms;    /* card hover, badge appear */
+    --n-duration-lg: 300ms;    /* sidebar toggle, modal */
+    --n-duration-xl: 400ms;    /* page transitions */
+
+    /* ══════════════════════════════════════
+     *  LAYOUT DIMENSIONS
+     * ══════════════════════════════════════ */
+    --n-sidebar-width:   240px;
+    --n-topbar-height:    48px;
+    --n-content-max:     720px;   /* max-width contenu texte */
+    --n-content-max-wide: 1100px; /* max-width listes/grids */
+  }
+
+  /* ══════════════════════════════════════════
+   *  DARK MODE — activé par data-theme="dark"
+   * ══════════════════════════════════════════ */
+  [data-theme='notion-dark'],
+  .notion-dark {
+    --n-bg-primary:    #191919;
+    --n-bg-secondary:  #202020;
+    --n-bg-tertiary:   #2a2a2a;
+    --n-bg-elevated:   #252525;
+
+    --n-border:        #333333;
+    --n-border-strong: #404040;
+    --n-divider:       #2e2e2e;
+
+    --n-text-primary:   #e8e8e8;    /* pas blanc pur — moins fatigant */
+    --n-text-secondary: #9a9a9a;
+    --n-text-tertiary:  #5c5c5c;
+
+    --n-accent:         #5b8ef7;    /* bleu éclairci pour dark */
+    --n-accent-hover:   #7aa3f9;
+    --n-accent-light:   #1a2240;
+    --n-accent-border:  #2d3d6a;
+
+    --n-success:        #34d399;
+    --n-success-bg:     #0a1f14;
+    --n-success-border: #0f4029;
+
+    --n-warning:        #fbbf24;
+    --n-warning-bg:     #1f1500;
+    --n-warning-border: #3d2e00;
+
+    --n-danger:         #f87171;
+    --n-danger-bg:      #1f0a0a;
+    --n-danger-border:  #3d1515;
+
+    --n-info:           #60a5fa;
+    --n-info-bg:        #0a1220;
+    --n-info-border:    #153060;
+
+    --n-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.25);
+    --n-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.30), 0 1px 2px rgba(0, 0, 0, 0.20);
+    --n-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.25), 0 2px 4px rgba(0, 0, 0, 0.20);
+    --n-shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.30), 0 4px 8px rgba(0, 0, 0, 0.20);
+    --n-shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.40);
+
+    --n-level-beginner:        #34d399;
+    --n-level-beginner-bg:     #0a1f14;
+    --n-level-beginner-border: #0f4029;
+
+    --n-level-inter:        #fbbf24;
+    --n-level-inter-bg:     #1f1500;
+    --n-level-inter-border: #3d2e00;
+
+    --n-level-advanced:        #fb923c;
+    --n-level-advanced-bg:     #1a0e00;
+    --n-level-advanced-border: #3d2200;
+
+    --n-level-expert:        #f87171;
+    --n-level-expert-bg:     #1f0a0a;
+    --n-level-expert-border: #3d1515;
+
+    --n-severity-critical:        #f87171;
+    --n-severity-critical-bg:     #1f0a0a;
+    --n-severity-critical-border: #3d1515;
+
+    --n-severity-high:        #fb923c;
+    --n-severity-high-bg:     #1a0e00;
+    --n-severity-high-border: #3d2200;
+
+    --n-severity-medium:        #fbbf24;
+    --n-severity-medium-bg:     #1f1500;
+    --n-severity-medium-border: #3d2e00;
+
+    --n-severity-low:        #34d399;
+    --n-severity-low-bg:     #0a1f14;
+    --n-severity-low-border: #0f4029;
+  }
+}
