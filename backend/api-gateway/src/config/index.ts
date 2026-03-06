@@ -84,6 +84,7 @@ export const config = {
             'http://localhost:3002', // tpe-web
             'http://localhost:3004', // user-cards-web
             'http://localhost:3006',
+            'http://localhost:3101',
             'http://localhost:3082',
             'http://localhost:3088',
             'http://localhost:5173',  // vite dev server
@@ -93,6 +94,7 @@ export const config = {
             'http://192.168.1.14:3002',
             'http://192.168.1.14:3004',
             'http://192.168.1.14:3006',
+            'http://192.168.1.14:3101',
             'http://192.168.1.14:3082',
             'http://192.168.1.14:3088',
         ],

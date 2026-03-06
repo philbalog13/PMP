@@ -6,10 +6,10 @@
 
 ```bash
 # Depuis la racine du projet
-docker-compose up -d postgres redis
+node scripts/runtime-stack.mjs up --no-build --skip-image-bootstrap
 
 # Vérifier que les services sont up
-docker-compose ps
+docker compose -f docker-compose-runtime.yml ps
 ```
 
 ### 2. Migrations SQL appliquées
@@ -68,7 +68,7 @@ POSTGRES_PASSWORD=pmp_password_123
 REDIS_PASSWORD=redis_password_123
 
 # CORS
-CORS_ORIGIN=http://localhost:3000,http://localhost:5173
+CORS_ORIGIN=http://localhost:3000,http://localhost:3001,http://localhost:3004,http://localhost:3006,http://localhost:3082,http://localhost:3088
 ```
 
 ### 4. API Gateway démarré
@@ -92,6 +92,17 @@ Vérifier que le serveur est accessible:
 ```bash
 curl http://localhost:8000/health
 # Devrait retourner: {"status":"healthy"}
+```
+
+### 5. Personas seed runtime valides
+
+Les credentials seed utilises par le runtime courant sont:
+
+```text
+client@pmp.edu / qa-pass-123
+bakery@pmp.edu / qa-pass-123
+student01@pmp.edu / qa-pass-123
+trainer@pmp.edu / qa-pass-123 + code2fa=123456
 ```
 
 ---
@@ -396,20 +407,20 @@ echo 'JWT_SECRET=votre_secret_fort_minimum_32_caracteres_ici' >> .env
 
 ```bash
 # Démarrer PostgreSQL
-docker-compose up -d postgres
+docker compose -f docker-compose-runtime.yml up -d postgres
 
 # Vérifier
-docker-compose ps postgres
+docker compose -f docker-compose-runtime.yml ps postgres
 ```
 
 ### Erreur: "connect ECONNREFUSED ::1:6379" (Redis)
 
 ```bash
 # Démarrer Redis
-docker-compose up -d redis
+docker compose -f docker-compose-runtime.yml up -d redis
 
 # Vérifier
-docker-compose ps redis
+docker compose -f docker-compose-runtime.yml ps redis
 ```
 
 ---

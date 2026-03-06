@@ -1,54 +1,47 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
+import { Beaker, BookOpen, CheckCircle2, ChevronRight, GraduationCap, Shield, Target, Zap } from 'lucide-react';
 import { useAuth } from '../../auth/useAuth';
-import {
-    GraduationCap,
-    Shield,
-    BookOpen,
-    Beaker,
-    ChevronRight,
-    Target,
-    Zap,
-    CheckCircle2,
-} from 'lucide-react';
 import { markOnboardingDoneLocally } from '../../../lib/onboarding';
 import { FIRST_CTF_ROOM_CODE } from '../../../lib/ctf-code-map';
 import { NotionCard } from '@shared/components/notion';
 
-const STEPS = ['Bienvenue', 'Ton profil', 'Comment ça marche', 'Premier défi'] as const;
-
+const STEPS = ['Bienvenue', 'Profil', 'Methode', 'Premier lab'] as const;
 const LEVELS = [
-    { value: 'NOVICE',        label: 'Débutant',      desc: 'Première approche des systèmes de paiement' },
-    { value: 'INTERMEDIATE',  label: 'Intermédiaire', desc: 'Quelques notions de sécurité ou de monétique' },
-    { value: 'ADVANCED',      label: 'Avancé',        desc: 'Expérience confirmée en sécurité ou systèmes bancaires' },
+    { value: 'NOVICE', label: 'Debutant', desc: 'Premiere approche des systemes de paiement' },
+    { value: 'INTERMEDIATE', label: 'Intermediaire', desc: 'Quelques notions de securite ou de monetique' },
+    { value: 'ADVANCED', label: 'Avance', desc: 'Experience confirmee en securite ou systemes bancaires' },
 ];
-
 const OBJECTIVES = [
-    { value: 'CERTIFICATION_PCI',      label: 'Certification PCI DSS',       Icon: Shield   },
-    { value: 'RED_TEAM',               label: 'Red Team / Pentest paiements', Icon: Zap      },
-    { value: 'BUSINESS_UNDERSTANDING', label: 'Comprendre la monétique',      Icon: BookOpen },
-    { value: 'FINTECH_CAREER',         label: 'Reconversion Fintech',         Icon: Target   },
+    { value: 'CERTIFICATION_PCI', label: 'Certification PCI DSS', Icon: Shield },
+    { value: 'RED_TEAM', label: 'Red Team / Pentest paiements', Icon: Zap },
+    { value: 'BUSINESS_UNDERSTANDING', label: 'Comprendre la monetique', Icon: BookOpen },
+    { value: 'FINTECH_CAREER', label: 'Reconversion Fintech', Icon: Target },
 ];
-
 const HOW_ITEMS = [
-    { Icon: BookOpen, label: 'Cursus (Théorie)',    desc: 'Des UA courtes sur EMV, 3DS, HSM, PCI DSS — chaque module se termine par un quiz.' },
-    { Icon: Beaker,   label: 'CTF Labs (Hacking)',  desc: 'Exploite de vraies vulnérabilités sur un simulateur bancaire complet. Mode guidé ou libre.' },
-    { Icon: Shield,   label: 'Ateliers (Pratique)', desc: 'Construis des PIN blocks, analyse des messages ISO 8583, simule des chargebacks.' },
+    { Icon: BookOpen, label: 'Cursus', desc: 'UA courtes sur EMV, 3DS, HSM et PCI DSS avec quiz.' },
+    { Icon: Beaker, label: 'CTF Labs', desc: 'Vraies vulnerabilites sur un simulateur bancaire complet.' },
+    { Icon: Shield, label: 'Ateliers', desc: 'PIN blocks, ISO 8583, chargebacks et defense.' },
 ];
 
-/* ── Button style helpers ───────────────────────────────────────────────── */
+interface CurrentStudentProfile {
+    id: string;
+    email: string;
+    onboardingDone: boolean;
+    learnerLevel: string | null;
+    objective: string | null;
+}
 
-const primaryBtn: React.CSSProperties = {
+const primaryBtn: CSSProperties = {
     width: '100%',
     padding: 'var(--n-space-3)',
     borderRadius: 'var(--n-radius-sm)',
     background: 'var(--n-accent)',
     color: '#fff',
-    fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'],
+    fontWeight: 'var(--n-weight-semibold)' as CSSProperties['fontWeight'],
     fontSize: 'var(--n-text-sm)',
-    fontFamily: 'var(--n-font-sans)',
     border: 'none',
     cursor: 'pointer',
     display: 'flex',
@@ -57,301 +50,217 @@ const primaryBtn: React.CSSProperties = {
     gap: 'var(--n-space-2)',
 };
 
-/* ── Component ─────────────────────────────────────────────────────────── */
-
 export default function OnboardingPage() {
     const router = useRouter();
-    const { user } = useAuth(true);
-    const [step, setStep]           = useState(0);
-    const [level, setLevel]         = useState('');
+    useAuth(true);
+
+    const [step, setStep] = useState(0);
+    const [level, setLevel] = useState('');
     const [objective, setObjective] = useState('');
-    const [saving, setSaving]       = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
+
+    const fetchCurrentProfile = async (token: string): Promise<CurrentStudentProfile> => {
+        const response = await fetch('/api/users/me', { headers: { Authorization: `Bearer ${token}` } });
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !payload?.user) {
+            throw new Error(payload?.error || 'Impossible de charger le profil etudiant.');
+        }
+        return payload.user as CurrentStudentProfile;
+    };
+
+    useEffect(() => {
+        let cancelled = false;
+        const bootstrap = async () => {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+            try {
+                const profile = await fetchCurrentProfile(token);
+                if (cancelled) return;
+                setLevel(profile.learnerLevel || '');
+                setObjective(profile.objective || '');
+                if (profile.onboardingDone) {
+                    markOnboardingDoneLocally({ id: profile.id, email: profile.email });
+                    router.replace('/student');
+                }
+            } catch (error: unknown) {
+                if (!cancelled) {
+                    setSaveError(error instanceof Error ? error.message : 'Impossible de charger le profil etudiant.');
+                }
+            }
+        };
+        void bootstrap();
+        return () => {
+            cancelled = true;
+        };
+    }, [router]);
 
     const saveAndRedirect = async (destination: string) => {
         setSaving(true);
+        setSaveError(null);
         try {
             const token = localStorage.getItem('token');
-            if (token) {
-                await fetch('/api/users/me/preferences', {
-                    method: 'POST',
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        learnerLevel: level || undefined,
-                        objective:    objective || undefined,
-                        onboardingDone: true,
-                    }),
-                }).catch(() => {/* best effort */});
+            if (!token) {
+                setSaveError('Session expiree. Merci de vous reconnecter.');
+                return;
             }
-            markOnboardingDoneLocally(user);
+
+            const response = await fetch('/api/users/me/preferences', {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    learnerLevel: level || undefined,
+                    objective: objective || undefined,
+                    onboardingDone: true,
+                }),
+            });
+            const payload = await response.json().catch(() => null);
+            if (!response.ok) {
+                throw new Error(payload?.error || 'Impossible de sauvegarder les preferences.');
+            }
+
+            const profile = await fetchCurrentProfile(token);
+            if (!profile.onboardingDone) {
+                throw new Error('La sauvegarde serveur de l onboarding n a pas ete confirmee.');
+            }
+
+            markOnboardingDoneLocally({ id: profile.id, email: profile.email });
             router.push(destination);
+        } catch (error: unknown) {
+            setSaveError(error instanceof Error ? error.message : 'Impossible de terminer l onboarding.');
         } finally {
             setSaving(false);
         }
     };
 
     return (
-        <div style={{ minHeight: 'calc(100vh - 48px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'var(--n-space-8) var(--n-space-6)' }}>
-
-            {/* ── STEP INDICATOR ───────────────────────────────────── */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)', marginBottom: 'var(--n-space-8)' }}>
-                {STEPS.map((s, i) => (
-                    <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)' }}>
-                        <div style={{
-                            width:  i === step ? 34 : 28,
-                            height: i === step ? 34 : 28,
-                            borderRadius: '50%',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: 'var(--n-text-xs)',
-                            fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'],
-                            fontFamily: 'var(--n-font-sans)',
-                            transition: 'all 0.2s',
-                            background: i === step ? 'var(--n-accent)' : i < step ? 'var(--n-success-bg)' : 'var(--n-bg-elevated)',
-                            color:      i === step ? '#fff' : i < step ? 'var(--n-success)' : 'var(--n-text-tertiary)',
-                            border: `2px solid ${i === step ? 'var(--n-accent)' : i < step ? 'var(--n-success-border)' : 'var(--n-border)'}`,
-                        }}>
-                            {i < step ? <CheckCircle2 size={14} /> : i + 1}
+        <div style={{ minHeight: 'calc(100vh - 48px)', display: 'grid', placeItems: 'center', padding: 'var(--n-space-8) var(--n-space-6)' }}>
+            <div style={{ width: '100%', maxWidth: '560px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)', justifyContent: 'center', marginBottom: 'var(--n-space-6)' }}>
+                    {STEPS.map((label, index) => (
+                        <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)' }}>
+                            <div style={{ width: 30, height: 30, borderRadius: '50%', display: 'grid', placeItems: 'center', background: index <= step ? 'var(--n-accent-light)' : 'var(--n-bg-elevated)', border: `1px solid ${index <= step ? 'var(--n-accent-border)' : 'var(--n-border)'}`, color: index < step ? 'var(--n-success)' : 'var(--n-text-primary)' }}>
+                                {index < step ? <CheckCircle2 size={14} /> : index + 1}
+                            </div>
+                            {index < STEPS.length - 1 && <div style={{ width: 28, height: 1, background: 'var(--n-border)' }} />}
                         </div>
-                        {i < STEPS.length - 1 && (
-                            <div style={{ width: '32px', height: '1px', background: i < step ? 'var(--n-success-border)' : 'var(--n-border)' }} />
-                        )}
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
 
-            <div style={{ width: '100%', maxWidth: '480px' }}>
-
-                {/* ── STEP 0 — Bienvenue ─────────────────────────── */}
-                {step === 0 && (
-                    <div style={{ textAlign: 'center' }}>
-                        <div style={{ width: '72px', height: '72px', borderRadius: '18px', background: 'var(--n-accent-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto var(--n-space-6)' }}>
-                            <GraduationCap size={36} style={{ color: 'var(--n-accent)' }} />
+                <NotionCard padding="lg">
+                    {saveError && (
+                        <div style={{ marginBottom: 'var(--n-space-4)', border: '1px solid var(--n-danger-border)', borderRadius: 'var(--n-radius-sm)', background: 'var(--n-danger-bg)', color: 'var(--n-danger)', padding: 'var(--n-space-3) var(--n-space-4)', fontSize: 'var(--n-text-sm)' }}>
+                            {saveError}
                         </div>
+                    )}
 
-                        <div style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-accent)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], fontFamily: 'var(--n-font-sans)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 'var(--n-space-3)' }}>
-                            PMP Platform
-                        </div>
-
-                        <h1 style={{ fontSize: '28px', fontWeight: 'var(--n-weight-bold)' as React.CSSProperties['fontWeight'], color: 'var(--n-text-primary)', fontFamily: 'var(--n-font-sans)', letterSpacing: '-0.02em', marginBottom: 'var(--n-space-3)' }}>
-                            Learn by Hacking.
-                        </h1>
-                        <p style={{ fontSize: 'var(--n-text-base)', color: 'var(--n-text-secondary)', fontFamily: 'var(--n-font-sans)', lineHeight: 'var(--n-leading-relaxed)', marginBottom: 'var(--n-space-7)' }}>
-                            Tu apprends la sécurité des paiements en{' '}
-                            <strong style={{ color: 'var(--n-text-primary)' }}>attaquant de vrais simulateurs bancaires</strong>.
-                            Chaque vulnérabilité exploitée, tu dois ensuite la corriger.
-                        </p>
-
-                        {/* Feature chips */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--n-space-3)', marginBottom: 'var(--n-space-7)' }}>
-                            {[
-                                { Icon: BookOpen, label: 'Cursus' },
-                                { Icon: Beaker,   label: 'CTF Labs' },
-                                { Icon: Shield,   label: 'Ateliers' },
-                            ].map(({ Icon, label }) => (
-                                <NotionCard key={label} variant="default" padding="sm">
-                                    <div style={{ textAlign: 'center', padding: 'var(--n-space-2)' }}>
-                                        <Icon size={20} style={{ color: 'var(--n-accent)', margin: '0 auto var(--n-space-2)' }} />
-                                        <p style={{ fontSize: 'var(--n-text-sm)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], color: 'var(--n-text-primary)', fontFamily: 'var(--n-font-sans)' }}>{label}</p>
-                                    </div>
-                                </NotionCard>
-                            ))}
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--n-space-3)' }}>
-                            <button onClick={() => setStep(1)} style={primaryBtn}>
-                                Commencer <ChevronRight size={16} />
-                            </button>
-                            <button
-                                onClick={() => void saveAndRedirect('/student')}
-                                style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)', background: 'none', border: 'none', cursor: 'pointer', padding: 'var(--n-space-2)' }}
-                            >
-                                Passer l&apos;introduction →
-                            </button>
-                        </div>
-                    </div>
-                )}
-
-                {/* ── STEP 1 — Profil ────────────────────────────── */}
-                {step === 1 && (
-                    <div>
-                        <div style={{ textAlign: 'center', marginBottom: 'var(--n-space-6)' }}>
-                            <div style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-accent)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], fontFamily: 'var(--n-font-sans)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 'var(--n-space-2)' }}>Étape 2 / 4</div>
-                            <h2 style={{ fontSize: '22px', fontWeight: 'var(--n-weight-bold)' as React.CSSProperties['fontWeight'], color: 'var(--n-text-primary)', fontFamily: 'var(--n-font-sans)', letterSpacing: '-0.02em', marginBottom: 'var(--n-space-1)' }}>
-                                Ton profil
-                            </h2>
-                            <p style={{ fontSize: 'var(--n-text-sm)', color: 'var(--n-text-secondary)', fontFamily: 'var(--n-font-sans)' }}>
-                                On adapte les labs et les indices à ton niveau.
+                    {step === 0 && (
+                        <div style={{ display: 'grid', gap: 'var(--n-space-4)', textAlign: 'center' }}>
+                            <div style={{ width: 72, height: 72, borderRadius: 18, background: 'var(--n-accent-light)', display: 'grid', placeItems: 'center', margin: '0 auto' }}>
+                                <GraduationCap size={36} style={{ color: 'var(--n-accent)' }} />
+                            </div>
+                            <div style={{ color: 'var(--n-accent)', fontSize: 'var(--n-text-xs)', fontWeight: 'var(--n-weight-semibold)' as CSSProperties['fontWeight'], letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                                PMP Platform
+                            </div>
+                            <h1 style={{ margin: 0, color: 'var(--n-text-primary)', fontSize: 28 }}>Learn by Hacking.</h1>
+                            <p style={{ margin: 0, color: 'var(--n-text-secondary)', lineHeight: 'var(--n-leading-relaxed)' }}>
+                                Tu apprends la securite des paiements en attaquant de vrais simulateurs bancaires. Chaque vulnerabilite exploitee doit ensuite etre comprise puis corrigee.
                             </p>
-                        </div>
-
-                        {/* Level selection */}
-                        <div style={{ marginBottom: 'var(--n-space-5)' }}>
-                            <p style={{ fontSize: 'var(--n-text-xs)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--n-space-2)' }}>
-                                Niveau actuel
-                            </p>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--n-space-2)' }}>
-                                {LEVELS.map((l) => (
-                                    <button
-                                        key={l.value}
-                                        onClick={() => setLevel(l.value)}
-                                        style={{
-                                            width: '100%', textAlign: 'left',
-                                            borderRadius: 'var(--n-radius-sm)',
-                                            padding: 'var(--n-space-4)',
-                                            cursor: 'pointer',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                            fontFamily: 'var(--n-font-sans)',
-                                            background: level === l.value ? 'var(--n-accent-light)' : 'var(--n-bg-primary)',
-                                            border: `${level === l.value ? '2px' : '1px'} solid ${level === l.value ? 'var(--n-accent-border)' : 'var(--n-border)'}`,
-                                        }}
-                                    >
-                                        <div>
-                                            <p style={{ fontSize: 'var(--n-text-sm)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], color: 'var(--n-text-primary)', marginBottom: '2px' }}>{l.label}</p>
-                                            <p style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-text-tertiary)' }}>{l.desc}</p>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--n-space-3)' }}>
+                                {[{ Icon: BookOpen, label: 'Cursus' }, { Icon: Beaker, label: 'CTF Labs' }, { Icon: Shield, label: 'Ateliers' }].map(({ Icon, label }) => (
+                                    <NotionCard key={label} variant="default" padding="sm">
+                                        <div style={{ display: 'grid', gap: 'var(--n-space-2)', textAlign: 'center' }}>
+                                            <Icon size={20} style={{ color: 'var(--n-accent)', margin: '0 auto' }} />
+                                            <span style={{ fontSize: 'var(--n-text-sm)', color: 'var(--n-text-primary)' }}>{label}</span>
                                         </div>
-                                        {level === l.value && <CheckCircle2 size={18} style={{ color: 'var(--n-accent)', flexShrink: 0 }} />}
+                                    </NotionCard>
+                                ))}
+                            </div>
+                            <button onClick={() => setStep(1)} style={primaryBtn}>Commencer <ChevronRight size={16} /></button>
+                            <button onClick={() => void saveAndRedirect('/student')} style={{ background: 'none', border: 'none', color: 'var(--n-text-tertiary)', fontSize: 'var(--n-text-xs)', cursor: 'pointer' }}>
+                                Passer l&apos;introduction -&gt;
+                            </button>
+                        </div>
+                    )}
+
+                    {step === 1 && (
+                        <div style={{ display: 'grid', gap: 'var(--n-space-5)' }}>
+                            <div style={{ textAlign: 'center' }}>
+                                <div style={{ color: 'var(--n-accent)', fontSize: 'var(--n-text-xs)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Etape 2 / 4</div>
+                                <h2 style={{ margin: 'var(--n-space-2) 0 0', color: 'var(--n-text-primary)' }}>Ton profil</h2>
+                            </div>
+                            <div style={{ display: 'grid', gap: 'var(--n-space-2)' }}>
+                                {LEVELS.map((item) => (
+                                    <button key={item.value} onClick={() => setLevel(item.value)} style={{ textAlign: 'left', borderRadius: 'var(--n-radius-sm)', padding: 'var(--n-space-4)', border: `${level === item.value ? '2px' : '1px'} solid ${level === item.value ? 'var(--n-accent-border)' : 'var(--n-border)'}`, background: level === item.value ? 'var(--n-accent-light)' : 'var(--n-bg-primary)', cursor: 'pointer' }}>
+                                        <div style={{ color: 'var(--n-text-primary)', fontWeight: 'var(--n-weight-semibold)' as CSSProperties['fontWeight'] }}>{item.label}</div>
+                                        <div style={{ color: 'var(--n-text-tertiary)', fontSize: 'var(--n-text-xs)' }}>{item.desc}</div>
                                     </button>
                                 ))}
                             </div>
-                        </div>
-
-                        {/* Objective selection */}
-                        <div style={{ marginBottom: 'var(--n-space-6)' }}>
-                            <p style={{ fontSize: 'var(--n-text-xs)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--n-space-2)' }}>
-                                Objectif principal
-                            </p>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--n-space-2)' }}>
                                 {OBJECTIVES.map(({ value, label, Icon }) => (
-                                    <button
-                                        key={value}
-                                        onClick={() => setObjective(value)}
-                                        style={{
-                                            textAlign: 'left',
-                                            borderRadius: 'var(--n-radius-sm)',
-                                            padding: 'var(--n-space-3)',
-                                            cursor: 'pointer',
-                                            fontFamily: 'var(--n-font-sans)',
-                                            background: objective === value ? 'var(--n-accent-light)' : 'var(--n-bg-primary)',
-                                            border: `${objective === value ? '2px' : '1px'} solid ${objective === value ? 'var(--n-accent-border)' : 'var(--n-border)'}`,
-                                        }}
-                                    >
+                                    <button key={value} onClick={() => setObjective(value)} style={{ textAlign: 'left', borderRadius: 'var(--n-radius-sm)', padding: 'var(--n-space-3)', border: `${objective === value ? '2px' : '1px'} solid ${objective === value ? 'var(--n-accent-border)' : 'var(--n-border)'}`, background: objective === value ? 'var(--n-accent-light)' : 'var(--n-bg-primary)', cursor: 'pointer' }}>
                                         <Icon size={16} style={{ color: 'var(--n-accent)', marginBottom: 'var(--n-space-2)' }} />
-                                        <p style={{ fontSize: 'var(--n-text-xs)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], color: 'var(--n-text-primary)', lineHeight: 1.3 }}>{label}</p>
+                                        <div style={{ color: 'var(--n-text-primary)', fontSize: 'var(--n-text-xs)' }}>{label}</div>
                                     </button>
                                 ))}
                             </div>
+                            <button onClick={() => setStep(2)} disabled={!level || !objective} style={{ ...primaryBtn, opacity: !level || !objective ? 0.45 : 1, cursor: !level || !objective ? 'not-allowed' : 'pointer' }}>
+                                Continuer <ChevronRight size={16} />
+                            </button>
                         </div>
+                    )}
 
-                        <button
-                            onClick={() => setStep(2)}
-                            disabled={!level || !objective}
-                            style={{ ...primaryBtn, opacity: (!level || !objective) ? 0.45 : 1, cursor: (!level || !objective) ? 'not-allowed' : 'pointer' }}
-                        >
-                            Continuer <ChevronRight size={16} />
-                        </button>
-                    </div>
-                )}
-
-                {/* ── STEP 2 — Comment ça marche ─────────────────── */}
-                {step === 2 && (
-                    <div>
-                        <div style={{ textAlign: 'center', marginBottom: 'var(--n-space-6)' }}>
-                            <div style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-accent)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], fontFamily: 'var(--n-font-sans)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 'var(--n-space-2)' }}>Étape 3 / 4</div>
-                            <h2 style={{ fontSize: '22px', fontWeight: 'var(--n-weight-bold)' as React.CSSProperties['fontWeight'], color: 'var(--n-text-primary)', fontFamily: 'var(--n-font-sans)', letterSpacing: '-0.02em', marginBottom: 'var(--n-space-1)' }}>
-                                Comment ça marche
-                            </h2>
-                            <p style={{ fontSize: 'var(--n-text-sm)', color: 'var(--n-text-secondary)', fontFamily: 'var(--n-font-sans)' }}>
-                                Trois modes d&apos;apprentissage complémentaires.
-                            </p>
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--n-space-3)', marginBottom: 'var(--n-space-5)' }}>
-                            {HOW_ITEMS.map(({ Icon, label, desc }, i) => (
+                    {step === 2 && (
+                        <div style={{ display: 'grid', gap: 'var(--n-space-4)' }}>
+                            <div style={{ textAlign: 'center' }}>
+                                <div style={{ color: 'var(--n-accent)', fontSize: 'var(--n-text-xs)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Etape 3 / 4</div>
+                                <h2 style={{ margin: 'var(--n-space-2) 0 0', color: 'var(--n-text-primary)' }}>Comment ca marche</h2>
+                            </div>
+                            {HOW_ITEMS.map(({ Icon, label, desc }) => (
                                 <NotionCard key={label} variant="default" padding="md">
-                                    <div style={{ display: 'flex', gap: 'var(--n-space-4)', alignItems: 'flex-start' }}>
-                                        <div style={{ width: '36px', height: '36px', borderRadius: 'var(--n-radius-sm)', background: 'var(--n-accent-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                    <div style={{ display: 'flex', gap: 'var(--n-space-3)', alignItems: 'flex-start' }}>
+                                        <div style={{ width: 36, height: 36, borderRadius: 'var(--n-radius-sm)', background: 'var(--n-accent-light)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
                                             <Icon size={18} style={{ color: 'var(--n-accent)' }} />
                                         </div>
                                         <div>
-                                            <div style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '2px' }}>
-                                                Étape {i + 1}
-                                            </div>
-                                            <p style={{ fontSize: 'var(--n-text-sm)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], color: 'var(--n-text-primary)', fontFamily: 'var(--n-font-sans)', marginBottom: '4px' }}>{label}</p>
-                                            <p style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-text-secondary)', fontFamily: 'var(--n-font-sans)', lineHeight: 'var(--n-leading-relaxed)' }}>{desc}</p>
+                                            <div style={{ color: 'var(--n-text-primary)', fontWeight: 'var(--n-weight-semibold)' as CSSProperties['fontWeight'] }}>{label}</div>
+                                            <div style={{ color: 'var(--n-text-secondary)', fontSize: 'var(--n-text-sm)' }}>{desc}</div>
                                         </div>
                                     </div>
                                 </NotionCard>
                             ))}
+                            <button onClick={() => setStep(3)} style={primaryBtn}>J&apos;ai compris <ChevronRight size={16} /></button>
                         </div>
+                    )}
 
-                        {/* Info callout */}
-                        <div style={{ borderRadius: 'var(--n-radius-sm)', padding: 'var(--n-space-4)', marginBottom: 'var(--n-space-6)', background: 'var(--n-info-bg)', border: '1px solid var(--n-info-border)' }}>
-                            <p style={{ fontSize: 'var(--n-text-xs)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], color: 'var(--n-info)', fontFamily: 'var(--n-font-sans)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--n-space-1)' }}>
-                                Le cycle Learn by Hacking
+                    {step === 3 && (
+                        <div style={{ display: 'grid', gap: 'var(--n-space-4)', textAlign: 'center' }}>
+                            <div style={{ width: 72, height: 72, borderRadius: 18, background: 'var(--n-danger-bg)', border: '1px solid var(--n-danger-border)', display: 'grid', placeItems: 'center', margin: '0 auto' }}>
+                                <Beaker size={36} style={{ color: 'var(--n-danger)' }} />
+                            </div>
+                            <div style={{ color: 'var(--n-accent)', fontSize: 'var(--n-text-xs)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Ton premier hack</div>
+                            <h2 style={{ margin: 0, color: 'var(--n-text-primary)' }}>{FIRST_CTF_ROOM_CODE} : The Unsecured Payment Terminal</h2>
+                            <p style={{ margin: 0, color: 'var(--n-text-secondary)', lineHeight: 'var(--n-leading-relaxed)' }}>
+                                Le terminal envoie des transactions en clair et expose une surface admin vulnerable. Ton objectif est de capturer le premier flag.
                             </p>
-                            <p style={{ fontSize: 'var(--n-text-sm)', color: 'var(--n-text-secondary)', fontFamily: 'var(--n-font-sans)', lineHeight: 'var(--n-leading-relaxed)' }}>
-                                Théorie → Exploitation → Débrief → Patch → Vérification.
-                                Chaque challenge t&apos;oblige à comprendre <em>pourquoi</em> la vulnérabilité existe.
-                            </p>
-                        </div>
-
-                        <button onClick={() => setStep(3)} style={primaryBtn}>
-                            J&apos;ai compris <ChevronRight size={16} />
-                        </button>
-                    </div>
-                )}
-
-                {/* ── STEP 3 — Premier défi ──────────────────────── */}
-                {step === 3 && (
-                    <div style={{ textAlign: 'center' }}>
-                        <div style={{ width: '72px', height: '72px', borderRadius: '18px', background: 'var(--n-danger-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto var(--n-space-6)', border: '1px solid var(--n-danger-border)' }}>
-                            <Beaker size={36} style={{ color: 'var(--n-danger)' }} />
-                        </div>
-
-                        <div style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-accent)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], fontFamily: 'var(--n-font-sans)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 'var(--n-space-2)' }}>
-                            Ton premier hack
-                        </div>
-                        <h2 style={{ fontSize: '22px', fontWeight: 'var(--n-weight-bold)' as React.CSSProperties['fontWeight'], color: 'var(--n-text-primary)', fontFamily: 'var(--n-font-sans)', letterSpacing: '-0.02em', marginBottom: 'var(--n-space-3)' }}>
-                            {FIRST_CTF_ROOM_CODE} : The Unsecured Payment Terminal
-                        </h2>
-                        <p style={{ fontSize: 'var(--n-text-sm)', color: 'var(--n-text-secondary)', fontFamily: 'var(--n-font-sans)', lineHeight: 'var(--n-leading-relaxed)', marginBottom: 'var(--n-space-6)' }}>
-                            Le terminal de paiement envoie des transactions en clair et expose une surface admin vulnérable.
-                            Ton objectif : <strong style={{ color: 'var(--n-text-primary)' }}>capturer le premier flag</strong> dans ce flux.
-                        </p>
-
-                        {/* Target callout */}
-                        <div style={{ borderRadius: 'var(--n-radius-sm)', padding: 'var(--n-space-4)', marginBottom: 'var(--n-space-6)', background: 'var(--n-accent-light)', border: '1px solid var(--n-accent-border)', textAlign: 'left' }}>
-                            <p style={{ fontSize: 'var(--n-text-xs)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], color: 'var(--n-accent)', fontFamily: 'var(--n-font-sans)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--n-space-2)' }}>
-                                Ta cible
-                            </p>
-                            <p style={{ fontSize: 'var(--n-text-sm)', color: 'var(--n-text-primary)', fontFamily: 'var(--n-font-mono)', background: 'var(--n-bg-elevated)', borderRadius: 'var(--n-radius-sm)', padding: 'var(--n-space-2) var(--n-space-3)', marginBottom: 'var(--n-space-2)' }}>
-                                POST http://pos-terminal:8081/transactions/process
-                            </p>
-                            <p style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)' }}>
-                                Observe le trafic et valide l&apos;exposition de données sensibles.
-                            </p>
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--n-space-3)' }}>
-                            <button
-                                onClick={() => void saveAndRedirect(`/student/ctf/${FIRST_CTF_ROOM_CODE}`)}
-                                disabled={saving}
-                                style={{ ...primaryBtn, opacity: saving ? 0.6 : 1, cursor: saving ? 'default' : 'pointer' }}
-                            >
-                                {saving ? 'Démarrage…' : 'Lancer mon premier lab →'}
+                            <NotionCard variant="default" padding="md">
+                                <div style={{ textAlign: 'left' }}>
+                                    <div style={{ color: 'var(--n-accent)', fontSize: 'var(--n-text-xs)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Ta cible</div>
+                                    <div style={{ marginTop: 'var(--n-space-2)', color: 'var(--n-text-primary)', fontFamily: 'var(--n-font-mono)', fontSize: 'var(--n-text-sm)' }}>
+                                        POST http://pos-terminal:8081/transactions/process
+                                    </div>
+                                </div>
+                            </NotionCard>
+                            <button onClick={() => void saveAndRedirect(`/student/ctf/${FIRST_CTF_ROOM_CODE}`)} disabled={saving} style={{ ...primaryBtn, opacity: saving ? 0.6 : 1, cursor: saving ? 'default' : 'pointer' }}>
+                                {saving ? 'Demarrage...' : 'Lancer mon premier lab ->'}
                             </button>
-                            <button
-                                onClick={() => void saveAndRedirect('/student')}
-                                disabled={saving}
-                                style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)', background: 'none', border: 'none', cursor: saving ? 'default' : 'pointer', padding: 'var(--n-space-2)' }}
-                            >
-                                Aller au dashboard d&apos;abord →
+                            <button onClick={() => void saveAndRedirect('/student')} disabled={saving} style={{ background: 'none', border: 'none', color: 'var(--n-text-tertiary)', fontSize: 'var(--n-text-xs)', cursor: saving ? 'default' : 'pointer' }}>
+                                Aller au dashboard d&apos;abord -&gt;
                             </button>
                         </div>
-                    </div>
-                )}
+                    )}
+                </NotionCard>
             </div>
         </div>
     );

@@ -5,11 +5,14 @@ import { logger } from '../utils/logger';
 import { recordLabStart, recordLabStop, setLabActiveSessions } from './ctfLabMetrics.service';
 
 export type LabSessionStatus = 'PROVISIONING' | 'RUNNING' | 'STOPPED' | 'EXPIRED' | 'FAILED';
+export type LabFlowSource = 'CTF' | 'UA';
+export type LabIsolationMode = 'SHARED_ATTACKBOX' | 'DEDICATED_FULL';
 
 export interface CtfLabSessionView {
     sessionId: string;
     sessionCode: string;
     status: LabSessionStatus;
+    flowSource: LabFlowSource;
     machineIp: string | null;
     attackboxPath: string;
     expiresAt: string;
@@ -42,6 +45,8 @@ interface LabSessionRow {
     session_code: string;
     student_id: string;
     challenge_code: string;
+    session_scope_key: string;
+    flow_source: LabFlowSource;
     template_id: string;
     status: LabSessionStatus;
     machine_ip: string | null;
@@ -67,6 +72,8 @@ interface ProvisionRequest {
     cidrBlock: string;
     machineIp: string;
     attackboxPath: string;
+    flowSource: LabFlowSource;
+    isolationMode: LabIsolationMode;
     manifest: any;
 }
 
@@ -110,6 +117,14 @@ const NETWORK_SUBNET_PREFIX = parsePositiveInt(process.env.LAB_NETWORK_SUBNET_PR
 const ACCESS_PROXY_BASE_PATH = process.env.LAB_ACCESS_PROXY_BASE_PATH || '/lab';
 const ORCHESTRATOR_URL = process.env.LAB_ORCHESTRATOR_URL || '';
 const ORCHESTRATOR_SECRET = process.env.LAB_ORCHESTRATOR_SECRET || '';
+const ORCHESTRATOR_PROVISION_TIMEOUT_MS = parsePositiveInt(
+    process.env.LAB_ORCHESTRATOR_PROVISION_TIMEOUT_MS,
+    30000
+);
+const ORCHESTRATOR_CONTROL_TIMEOUT_MS = parsePositiveInt(
+    process.env.LAB_ORCHESTRATOR_CONTROL_TIMEOUT_MS,
+    10000
+);
 const ATTACKBOX_HOST_FALLBACK = process.env.LAB_ATTACKBOX_HOST || 'ctf-attackbox';
 const ATTACKBOX_PORT_FALLBACK = parsePositiveInt(process.env.LAB_ATTACKBOX_PORT, 7681);
 const MAINTENANCE_INTERVAL_MS = parsePositiveInt(process.env.LAB_MAINTENANCE_INTERVAL_MS, 30_000);
@@ -140,6 +155,14 @@ function parsePositiveInt(value: string | undefined, fallback: number): number {
     return Math.floor(parsed);
 }
 
+function normalizeFlowSource(value: unknown, fallback: LabFlowSource = 'CTF'): LabFlowSource {
+    return String(value || '').toUpperCase() === 'UA' ? 'UA' : fallback;
+}
+
+function normalizeIsolationMode(value: unknown, fallback: LabIsolationMode = 'SHARED_ATTACKBOX'): LabIsolationMode {
+    return String(value || '').toUpperCase() === 'DEDICATED_FULL' ? 'DEDICATED_FULL' : fallback;
+}
+
 function buildSessionCode(challengeCode: string): string {
     const compact = challengeCode.replace(/[^A-Z0-9]/gi, '').toLowerCase().slice(0, 12);
     return `${SESSION_CODE_PREFIX}-${compact}-${randomUUID().split('-')[0]}`;
@@ -163,6 +186,7 @@ function toSessionView(row: LabSessionRow): CtfLabSessionView {
         sessionId: row.id,
         sessionCode: row.session_code,
         status: row.status,
+        flowSource: row.flow_source === 'UA' ? 'UA' : 'CTF',
         machineIp: row.machine_ip,
         attackboxPath: row.attackbox_path || `${ACCESS_PROXY_BASE_PATH}/sessions/${row.session_code}/attackbox`,
         expiresAt: new Date(row.expires_at).toISOString(),
@@ -224,7 +248,7 @@ async function callOrchestratorProvision(request: ProvisionRequest): Promise<Pro
             `${ORCHESTRATOR_URL}/orchestrator/sessions/provision`,
             request,
             {
-                timeout: 10000,
+                timeout: ORCHESTRATOR_PROVISION_TIMEOUT_MS,
                 headers: {
                     'Content-Type': 'application/json',
                     'x-orchestrator-secret': ORCHESTRATOR_SECRET,
@@ -237,7 +261,10 @@ async function callOrchestratorProvision(request: ProvisionRequest): Promise<Pro
         }
         return response.data;
     } catch (error: any) {
-        logger.warn('lab orchestrator provision failed; using fallback', { error: error.message });
+        logger.warn('lab orchestrator provision failed; using fallback', {
+            error: error.message,
+            status: error?.response?.status,
+        });
         return null;
     }
 }
@@ -251,7 +278,7 @@ async function callOrchestratorTerminate(sessionCode: string): Promise<void> {
         await axios.delete(
             `${ORCHESTRATOR_URL}/orchestrator/sessions/${encodeURIComponent(sessionCode)}`,
             {
-                timeout: 10000,
+                timeout: ORCHESTRATOR_CONTROL_TIMEOUT_MS,
                 headers: {
                     'x-orchestrator-secret': ORCHESTRATOR_SECRET,
                 },
@@ -272,7 +299,7 @@ async function callOrchestratorReconcile(payload: Record<string, any>): Promise<
             `${ORCHESTRATOR_URL}/orchestrator/sessions/reconcile`,
             payload,
             {
-                timeout: 10000,
+                timeout: ORCHESTRATOR_CONTROL_TIMEOUT_MS,
                 headers: {
                     'Content-Type': 'application/json',
                     'x-orchestrator-secret': ORCHESTRATOR_SECRET,
@@ -452,6 +479,21 @@ async function ensureTemplateForChallenge(challengeCode: string): Promise<LabTem
     return inserted.rows[0] as LabTemplateRow;
 }
 
+async function ensureTemplateById(templateId: string): Promise<LabTemplateRow> {
+    const result = await query(
+        `SELECT *
+         FROM learning.ctf_lab_templates
+         WHERE id = $1
+           AND is_active = true
+         LIMIT 1`,
+        [templateId]
+    );
+    if (!result.rowCount || !result.rows[0]) {
+        throw new CtfLabServiceError('LAB_TEMPLATE_NOT_FOUND', 'Lab template not found or inactive', 404);
+    }
+    return result.rows[0] as LabTemplateRow;
+}
+
 async function loadTasks(templateId: string): Promise<CtfLabTaskView[]> {
     const tasks = await query(
         `SELECT task_id, title, has_machine, question_type, requires_flag, points
@@ -523,22 +565,26 @@ async function fetchStudentSessionById(studentId: string, sessionId: string): Pr
     return result.rows[0] as LabSessionRow;
 }
 
-async function fetchActiveSession(studentId: string, challengeCode: string): Promise<LabSessionRow | null> {
+async function fetchActiveSessionByScopeKey(studentId: string, sessionScopeKey: string): Promise<LabSessionRow | null> {
     const result = await query(
         `SELECT *
          FROM learning.ctf_lab_sessions
          WHERE student_id = $1
-           AND challenge_code = $2
+           AND session_scope_key = $2
            AND status = ANY($3::text[])
            AND terminated_at IS NULL
          ORDER BY created_at DESC
          LIMIT 1`,
-        [studentId, challengeCode, ACTIVE_STATUSES]
+        [studentId, sessionScopeKey, ACTIVE_STATUSES]
     );
     if (!result.rowCount || !result.rows[0]) {
         return null;
     }
     return result.rows[0] as LabSessionRow;
+}
+
+async function fetchActiveSession(studentId: string, challengeCode: string): Promise<LabSessionRow | null> {
+    return fetchActiveSessionByScopeKey(studentId, challengeCode);
 }
 
 async function markSessionStopped(session: LabSessionRow, status: LabSessionStatus, reason: string): Promise<LabSessionRow> {
@@ -644,17 +690,37 @@ export async function reconcileLabSessions(): Promise<{
     return { staleProvisioningFailed, activeSessions, orchestratorNotified };
 }
 
-export async function startOrReuseLabSession(
+export interface StartLabByTemplateOptions {
+    forceNew?: boolean;
+    flowSource?: LabFlowSource;
+    isolationMode?: LabIsolationMode;
+    sessionMetadata?: Record<string, any>;
+    ttlMinutesOverride?: number | null;
+    fallbackOnProvisionFailure?: boolean;
+    challengeCode?: string;
+}
+
+async function startOrReuseLabSessionInternal(
     studentId: string,
+    template: LabTemplateRow,
+    sessionScopeKey: string,
     challengeCode: string,
-    options: { forceNew?: boolean } = {}
+    options: StartLabByTemplateOptions
 ): Promise<{ session: CtfLabSessionView; tasks: CtfLabTaskView[] }> {
     await cleanupExpiredLabSessions();
 
+    const flowSource = normalizeFlowSource(options.flowSource, 'CTF');
+    const isolationMode = normalizeIsolationMode(
+        options.isolationMode,
+        flowSource === 'UA' ? 'DEDICATED_FULL' : 'SHARED_ATTACKBOX'
+    );
+    const fallbackOnProvisionFailure = typeof options.fallbackOnProvisionFailure === 'boolean'
+        ? options.fallbackOnProvisionFailure
+        : isolationMode !== 'DEDICATED_FULL';
+
     if (!options.forceNew) {
-        const existing = await fetchActiveSession(studentId, challengeCode);
+        const existing = await fetchActiveSessionByScopeKey(studentId, sessionScopeKey);
         if (existing) {
-            const template = await ensureTemplateForChallenge(challengeCode);
             const tasks = await loadTasks(template.id);
             return { session: toSessionView(existing), tasks };
         }
@@ -669,21 +735,29 @@ export async function startOrReuseLabSession(
         );
     }
 
-    const template = await ensureTemplateForChallenge(challengeCode);
     const tasks = await loadTasks(template.id);
     const sessionCode = buildSessionCode(challengeCode);
     const cidrBlock = await allocateCidrBlock();
     const machineIp = deriveMachineIp(cidrBlock);
     const networkName = `ctf-sess-${sessionCode}`.slice(0, 120);
     const attackboxPath = buildAttackboxPath(sessionCode);
-    const ttlMinutes = Number(template.default_ttl_minutes || DEFAULT_TTL_MINUTES);
+    const ttlMinutes = Number(
+        options.ttlMinutesOverride && Number(options.ttlMinutesOverride) > 0
+            ? options.ttlMinutesOverride
+            : (template.default_ttl_minutes || DEFAULT_TTL_MINUTES)
+    );
     const startedAt = Date.now();
+    const sessionMetadata = options.sessionMetadata && typeof options.sessionMetadata === 'object'
+        ? options.sessionMetadata
+        : {};
 
     const inserted = await query(
         `INSERT INTO learning.ctf_lab_sessions (
             session_code,
             student_id,
             challenge_code,
+            session_scope_key,
+            flow_source,
             template_id,
             status,
             machine_ip,
@@ -697,13 +771,15 @@ export async function startOrReuseLabSession(
             metadata
          )
          VALUES (
-            $1, $2, $3, $4, 'PROVISIONING', $5::inet, $6, $7::cidr, $8, 0, $9, NOW(), NOW() + ($10 || ' minutes')::interval, $11::jsonb
+            $1, $2, $3, $4, $5, $6, 'PROVISIONING', $7::inet, $8, $9::cidr, $10, 0, $11, NOW(), NOW() + ($12 || ' minutes')::interval, $13::jsonb
          )
          RETURNING *`,
         [
             sessionCode,
             studentId,
             challengeCode,
+            sessionScopeKey,
+            flowSource,
             template.id,
             machineIp,
             networkName,
@@ -711,11 +787,17 @@ export async function startOrReuseLabSession(
             attackboxPath,
             DEFAULT_MAX_EXTENSIONS,
             ttlMinutes,
-            JSON.stringify({ provisioningMode: ORCHESTRATOR_URL ? 'orchestrator' : 'fallback' }),
+            JSON.stringify({
+                provisioningMode: ORCHESTRATOR_URL ? 'orchestrator' : 'fallback',
+                flowSource,
+                isolationMode,
+                sessionScopeKey,
+                ...sessionMetadata,
+            }),
         ]
     );
     const session = inserted.rows[0] as LabSessionRow;
-    await insertLabEvent(session.id, 'session_provisioning_started', { challengeCode, sessionCode });
+    await insertLabEvent(session.id, 'session_provisioning_started', { challengeCode, sessionCode, flowSource, isolationMode });
 
     let provision = await callOrchestratorProvision({
         sessionId: session.id,
@@ -726,10 +808,20 @@ export async function startOrReuseLabSession(
         cidrBlock,
         machineIp,
         attackboxPath,
+        flowSource,
+        isolationMode,
         manifest: normalizeManifest(template.manifest),
     });
 
     if (!provision) {
+        if (!fallbackOnProvisionFailure) {
+            await markSessionStopped(session, 'FAILED', 'dedicated_isolation_unavailable');
+            throw new CtfLabServiceError(
+                'LAB_ISOLATION_UNAVAILABLE',
+                'Dedicated lab isolation is unavailable for this session',
+                503
+            );
+        }
         provision = buildFallbackProvision(session, template);
     }
 
@@ -757,6 +849,8 @@ export async function startOrReuseLabSession(
         attackboxPath: resolvedPath,
         attackboxHost: resolvedHost,
         attackboxPort: resolvedPort,
+        flowSource,
+        isolationMode,
     });
 
     const finalSession = updated.rows[0] as LabSessionRow;
@@ -766,6 +860,65 @@ export async function startOrReuseLabSession(
         session: toSessionView(finalSession),
         tasks,
     };
+}
+
+export async function startOrReuseLabSession(
+    studentId: string,
+    challengeCode: string,
+    options: { forceNew?: boolean } = {}
+): Promise<{ session: CtfLabSessionView; tasks: CtfLabTaskView[] }> {
+    const template = await ensureTemplateForChallenge(challengeCode);
+    return startOrReuseLabSessionInternal(
+        studentId,
+        template,
+        challengeCode,
+        challengeCode,
+        {
+            forceNew: options.forceNew,
+            flowSource: 'CTF',
+            isolationMode: 'SHARED_ATTACKBOX',
+            fallbackOnProvisionFailure: true,
+            challengeCode,
+        }
+    );
+}
+
+export async function startOrReuseLabSessionByTemplate(
+    studentId: string,
+    templateId: string,
+    sessionKey: string,
+    options: StartLabByTemplateOptions = {}
+): Promise<{ session: CtfLabSessionView; tasks: CtfLabTaskView[] }> {
+    const trimmedSessionKey = String(sessionKey || '').trim();
+    if (!trimmedSessionKey) {
+        throw new CtfLabServiceError('LAB_SESSION_SCOPE_REQUIRED', 'sessionKey is required', 400);
+    }
+    const template = await ensureTemplateById(templateId);
+    const challengeCode = String(options.challengeCode || template.challenge_code || template.room_code || 'UA').trim();
+    return startOrReuseLabSessionInternal(
+        studentId,
+        template,
+        trimmedSessionKey,
+        challengeCode,
+        {
+            ...options,
+            flowSource: normalizeFlowSource(options.flowSource, 'UA'),
+            isolationMode: normalizeIsolationMode(options.isolationMode, 'DEDICATED_FULL'),
+            fallbackOnProvisionFailure: typeof options.fallbackOnProvisionFailure === 'boolean'
+                ? options.fallbackOnProvisionFailure
+                : false,
+            challengeCode,
+        }
+    );
+}
+
+export async function getLabSessionForScopeKey(
+    studentId: string,
+    sessionScopeKey: string
+): Promise<CtfLabSessionView | null> {
+    await cleanupExpiredLabSessions();
+    const session = await fetchActiveSessionByScopeKey(studentId, sessionScopeKey);
+    return session ? toSessionView(session) : null;
 }
 
 export async function getLabSessionForChallenge(
@@ -828,8 +981,24 @@ export async function resetLabSession(studentId: string, sessionId: string): Pro
     if (ACTIVE_STATUSES.includes(session.status) && !session.terminated_at) {
         await markSessionStopped(session, 'STOPPED', 'reset');
     }
-    const restarted = await startOrReuseLabSession(studentId, session.challenge_code, { forceNew: true });
-    return restarted.session;
+
+    if (session.flow_source === 'UA') {
+        const restartedUa = await startOrReuseLabSessionByTemplate(
+            studentId,
+            session.template_id,
+            session.session_scope_key,
+            {
+                forceNew: true,
+                flowSource: 'UA',
+                isolationMode: 'DEDICATED_FULL',
+                challengeCode: session.challenge_code,
+            }
+        );
+        return restartedUa.session;
+    }
+
+    const restartedCtf = await startOrReuseLabSession(studentId, session.challenge_code, { forceNew: true });
+    return restartedCtf.session;
 }
 
 export async function resolveLabProxyTarget(

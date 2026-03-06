@@ -5,6 +5,7 @@
 import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { RequireRole, UserRole, RequirePermission, Permission } from '../middleware/roles';
+import * as authController from '../controllers/auth.controller';
 import * as usersController from '../controllers/users.controller';
 
 const router = Router();
@@ -23,6 +24,18 @@ router.get('/', RequireRole(UserRole.FORMATEUR), usersController.getAllUsers);
  * List all students (Formateur only)
  */
 router.get('/students', RequireRole(UserRole.FORMATEUR), usersController.getStudents);
+
+/**
+ * GET /api/users/me
+ * Get authenticated user profile
+ */
+router.get('/me', authController.getMe as any);
+
+/**
+ * POST /api/users/me/preferences
+ * Save authenticated user preferences
+ */
+router.post('/me/preferences', authController.savePreferences as any);
 
 /**
  * GET /api/users/:id

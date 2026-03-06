@@ -1,373 +1,466 @@
-'use client';
+﻿'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { motion } from 'framer-motion';
+import {
+  BarChart3,
+  BookOpen,
+  Clock,
+  Edit,
+  FileText,
+  Plus,
+  Search,
+  Target,
+  Trash2,
+  Users,
+} from 'lucide-react';
 import { useAuth } from '../../auth/useAuth';
 import {
-    FileText,
-    Plus,
-    Edit,
-    Trash2,
-    Users,
-    Clock,
-    Target,
-    Search,
-    BarChart3,
-    BookOpen
-} from 'lucide-react';
-import Link from 'next/link';
-import { NotionSkeleton } from '@shared/components/notion';
+  NotionBadge,
+  NotionButton,
+  NotionCard,
+  NotionEmptyState,
+  NotionPill,
+  NotionSkeleton,
+  NotionTabs,
+} from '@shared/components/notion';
 
 interface Exercise {
-    id: string;
-    title: string;
-    description: string;
-    type: string;
-    difficulty: string;
-    workshopId: string | null;
-    points: number;
-    timeLimitMinutes: number | null;
-    isActive: boolean;
-    createdAt: string;
-    assignmentCount: number;
+  id: string;
+  title: string;
+  description: string;
+  type: string;
+  difficulty: string;
+  workshopId: string | null;
+  points: number;
+  timeLimitMinutes: number | null;
+  isActive: boolean;
+  createdAt: string;
+  assignmentCount: number;
 }
+
+type DifficultyFilter = 'ALL' | 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT';
+type TypeFilter = 'ALL' | 'QUIZ' | 'PRACTICAL' | 'SIMULATION' | 'CODE_REVIEW' | 'CASE_STUDY';
 
 type UnknownRecord = Record<string, unknown>;
 
-const toRecord = (value: unknown): UnknownRecord => (
-    value !== null && typeof value === 'object' ? (value as UnknownRecord) : {}
-);
+const toRecord = (value: unknown): UnknownRecord => (value !== null && typeof value === 'object' ? (value as UnknownRecord) : {});
 
 const normalizeExercise = (raw: unknown): Exercise => {
-    const r = toRecord(raw);
-    return {
-        id: String(r.id || ''),
-        title: String(r.title ?? ''),
-        description: String(r.description ?? ''),
-        type: String(r.type ?? ''),
-        difficulty: String(r.difficulty ?? ''),
-        workshopId: (r.workshopId ?? r.workshop_id ?? null) as string | null,
-        points: Number(r.points ?? 0),
-        timeLimitMinutes: (r.timeLimitMinutes ?? r.time_limit_minutes ?? null) as number | null,
-        isActive: Boolean(r.isActive ?? r.is_active),
-        createdAt: String(r.createdAt ?? r.created_at ?? ''),
-        assignmentCount: Number(r.assignmentCount ?? r.assignment_count ?? 0)
-    };
-};
-
-const DIFFICULTY_STYLES: Record<string, { bg: string; color: string }> = {
-    BEGINNER: { bg: 'var(--n-success-bg)', color: 'var(--n-success)' },
-    INTERMEDIATE: { bg: 'var(--n-accent-light)', color: 'var(--n-accent)' },
-    ADVANCED: { bg: 'var(--n-warning-bg)', color: 'var(--n-warning)' },
-    EXPERT: { bg: 'var(--n-danger-bg)', color: 'var(--n-danger)' },
+  const record = toRecord(raw);
+  return {
+    id: String(record.id || ''),
+    title: String(record.title ?? ''),
+    description: String(record.description ?? ''),
+    type: String(record.type ?? ''),
+    difficulty: String(record.difficulty ?? ''),
+    workshopId: (record.workshopId ?? record.workshop_id ?? null) as string | null,
+    points: Number(record.points ?? 0),
+    timeLimitMinutes: (record.timeLimitMinutes ?? record.time_limit_minutes ?? null) as number | null,
+    isActive: Boolean(record.isActive ?? record.is_active),
+    createdAt: String(record.createdAt ?? record.created_at ?? ''),
+    assignmentCount: Number(record.assignmentCount ?? record.assignment_count ?? 0),
+  };
 };
 
 const DIFFICULTY_LABELS: Record<string, string> = {
-    BEGINNER: 'Débutant', INTERMEDIATE: 'Intermédiaire', ADVANCED: 'Avancé', EXPERT: 'Expert'
+  BEGINNER: 'Debutant',
+  INTERMEDIATE: 'Intermediaire',
+  ADVANCED: 'Avance',
+  EXPERT: 'Expert',
 };
 
 const TYPE_LABELS: Record<string, string> = {
-    QUIZ: 'Quiz', PRACTICAL: 'Pratique', SIMULATION: 'Simulation',
-    CODE_REVIEW: 'Revue de code', CASE_STUDY: 'Étude de cas'
+  QUIZ: 'Quiz',
+  PRACTICAL: 'Pratique',
+  SIMULATION: 'Simulation',
+  CODE_REVIEW: 'Revue de code',
+  CASE_STUDY: 'Etude de cas',
+};
+
+const DIFFICULTY_BADGE: Record<string, 'beginner' | 'inter' | 'advanced' | 'expert' | 'default'> = {
+  BEGINNER: 'beginner',
+  INTERMEDIATE: 'inter',
+  ADVANCED: 'advanced',
+  EXPERT: 'expert',
 };
 
 export default function ExercisesPage() {
-    const { isLoading: authLoading } = useAuth(true);
-    const [exercises, setExercises] = useState<Exercise[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [filterType, setFilterType] = useState<string>('');
-    const [filterDifficulty, setFilterDifficulty] = useState<string>('');
+  const { isLoading: authLoading } = useAuth(true);
+  const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState<TypeFilter>('ALL');
+  const [filterDifficulty, setFilterDifficulty] = useState<DifficultyFilter>('ALL');
 
-    useEffect(() => { fetchExercises(); }, []);
+  const fetchExercises = useCallback(async () => {
+    try {
+      setError(null);
+      setLoading(true);
 
-    const fetchExercises = async () => {
-        try {
-            setError(null);
-            const token = localStorage.getItem('token');
-            if (!token) throw new Error('Session introuvable');
-            const response = await fetch('/api/exercises', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (!response.ok) throw new Error(`Impossible de charger les exercices (${response.status})`);
-            const data = await response.json();
-            setExercises((data.exercises || []).map(normalizeExercise));
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Impossible de charger les exercices');
-            setExercises([]);
-        } finally {
-            setLoading(false);
-        }
-    };
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('Session introuvable');
 
-    const deleteExercise = async (id: string) => {
-        if (!confirm('Voulez-vous vraiment supprimer cet exercice ?')) return;
-        try {
-            setError(null);
-            const token = localStorage.getItem('token');
-            if (!token) throw new Error('Session introuvable');
-            const response = await fetch(`/api/exercises/${id}`, {
-                method: 'DELETE',
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (!response.ok) throw new Error(`Suppression impossible (${response.status})`);
-            setExercises((prev) => prev.filter((e) => e.id !== id));
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Suppression impossible');
-        }
-    };
+      const response = await fetch('/api/exercises', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-    const filteredExercises = exercises.filter((e) => {
-        const matchesSearch = e.title.toLowerCase().includes(searchQuery.toLowerCase())
-            || e.description.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesSearch
-            && (!filterType || e.type === filterType)
-            && (!filterDifficulty || e.difficulty === filterDifficulty);
-    });
+      if (!response.ok) throw new Error(`Impossible de charger les exercices (${response.status})`);
 
-    if (authLoading || loading) {
-        return (
-            <div style={{ minHeight: '100vh', background: 'var(--n-bg-secondary)', padding: '32px 24px' }}>
-                <NotionSkeleton type="list" />
-            </div>
-        );
+      const data = await response.json();
+      setExercises((data.exercises || []).map(normalizeExercise));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Impossible de charger les exercices');
+      setExercises([]);
+    } finally {
+      setLoading(false);
     }
+  }, []);
 
+  useEffect(() => {
+    if (authLoading) return;
+    void fetchExercises();
+  }, [authLoading, fetchExercises]);
+
+  const deleteExercise = useCallback(async (id: string) => {
+    if (!confirm('Voulez-vous vraiment supprimer cet exercice ?')) return;
+
+    try {
+      setError(null);
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('Session introuvable');
+
+      const response = await fetch(`/api/exercises/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) throw new Error(`Suppression impossible (${response.status})`);
+
+      setExercises((previous) => previous.filter((exercise) => exercise.id !== id));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Suppression impossible');
+    }
+  }, []);
+
+  const filteredExercises = useMemo(
+    () =>
+      exercises.filter((exercise) => {
+        const matchesSearch =
+          exercise.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          exercise.description.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesType = filterType === 'ALL' || exercise.type === filterType;
+        const matchesDifficulty = filterDifficulty === 'ALL' || exercise.difficulty === filterDifficulty;
+        return matchesSearch && matchesType && matchesDifficulty;
+      }),
+    [exercises, filterDifficulty, filterType, searchQuery]
+  );
+
+  const metrics = useMemo(() => {
+    const activeCount = exercises.filter((exercise) => exercise.isActive).length;
+    const assignedCount = exercises.reduce((sum, exercise) => sum + exercise.assignmentCount, 0);
+    const avgPoints = exercises.length > 0 ? Math.round(exercises.reduce((sum, exercise) => sum + exercise.points, 0) / exercises.length) : 0;
+    const quizCount = exercises.filter((exercise) => exercise.type === 'QUIZ').length;
+
+    return { activeCount, assignedCount, avgPoints, quizCount };
+  }, [exercises]);
+
+  if (authLoading || (loading && exercises.length === 0)) {
     return (
-        <div style={{ minHeight: '100vh', background: 'var(--n-bg-secondary)', padding: '32px 24px' }}>
-            <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-
-                {/* Header */}
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '28px' }}>
-                    <div>
-                        <h1 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--n-text-primary)', margin: 0 }}>
-                            Gestion des exercices
-                        </h1>
-                        <p style={{ color: 'var(--n-text-secondary)', fontSize: '14px', marginTop: '4px' }}>
-                            {exercises.length} exercice{exercises.length > 1 ? 's' : ''} créé{exercises.length > 1 ? 's' : ''}
-                        </p>
-                    </div>
-                    <Link
-                        href="/instructor/exercises/create"
-                        style={{
-                            display: 'flex', alignItems: 'center', gap: '8px',
-                            padding: '8px 16px', background: 'var(--n-accent)',
-                            color: '#fff', borderRadius: '6px', fontWeight: 500,
-                            fontSize: '14px', textDecoration: 'none'
-                        }}
-                    >
-                        <Plus size={16} />
-                        Nouvel exercice
-                    </Link>
-                </div>
-
-                {/* Error */}
-                {error && (
-                    <div style={{
-                        marginBottom: '20px', padding: '12px 16px',
-                        background: 'var(--n-danger-bg)', border: '1px solid var(--n-danger)',
-                        borderRadius: '6px', color: 'var(--n-danger)', fontSize: '14px'
-                    }}>
-                        {error}
-                    </div>
-                )}
-
-                {/* Filtres */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
-                    <div style={{ position: 'relative', flex: 1, minWidth: '220px' }}>
-                        <Search style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', width: '16px', height: '16px', color: 'var(--n-text-tertiary)' }} />
-                        <input
-                            type="text"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Rechercher un exercice..."
-                            style={{
-                                width: '100%', paddingLeft: '40px', paddingRight: '12px',
-                                paddingTop: '9px', paddingBottom: '9px',
-                                background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)',
-                                borderRadius: '6px', color: 'var(--n-text-primary)', fontSize: '14px',
-                                outline: 'none', boxSizing: 'border-box'
-                            }}
-                        />
-                    </div>
-                    <select
-                        value={filterType}
-                        onChange={(e) => setFilterType(e.target.value)}
-                        style={{
-                            padding: '9px 12px', background: 'var(--n-bg-primary)',
-                            border: '1px solid var(--n-border)', borderRadius: '6px',
-                            color: 'var(--n-text-primary)', fontSize: '14px', outline: 'none'
-                        }}
-                    >
-                        <option value="">Tous les types</option>
-                        <option value="QUIZ">Quiz</option>
-                        <option value="PRACTICAL">Pratique</option>
-                        <option value="SIMULATION">Simulation</option>
-                        <option value="CODE_REVIEW">Revue de code</option>
-                        <option value="CASE_STUDY">Étude de cas</option>
-                    </select>
-                    <select
-                        value={filterDifficulty}
-                        onChange={(e) => setFilterDifficulty(e.target.value)}
-                        style={{
-                            padding: '9px 12px', background: 'var(--n-bg-primary)',
-                            border: '1px solid var(--n-border)', borderRadius: '6px',
-                            color: 'var(--n-text-primary)', fontSize: '14px', outline: 'none'
-                        }}
-                    >
-                        <option value="">Toutes difficultés</option>
-                        <option value="BEGINNER">Débutant</option>
-                        <option value="INTERMEDIATE">Intermédiaire</option>
-                        <option value="ADVANCED">Avancé</option>
-                        <option value="EXPERT">Expert</option>
-                    </select>
-                </div>
-
-                {/* Liste exercices */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {filteredExercises.length === 0 ? (
-                        <div style={{
-                            background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)',
-                            borderRadius: '8px', padding: '48px 24px', textAlign: 'center'
-                        }}>
-                            <FileText style={{ width: '40px', height: '40px', color: 'var(--n-text-tertiary)', margin: '0 auto 16px' }} />
-                            <h3 style={{ color: 'var(--n-text-primary)', fontWeight: 600, marginBottom: '8px' }}>
-                                Aucun exercice trouvé
-                            </h3>
-                            <p style={{ color: 'var(--n-text-secondary)', fontSize: '14px', marginBottom: '20px' }}>
-                                {searchQuery || filterType || filterDifficulty
-                                    ? 'Essayez de modifier vos filtres.'
-                                    : 'Commencez par créer votre premier exercice.'}
-                            </p>
-                            {!searchQuery && !filterType && !filterDifficulty && (
-                                <Link
-                                    href="/instructor/exercises/create"
-                                    style={{
-                                        display: 'inline-flex', alignItems: 'center', gap: '8px',
-                                        padding: '8px 16px', background: 'var(--n-accent)',
-                                        color: '#fff', borderRadius: '6px', fontWeight: 500,
-                                        fontSize: '14px', textDecoration: 'none'
-                                    }}
-                                >
-                                    <Plus size={16} /> Créer un exercice
-                                </Link>
-                            )}
-                        </div>
-                    ) : (
-                        filteredExercises.map((exercise) => {
-                            const diffStyle = DIFFICULTY_STYLES[exercise.difficulty] || { bg: 'var(--n-bg-secondary)', color: 'var(--n-text-secondary)' };
-                            return (
-                                <div
-                                    key={exercise.id}
-                                    style={{
-                                        background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)',
-                                        borderRadius: '8px', padding: '16px 20px',
-                                        display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
-                                        gap: '16px'
-                                    }}
-                                >
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px', flexWrap: 'wrap' }}>
-                                            <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--n-text-primary)', margin: 0 }}>
-                                                {exercise.title}
-                                            </h3>
-                                            <span style={{
-                                                padding: '2px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 500,
-                                                background: diffStyle.bg, color: diffStyle.color
-                                            }}>
-                                                {DIFFICULTY_LABELS[exercise.difficulty] || exercise.difficulty}
-                                            </span>
-                                            <span style={{
-                                                padding: '2px 8px', borderRadius: '4px', fontSize: '12px',
-                                                background: 'var(--n-bg-secondary)', color: 'var(--n-text-secondary)'
-                                            }}>
-                                                {TYPE_LABELS[exercise.type] || exercise.type}
-                                            </span>
-                                        </div>
-                                        <p style={{ color: 'var(--n-text-secondary)', fontSize: '13px', marginBottom: '12px', lineHeight: '1.5' }}>
-                                            {exercise.description}
-                                        </p>
-                                        <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-                                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--n-text-secondary)' }}>
-                                                <Target size={14} style={{ color: 'var(--n-warning)' }} />
-                                                {exercise.points} pts
-                                            </span>
-                                            {exercise.timeLimitMinutes && (
-                                                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--n-text-secondary)' }}>
-                                                    <Clock size={14} style={{ color: 'var(--n-accent)' }} />
-                                                    {exercise.timeLimitMinutes} min
-                                                </span>
-                                            )}
-                                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--n-text-secondary)' }}>
-                                                <Users size={14} style={{ color: 'var(--n-success)' }} />
-                                                {exercise.assignmentCount} assigné{exercise.assignmentCount > 1 ? 's' : ''}
-                                            </span>
-                                            {exercise.workshopId && (
-                                                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--n-text-secondary)' }}>
-                                                    <BookOpen size={14} />
-                                                    {exercise.workshopId}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                                        <Link
-                                            href={`/instructor/exercises/${exercise.id}`}
-                                            style={{
-                                                padding: '7px', borderRadius: '6px', display: 'flex',
-                                                color: 'var(--n-text-tertiary)',
-                                                transition: 'background 0.15s'
-                                            }}
-                                            title="Voir les soumissions"
-                                        >
-                                            <BarChart3 size={18} />
-                                        </Link>
-                                        <Link
-                                            href={`/instructor/exercises/${exercise.id}/edit`}
-                                            style={{
-                                                padding: '7px', borderRadius: '6px', display: 'flex',
-                                                color: 'var(--n-accent)',
-                                            }}
-                                            title="Modifier"
-                                        >
-                                            <Edit size={18} />
-                                        </Link>
-                                        <button
-                                            onClick={() => deleteExercise(exercise.id)}
-                                            style={{
-                                                padding: '7px', borderRadius: '6px', display: 'flex',
-                                                background: 'none', border: 'none', cursor: 'pointer',
-                                                color: 'var(--n-danger)',
-                                            }}
-                                            title="Supprimer"
-                                        >
-                                            <Trash2 size={18} />
-                                        </button>
-                                    </div>
-                                </div>
-                            );
-                        })
-                    )}
-                </div>
-
-                {/* Stats bas de page */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginTop: '28px' }}>
-                    {[
-                        { label: 'Quiz', count: exercises.filter((e) => e.type === 'QUIZ').length },
-                        { label: 'Pratiques', count: exercises.filter((e) => e.type === 'PRACTICAL').length },
-                        { label: 'Simulations', count: exercises.filter((e) => e.type === 'SIMULATION').length },
-                        { label: 'Assignements', count: exercises.reduce((s, e) => s + e.assignmentCount, 0) },
-                    ].map(({ label, count }) => (
-                        <div key={label} style={{
-                            background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)',
-                            borderRadius: '8px', padding: '14px 16px'
-                        }}>
-                            <p style={{ fontSize: '12px', color: 'var(--n-text-secondary)', margin: '0 0 4px' }}>{label}</p>
-                            <p style={{ fontSize: '22px', fontWeight: 700, color: 'var(--n-text-primary)', margin: 0 }}>{count}</p>
-                        </div>
-                    ))}
-                </div>
-            </div>
+      <div className="n-page-container" style={{ maxWidth: '1200px' }}>
+        <NotionSkeleton type="line" width="220px" height="28px" />
+        <div style={{ marginTop: 'var(--n-space-2)' }}>
+          <NotionSkeleton type="line" width="340px" height="14px" />
         </div>
+        <div
+          style={{
+            marginTop: 'var(--n-space-6)',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+            gap: 'var(--n-space-3)',
+          }}
+        >
+          {[...Array(4)].map((_, index) => (
+            <NotionSkeleton key={index} type="stat" />
+          ))}
+        </div>
+      </div>
     );
+  }
+
+  const typeOptions = [
+    { value: 'ALL' as TypeFilter, label: 'Tous', count: exercises.length },
+    { value: 'QUIZ' as TypeFilter, label: 'Quiz', count: exercises.filter((exercise) => exercise.type === 'QUIZ').length },
+    {
+      value: 'PRACTICAL' as TypeFilter,
+      label: 'Pratique',
+      count: exercises.filter((exercise) => exercise.type === 'PRACTICAL').length,
+    },
+    {
+      value: 'SIMULATION' as TypeFilter,
+      label: 'Simulation',
+      count: exercises.filter((exercise) => exercise.type === 'SIMULATION').length,
+    },
+  ];
+
+  const difficultyOptions = [
+    { value: 'ALL' as DifficultyFilter, label: 'Tous', count: exercises.length },
+    {
+      value: 'BEGINNER' as DifficultyFilter,
+      label: 'Debutant',
+      count: exercises.filter((exercise) => exercise.difficulty === 'BEGINNER').length,
+    },
+    {
+      value: 'INTERMEDIATE' as DifficultyFilter,
+      label: 'Intermediaire',
+      count: exercises.filter((exercise) => exercise.difficulty === 'INTERMEDIATE').length,
+    },
+    {
+      value: 'ADVANCED' as DifficultyFilter,
+      label: 'Avance',
+      count: exercises.filter((exercise) => exercise.difficulty === 'ADVANCED').length,
+    },
+    {
+      value: 'EXPERT' as DifficultyFilter,
+      label: 'Expert',
+      count: exercises.filter((exercise) => exercise.difficulty === 'EXPERT').length,
+    },
+  ];
+
+  return (
+    <div className="n-page-container" style={{ maxWidth: '1200px' }}>
+      <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
+        <NotionCard padding="lg">
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: 'var(--n-space-4)',
+              alignItems: 'center',
+            }}
+          >
+            <div>
+              <NotionPill variant="accent" icon={<FileText size={12} />}>
+                Bibliotheque exercices
+              </NotionPill>
+              <h1
+                style={{
+                  margin: 'var(--n-space-3) 0 var(--n-space-2)',
+                  color: 'var(--n-text-primary)',
+                  fontSize: 'var(--n-text-2xl)',
+                  fontWeight: 'var(--n-weight-bold)',
+                }}
+              >
+                Gestion des exercices
+              </h1>
+              <p style={{ margin: 0, color: 'var(--n-text-secondary)', fontSize: 'var(--n-text-sm)' }}>
+                Creez, filtrez et suivez vos exercices pedagogiques sur tout le parcours learning.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: 'var(--n-space-2)', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              <NotionButton variant="secondary" onClick={() => void fetchExercises()}>
+                Rafraichir
+              </NotionButton>
+              <Link href="/instructor/exercises/create" style={{ textDecoration: 'none' }}>
+                <NotionButton variant="primary" leftIcon={<Plus size={13} />}>
+                  Nouvel exercice
+                </NotionButton>
+              </Link>
+            </div>
+          </div>
+        </NotionCard>
+      </motion.section>
+
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.05 }}
+        style={{
+          marginTop: 'var(--n-space-4)',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+          gap: 'var(--n-space-3)',
+        }}
+      >
+        {[
+          { label: 'Exercices actifs', value: metrics.activeCount, icon: <BookOpen size={14} />, tone: 'var(--n-success)' },
+          { label: 'Assignations', value: metrics.assignedCount, icon: <Users size={14} />, tone: 'var(--n-accent)' },
+          { label: 'Points moyens', value: metrics.avgPoints, icon: <Target size={14} />, tone: 'var(--n-warning)' },
+          { label: 'Quiz', value: metrics.quizCount, icon: <BarChart3 size={14} />, tone: 'var(--n-info)' },
+        ].map((item) => (
+          <NotionCard key={item.label} padding="md">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ color: 'var(--n-text-tertiary)', fontSize: 'var(--n-text-xs)', textTransform: 'uppercase' }}>{item.label}</span>
+              <span style={{ color: item.tone }}>{item.icon}</span>
+            </div>
+            <div
+              style={{
+                marginTop: 'var(--n-space-2)',
+                color: 'var(--n-text-primary)',
+                fontFamily: 'var(--n-font-mono)',
+                fontSize: 'var(--n-text-lg)',
+                fontWeight: 'var(--n-weight-bold)',
+              }}
+            >
+              {item.value}
+            </div>
+          </NotionCard>
+        ))}
+      </motion.section>
+
+      {error && (
+        <div
+          style={{
+            marginTop: 'var(--n-space-4)',
+            padding: 'var(--n-space-3) var(--n-space-4)',
+            borderRadius: 'var(--n-radius-sm)',
+            border: '1px solid var(--n-danger-border)',
+            background: 'var(--n-danger-bg)',
+            color: 'var(--n-danger)',
+            fontSize: 'var(--n-text-sm)',
+          }}
+        >
+          {error}
+        </div>
+      )}
+
+      <NotionCard padding="md" style={{ marginTop: 'var(--n-space-4)' }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: 'var(--n-space-3)',
+            alignItems: 'center',
+          }}
+        >
+          <div style={{ position: 'relative' }}>
+            <Search
+              size={14}
+              style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--n-text-tertiary)' }}
+            />
+            <input
+              className="n-input"
+              type="text"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Rechercher un exercice"
+              style={{ paddingLeft: '32px' }}
+              aria-label="Rechercher un exercice"
+            />
+          </div>
+          <NotionTabs<TypeFilter> value={filterType} options={typeOptions} onChange={setFilterType} ariaLabel="Filtrer par type" />
+          <NotionTabs<DifficultyFilter>
+            value={filterDifficulty}
+            options={difficultyOptions}
+            onChange={setFilterDifficulty}
+            ariaLabel="Filtrer par difficulte"
+          />
+        </div>
+      </NotionCard>
+
+      <div
+        style={{
+          marginTop: 'var(--n-space-4)',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))',
+          gap: 'var(--n-space-3)',
+        }}
+      >
+        {loading ? (
+          [...Array(4)].map((_, index) => <NotionSkeleton key={index} type="card" />)
+        ) : filteredExercises.length === 0 ? (
+          <div style={{ gridColumn: '1 / -1' }}>
+            <NotionEmptyState
+              icon={<FileText size={26} />}
+              title="Aucun exercice trouve"
+              description={
+                searchQuery || filterType !== 'ALL' || filterDifficulty !== 'ALL'
+                  ? 'Ajustez vos filtres pour afficher plus de contenu.'
+                  : 'Commencez par creer votre premier exercice.'
+              }
+              action={
+                <Link href="/instructor/exercises/create" style={{ textDecoration: 'none' }}>
+                  <NotionButton variant="primary" leftIcon={<Plus size={13} />}>
+                    Creer un exercice
+                  </NotionButton>
+                </Link>
+              }
+            />
+          </div>
+        ) : (
+          filteredExercises.map((exercise, index) => (
+            <motion.div
+              key={exercise.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25, delay: index * 0.03 }}
+            >
+              <NotionCard variant="hover" padding="md" style={{ height: '100%' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 'var(--n-space-2)' }}>
+                  <div>
+                    <h3 style={{ margin: 0, color: 'var(--n-text-primary)', fontSize: 'var(--n-text-base)' }}>{exercise.title}</h3>
+                    <div style={{ marginTop: '6px', display: 'flex', gap: 'var(--n-space-2)', flexWrap: 'wrap' }}>
+                      <NotionBadge variant={DIFFICULTY_BADGE[exercise.difficulty] || 'default'} size="sm">
+                        {DIFFICULTY_LABELS[exercise.difficulty] || exercise.difficulty}
+                      </NotionBadge>
+                      <NotionBadge variant="default" size="sm">
+                        {TYPE_LABELS[exercise.type] || exercise.type}
+                      </NotionBadge>
+                    </div>
+                  </div>
+                  <NotionBadge variant={exercise.isActive ? 'success' : 'default'} size="sm">
+                    {exercise.isActive ? 'Actif' : 'Archive'}
+                  </NotionBadge>
+                </div>
+
+                <p style={{ margin: 'var(--n-space-3) 0', color: 'var(--n-text-secondary)', fontSize: 'var(--n-text-sm)', lineHeight: 'var(--n-leading-relaxed)' }}>
+                  {exercise.description}
+                </p>
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--n-space-2)' }}>
+                  <NotionPill variant="default" icon={<Target size={11} />}>
+                    {exercise.points} pts
+                  </NotionPill>
+                  {exercise.timeLimitMinutes && (
+                    <NotionPill variant="default" icon={<Clock size={11} />}>
+                      {exercise.timeLimitMinutes} min
+                    </NotionPill>
+                  )}
+                  <NotionPill variant="accent" icon={<Users size={11} />}>
+                    {exercise.assignmentCount} assignes
+                  </NotionPill>
+                </div>
+
+                <div style={{ marginTop: 'var(--n-space-3)', display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 'var(--n-space-2)' }}>
+                  <Link href={`/instructor/exercises/${exercise.id}`} style={{ textDecoration: 'none' }}>
+                    <NotionButton variant="secondary" size="sm" fullWidth leftIcon={<BarChart3 size={12} />}>
+                      Suivi
+                    </NotionButton>
+                  </Link>
+                  <Link href={`/instructor/exercises/${exercise.id}/edit`} style={{ textDecoration: 'none' }}>
+                    <NotionButton variant="secondary" size="sm" fullWidth leftIcon={<Edit size={12} />}>
+                      Editer
+                    </NotionButton>
+                  </Link>
+                  <NotionButton
+                    variant="danger"
+                    size="sm"
+                    fullWidth
+                    leftIcon={<Trash2 size={12} />}
+                    onClick={() => void deleteExercise(exercise.id)}
+                  >
+                    Supprimer
+                  </NotionButton>
+                </div>
+              </NotionCard>
+            </motion.div>
+          ))
+        )}
+      </div>
+    </div>
+  );
 }
+

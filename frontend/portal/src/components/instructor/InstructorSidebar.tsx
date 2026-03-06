@@ -12,7 +12,7 @@ import {
   GraduationCap,
 } from 'lucide-react';
 import { NotionSidebar, NavSection } from '@shared/components/notion/NotionSidebar';
-import { useAuth } from '@shared/context/AuthContext';
+import { useAuth } from '@/app/auth/useAuth';
 
 /**
  * InstructorSidebar — Sidebar spécifique aux pages /instructor/*

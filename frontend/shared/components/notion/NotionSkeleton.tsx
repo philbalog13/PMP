@@ -4,19 +4,18 @@ type SkeletonType = 'line' | 'card' | 'avatar' | 'list' | 'stat';
 
 interface NotionSkeletonProps {
   type?: SkeletonType;
-  /** Nombre de lignes (type="list") */
   rows?: number;
-  /** Largeur personnalisée (type="line") */
   width?: string;
-  /** Hauteur personnalisée */
   height?: string;
   className?: string;
+  style?: React.CSSProperties;
 }
 
-/**
- * Ligne skeleton de base — rectangle gris avec shimmer
- */
-function SkeletonLine({ width = '100%', height = '14px', style }: {
+function SkeletonLine({
+  width = '100%',
+  height = '14px',
+  style,
+}: {
   width?: string;
   height?: string;
   style?: React.CSSProperties;
@@ -41,35 +40,20 @@ function SkeletonLine({ width = '100%', height = '14px', style }: {
   );
 }
 
-/**
- * NotionSkeleton — Loaders de chargement minimalistes
- *
- * Types :
- * - `line`   : une seule ligne (largeur configurable)
- * - `card`   : card avec titre + 3 lignes de texte
- * - `avatar` : cercle + ligne de texte
- * - `list`   : N lignes de hauteur variable
- * - `stat`   : bloc stat avec valeur + label
- *
- * Usage :
- * ```tsx
- * <NotionSkeleton type="card" />
- * <NotionSkeleton type="list" rows={5} />
- * <NotionSkeleton type="line" width="60%" />
- * ```
- */
 export function NotionSkeleton({
   type = 'line',
   rows = 3,
   width,
   height,
   className = '',
+  style,
 }: NotionSkeletonProps) {
   if (type === 'line') {
     return (
       <SkeletonLine
         width={width ?? '100%'}
         height={height ?? '14px'}
+        style={style}
       />
     );
   }
@@ -79,13 +63,14 @@ export function NotionSkeleton({
       <div
         className={className}
         style={{
-          background:    'var(--n-bg-elevated)',
-          border:        '1px solid var(--n-border)',
-          borderRadius:  'var(--n-radius-md)',
-          padding:       'var(--n-space-5)',
-          display:       'flex',
+          background: 'var(--n-bg-elevated)',
+          border: '1px solid var(--n-border)',
+          borderRadius: 'var(--n-radius-md)',
+          padding: 'var(--n-space-5)',
+          display: 'flex',
           flexDirection: 'column',
-          gap:           'var(--n-space-3)',
+          gap: 'var(--n-space-3)',
+          ...style,
         }}
       >
         <SkeletonLine width="60%" height="18px" />
@@ -100,14 +85,14 @@ export function NotionSkeleton({
     return (
       <div
         className={className}
-        style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-3)' }}
+        style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-3)', ...style }}
       >
         <div
           style={{
-            width:        '32px',
-            height:       '32px',
+            width: '32px',
+            height: '32px',
             borderRadius: '50%',
-            flexShrink:   0,
+            flexShrink: 0,
             background: `linear-gradient(
               90deg,
               var(--n-bg-tertiary)  25%,
@@ -131,7 +116,7 @@ export function NotionSkeleton({
     return (
       <div
         className={className}
-        style={{ display: 'flex', flexDirection: 'column', gap: 'var(--n-space-3)' }}
+        style={{ display: 'flex', flexDirection: 'column', gap: 'var(--n-space-3)', ...style }}
       >
         {Array.from({ length: rows }).map((_, i) => (
           <SkeletonLine
@@ -150,13 +135,14 @@ export function NotionSkeleton({
       <div
         className={className}
         style={{
-          background:    'var(--n-bg-elevated)',
-          border:        '1px solid var(--n-border)',
-          borderRadius:  'var(--n-radius-md)',
-          padding:       'var(--n-space-5)',
-          display:       'flex',
+          background: 'var(--n-bg-elevated)',
+          border: '1px solid var(--n-border)',
+          borderRadius: 'var(--n-radius-md)',
+          padding: 'var(--n-space-5)',
+          display: 'flex',
           flexDirection: 'column',
-          gap:           'var(--n-space-2)',
+          gap: 'var(--n-space-2)',
+          ...style,
         }}
       >
         <SkeletonLine width="40%" height="11px" />

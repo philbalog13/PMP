@@ -1,400 +1,398 @@
-'use client';
+﻿'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { useAuth } from '../../auth/useAuth';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 import {
-    BarChart3,
-    TrendingUp,
-    Users,
-    CheckCircle2,
-    XCircle,
-    Award,
-    BookOpen,
-    ChevronRight,
-    RefreshCw
+  Award,
+  BarChart3,
+  BookOpen,
+  RefreshCw,
+  TrendingUp,
+  Users,
 } from 'lucide-react';
-import { NotionProgress, NotionSkeleton } from '@shared/components/notion';
+import { useAuth } from '../../auth/useAuth';
+import {
+  NotionBadge,
+  NotionButton,
+  NotionCard,
+  NotionEmptyState,
+  NotionPill,
+  NotionProgress,
+  NotionSkeleton,
+} from '@shared/components/notion';
 
 interface WorkshopStats {
-    workshopId: string;
-    title: string;
-    studentsStarted: number;
-    studentsCompleted: number;
-    avgProgress: number;
-    avgTimeMinutes: number;
+  workshopId: string;
+  title: string;
+  studentsStarted: number;
+  studentsCompleted: number;
+  avgProgress: number;
+  avgTimeMinutes: number;
 }
 
 interface QuizStats {
-    quizId: string;
-    attempts: number;
-    uniqueStudents: number;
-    avgScore: number;
-    passRate: number;
+  quizId: string;
+  attempts: number;
+  uniqueStudents: number;
+  avgScore: number;
+  passRate: number;
 }
 
 interface BadgeDistribution {
-    badgeType: string;
-    name: string;
-    studentsEarned: number;
+  badgeType: string;
+  name: string;
+  studentsEarned: number;
 }
 
 interface LeaderboardEntry {
-    rank: number;
-    id: string;
-    username: string;
-    first_name: string;
-    last_name: string;
-    total_xp: number;
-    badge_count: number;
-    workshops_completed: number;
+  rank: number;
+  id: string;
+  username: string;
+  first_name: string;
+  last_name: string;
+  total_xp: number;
+  badge_count: number;
+  workshops_completed: number;
 }
 
 export default function InstructorAnalyticsPage() {
-    const { isLoading } = useAuth(true);
-    const [workshopStats, setWorkshopStats] = useState<WorkshopStats[]>([]);
-    const [quizStats, setQuizStats] = useState<QuizStats[]>([]);
-    const [badgeStats, setBadgeStats] = useState<BadgeDistribution[]>([]);
-    const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-    const [totalStudents, setTotalStudents] = useState(0);
-    const [dataLoading, setDataLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+  const { isLoading } = useAuth(true);
 
-    const fetchAnalytics = useCallback(async () => {
-        const token = localStorage.getItem('token');
-        if (!token) return;
+  const [workshopStats, setWorkshopStats] = useState<WorkshopStats[]>([]);
+  const [quizStats, setQuizStats] = useState<QuizStats[]>([]);
+  const [badgeStats, setBadgeStats] = useState<BadgeDistribution[]>([]);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [totalStudents, setTotalStudents] = useState(0);
+  const [dataLoading, setDataLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-        try {
-            setError(null);
-            const headers = { Authorization: `Bearer ${token}` };
-            const [cohortRes, leaderboardRes, studentsRes] = await Promise.all([
-                fetch('/api/progress/cohort', { headers }).catch(() => null),
-                fetch('/api/progress/leaderboard?limit=10', { headers }).catch(() => null),
-                fetch('/api/users/students?limit=50', { headers }).catch(() => null),
-            ]);
+  const fetchAnalytics = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
 
-            if (cohortRes?.ok) {
-                const data = await cohortRes.json();
-                const analytics = data.analytics || {};
-                setWorkshopStats(analytics.workshopProgress || []);
-                setQuizStats(analytics.quizPerformance || []);
-                setBadgeStats(analytics.badgeDistribution || []);
-                setTotalStudents(analytics.totalStudents || 0);
-            }
+    try {
+      setError(null);
 
-            if (leaderboardRes?.ok) {
-                const data = await leaderboardRes.json();
-                setLeaderboard(data.leaderboard || []);
-            }
+      const headers = { Authorization: `Bearer ${token}` };
+      const [cohortRes, leaderboardRes, studentsRes] = await Promise.all([
+        fetch('/api/progress/cohort', { headers }).catch(() => null),
+        fetch('/api/progress/leaderboard?limit=10', { headers }).catch(() => null),
+        fetch('/api/users/students?limit=50', { headers }).catch(() => null),
+      ]);
 
-            if (studentsRes?.ok) {
-                const data = await studentsRes.json();
-                const students = data.students || [];
-                if (totalStudents === 0) setTotalStudents(students.length);
-            }
-        } catch (e: any) {
-            const message = e instanceof Error ? e.message : 'Erreur lors du chargement des analytics';
-            setError(message);
-        } finally {
-            setDataLoading(false);
-        }
-    }, [totalStudents]);
+      if (cohortRes?.ok) {
+        const payload = await cohortRes.json();
+        const analytics = payload.analytics || {};
+        setWorkshopStats(analytics.workshopProgress || []);
+        setQuizStats(analytics.quizPerformance || []);
+        setBadgeStats(analytics.badgeDistribution || []);
+        setTotalStudents(analytics.totalStudents || 0);
+      }
 
-    useEffect(() => {
-        if (isLoading) return;
-        fetchAnalytics();
-    }, [isLoading, fetchAnalytics]);
+      if (leaderboardRes?.ok) {
+        const payload = await leaderboardRes.json();
+        setLeaderboard(payload.leaderboard || []);
+      }
 
-    const avgProgress = workshopStats.length > 0
-        ? Math.round(workshopStats.reduce((s, w) => s + w.avgProgress, 0) / workshopStats.length)
-        : 0;
-    const avgQuizScore = quizStats.length > 0
-        ? Math.round(quizStats.reduce((s, q) => s + q.avgScore, 0) / quizStats.length)
-        : 0;
-    const totalBadges = badgeStats.reduce((s, b) => s + b.studentsEarned, 0);
-
-    if (isLoading || dataLoading) {
-        return (
-            <div style={{ minHeight: '100vh', background: 'var(--n-bg-secondary)', padding: '32px 24px' }}>
-                <NotionSkeleton type="line" />
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '12px', marginTop: '24px' }}>
-                    {[0,1,2,3].map(i => <NotionSkeleton key={i} type="stat" />)}
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '24px' }}>
-                    <NotionSkeleton type="card" />
-                    <NotionSkeleton type="card" />
-                </div>
-            </div>
-        );
+      if (studentsRes?.ok) {
+        const payload = await studentsRes.json();
+        const students = payload.students || [];
+        if (totalStudents === 0) setTotalStudents(students.length);
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erreur lors du chargement analytics');
+    } finally {
+      setDataLoading(false);
     }
+  }, [totalStudents]);
 
+  useEffect(() => {
+    if (isLoading) return;
+    void fetchAnalytics();
+  }, [isLoading, fetchAnalytics]);
+
+  const metrics = useMemo(() => {
+    const avgProgress =
+      workshopStats.length > 0
+        ? Math.round(workshopStats.reduce((sum, item) => sum + item.avgProgress, 0) / workshopStats.length)
+        : 0;
+
+    const avgQuizScore =
+      quizStats.length > 0 ? Math.round(quizStats.reduce((sum, item) => sum + item.avgScore, 0) / quizStats.length) : 0;
+
+    const totalBadges = badgeStats.reduce((sum, item) => sum + item.studentsEarned, 0);
+
+    return { avgProgress, avgQuizScore, totalBadges };
+  }, [badgeStats, quizStats, workshopStats]);
+
+  if (isLoading || dataLoading) {
     return (
-        <div style={{ minHeight: '100vh', background: 'var(--n-bg-secondary)' }}>
-            {/* Page header */}
-            <div style={{
-                background: 'var(--n-bg-primary)',
-                borderBottom: '1px solid var(--n-border)',
-                padding: '20px 24px',
-            }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div>
-                        <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--n-text-primary)', margin: 0 }}>
-                            Analytics &amp; Statistiques
-                        </h1>
-                        <p style={{ fontSize: '13px', color: 'var(--n-text-secondary)', marginTop: '4px' }}>
-                            Vue d&apos;ensemble des performances de la cohorte
-                        </p>
-                    </div>
-                    <button
-                        onClick={() => { setDataLoading(true); fetchAnalytics(); }}
-                        style={{
-                            display: 'flex', alignItems: 'center', gap: '6px',
-                            padding: '7px 14px',
-                            background: 'var(--n-bg-secondary)', border: '1px solid var(--n-border)',
-                            borderRadius: '6px', fontSize: '13px', color: 'var(--n-text-primary)', cursor: 'pointer',
-                        }}
-                    >
-                        <RefreshCw size={14} /> Actualiser
-                    </button>
-                </div>
-
-                {error && (
-                    <div style={{
-                        marginTop: '12px', padding: '10px 14px',
-                        background: 'var(--n-danger-bg)', border: '1px solid var(--n-danger-border)',
-                        borderRadius: '6px', fontSize: '13px', color: 'var(--n-danger)',
-                    }}>
-                        {error}
-                    </div>
-                )}
-            </div>
-
-            <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-
-                {/* Overview Stats */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '12px' }}>
-                    {[
-                        { icon: <Users size={18} />, label: 'Étudiants inscrits', value: totalStudents, accent: 'var(--n-accent)', bg: 'var(--n-accent-light)' },
-                        { icon: <TrendingUp size={18} />, label: 'Progression moyenne', value: `${avgProgress}%`, accent: 'var(--n-success)', bg: 'var(--n-success-bg)' },
-                        { icon: <BarChart3 size={18} />, label: 'Score moyen quiz', value: `${avgQuizScore}%`, accent: '#7c3aed', bg: '#f5f3ff' },
-                        { icon: <Award size={18} />, label: 'Badges délivrés', value: totalBadges, accent: 'var(--n-warning)', bg: 'var(--n-warning-bg)' },
-                    ].map(({ icon, label, value, accent, bg }) => (
-                        <div key={label} style={{ background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)', borderRadius: '8px', padding: '16px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                                <div style={{ width: '30px', height: '30px', borderRadius: '6px', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <span style={{ color: accent }}>{icon}</span>
-                                </div>
-                                <span style={{ fontSize: '11px', color: 'var(--n-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</span>
-                            </div>
-                            <div style={{ fontSize: '26px', fontWeight: 700, color: 'var(--n-text-primary)', fontFamily: 'var(--n-font-mono)' }}>{value}</div>
-                        </div>
-                    ))}
-                </div>
-
-                {/* Workshop & Quiz */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-
-                    {/* Workshop Performance */}
-                    <div style={{ background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)', borderRadius: '8px', overflow: 'hidden' }}>
-                        <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--n-border)' }}>
-                            <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--n-text-primary)', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
-                                <BookOpen size={15} style={{ color: 'var(--n-accent)' }} /> Performance par Atelier
-                            </h2>
-                        </div>
-                        <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            {workshopStats.length > 0 ? workshopStats.map((workshop) => (
-                                <div key={workshop.workshopId} style={{
-                                    padding: '12px',
-                                    background: 'var(--n-bg-secondary)',
-                                    border: '1px solid var(--n-border)',
-                                    borderRadius: '6px',
-                                }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                        <h3 style={{ fontSize: '13px', fontWeight: 500, color: 'var(--n-text-primary)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '60%' }}>{workshop.title}</h3>
-                                        <span style={{ fontSize: '12px', color: 'var(--n-text-secondary)', flexShrink: 0 }}>{workshop.studentsStarted} participants</span>
-                                    </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', fontSize: '12px' }}>
-                                        <div>
-                                            <p style={{ color: 'var(--n-text-secondary)', marginBottom: '4px', margin: 0 }}>Complétion</p>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
-                                                <div style={{ flex: 1 }}>
-                                                    <NotionProgress
-                                                        value={workshop.avgProgress}
-                                                        variant={workshop.avgProgress >= 80 ? 'success' : workshop.avgProgress >= 60 ? 'warning' : 'danger'}
-                                                        size="thin"
-                                                    />
-                                                </div>
-                                                <span style={{ color: 'var(--n-text-primary)', fontWeight: 600, whiteSpace: 'nowrap' }}>{workshop.avgProgress}%</span>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <p style={{ color: 'var(--n-text-secondary)', margin: 0 }}>Terminés</p>
-                                            <p style={{ color: 'var(--n-text-primary)', fontWeight: 600, margin: '4px 0 0' }}>{workshop.studentsCompleted}/{workshop.studentsStarted}</p>
-                                        </div>
-                                        <div>
-                                            <p style={{ color: 'var(--n-text-secondary)', margin: 0 }}>Temps moyen</p>
-                                            <p style={{ color: 'var(--n-text-primary)', fontWeight: 600, margin: '4px 0 0' }}>{workshop.avgTimeMinutes} min</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            )) : (
-                                <p style={{ fontSize: '13px', color: 'var(--n-text-tertiary)', textAlign: 'center', padding: '24px 0' }}>Aucune donnée de progression disponible.</p>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Quiz Performance */}
-                    <div style={{ background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)', borderRadius: '8px', overflow: 'hidden' }}>
-                        <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--n-border)' }}>
-                            <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--n-text-primary)', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
-                                <BarChart3 size={15} style={{ color: '#7c3aed' }} /> Performance aux Quiz
-                            </h2>
-                        </div>
-                        <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            {quizStats.length > 0 ? quizStats.map((quiz) => (
-                                <div key={quiz.quizId} style={{
-                                    padding: '12px',
-                                    background: 'var(--n-bg-secondary)',
-                                    border: '1px solid var(--n-border)',
-                                    borderRadius: '6px',
-                                }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                                        <h3 style={{ fontSize: '13px', fontWeight: 500, color: 'var(--n-text-primary)', margin: 0 }}>{quiz.quizId}</h3>
-                                        <span style={{ fontSize: '12px', color: 'var(--n-text-secondary)' }}>{quiz.attempts} tentatives</span>
-                                    </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px' }}>
-                                        <div>
-                                            <p style={{ color: 'var(--n-text-secondary)', margin: 0 }}>Score moyen</p>
-                                            <p style={{
-                                                fontSize: '18px', fontWeight: 700, margin: '4px 0 0',
-                                                color: quiz.avgScore >= 80 ? 'var(--n-success)' : quiz.avgScore >= 60 ? 'var(--n-warning)' : 'var(--n-danger)',
-                                            }}>
-                                                {quiz.avgScore}%
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <p style={{ color: 'var(--n-text-secondary)', margin: 0 }}>Taux de réussite</p>
-                                            <p style={{ fontSize: '18px', fontWeight: 700, color: 'var(--n-text-primary)', margin: '4px 0 0', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                {quiz.passRate}%
-                                                {quiz.passRate >= 80
-                                                    ? <CheckCircle2 size={14} style={{ color: 'var(--n-success)' }} />
-                                                    : quiz.passRate < 60
-                                                        ? <XCircle size={14} style={{ color: 'var(--n-danger)' }} />
-                                                        : null}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <p style={{ fontSize: '11px', color: 'var(--n-text-tertiary)', marginTop: '6px' }}>
-                                        {quiz.uniqueStudents} étudiant{quiz.uniqueStudents !== 1 ? 's' : ''} unique{quiz.uniqueStudents !== 1 ? 's' : ''}
-                                    </p>
-                                </div>
-                            )) : (
-                                <p style={{ fontSize: '13px', color: 'var(--n-text-tertiary)', textAlign: 'center', padding: '24px 0' }}>Aucun quiz soumis pour le moment.</p>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Badges Distribution */}
-                {badgeStats.length > 0 && (
-                    <div style={{ background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)', borderRadius: '8px', overflow: 'hidden' }}>
-                        <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--n-border)' }}>
-                            <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--n-text-primary)', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
-                                <Award size={15} style={{ color: 'var(--n-warning)' }} /> Distribution des Badges
-                            </h2>
-                        </div>
-                        <div style={{ padding: '12px 16px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px,1fr))', gap: '10px' }}>
-                            {badgeStats.map((badge) => (
-                                <div key={badge.badgeType} style={{
-                                    padding: '10px 12px',
-                                    background: 'var(--n-warning-bg)',
-                                    border: '1px solid var(--n-warning-border)',
-                                    borderRadius: '6px',
-                                }}>
-                                    <p style={{ fontSize: '13px', fontWeight: 500, color: 'var(--n-text-primary)', margin: 0 }}>{badge.name}</p>
-                                    <p style={{ fontSize: '12px', color: 'var(--n-text-secondary)', margin: '4px 0 0' }}>
-                                        {badge.studentsEarned} étudiant{badge.studentsEarned !== 1 ? 's' : ''}
-                                    </p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* Leaderboard */}
-                <div style={{ background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)', borderRadius: '8px', overflow: 'hidden' }}>
-                    <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--n-border)' }}>
-                        <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--n-text-primary)', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
-                            <Award size={15} style={{ color: 'var(--n-warning)' }} /> Classement des Étudiants
-                        </h2>
-                    </div>
-                    {leaderboard.length > 0 ? (
-                        <div style={{ overflowX: 'auto' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                <thead>
-                                    <tr style={{ background: 'var(--n-bg-secondary)' }}>
-                                        {['Rang', 'Étudiant', 'XP Total', 'Ateliers', 'Badges'].map(h => (
-                                            <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: 'var(--n-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {leaderboard.map((student) => {
-                                        const name = [student.first_name, student.last_name].filter(Boolean).join(' ') || student.username;
-                                        const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-                                        const rankColors: Record<number,string> = { 1: 'var(--n-warning)', 2: 'var(--n-text-secondary)', 3: '#c2410c' };
-                                        return (
-                                            <tr key={student.id} style={{ borderTop: '1px solid var(--n-border)' }}>
-                                                <td style={{ padding: '10px 16px' }}>
-                                                    <span style={{
-                                                        display: 'inline-flex', width: '26px', height: '26px', borderRadius: '50%',
-                                                        alignItems: 'center', justifyContent: 'center',
-                                                        fontSize: '12px', fontWeight: 700,
-                                                        background: 'var(--n-bg-secondary)', color: rankColors[student.rank] || 'var(--n-text-tertiary)',
-                                                    }}>
-                                                        {student.rank}
-                                                    </span>
-                                                </td>
-                                                <td style={{ padding: '10px 16px' }}>
-                                                    <Link href={`/instructor/students/${student.id}`} style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
-                                                        <div style={{
-                                                            width: '32px', height: '32px', borderRadius: '50%',
-                                                            background: 'var(--n-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                            fontSize: '11px', fontWeight: 700, color: 'white', flexShrink: 0,
-                                                        }}>
-                                                            {initials}
-                                                        </div>
-                                                        <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--n-text-primary)' }}>{name}</span>
-                                                    </Link>
-                                                </td>
-                                                <td style={{ padding: '10px 16px' }}>
-                                                    <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--n-success)', fontFamily: 'var(--n-font-mono)' }}>{student.total_xp.toLocaleString()} XP</span>
-                                                </td>
-                                                <td style={{ padding: '10px 16px' }}>
-                                                    <span style={{ fontSize: '13px', color: 'var(--n-text-primary)' }}>{student.workshops_completed}/6</span>
-                                                </td>
-                                                <td style={{ padding: '10px 16px' }}>
-                                                    <span style={{
-                                                        padding: '2px 8px', borderRadius: '999px',
-                                                        background: 'var(--n-warning-bg)', border: '1px solid var(--n-warning-border)',
-                                                        fontSize: '12px', color: 'var(--n-warning)', fontWeight: 500,
-                                                    }}>
-                                                        {student.badge_count}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-                    ) : (
-                        <div style={{ padding: '48px', textAlign: 'center', fontSize: '13px', color: 'var(--n-text-tertiary)' }}>
-                            Pas encore de classement disponible.
-                        </div>
-                    )}
-                </div>
-            </div>
+      <div className="n-page-container" style={{ maxWidth: '1200px' }}>
+        <NotionSkeleton type="line" width="220px" height="28px" />
+        <div style={{ marginTop: 'var(--n-space-2)' }}>
+          <NotionSkeleton type="line" width="360px" height="14px" />
         </div>
+        <div
+          style={{
+            marginTop: 'var(--n-space-6)',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+            gap: 'var(--n-space-3)',
+          }}
+        >
+          {[...Array(4)].map((_, index) => (
+            <NotionSkeleton key={index} type="stat" />
+          ))}
+        </div>
+      </div>
     );
+  }
+
+  return (
+    <div className="n-page-container" style={{ maxWidth: '1200px' }}>
+      <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
+        <NotionCard padding="lg">
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: 'var(--n-space-4)',
+              alignItems: 'center',
+            }}
+          >
+            <div>
+              <NotionPill variant="accent" icon={<BarChart3 size={12} />}>
+                Cohorte analytics
+              </NotionPill>
+              <h1
+                style={{
+                  margin: 'var(--n-space-3) 0 var(--n-space-2)',
+                  color: 'var(--n-text-primary)',
+                  fontSize: 'var(--n-text-2xl)',
+                  fontWeight: 'var(--n-weight-bold)',
+                }}
+              >
+                Analytics formateur
+              </h1>
+              <p style={{ margin: 0, color: 'var(--n-text-secondary)', fontSize: 'var(--n-text-sm)' }}>
+                Vue d ensemble sur progression, quiz, badges et ranking etudiants.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <NotionButton variant="secondary" leftIcon={<RefreshCw size={13} />} onClick={() => void fetchAnalytics()}>
+                Rafraichir
+              </NotionButton>
+            </div>
+          </div>
+        </NotionCard>
+      </motion.section>
+
+      {error && (
+        <div
+          style={{
+            marginTop: 'var(--n-space-4)',
+            padding: 'var(--n-space-3) var(--n-space-4)',
+            borderRadius: 'var(--n-radius-sm)',
+            border: '1px solid var(--n-danger-border)',
+            background: 'var(--n-danger-bg)',
+            color: 'var(--n-danger)',
+            fontSize: 'var(--n-text-sm)',
+          }}
+        >
+          {error}
+        </div>
+      )}
+
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.05 }}
+        style={{
+          marginTop: 'var(--n-space-4)',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+          gap: 'var(--n-space-3)',
+        }}
+      >
+        {[
+          { label: 'Etudiants', value: totalStudents, icon: <Users size={14} />, tone: 'var(--n-accent)' },
+          { label: 'Progression moyenne', value: `${metrics.avgProgress}%`, icon: <TrendingUp size={14} />, tone: 'var(--n-success)' },
+          { label: 'Quiz moyen', value: `${metrics.avgQuizScore}%`, icon: <BarChart3 size={14} />, tone: 'var(--n-warning)' },
+          { label: 'Badges delivres', value: metrics.totalBadges, icon: <Award size={14} />, tone: 'var(--n-reward)' },
+        ].map((item) => (
+          <NotionCard key={item.label} padding="md">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ color: 'var(--n-text-tertiary)', fontSize: 'var(--n-text-xs)', textTransform: 'uppercase' }}>{item.label}</span>
+              <span style={{ color: item.tone }}>{item.icon}</span>
+            </div>
+            <div
+              style={{
+                marginTop: 'var(--n-space-2)',
+                color: 'var(--n-text-primary)',
+                fontFamily: 'var(--n-font-mono)',
+                fontSize: 'var(--n-text-lg)',
+                fontWeight: 'var(--n-weight-bold)',
+              }}
+            >
+              {item.value}
+            </div>
+          </NotionCard>
+        ))}
+      </motion.section>
+
+      <div
+        style={{
+          marginTop: 'var(--n-space-4)',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gap: 'var(--n-space-3)',
+        }}
+      >
+        <NotionCard padding="md">
+          <h2 style={{ margin: '0 0 var(--n-space-3)', color: 'var(--n-text-primary)', fontSize: 'var(--n-text-base)' }}>Performance ateliers</h2>
+          {workshopStats.length === 0 ? (
+            <NotionEmptyState
+              icon={<BookOpen size={22} />}
+              title="Aucune donnee atelier"
+              description="La progression ateliers apparaitra ici des premieres activites."
+              size="sm"
+            />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--n-space-2)' }}>
+              {workshopStats.map((workshop) => (
+                <div
+                  key={workshop.workshopId}
+                  style={{
+                    border: '1px solid var(--n-border)',
+                    borderRadius: 'var(--n-radius-sm)',
+                    background: 'var(--n-bg-elevated)',
+                    padding: 'var(--n-space-3)',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--n-space-2)', marginBottom: '6px' }}>
+                    <span style={{ color: 'var(--n-text-primary)', fontSize: 'var(--n-text-sm)', fontWeight: 'var(--n-weight-medium)' }}>{workshop.title}</span>
+                    <span style={{ color: 'var(--n-text-tertiary)', fontSize: 'var(--n-text-xs)' }}>{workshop.avgProgress}%</span>
+                  </div>
+                  <NotionProgress value={workshop.avgProgress} variant={workshop.avgProgress >= 80 ? 'success' : workshop.avgProgress >= 60 ? 'warning' : 'danger'} size="thin" />
+                  <div style={{ marginTop: '6px', display: 'flex', gap: 'var(--n-space-2)', flexWrap: 'wrap' }}>
+                    <NotionPill variant="default">{workshop.studentsCompleted}/{workshop.studentsStarted} termines</NotionPill>
+                    <NotionPill variant="default">{workshop.avgTimeMinutes} min moyen</NotionPill>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </NotionCard>
+
+        <NotionCard padding="md">
+          <h2 style={{ margin: '0 0 var(--n-space-3)', color: 'var(--n-text-primary)', fontSize: 'var(--n-text-base)' }}>Performance quizzes</h2>
+          {quizStats.length === 0 ? (
+            <NotionEmptyState
+              icon={<BarChart3 size={22} />}
+              title="Aucun quiz soumis"
+              description="Les statistiques quiz apparaitront apres les premieres soumissions."
+              size="sm"
+            />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--n-space-2)' }}>
+              {quizStats.map((quiz) => (
+                <div
+                  key={quiz.quizId}
+                  style={{
+                    border: '1px solid var(--n-border)',
+                    borderRadius: 'var(--n-radius-sm)',
+                    background: 'var(--n-bg-elevated)',
+                    padding: 'var(--n-space-3)',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <span style={{ color: 'var(--n-text-primary)', fontSize: 'var(--n-text-sm)', fontWeight: 'var(--n-weight-medium)' }}>{quiz.quizId}</span>
+                    <span style={{ color: 'var(--n-text-tertiary)', fontSize: 'var(--n-text-xs)' }}>{quiz.attempts} tentatives</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--n-space-2)' }}>
+                    <NotionPill variant="accent">Score {quiz.avgScore}%</NotionPill>
+                    <NotionPill variant={quiz.passRate >= 80 ? 'success' : 'warning'}>
+                      Reussite {quiz.passRate}%
+                    </NotionPill>
+                  </div>
+                  <div style={{ marginTop: '6px', color: 'var(--n-text-tertiary)', fontSize: 'var(--n-text-xs)' }}>
+                    {quiz.uniqueStudents} etudiants uniques
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </NotionCard>
+      </div>
+
+      {badgeStats.length > 0 && (
+        <NotionCard padding="md" style={{ marginTop: 'var(--n-space-4)' }}>
+          <h2 style={{ margin: '0 0 var(--n-space-3)', color: 'var(--n-text-primary)', fontSize: 'var(--n-text-base)' }}>Distribution badges</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 'var(--n-space-2)' }}>
+            {badgeStats.map((badge) => (
+              <div
+                key={badge.badgeType}
+                style={{
+                  border: '1px solid var(--n-warning-border)',
+                  borderRadius: 'var(--n-radius-sm)',
+                  background: 'var(--n-warning-bg)',
+                  padding: 'var(--n-space-3)',
+                }}
+              >
+                <div style={{ color: 'var(--n-text-primary)', fontSize: 'var(--n-text-sm)', fontWeight: 'var(--n-weight-medium)' }}>{badge.name}</div>
+                <div style={{ color: 'var(--n-warning)', fontFamily: 'var(--n-font-mono)', fontSize: 'var(--n-text-sm)', marginTop: '4px' }}>
+                  {badge.studentsEarned}
+                </div>
+              </div>
+            ))}
+          </div>
+        </NotionCard>
+      )}
+
+      <NotionCard padding="md" style={{ marginTop: 'var(--n-space-4)' }}>
+        <h2 style={{ margin: '0 0 var(--n-space-3)', color: 'var(--n-text-primary)', fontSize: 'var(--n-text-base)' }}>Classement etudiants</h2>
+
+        {leaderboard.length === 0 ? (
+          <NotionEmptyState
+            icon={<Users size={22} />}
+            title="Pas de classement"
+            description="Le leaderboard apparaitra avec les premiers scores de la cohorte."
+            size="sm"
+          />
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--n-space-2)' }}>
+            {leaderboard.map((student) => {
+              const name = [student.first_name, student.last_name].filter(Boolean).join(' ') || student.username;
+              return (
+                <Link key={student.id} href={`/instructor/students/${student.id}`} style={{ textDecoration: 'none' }}>
+                  <NotionCard variant="hover" padding="md" style={{ height: '100%' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--n-space-2)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)', minWidth: 0 }}>
+                        <NotionBadge variant={student.rank <= 3 ? 'warning' : 'default'} size="sm">
+                          #{student.rank}
+                        </NotionBadge>
+                        <span style={{ color: 'var(--n-text-primary)', fontSize: 'var(--n-text-sm)', fontWeight: 'var(--n-weight-medium)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {name}
+                        </span>
+                      </div>
+                      <span style={{ color: 'var(--n-success)', fontFamily: 'var(--n-font-mono)', fontSize: 'var(--n-text-xs)' }}>
+                        {student.total_xp} XP
+                      </span>
+                    </div>
+                    <div style={{ marginTop: 'var(--n-space-2)', display: 'flex', gap: 'var(--n-space-2)' }}>
+                      <NotionPill variant="default">{student.workshops_completed}/6 ateliers</NotionPill>
+                      <NotionPill variant="warning">{student.badge_count} badges</NotionPill>
+                    </div>
+                  </NotionCard>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </NotionCard>
+    </div>
+  );
 }
+

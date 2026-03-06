@@ -22,7 +22,7 @@ describe('PaymentSettlement Smart Contract Tests', () => {
         });
 
         it('should validate Ethereum address format', () => {
-            const validAddress = '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb';
+            const validAddress = '0x742d35Cc6634C0532925a3b844Bc454e4438f44e';
             const invalidAddress = '0xinvalid';
 
             expect(validAddress.length).toBe(42);

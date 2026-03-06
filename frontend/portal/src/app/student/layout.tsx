@@ -1,8 +1,16 @@
 import React from 'react';
+import dynamic from 'next/dynamic';
 import { NotionLayout } from '@shared/components/notion/NotionLayout';
-import { NotionTopbar } from '@shared/components/notion/NotionTopbar';
-import { StudentSidebar } from '@/components/student/StudentSidebar';
-import { StudentTopbarContent } from '@/components/student/StudentTopbarContent';
+import { NotionToastProvider } from '@shared/components/notion/NotionToast';
+
+const StudentSidebar = dynamic(() => import('@/components/student/StudentSidebar').then((module) => module.StudentSidebar), {
+  loading: () => <div style={{ width: 'var(--n-sidebar-width)', height: '100%' }} />,
+});
+
+const StudentTopbarContent = dynamic(
+  () => import('@/components/student/StudentTopbarContent').then((module) => module.StudentTopbarContent),
+  { loading: () => null }
+);
 
 /**
  * Student Layout — Shell Notion pour toutes les pages /student/*
@@ -20,11 +28,13 @@ import { StudentTopbarContent } from '@/components/student/StudentTopbarContent'
  */
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   return (
-    <NotionLayout
-      sidebar={<StudentSidebar />}
-      topbar={<StudentTopbarContent />}
-    >
-      {children}
-    </NotionLayout>
+    <NotionToastProvider>
+      <NotionLayout
+        sidebar={<StudentSidebar />}
+        topbar={<StudentTopbarContent />}
+      >
+        {children}
+      </NotionLayout>
+    </NotionToastProvider>
   );
 }

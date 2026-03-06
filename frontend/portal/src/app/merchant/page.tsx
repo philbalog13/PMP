@@ -319,7 +319,7 @@ export default function MerchantDashboard() {
         <StatCard label="Remboursements"        value={formatMoney(dashboard.today.refunds, accountCurrency)}       icon={TrendingDown}  loading={isRefreshing} index={1} />
         <StatCard label="Transactions"          value={String(dashboard.today.transactionCount)}                     icon={CreditCard}    loading={isRefreshing} index={2} />
         <StatCard label="Taux d'approbation"   value={`${dashboard.today.approvalRate}%`}                           icon={CheckCircle2}  loading={isRefreshing} index={3}
-          delta={dashboard.today.approvalRate >= 90 ? { value: dashboard.today.approvalRate, period: 'objectif : 90%', positive: true } : undefined} />
+          delta={dashboard.today.approvalRate >= 90 ? { value: dashboard.today.approvalRate - 90, period: 'vs objectif 90%' } : undefined} />
       </div>
 
       {/* ══ SOLDES COMPTE ══ */}
@@ -329,7 +329,7 @@ export default function MerchantDashboard() {
           <StatCard label="En attente"        value={formatMoney(dashboard.account.pendingBalance,    dashboard.account.currency)} icon={TrendingUp}   loading={isRefreshing} index={5} />
           <StatCard label="Réserve"           value={formatMoney(dashboard.account.reserveBalance,   dashboard.account.currency)} icon={AlertCircle}  loading={isRefreshing} index={6} />
           <StatCard label="Net du jour"       value={formatMoney(stats.netToday, dashboard.account.currency)}                     icon={DollarSign}   loading={isRefreshing} index={7}
-            delta={{ value: stats.avgTicket, period: `panier moy. ${formatMoney(stats.avgTicket, dashboard.account.currency)}`, positive: true }} />
+            delta={{ value: stats.avgTicket, displayValue: formatMoney(stats.avgTicket, dashboard.account.currency), period: 'panier moyen', positive: true }} />
         </div>
       )}
 

@@ -4,8 +4,8 @@ import './globals.css';
 import { AuthProvider } from '@shared/context/AuthContext';
 import { BankShell }    from '@shared/components/banking/layout/BankShell';
 
-const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit' });
-const inter  = Inter({ subsets: ['latin'], variable: '--font-inter' });
+const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit', display: 'optional' });
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'optional' });
 
 export const metadata: Metadata = {
   title:       'Terminal POS — SoluBank',

@@ -33,6 +33,8 @@ export interface TransactionRequest {
     country?: string;
     isEcommerce?: boolean;
     requiresChallenge?: boolean;
+    threeDSCompleted?: boolean;
+    acsTransId?: string;
 }
 
 export interface OrchestratedResult {
@@ -52,6 +54,7 @@ export interface OrchestratedResult {
         transStatus: string;
         eci?: string;
         challengeUrl?: string;
+        acsTransId?: string;
     };
 
     // Processing metadata
@@ -102,10 +105,24 @@ export class IntegrationOrchestrator {
             }
 
             // Step 2: 3D-Secure (if enabled and required)
-            let threeDSResult: { transStatus: string; eci?: string; challengeUrl?: string } | undefined = undefined;
+            let threeDSResult: { transStatus: string; eci?: string; challengeUrl?: string; acsTransId?: string } | undefined = undefined;
             if (CONFIG.threeDSEnabled && this.requires3DS(request, fraudResult)) {
                 flowSteps.push('3DS_CHECK_START');
-                threeDSResult = await this.check3DS(request, txnId);
+                if (request.threeDSCompleted) {
+                    if (!request.acsTransId) {
+                        return {
+                            approved: false,
+                            responseCode: '96',
+                            responseMessage: '3D-Secure challenge result missing',
+                            fraudCheck: fraudResult,
+                            processingTime: Date.now() - startTime,
+                            flowSteps: [...flowSteps, '3DS_CHECK_ERROR: MISSING_ACS_TRANS_ID']
+                        };
+                    }
+                    threeDSResult = await this.getChallengeResult(request.acsTransId);
+                } else {
+                    threeDSResult = await this.check3DS(request, txnId);
+                }
                 flowSteps.push(`3DS_CHECK_COMPLETE: ${threeDSResult.transStatus}`);
 
                 // If challenge required, return challenge info
@@ -219,6 +236,7 @@ export class IntegrationOrchestrator {
         transStatus: string;
         eci?: string;
         challengeUrl?: string;
+        acsTransId?: string;
     }> {
         try {
             const response = await this.httpClient.post(`${CONFIG.acsSimulator}/authenticate`, {
@@ -226,13 +244,31 @@ export class IntegrationOrchestrator {
                 amount: request.amount,
                 currency: request.currency,
                 merchantId: request.merchantId,
-                transactionId: txnId
+                transactionId: txnId,
+                cardholderName: request.amount >= 500 ? 'TEST USER' : undefined
             });
             return response.data;
         } catch (error) {
             console.log('[ORCHESTRATOR] ACS unavailable, returning frictionless approval');
             // Fallback: approve without 3DS if service is down (pedagogical mode)
             return { transStatus: 'Y', eci: '06' };
+        }
+    }
+
+    private async getChallengeResult(acsTransId: string): Promise<{
+        transStatus: string;
+        eci?: string;
+        challengeUrl?: string;
+        acsTransId?: string;
+    }> {
+        try {
+            const response = await this.httpClient.get(
+                `${CONFIG.acsSimulator}/challenge/result/${encodeURIComponent(acsTransId)}`
+            );
+            return response.data;
+        } catch (error) {
+            console.log('[ORCHESTRATOR] ACS challenge result unavailable');
+            return { transStatus: 'N', acsTransId };
         }
     }
 

@@ -1,11 +1,11 @@
 /**
- * PCI-DSS Compliance Checks
- * Validates configuration against PCI standards
+ * PCI-DSS Compliance Checks (mock)
+ * Static pedagogical assertions, not runtime compliance evidence.
  */
 
 import { describe, it, expect } from '@jest/globals';
 
-describe('PCI-DSS Compliance', () => {
+describe('PCI-DSS Compliance (mock)', () => {
     it('Requirement 3.4: PAN masking', () => {
         const pan = '4111111111111111';
         const masked = '411111******1111';

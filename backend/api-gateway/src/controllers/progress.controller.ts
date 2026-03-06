@@ -27,6 +27,8 @@ import {
 const defaultWorkshopMap = new Map(DEFAULT_WORKSHOP_CATALOG.map((w) => [w.id, w]));
 let inMemoryLabConditions: LabConditions = { ...DEFAULT_LAB_CONDITIONS };
 
+type SequenceStatus = 'COMPLETED' | 'IN_PROGRESS' | 'AVAILABLE' | 'LOCKED';
+
 const QUIZ_TARGET_QUESTION_COUNTS: Record<string, number> = {
     'quiz-intro': 10,
     'quiz-iso8583': 16,
@@ -400,6 +402,36 @@ async function loadQuizDefinition(quizId: string, workshopId?: string): Promise<
     return null;
 }
 
+async function enrichWorkshopsWithQuizMetadata(
+    workshops: WorkshopCatalogEntry[]
+): Promise<WorkshopCatalogEntry[]> {
+    const enriched = await Promise.all(
+        workshops.map(async (workshop) => {
+            if (!workshop.quizId) {
+                return {
+                    ...workshop,
+                    quizTitle: null,
+                    quizPassPercentage: null,
+                    quizTimeLimitMinutes: null,
+                    quizQuestionCount: null
+                };
+            }
+
+            const quiz = await loadQuizDefinition(workshop.quizId, workshop.id);
+
+            return {
+                ...workshop,
+                quizTitle: quiz?.title || null,
+                quizPassPercentage: quiz?.passPercentage ?? null,
+                quizTimeLimitMinutes: quiz?.timeLimitMinutes ?? null,
+                quizQuestionCount: quiz?.questions.length ?? null
+            };
+        })
+    );
+
+    return enriched.sort((a, b) => a.moduleOrder - b.moduleOrder);
+}
+
 async function getWorkshopContentById(workshopId: string): Promise<WorkshopContent | null> {
     try {
         const result = await query(
@@ -627,7 +659,7 @@ export const getMyProgress = async (req: Request, res: Response) => {
         const userId = (req as any).user?.userId;
 
         const [workshops, result] = await Promise.all([
-            getActiveWorkshops(),
+            getActiveWorkshops().then(enrichWorkshopsWithQuizMetadata),
             query(
                 `SELECT workshop_id, status, progress_percent, current_section, total_sections,
                         started_at, completed_at, time_spent_minutes, last_accessed_at
@@ -639,11 +671,12 @@ export const getMyProgress = async (req: Request, res: Response) => {
 
         const progressRowsByWorkshopId = new Map(result.rows.map((row) => [row.workshop_id, row]));
         const activeWorkshopIds = new Set(workshops.map((workshop) => workshop.id));
+        let previousCompleted = true;
 
         const progressMap: Record<string, any> = {};
         for (const workshop of workshops) {
             const dbProgress = progressRowsByWorkshopId.get(workshop.id);
-            progressMap[workshop.id] = dbProgress || {
+            const progressEntry = dbProgress || {
                 workshop_id: workshop.id,
                 status: 'NOT_STARTED',
                 progress_percent: 0,
@@ -652,12 +685,35 @@ export const getMyProgress = async (req: Request, res: Response) => {
                 time_spent_minutes: 0
             };
 
-            progressMap[workshop.id].title = workshop.title;
-            progressMap[workshop.id].description = workshop.description;
-            progressMap[workshop.id].difficulty = workshop.difficulty;
-            progressMap[workshop.id].estimated_minutes = workshop.estimatedMinutes;
-            progressMap[workshop.id].quiz_id = workshop.quizId;
-            progressMap[workshop.id].module_order = workshop.moduleOrder;
+            let sequenceStatus: SequenceStatus;
+            if (progressEntry.status === 'COMPLETED') {
+                sequenceStatus = 'COMPLETED';
+                previousCompleted = true;
+            } else if (progressEntry.status === 'IN_PROGRESS') {
+                sequenceStatus = 'IN_PROGRESS';
+                previousCompleted = false;
+            } else if (previousCompleted) {
+                sequenceStatus = 'AVAILABLE';
+                previousCompleted = false;
+            } else {
+                sequenceStatus = 'LOCKED';
+            }
+
+            progressMap[workshop.id] = {
+                ...progressEntry,
+                title: workshop.title,
+                description: workshop.description,
+                difficulty: workshop.difficulty,
+                estimated_minutes: workshop.estimatedMinutes,
+                quiz_id: workshop.quizId,
+                quiz_title: workshop.quizTitle ?? null,
+                quiz_pass_percentage: workshop.quizPassPercentage ?? null,
+                quiz_time_limit_minutes: workshop.quizTimeLimitMinutes ?? null,
+                quiz_question_count: workshop.quizQuestionCount ?? null,
+                module_order: workshop.moduleOrder,
+                sequence_status: sequenceStatus,
+                unlocked: sequenceStatus !== 'LOCKED'
+            };
         }
 
         res.json({
@@ -679,7 +735,7 @@ export const getMyProgress = async (req: Request, res: Response) => {
  */
 export const getWorkshopsCatalog = async (_req: Request, res: Response) => {
     try {
-        const workshops = await getActiveWorkshops();
+        const workshops = await getActiveWorkshops().then(enrichWorkshopsWithQuizMetadata);
 
         res.json({
             success: true,
@@ -1204,10 +1260,11 @@ export const getMyStats = async (req: Request, res: Response) => {
             ),
             query(
                 `SELECT
-                    COUNT(*) as total_quizzes,
-                    COUNT(CASE WHEN passed THEN 1 END) as quizzes_passed,
+                    COUNT(DISTINCT quiz_id) as total_quizzes,
+                    COUNT(DISTINCT CASE WHEN passed THEN quiz_id END) as quizzes_passed,
                     AVG(percentage) as avg_score,
-                    MAX(percentage) as best_score
+                    MAX(percentage) as best_score,
+                    COUNT(*) as total_attempts
                  FROM learning.quiz_results
                  WHERE student_id = $1`,
                 [userId]
@@ -1262,6 +1319,7 @@ export const getMyStats = async (req: Request, res: Response) => {
                 quizzes: {
                     total: parseInt(quizAggregateResult.rows[0]?.total_quizzes, 10) || 0,
                     passed: parseInt(quizAggregateResult.rows[0]?.quizzes_passed, 10) || 0,
+                    attempts: parseInt(quizAggregateResult.rows[0]?.total_attempts, 10) || 0,
                     avgScore: Math.round(Number(quizAggregateResult.rows[0]?.avg_score) || 0),
                     bestScore: parseInt(quizAggregateResult.rows[0]?.best_score, 10) || 0
                 },

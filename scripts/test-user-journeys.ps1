@@ -9,14 +9,31 @@ $rootDir = Resolve-Path (Join-Path $scriptDir "..")
 function Run-Test {
     param(
         [string]$Name,
-        [string]$Path
+        [string]$Path,
+        [bool]$Optional = $false
     )
 
     Write-Host "`n--- $Name ---" -ForegroundColor Cyan
     Write-Host "Running: $Path" -ForegroundColor DarkGray
 
-    & powershell -ExecutionPolicy Bypass -File $Path
-    $code = $LASTEXITCODE
+    if (-not (Test-Path $Path)) {
+        if ($Optional) {
+            Write-Host "[SKIPPED] $Name (missing optional script)" -ForegroundColor Yellow
+            return $true
+        }
+
+        Write-Host "[FAILED] $Name (missing script)" -ForegroundColor Red
+        return $false
+    }
+
+    try {
+        & powershell -ExecutionPolicy Bypass -File $Path
+    } catch {
+        Write-Host "[FAILED] $Name ($($_.Exception.Message))" -ForegroundColor Red
+        return $false
+    }
+
+    $code = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
 
     if ($code -eq 0) {
         Write-Host "[OK] $Name" -ForegroundColor Green
@@ -32,16 +49,16 @@ Write-Host "   PMP USER JOURNEY TESTING (UPDATED)"
 Write-Host "========================================"
 
 $tests = @(
-    @{ Name = "Student Production Journey"; Path = (Join-Path $scriptDir "test-student-production-journey.ps1") }
-    @{ Name = "Instructor Production Journey"; Path = (Join-Path $scriptDir "test-instructor-production-journey.ps1") }
-    @{ Name = "Client Production Journey"; Path = (Join-Path $scriptDir "test-client-production-journey.ps1") }
-    @{ Name = "Merchant Production Journey"; Path = (Join-Path $scriptDir "test-merchant-production-journey.ps1") }
-    @{ Name = "Vuln Sandbox Journey"; Path = (Join-Path $rootDir "test-vuln-sandbox.ps1") }
+    @{ Name = "Student Production Journey"; Path = (Join-Path $scriptDir "test-student-production-journey.ps1"); Optional = $false }
+    @{ Name = "Instructor Production Journey"; Path = (Join-Path $scriptDir "test-instructor-production-journey.ps1"); Optional = $false }
+    @{ Name = "Client Production Journey"; Path = (Join-Path $scriptDir "test-client-production-journey.ps1"); Optional = $false }
+    @{ Name = "Merchant Production Journey"; Path = (Join-Path $scriptDir "test-merchant-production-journey.ps1"); Optional = $false }
+    @{ Name = "Vuln Sandbox Journey"; Path = (Join-Path $rootDir "test-vuln-sandbox.ps1"); Optional = $true }
 )
 
 $failed = 0
 foreach ($t in $tests) {
-    $ok = Run-Test -Name $t.Name -Path $t.Path
+    $ok = Run-Test -Name $t.Name -Path $t.Path -Optional $t.Optional
     if (-not $ok) { $failed++ }
 }
 

@@ -534,7 +534,7 @@ export default function QuizPage() {
                             letterSpacing: '0.1em',
                             textTransform: 'uppercase',
                             color: 'var(--n-accent)',
-                        }}>Quiz d'évaluation</span>
+                        }}>Quiz d&apos;évaluation</span>
                     </div>
 
                     <h1 style={{

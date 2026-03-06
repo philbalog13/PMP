@@ -97,6 +97,8 @@ export interface VulnerabilityConfig {
     weakKeysEnabled: boolean;
     verboseErrors: boolean;
     keyLeakInLogs: boolean;
+    simulateDown: boolean;
+    timingAttackEnabled: boolean;
 }
 
 export interface HsmStatusResponse {

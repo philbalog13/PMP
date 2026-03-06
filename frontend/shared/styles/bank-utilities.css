@@ -65,8 +65,11 @@
   z-index: var(--bank-z-sticky);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  /* Fallback si backdrop-filter non supporté (Firefox ancien) */
   background-color: var(--bank-bg-sidebar);
+}
+
+.bk-mobile-nav {
+  display: flex;
 }
 
 /* Skip link — visible seulement au focus clavier */

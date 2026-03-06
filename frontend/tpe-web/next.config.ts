@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   experimental: {
     externalDir: true,
+    optimizePackageImports: ['lucide-react'],
   },
   turbopack: {
     resolveAlias: {

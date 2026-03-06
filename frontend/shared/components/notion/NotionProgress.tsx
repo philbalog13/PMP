@@ -1,11 +1,12 @@
 import React from 'react';
 
-type ProgressVariant = 'accent' | 'success' | 'warning' | 'danger';
+type ProgressVariant = 'default' | 'accent' | 'success' | 'warning' | 'danger';
 type ProgressSize   = 'thin' | 'default' | 'thick';
 
 interface NotionProgressProps {
-  /** Valeur entre 0 et 100 */
+  /** Valeur courante */
   value: number;
+  max?: number;
   variant?: ProgressVariant;
   size?: ProgressSize;
   /** Affiche le pourcentage à droite */
@@ -15,6 +16,7 @@ interface NotionProgressProps {
   /** Accessible label */
   'aria-label'?: string;
   className?: string;
+  style?: React.CSSProperties;
 }
 
 const TRACK_HEIGHT: Record<ProgressSize, string> = {
@@ -24,6 +26,7 @@ const TRACK_HEIGHT: Record<ProgressSize, string> = {
 };
 
 const BAR_COLOR: Record<ProgressVariant, string> = {
+  default: 'var(--n-border-strong)',
   accent:  'var(--n-accent)',
   success: 'var(--n-success)',
   warning: 'var(--n-warning)',
@@ -42,28 +45,33 @@ const BAR_COLOR: Record<ProgressVariant, string> = {
  */
 export function NotionProgress({
   value,
+  max = 100,
   variant = 'accent',
   size = 'default',
   showLabel = false,
   label,
   'aria-label': ariaLabel,
   className = '',
+  style,
 }: NotionProgressProps) {
-  const clampedValue = Math.min(100, Math.max(0, value));
-  const displayLabel = label ?? `${Math.round(clampedValue)}%`;
+  const safeMax = max > 0 ? max : 100;
+  const clampedValue = Math.min(safeMax, Math.max(0, value));
+  const percent = (clampedValue / safeMax) * 100;
+  const displayLabel = label ?? `${Math.round(percent)}%`;
+  const progressAriaLabel = ariaLabel ?? label ?? 'Progress';
 
   return (
     <div
       className={className}
-      style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)' }}
+      style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)', ...style }}
     >
       {/* Track */}
       <div
         role="progressbar"
         aria-valuenow={clampedValue}
         aria-valuemin={0}
-        aria-valuemax={100}
-        aria-label={ariaLabel}
+        aria-valuemax={safeMax}
+        aria-label={progressAriaLabel}
         style={{
           flex:         1,
           height:       TRACK_HEIGHT[size],
@@ -75,7 +83,7 @@ export function NotionProgress({
         <div
           style={{
             height:       '100%',
-            width:        `${clampedValue}%`,
+            width:        `${percent}%`,
             background:   BAR_COLOR[variant],
             borderRadius: 'var(--n-radius-xs)',
             transition:   'width var(--n-duration-lg) var(--n-ease-out)',

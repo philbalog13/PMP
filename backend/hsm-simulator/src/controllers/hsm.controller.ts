@@ -265,15 +265,15 @@ export class HSMController {
         res.json({ success: true, status: hsm.getStatus() });
     };
 
-    public getConfig = (_req: Request, res: Response): void => {
+    public getConfig = async (req: Request, res: Response): Promise<void> => {
         res.json({
             success: true,
-            vulnerabilities: VulnEngine.getConfig(),
+            vulnerabilities: VulnEngine.getConfig(req),
             status: hsm.getStatus(),
         });
     };
 
-    public setConfig = (req: Request, res: Response): void => {
+    public setConfig = async (req: Request, res: Response): Promise<void> => {
         const body = (req.body ?? {}) as {
             vulnerabilities?: Partial<ReturnType<typeof VulnEngine.getConfig>>;
             simulateTamper?: boolean;
@@ -281,8 +281,10 @@ export class HSMController {
             reloadKeys?: boolean;
         };
 
+        let vulnerabilities = VulnEngine.getConfig(req);
+
         if (body.vulnerabilities) {
-            VulnEngine.updateConfig(body.vulnerabilities);
+            vulnerabilities = await VulnEngine.updateConfig(body.vulnerabilities);
         }
 
         if (body.simulateTamper) {
@@ -299,7 +301,7 @@ export class HSMController {
 
         res.json({
             success: true,
-            vulnerabilities: VulnEngine.getConfig(),
+            vulnerabilities,
             status: hsm.getStatus(),
         });
     };
@@ -355,4 +357,3 @@ export class HSMController {
         });
     };
 }
-

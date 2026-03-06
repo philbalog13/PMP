@@ -1,7 +1,9 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import React from 'react';
+import { AuthProvider } from '@shared/context/AuthContext';
 
 /**
  * AppShell — Wrapper conditionnel Navbar/Footer
@@ -15,39 +17,43 @@ import React from 'react';
  *   → Ni Navbar, ni Footer
  */
 
+const LEARNING_ROUTES = ['/student', '/instructor', '/etudiant', '/formateur'];
 const APP_ROUTES = ['/student', '/instructor', '/merchant', '/client', '/admin', '/etudiant', '/formateur'];
 const AUTH_ROUTES = ['/login', '/register', '/auth'];
 
-interface AppShellProps {
-  navbar: React.ReactNode;
-  footer: React.ReactNode;
-  children: React.ReactNode;
-}
+const PublicNavbar = dynamic(() => import('./Navbar').then((module) => module.Navbar), { ssr: false });
+const PublicFooter = dynamic(() => import('./Footer').then((module) => module.Footer), { ssr: false });
 
-export function AppShell({ navbar, footer, children }: AppShellProps) {
+export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
+  const isLearningRoute = LEARNING_ROUTES.some(route => pathname === route || pathname.startsWith(route + '/'));
   const isAppRoute = APP_ROUTES.some(route => pathname === route || pathname.startsWith(route + '/'));
   const isAuthRoute = AUTH_ROUTES.some(route => pathname === route || pathname.startsWith(route + '/'));
 
-  // Routes applicatives : NotionLayout dans student/layout.tsx prend le relais
+  // Learning routes still require auth/session coherence with the rest of the app.
+  if (isLearningRoute) {
+    return <AuthProvider>{children}</AuthProvider>;
+  }
+
+  // Other app routes keep their own shell and still need shared auth context.
   if (isAppRoute) {
-    return <>{children}</>;
+    return <AuthProvider>{children}</AuthProvider>;
   }
 
-  // Routes auth : page standalone, sans chrome
+  // Auth routes: standalone but still use auth context.
   if (isAuthRoute) {
-    return <>{children}</>;
+    return <AuthProvider>{children}</AuthProvider>;
   }
 
-  // Routes publiques : Navbar + pt-20 + Footer
+  // Public routes: with navbar/footer under shared auth context.
   return (
-    <>
-      {navbar}
+    <AuthProvider>
+      <PublicNavbar />
       <main className="pt-20">
         {children}
       </main>
-      {footer}
-    </>
+      <PublicFooter />
+    </AuthProvider>
   );
 }

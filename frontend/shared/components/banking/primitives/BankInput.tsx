@@ -16,11 +16,20 @@ export interface BankInputProps extends Omit<React.InputHTMLAttributes<HTMLInput
 }
 
 function isLucideIcon(value: BankInputProps['prefix']): value is LucideIcon {
-  if (!value || typeof value !== 'function') {
+  if (!value || isValidElement(value)) {
     return false;
   }
 
-  return !isValidElement(value);
+  if (typeof value === 'function') {
+    return true;
+  }
+
+  if (typeof value === 'object') {
+    const candidate = value as { $$typeof?: unknown; render?: unknown };
+    return candidate.$$typeof !== undefined && typeof candidate.render === 'function';
+  }
+
+  return false;
 }
 
 /* ══════════════════════════════════════════════════════

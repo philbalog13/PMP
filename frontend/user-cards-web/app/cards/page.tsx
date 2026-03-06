@@ -202,6 +202,7 @@ export default function CardsPage() {
                     <p style={{ color: 'var(--bank-text-tertiary)', marginBottom: 'var(--bank-space-6)', fontSize: 'var(--bank-text-sm)' }}>Reconnectez-vous sur le portail pour accéder à votre espace client.</p>
                     <Link
                         href={`${process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:3000'}/login`}
+                        prefetch={false}
                         className="bk-btn bk-btn--primary bk-btn--md"
                         style={{ display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}
                     >
@@ -236,6 +237,7 @@ export default function CardsPage() {
                     <div style={{ display: 'flex', gap: 'var(--bank-space-2)' }}>
                         <Link
                             href="/cards/add"
+                            prefetch={false}
                             className="bk-btn bk-btn--primary bk-btn--sm"
                             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}
                         >
@@ -329,6 +331,7 @@ export default function CardsPage() {
                         action={
                             <Link
                                 href="/cards/add"
+                                prefetch={false}
                                 className="bk-btn bk-btn--primary bk-btn--sm"
                                 style={{ textDecoration: 'none' }}
                             >
@@ -591,6 +594,7 @@ export default function CardsPage() {
                         </BankButton>
                         <Link
                             href="/security"
+                            prefetch={false}
                             className="bk-btn bk-btn--ghost"
                             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}
                         >

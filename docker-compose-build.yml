@@ -20,3 +20,9 @@ services:
     build:
       context: ./frontend
       dockerfile: tpe-web/Dockerfile
+
+  3ds-challenge-ui:
+    image: pmp-3ds-challenge-ui:latest
+    build:
+      context: ./frontend
+      dockerfile: 3ds-challenge-ui/Dockerfile

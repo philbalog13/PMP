@@ -1,5 +1,3 @@
-version: '3.8'
-
 # Network configuration
 networks:
   monetic-network:
@@ -169,9 +167,10 @@ services:
       - PORT=8098
       - LAB_ORCHESTRATOR_SECRET=${LAB_ORCHESTRATOR_SECRET}
       - DOCKER_PROXY_URL=http://docker-socket-proxy:2375
-      - LAB_ENABLE_DOCKER_ACTIONS=${LAB_ENABLE_DOCKER_ACTIONS:-false}
+      - LAB_ENABLE_DOCKER_ACTIONS=${LAB_ENABLE_DOCKER_ACTIONS:-true}
       - LAB_ACCESS_PROXY_BASE_PATH=${LAB_ACCESS_PROXY_BASE_PATH:-/lab}
       - LAB_ATTACKBOX_CONTAINER_IMAGE=${LAB_ATTACKBOX_CONTAINER_IMAGE:-pmp-ctf-attackbox}
+      - LAB_CONTROL_NETWORK_NAME=${LAB_CONTROL_NETWORK_NAME:-pmp_monetic-network}
     ports:
       - "8098:8098"
     networks:
@@ -200,7 +199,7 @@ services:
       - PORT=8099
       - API_GATEWAY_URL=http://api-gateway:8000
       - LAB_ACCESS_PROXY_BASE_PATH=${LAB_ACCESS_PROXY_BASE_PATH:-/lab}
-      - LAB_INTERNAL_PROXY_SECRET=${LAB_INTERNAL_PROXY_SECRET}
+      - LAB_INTERNAL_PROXY_SECRET=${LAB_INTERNAL_PROXY_SECRET:-pmp-lab-proxy-internal-2026}
       - INTERNAL_HSM_SECRET=${INTERNAL_HSM_SECRET}
       - JWT_SECRET=${JWT_SECRET}
       - LAB_PROXY_CACHE_TTL_MS=${LAB_PROXY_CACHE_TTL_MS:-15000}
@@ -251,8 +250,11 @@ services:
       - LAB_NETWORK_SUBNET_PREFIX=${LAB_NETWORK_SUBNET_PREFIX:-28}
       - LAB_ORCHESTRATOR_URL=http://lab-orchestrator:8098
       - LAB_ORCHESTRATOR_SECRET=${LAB_ORCHESTRATOR_SECRET}
+      - LAB_ORCHESTRATOR_PROVISION_TIMEOUT_MS=${LAB_ORCHESTRATOR_PROVISION_TIMEOUT_MS:-45000}
+      - LAB_ORCHESTRATOR_CONTROL_TIMEOUT_MS=${LAB_ORCHESTRATOR_CONTROL_TIMEOUT_MS:-10000}
       - LAB_ACCESS_PROXY_BASE_PATH=${LAB_ACCESS_PROXY_BASE_PATH:-/lab}
-      - LAB_INTERNAL_PROXY_SECRET=${LAB_INTERNAL_PROXY_SECRET}
+      - LAB_INTERNAL_PROXY_SECRET=${LAB_INTERNAL_PROXY_SECRET:-pmp-lab-proxy-internal-2026}
+      - UA_DISABLE_LOCKS=${UA_DISABLE_LOCKS:-true}
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - CARD_SERVICE_URL=http://sim-card-service:8001
       - POS_SERVICE_URL=http://sim-pos-service:8002
@@ -260,6 +262,7 @@ services:
       - SIM_CARD_SERVICE_URL=http://sim-card-service:8001
       - SIM_POS_SERVICE_URL=http://sim-pos-service:8002
       - SIM_ACQUIRER_SERVICE_URL=http://sim-acquirer-service:8003
+      - SIM_CLEARING_ENGINE_URL=http://sim-clearing-engine:8016
       - SIM_NETWORK_SWITCH_URL=http://sim-network-switch:8004
       - SIM_ISSUER_SERVICE_URL=http://sim-issuer-service:8005
       - SIM_AUTH_ENGINE_URL=http://sim-auth-engine:8006
@@ -292,6 +295,8 @@ services:
       sim-pos-service:
         condition: service_started
       sim-acquirer-service:
+        condition: service_started
+      sim-clearing-engine:
         condition: service_started
       lab-orchestrator:
         condition: service_started
@@ -417,6 +422,7 @@ services:
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - NETWORK_SWITCH_URL=http://sim-network-switch:8004
       - FRAUD_DETECTION_URL=http://sim-fraud-detection:8007
+      - SIM_CLEARING_ENGINE_URL=http://sim-clearing-engine:8016
     ports:
       - "8003:8003"
     networks:
@@ -426,6 +432,48 @@ services:
       - sim-network-switch
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8003/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    cap_drop:
+      - ALL
+
+  sim-clearing-engine:
+    image: pmp-sim-clearing-engine
+    pull_policy: never
+    container_name: pmp-sim-clearing-engine
+    restart: unless-stopped
+    user: "node:node"
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - PORT=8016
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - KEY_MANAGEMENT_URL=http://key-management:8012
+      - MTLS_ENABLED=false
+    ports:
+      - "8016:8016"
+    networks:
+      - monetic-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      key-management:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8016/health"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -761,7 +809,6 @@ services:
     pull_policy: never
     container_name: pmp-key-management
     restart: unless-stopped
-    user: "node:node"
     environment:
       - NODE_ENV=${NODE_ENV}
       - PORT=8012
@@ -806,6 +853,7 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV}
       - PORT=8013
+      - THREEDS_CHALLENGE_URL=http://localhost:3088
       - CTF_FLAG_SECRET=${CTF_FLAG_SECRET:-pmp_ctf_default_secret_change_in_prod}
     ports:
       - "8013:8013"
@@ -833,7 +881,19 @@ services:
         max-file: "3"
     cap_drop:
       - ALL
-      
+
+  3ds-challenge-ui:
+    image: pmp-3ds-challenge-ui
+    pull_policy: never
+    container_name: pmp-3ds-challenge-ui
+    restart: unless-stopped
+    ports:
+      - "3088:3088"
+    networks:
+      - monetic-network
+    depends_on:
+      - acs-simulator
+
   # ============================================
   # FRONTEND SERVICES (Temporarily Disabled)
   # ============================================

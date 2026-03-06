@@ -36,6 +36,16 @@ const VULN_FIELDS: Array<{
         label: 'Key Leak In Logs',
         description: 'Simulates sensitive data leakage in logs.',
     },
+    {
+        key: 'simulateDown',
+        label: 'Simulate Down',
+        description: 'Forces the HSM into an unavailable fail-open training mode.',
+    },
+    {
+        key: 'timingAttackEnabled',
+        label: 'Timing Attack Enabled',
+        description: 'Uses a comparison flow vulnerable to response-time analysis.',
+    },
 ];
 
 function toDuration(seconds: number): string {

@@ -3,13 +3,14 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@shared/context/AuthContext';
+import { APP_URLS } from '@shared/lib/app-urls';
 import {
   Wallet, CreditCard, Activity,
   RefreshCcw, ArrowRight, TrendingUp,
 } from 'lucide-react';
 import { clientApi } from '@/lib/api-client';
 
-/* ── Composants Banking ── */
+/* â”€â”€ Composants Banking â”€â”€ */
 import { BankPageHeader }  from '@shared/components/banking/layout/BankPageHeader';
 import { BankSkeleton }    from '@shared/components/banking/feedback/BankSkeleton';
 import { BankEmptyState }  from '@shared/components/banking/feedback/BankEmptyState';
@@ -19,9 +20,9 @@ import { CardVisual }      from '@shared/components/banking/data-display/CardVis
 import { TransactionList } from '@shared/components/banking/data-display/TransactionList';
 import { type BankTransaction } from '@shared/components/banking/data-display/TransactionRow';
 
-/* ══════════════════════════════════════════════════════
-   TYPES (inchangés)
-   ══════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   TYPES (inchangÃ©s)
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 type DashboardState = {
   cards: { total: number; active: number; totalBalance: number };
   today: { transactionCount: number; totalSpent: number };
@@ -41,9 +42,9 @@ type AccountState = {
   accountHolderName: string; balance: number; currency: string;
 };
 
-/* ══════════════════════════════════════════════════════
-   HELPERS (inchangés — logique métier préservée)
-   ══════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   HELPERS (inchangÃ©s â€” logique mÃ©tier prÃ©servÃ©e)
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 const asObject = (v: unknown): Record<string, unknown> =>
   v !== null && typeof v === 'object' ? (v as Record<string, unknown>) : {};
 
@@ -121,9 +122,9 @@ const normalizeAccount = (payload: unknown): AccountState => {
   };
 };
 
-/* ══════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    COMPOSANT PRINCIPAL
-   ══════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 export default function ClientDashboardHome() {
   const { user, isLoading, isAuthenticated } = useAuth();
   const [isRefreshing, setIsRefreshing] = useState(true);
@@ -139,13 +140,17 @@ export default function ClientDashboardHome() {
       setDashboard(normalizeDashboard(dr));
       setAccount(normalizeAccount(ar));
     } catch (e: unknown) {
-      setError(getErrorMessage(e, 'Impossible de charger les données client'));
+      setError(getErrorMessage(e, 'Impossible de charger les donnÃ©es client'));
     } finally {
       setIsRefreshing(false);
     }
   };
 
   useEffect(() => { if (!isAuthenticated) return; loadData(); }, [isAuthenticated]);
+  useEffect(() => {
+    if (isLoading || isAuthenticated) return;
+    window.location.replace(`${APP_URLS.portal}/login`);
+  }, [isLoading, isAuthenticated]);
 
   const welcomeName = useMemo(() => {
     if (!user) return 'Client';
@@ -164,7 +169,7 @@ export default function ClientDashboardHome() {
 
   const currency = account?.currency || 'EUR';
 
-  /* ── Skeleton global (premier chargement) ── */
+  /* â”€â”€ Skeleton global (premier chargement) â”€â”€ */
   if (isLoading) {
     return (
       <div style={{ padding: 'var(--bank-space-6)', maxWidth: 1100, margin: '0 auto' }}>
@@ -178,13 +183,13 @@ export default function ClientDashboardHome() {
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--bank-space-6)', background: 'var(--bank-bg-base)' }}>
         <div style={{ maxWidth: 420, width: '100%', borderRadius: 'var(--bank-radius-2xl)', border: '1px solid var(--bank-border-subtle)', background: 'var(--bank-bg-surface)', padding: 'var(--bank-space-8)', textAlign: 'center' }}>
           <h1 style={{ fontSize: 'var(--bank-text-2xl)', fontWeight: 'var(--bank-font-bold)', color: 'var(--bank-text-primary)', marginBottom: 'var(--bank-space-3)' }}>
-            Session expirée
+            Session expiree
           </h1>
           <p style={{ color: 'var(--bank-text-tertiary)', marginBottom: 'var(--bank-space-6)', fontSize: 'var(--bank-text-sm)' }}>
-            Reconnectez-vous sur le portail pour accéder à votre espace client.
+            Reconnectez-vous sur le portail pour acceder a votre espace client.
           </p>
           <a
-            href={`${process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:3000'}/login`}
+            href={`${APP_URLS.portal}/login`}
             className="bk-btn bk-btn--primary bk-btn--md"
             style={{ display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}
           >
@@ -196,21 +201,22 @@ export default function ClientDashboardHome() {
     );
   }
 
-  /* ══════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      DASHBOARD PRINCIPAL
-     ══════════════════════════════════════════════════════ */
+     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   return (
     <div style={{ padding: 'var(--bank-space-6)', paddingBottom: 'var(--bank-space-12)', maxWidth: 1100, margin: '0 auto' }}>
 
-      {/* ── En-tête ── */}
+      {/* â”€â”€ En-tÃªte â”€â”€ */}
       <BankPageHeader
         title={`Bonjour, ${welcomeName}`}
-        subtitle="Données bancaires et cartes synchronisées en temps réel."
+        subtitle="DonnÃ©es bancaires et cartes synchronisÃ©es en temps rÃ©el."
         style={{ marginBottom: 'var(--bank-space-6)' }}
         actions={
           <div style={{ display: 'flex', gap: 'var(--bank-space-2)' }}>
             <Link
               href="/pay"
+              prefetch={false}
               className="bk-btn bk-btn--primary bk-btn--sm"
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}
             >
@@ -229,22 +235,22 @@ export default function ClientDashboardHome() {
         }
       />
 
-      {/* ── Erreur ── */}
+      {/* â”€â”€ Erreur â”€â”€ */}
       {error && (
         <div style={{ padding: 'var(--bank-space-4)', borderRadius: 'var(--bank-radius-lg)', border: '1px solid color-mix(in srgb, var(--bank-danger) 30%, transparent)', background: 'color-mix(in srgb, var(--bank-danger) 8%, transparent)', color: 'var(--bank-danger)', fontSize: 'var(--bank-text-sm)', marginBottom: 'var(--bank-space-5)' }}>
           {error}
         </div>
       )}
 
-      {/* ══ STATS ══ */}
+      {/* â•â• STATS â•â• */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--bank-space-4)', marginBottom: 'var(--bank-space-6)' }}>
         <StatCard label="Solde compte" value={fmt(account?.balance ?? 0, currency)} icon={Wallet}    loading={isRefreshing} accent index={0} />
         <StatCard label="Cartes actives" value={String(dashboard?.cards.active ?? 0)}                icon={CreditCard}  loading={isRefreshing} index={1} />
         <StatCard label="Transactions du jour" value={String(dashboard?.today.transactionCount ?? 0)} icon={Activity}   loading={isRefreshing} index={2} />
-        <StatCard label="Dépenses du jour" value={fmt(dashboard?.today.totalSpent ?? 0, currency)}   icon={TrendingUp}  loading={isRefreshing} index={3} />
+        <StatCard label="DÃ©penses du jour" value={fmt(dashboard?.today.totalSpent ?? 0, currency)}   icon={TrendingUp}  loading={isRefreshing} index={3} />
       </div>
 
-      {/* ══ CARTES + COMPTE ══ */}
+      {/* â•â• CARTES + COMPTE â•â• */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 'var(--bank-space-6)', marginBottom: 'var(--bank-space-6)', alignItems: 'start' }}
         className="bk-grid-cards-account">
         {/* Cartes actives */}
@@ -254,8 +260,8 @@ export default function ClientDashboardHome() {
               <CreditCard size={16} strokeWidth={2} style={{ color: 'var(--bank-accent)' }} aria-hidden="true" />
               Cartes actives
             </h2>
-            <Link href="/cards" style={{ fontSize: 'var(--bank-text-sm)', color: 'var(--bank-accent)', textDecoration: 'none' }}>
-              Gérer mes cartes →
+            <Link href="/cards" prefetch={false} style={{ fontSize: 'var(--bank-text-sm)', color: 'var(--bank-accent)', textDecoration: 'none' }}>
+              GÃ©rer mes cartes â†’
             </Link>
           </div>
 
@@ -267,10 +273,10 @@ export default function ClientDashboardHome() {
                 <CreditCard size={24} style={{ color: 'var(--bank-text-tertiary)' }} aria-hidden="true" />
                 <div>
                   <p style={{ fontSize: 'var(--bank-text-sm)', fontWeight: 'var(--bank-font-semibold)', color: 'var(--bank-text-primary)', marginBottom: 4 }}>Aucune carte active</p>
-                  <p style={{ fontSize: 'var(--bank-text-xs)', color: 'var(--bank-text-tertiary)' }}>Commandez votre première carte pour commencer à payer.</p>
+                  <p style={{ fontSize: 'var(--bank-text-xs)', color: 'var(--bank-text-tertiary)' }}>Commandez votre premiÃ¨re carte pour commencer Ã  payer.</p>
                 </div>
-                <Link href="/cards" className="bk-btn bk-btn--primary bk-btn--sm" style={{ textDecoration: 'none' }}>
-                  Demander une carte →
+                <Link href="/cards" prefetch={false} className="bk-btn bk-btn--primary bk-btn--sm" style={{ textDecoration: 'none' }}>
+                  Demander une carte â†’
                 </Link>
               </div>
             ) : (
@@ -290,14 +296,14 @@ export default function ClientDashboardHome() {
                       </span>
                       {card.isAutoIssued && (
                         <span style={{ fontSize: 'var(--bank-text-xs)', color: 'var(--bank-success)', background: 'color-mix(in srgb, var(--bank-success) 12%, transparent)', padding: '1px 8px', borderRadius: 'var(--bank-radius-full)', border: '1px solid color-mix(in srgb, var(--bank-success) 25%, transparent)' }}>
-                          Compte lié
+                          Compte liÃ©
                         </span>
                       )}
                     </div>
                     {card.dailyLimit > 0 && (
                       <div style={{ marginTop: 'var(--bank-space-2)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                          <span style={{ fontSize: 'var(--bank-text-xs)', color: 'var(--bank-text-tertiary)' }}>{fmt(card.dailySpent, currency)} dépensés</span>
+                          <span style={{ fontSize: 'var(--bank-text-xs)', color: 'var(--bank-text-tertiary)' }}>{fmt(card.dailySpent, currency)} dÃ©pensÃ©s</span>
                           <span style={{ fontSize: 'var(--bank-text-xs)', color: 'var(--bank-text-tertiary)' }}>/ {fmt(card.dailyLimit, currency)}</span>
                         </div>
                         <div style={{ height: 4, background: 'var(--bank-bg-elevated)', borderRadius: 'var(--bank-radius-full)', overflow: 'hidden' }}>
@@ -325,7 +331,7 @@ export default function ClientDashboardHome() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--bank-space-3)' }}>
               <BalanceDisplay amount={account?.balance ?? 0} currency={currency} />
               {[
-                { label: 'Intitulé',  value: account?.accountLabel },
+                { label: 'IntitulÃ©',  value: account?.accountLabel },
                 { label: 'Titulaire', value: account?.accountHolderName },
                 { label: 'IBAN',      value: account?.iban, mono: true },
                 { label: 'BIC',       value: account?.bic,  mono: true },
@@ -333,7 +339,7 @@ export default function ClientDashboardHome() {
                 <div key={row.label}>
                   <p style={{ fontSize: 'var(--bank-text-xs)', color: 'var(--bank-text-tertiary)', marginBottom: 2 }}>{row.label}</p>
                   <p style={{ fontSize: row.mono ? 'var(--bank-text-xs)' : 'var(--bank-text-sm)', color: 'var(--bank-text-primary)', fontFamily: row.mono ? '"Courier New", monospace' : undefined, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {row.value || '—'}
+                    {row.value || 'â€”'}
                   </p>
                 </div>
               ))}
@@ -342,15 +348,15 @@ export default function ClientDashboardHome() {
         </div>
       </div>
 
-      {/* ══ TRANSACTIONS RÉCENTES ══ */}
+      {/* â•â• TRANSACTIONS RÃ‰CENTES â•â• */}
       <div style={{ borderRadius: 'var(--bank-radius-2xl)', border: '1px solid var(--bank-border-subtle)', background: 'var(--bank-bg-surface)', overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'var(--bank-space-4) var(--bank-space-5)', borderBottom: '1px solid var(--bank-border-subtle)' }}>
           <h2 style={{ display: 'flex', alignItems: 'center', gap: 'var(--bank-space-2)', fontSize: 'var(--bank-text-base)', fontWeight: 'var(--bank-font-semibold)', color: 'var(--bank-text-primary)' }}>
             <Activity size={16} strokeWidth={2} style={{ color: 'var(--bank-accent)' }} aria-hidden="true" />
-            Dernières transactions
+            DerniÃ¨res transactions
           </h2>
-          <Link href="/transactions" style={{ fontSize: 'var(--bank-text-sm)', color: 'var(--bank-accent)', textDecoration: 'none' }}>
-            Voir tout →
+          <Link href="/transactions" prefetch={false} style={{ fontSize: 'var(--bank-text-sm)', color: 'var(--bank-accent)', textDecoration: 'none' }}>
+            Voir tout â†’
           </Link>
         </div>
 
@@ -359,16 +365,16 @@ export default function ClientDashboardHome() {
           loading={isRefreshing}
           skeletonCount={6}
           locale="fr-FR"
-          label="Dernières transactions"
+          label="DerniÃ¨res transactions"
           onClickRow={tx => { window.location.href = `/transactions?id=${tx.id}`; }}
           emptyState={
             <BankEmptyState
               icon={<Activity size={20} />}
               title="Aucune transaction"
-              description="Simulez votre premier paiement pour voir vos opérations ici."
+              description="Simulez votre premier paiement pour voir vos opÃ©rations ici."
               action={
-                <Link href="/pay" className="bk-btn bk-btn--primary bk-btn--sm" style={{ textDecoration: 'none' }}>
-                  Simuler un paiement →
+                <Link href="/pay" prefetch={false} className="bk-btn bk-btn--primary bk-btn--sm" style={{ textDecoration: 'none' }}>
+                  Simuler un paiement â†’
                 </Link>
               }
             />

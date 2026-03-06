@@ -43,6 +43,16 @@ export class ACSController {
         return /('|--|;|or\s+1=1|union\s+select)/i.test(email);
     }
 
+    private resolveChallengeIdentifier(body: any): string {
+        return String(
+            body?.acsTransId
+            || body?.acsTransID
+            || body?.threeDSServerTransID
+            || body?.challengeId
+            || '',
+        ).trim();
+    }
+
     /**
      * POST /acs/areq
      * AReq -> ARes
@@ -131,9 +141,7 @@ export class ACSController {
     creq = async (req: Request, res: Response) => {
         try {
             const studentId = this.getStudentId(req);
-            const threeDSServerTransID = String(
-                req.body?.threeDSServerTransID || req.body?.acsTransID || req.body?.challengeId || '',
-            ).trim();
+            const threeDSServerTransID = this.resolveChallengeIdentifier(req.body);
             const otp = String(req.body?.otp || req.body?.challengeData || '').trim();
             const response = this.evaluateCreq(threeDSServerTransID, otp, studentId);
             res.json(response);
@@ -167,7 +175,30 @@ export class ACSController {
      * POST /authenticate
      */
     authenticate = async (req: Request, res: Response) => {
-        return this.areq(req, res);
+        try {
+            const result = await this.threeDSService.authenticate({
+                pan: String(req.body?.pan || ''),
+                amount: this.parseAmount(req.body),
+                currency: String(req.body?.currency || 'EUR'),
+                merchantId: String(req.body?.merchantId || req.body?.merchantName || 'MERCHANT_001'),
+                transactionId: String(
+                    req.body?.transactionId
+                    || req.body?.txId
+                    || req.body?.threeDSServerTransID
+                    || `TX_${Date.now()}`,
+                ),
+                returnUrl: typeof req.body?.returnUrl === 'string'
+                    ? req.body.returnUrl
+                    : (typeof req.body?.redirectUrl === 'string' ? req.body.redirectUrl : undefined),
+                cardholderName: typeof req.body?.cardholderName === 'string'
+                    ? req.body.cardholderName
+                    : (typeof req.body?.cardholderInfo?.name === 'string' ? req.body.cardholderInfo.name : undefined),
+            });
+
+            return res.json(result);
+        } catch (error: any) {
+            return res.status(500).json({ success: false, error: error.message || 'Authentication failed' });
+        }
     };
 
     /**
@@ -175,7 +206,41 @@ export class ACSController {
      * POST /challenge/verify
      */
     verifyChallenge = async (req: Request, res: Response) => {
-        return this.creq(req, res);
+        try {
+            const acsTransId = this.resolveChallengeIdentifier(req.body);
+            const otp = String(req.body?.otp || '').trim();
+
+            if (!acsTransId || !otp) {
+                return res.status(400).json({ success: false, error: 'acsTransId and otp are required' });
+            }
+
+            const result = await this.threeDSService.verifyChallenge(acsTransId, otp);
+            return res.json(result);
+        } catch (error: any) {
+            return res.status(500).json({ success: false, error: error.message || 'Challenge verification failed' });
+        }
+    };
+
+    /**
+     * Legacy endpoint compatibility
+     * GET /challenge/result/:acsTransId
+     */
+    getChallengeResult = async (req: Request, res: Response) => {
+        try {
+            const acsTransId = String(req.params?.acsTransId || '').trim();
+            if (!acsTransId) {
+                return res.status(400).json({ success: false, error: 'acsTransId is required' });
+            }
+
+            const result = this.threeDSService.getChallengeResult(acsTransId);
+            if (!result) {
+                return res.status(404).json({ success: false, error: 'Challenge result not found' });
+            }
+
+            return res.json(result);
+        } catch (error: any) {
+            return res.status(500).json({ success: false, error: error.message || 'Challenge result lookup failed' });
+        }
     };
 
     /**

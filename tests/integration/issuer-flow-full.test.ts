@@ -23,7 +23,7 @@ describe('Issuer Authorization Flow (Full Sequence)', () => {
         // Arrange
         const request: AuthorizationRequest = {
             transactionId: 'TX123',
-            pan: '1234567890123456',
+            pan: '4111111111111111',
             amount: 100,
             currency: 'EUR',
             merchantId: 'M123',
@@ -41,10 +41,10 @@ describe('Issuer Authorization Flow (Full Sequence)', () => {
         mockedAxios.post.mockResolvedValueOnce({ data: { approved: true, responseCode: '00' } });
         // 4. MAC Generation
         mockedAxios.post.mockResolvedValueOnce({ data: { mac: 'MAC_123456' } });
-        // 5. Encrypt Sensitive Data
-        mockedAxios.post.mockResolvedValueOnce({ data: { encryptedData: 'ENC_DATA_XYZ' } });
-        // 6. Calculate KCV
+        // 5. Calculate KCV
         mockedAxios.post.mockResolvedValueOnce({ data: { kcv: 'KCV_999' } });
+        // 6. Encrypt Sensitive Data
+        mockedAxios.post.mockResolvedValueOnce({ data: { encryptedData: 'ENC_DATA_XYZ' } });
 
         // Act
         const response = await authorizeTransaction(request);
@@ -60,10 +60,10 @@ describe('Issuer Authorization Flow (Full Sequence)', () => {
         // Check Endpoint URLs
         expect(calls[0][0]).toContain('/hsm/decrypt-pin');
         expect(calls[1][0]).toContain('/check'); // Fraud
-        expect(calls[2][0]).toContain('/api/authorize'); // Auth Engine
+        expect(calls[2][0]).toContain('/authorize'); // Auth Engine
         expect(calls[3][0]).toContain('/hsm/generate-mac');
-        expect(calls[4][0]).toContain('/hsm/encrypt-data');
-        expect(calls[5][0]).toContain('/hsm/calculate-kcv');
+        expect(calls[4][0]).toContain('/hsm/calculate-kcv');
+        expect(calls[5][0]).toContain('/hsm/encrypt-data');
 
         // Verify Educational Metadata
         expect(response._educational?.hsmOperations).toContain('Response MAC Generation (HMAC-SHA256)');

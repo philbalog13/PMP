@@ -15,7 +15,7 @@ import {
     Trash2,
     Webhook,
 } from 'lucide-react';
-import { formatDateTime } from '@shared/lib/formatting';
+import { formatDateTimeString } from '@shared/lib/formatting';
 import { BankPageHeader } from '@shared/components/banking/layout/BankPageHeader';
 import { BankButton } from '@shared/components/banking/primitives/BankButton';
 import { BankBadge } from '@shared/components/banking/primitives/BankBadge';
@@ -98,8 +98,20 @@ const normalizeWebhook = (raw: unknown): WebhookConfig => {
 };
 
 const formatDateOrNever = (value: string | null) => (
-    value ? formatDateTime(value) : 'Jamais'
+    value ? formatDateTimeString(value) : 'Jamais'
 );
+
+const readResponseError = async (response: Response, fallback: string): Promise<string> => {
+    try {
+        const payload = await response.json() as UnknownRecord;
+        const message = payload.error ?? payload.message;
+        return typeof message === 'string' && message.trim().length > 0
+            ? message
+            : `${fallback} (${response.status})`;
+    } catch {
+        return `${fallback} (${response.status})`;
+    }
+};
 
 export default function MerchantAPIPage() {
     const { isLoading } = useAuth(true);
@@ -115,6 +127,8 @@ export default function MerchantAPIPage() {
     const [newlyCreatedKey, setNewlyCreatedKey] = useState<string | null>(null);
     const [copiedKey, setCopiedKey] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
+    const [apiKeysError, setApiKeysError] = useState<string | null>(null);
+    const [webhooksError, setWebhooksError] = useState<string | null>(null);
 
     useEffect(() => {
         void fetchAPIData();
@@ -124,6 +138,8 @@ export default function MerchantAPIPage() {
         try {
             setRefreshing(true);
             setError(null);
+            setApiKeysError(null);
+            setWebhooksError(null);
             const token = localStorage.getItem('token');
 
             const [keysResponse, webhooksResponse] = await Promise.all([
@@ -139,38 +155,23 @@ export default function MerchantAPIPage() {
                 const keysData = await keysResponse.json();
                 setApiKeys((keysData.apiKeys || []).map(normalizeApiKey));
             } else {
-                setApiKeys([
-                    {
-                        id: '1',
-                        keyName: 'Production Key',
-                        apiKeyPrefix: 'pmp_prod_a1b2',
-                        permissions: ['transactions.read', 'transactions.create'],
-                        rateLimitPerMinute: 60,
-                        isActive: true,
-                        lastUsedAt: '2024-01-15T14:30:00Z',
-                        createdAt: '2024-01-01T10:00:00Z',
-                    },
-                ]);
+                setApiKeys([]);
+                setApiKeysError(await readResponseError(keysResponse, 'Impossible de charger les cles API'));
             }
 
             if (webhooksResponse.ok) {
                 const webhooksData = await webhooksResponse.json();
                 setWebhooks((webhooksData.webhooks || []).map(normalizeWebhook));
             } else {
-                setWebhooks([
-                    {
-                        id: '1',
-                        url: 'https://example.com/webhooks/pmp',
-                        events: ['transaction.approved', 'transaction.declined'],
-                        isActive: true,
-                        lastTriggeredAt: '2024-01-15T14:25:00Z',
-                        consecutiveFailures: 0,
-                        createdAt: '2024-01-01T10:00:00Z',
-                    },
-                ]);
+                setWebhooks([]);
+                setWebhooksError(await readResponseError(webhooksResponse, 'Impossible de charger les webhooks'));
             }
         } catch (fetchError: unknown) {
             const message = fetchError instanceof Error ? fetchError.message : 'Erreur lors du chargement API';
+            setApiKeys([]);
+            setWebhooks([]);
+            setApiKeysError(message);
+            setWebhooksError(message);
             setError(message);
         } finally {
             setLoading(false);
@@ -564,9 +565,9 @@ export default function MerchantAPIPage() {
                     marginBottom: 'var(--bank-space-5)',
                 }}
             >
-                <StatCard label="Cles actives" value={String(totalActiveKeys)} icon={Key} accent index={0} />
-                <StatCard label="Webhooks actifs" value={String(totalActiveWebhooks)} icon={Webhook} index={1} />
-                <StatCard label="Echecs webhook" value={String(totalFailures)} icon={AlertTriangle} index={2} />
+                <StatCard label="Cles actives" value={apiKeysError ? 'Indisponible' : String(totalActiveKeys)} icon={Key} accent index={0} />
+                <StatCard label="Webhooks actifs" value={webhooksError ? 'Indisponible' : String(totalActiveWebhooks)} icon={Webhook} index={1} />
+                <StatCard label="Echecs webhook" value={webhooksError ? 'Indisponible' : String(totalFailures)} icon={AlertTriangle} index={2} />
             </div>
 
             <section style={{ marginBottom: 'var(--bank-space-5)' }}>
@@ -579,7 +580,20 @@ export default function MerchantAPIPage() {
                         Creer une cle
                     </BankButton>
                 </div>
-                {apiKeys.length === 0 ? (
+                {apiKeysError ? (
+                    <div className="bk-card">
+                        <BankEmptyState
+                            icon={<AlertTriangle size={20} aria-hidden="true" />}
+                            title="Cles API indisponibles"
+                            description={apiKeysError}
+                            action={(
+                                <BankButton size="sm" variant="ghost" onClick={() => void fetchAPIData()} loading={refreshing}>
+                                    Reessayer
+                                </BankButton>
+                            )}
+                        />
+                    </div>
+                ) : apiKeys.length === 0 ? (
                     <div className="bk-card">
                         <BankEmptyState
                             icon={<Key size={20} aria-hidden="true" />}
@@ -614,7 +628,20 @@ export default function MerchantAPIPage() {
                         Ajouter webhook
                     </BankButton>
                 </div>
-                {webhooks.length === 0 ? (
+                {webhooksError ? (
+                    <div className="bk-card">
+                        <BankEmptyState
+                            icon={<AlertTriangle size={20} aria-hidden="true" />}
+                            title="Webhooks indisponibles"
+                            description={webhooksError}
+                            action={(
+                                <BankButton size="sm" variant="ghost" onClick={() => void fetchAPIData()} loading={refreshing}>
+                                    Reessayer
+                                </BankButton>
+                            )}
+                        />
+                    </div>
+                ) : webhooks.length === 0 ? (
                     <div className="bk-card">
                         <BankEmptyState
                             icon={<Webhook size={20} aria-hidden="true" />}

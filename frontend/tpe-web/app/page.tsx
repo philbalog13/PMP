@@ -1,8 +1,8 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { useTerminalStore }                     from '@/lib/store';
 import {
   getAvailableMerchants, simulateClientPayment, processTransaction,
@@ -23,16 +23,18 @@ import {
 /* ── Sub-composants terminal (inchangés) ── */
 import TerminalScreen   from '@/components/terminal/TerminalScreen';
 import Keypad           from '@/components/terminal/Keypad';
-import CardSelector     from '@/components/terminal/CardSelector';
 import CardReaderSim    from '@/components/terminal/CardReaderSim';
-import MerchantSelector from '@/components/terminal/MerchantSelector';
 import TPEShell         from '@/components/banking/TPEShell';
-import ConfigPanel      from '@/components/config/ConfigPanel';
-import DebugView        from '@/components/pedagogy/DebugView';
-import TechnicalDetail  from '@/components/pedagogy/TechnicalDetail';
 
 /* ── Banking design system ── */
 import { BankSpinner } from '@shared/components/banking/primitives/BankSpinner';
+
+/* ── Deferred chunks to lower initial JS cost ── */
+const CardSelector = dynamic(() => import('@/components/terminal/CardSelector'), { ssr: false });
+const MerchantSelector = dynamic(() => import('@/components/terminal/MerchantSelector'), { ssr: false });
+const ConfigPanel = dynamic(() => import('@/components/config/ConfigPanel'), { ssr: false });
+const DebugView = dynamic(() => import('@/components/pedagogy/DebugView'), { ssr: false });
+const TechnicalDetail = dynamic(() => import('@/components/pedagogy/TechnicalDetail'), { ssr: false });
 
 /* ══════════════════════════════════════════════════════
    TYPES (inchangés)
@@ -48,6 +50,61 @@ type PaymentTransaction = {
 type PaymentResultPayload = {
   success: boolean; transaction?: PaymentTransaction; error?: string;
   message?: string; responseCode?: string; response_code?: string; ledgerBooked?: boolean;
+};
+
+type PendingThreeDSContext = {
+  mode: 'client' | 'merchant';
+  amount: number;
+  paymentType: string;
+  merchantId: string | null;
+  merchantName: string;
+  merchantMcc: string | null;
+  cardId?: string;
+  pan?: string;
+  maskedPan: string;
+};
+
+const PENDING_3DS_STORAGE_KEY = 'tpe:pending-3ds';
+
+const readPendingThreeDSContext = (): PendingThreeDSContext | null => {
+  if (typeof window === 'undefined') return null;
+  const raw = window.sessionStorage.getItem(PENDING_3DS_STORAGE_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as PendingThreeDSContext;
+  } catch {
+    window.sessionStorage.removeItem(PENDING_3DS_STORAGE_KEY);
+    return null;
+  }
+};
+
+const writePendingThreeDSContext = (context: PendingThreeDSContext): void => {
+  if (typeof window === 'undefined') return;
+  window.sessionStorage.setItem(PENDING_3DS_STORAGE_KEY, JSON.stringify(context));
+};
+
+const clearPendingThreeDSContext = (): void => {
+  if (typeof window === 'undefined') return;
+  window.sessionStorage.removeItem(PENDING_3DS_STORAGE_KEY);
+};
+
+const clearThreeDSReturnParams = (): void => {
+  if (typeof window === 'undefined') return;
+  const cleanUrl = new URL(window.location.href);
+  cleanUrl.searchParams.delete('transStatus');
+  cleanUrl.searchParams.delete('acsTransId');
+  cleanUrl.searchParams.delete('txId');
+  window.history.replaceState({}, '', cleanUrl.toString());
+};
+
+const buildThreeDSRedirectUrl = (rawChallengeUrl: string): string => {
+  const challengeUrl = new URL(rawChallengeUrl);
+  const returnUrl = new URL(window.location.href);
+  returnUrl.searchParams.delete('transStatus');
+  returnUrl.searchParams.delete('acsTransId');
+  returnUrl.searchParams.delete('txId');
+  challengeUrl.searchParams.set('returnUrl', returnUrl.toString());
+  return challengeUrl.toString();
 };
 
 /* ══════════════════════════════════════════════════════
@@ -152,7 +209,6 @@ function LoadingCard({ title, subtitle }: { title: string; subtitle: string }) {
    COMPOSANT PRINCIPAL
    ══════════════════════════════════════════════════════ */
 function HomeContent() {
-  const searchParams = useSearchParams();
   const { isLoading: isAuthLoading, isAuthenticated, token: authToken, user, login } = useAuth();
   const {
     amount, selectedType, selectedCard, selectedMerchant, cardData,
@@ -161,9 +217,24 @@ function HomeContent() {
     debugMode, toggleTechnicalDetails, reset,
   } = useTerminalStore();
 
-  const requestedMerchantId  = searchParams.get('merchantId')?.trim() || null;
-  const fromParam            = (searchParams.get('from') || '').toLowerCase();
-  const urlToken             = searchParams.get('token')?.trim() || null;
+  const [routeParams, setRouteParams] = useState<{
+    requestedMerchantId: string | null;
+    fromParam: string;
+    urlToken: string | null;
+  }>({ requestedMerchantId: null, fromParam: '', urlToken: null });
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setRouteParams({
+      requestedMerchantId: params.get('merchantId')?.trim() || null,
+      fromParam: (params.get('from') || '').toLowerCase(),
+      urlToken: params.get('token')?.trim() || null,
+    });
+  }, []);
+
+  const requestedMerchantId = routeParams.requestedMerchantId;
+  const fromParam = routeParams.fromParam;
+  const urlToken = routeParams.urlToken;
   const isClientCheckoutFlow = fromParam === 'client' || Boolean(requestedMerchantId);
   const isMerchantLocked     = Boolean(requestedMerchantId);
   const isMerchantUser       = normalizeRole(user?.role) === UserRole.MARCHAND;
@@ -173,7 +244,9 @@ function HomeContent() {
   const [lastBootCheckAt,       setLastBootCheckAt]       = useState<Date | null>(null);
   const [paymentStep,           setPaymentStep]           = useState<PaymentStep>('card');
   const [isProcessing,          setIsProcessing]          = useState(false);
+  const [isResumingThreeDS,     setIsResumingThreeDS]     = useState(false);
   const [paymentResult,         setPaymentResult]         = useState<PaymentResultPayload | null>(null);
+  const [threeDSResumeContext,  setThreeDSResumeContext]  = useState<PendingThreeDSContext | null>(null);
   const [use3DS,                setUse3DS]                = useState(true);
   const [merchantPrefillLoading,setMerchantPrefillLoading]= useState(false);
   const [merchantPrefillError,  setMerchantPrefillError]  = useState<string | null>(null);
@@ -215,17 +288,28 @@ function HomeContent() {
 
   /* ── Boot sequence ── */
   useEffect(() => {
-    const bootSequence = async () => {
+    let cancelled = false;
+
+    setIsBooting(false);
+    setState('amount-input');
+
+    const checkHealth = async () => {
       try {
-        await new Promise(resolve => setTimeout(resolve, 800));
         const { checkSystemHealth } = await import('@/lib/api-client');
-        const isHealthy             = await checkSystemHealth();
+        const isHealthy = await checkSystemHealth();
+        if (cancelled) return;
         setLastBootCheckAt(new Date());
-        if (isHealthy) { setIsBooting(false); setState('amount-input'); }
-        else { setBootError('Erreur de connexion Gateway'); setTimeout(() => setIsBooting(false), 2000); }
-      } catch (err) { console.error('Boot failed', err); setBootError('System Failure'); setIsBooting(false); }
+        if (!isHealthy) setBootError('Erreur de connexion Gateway');
+      } catch (err) {
+        console.error('Boot failed', err);
+        if (!cancelled) setBootError('System Failure');
+      }
     };
-    bootSequence();
+
+    void checkHealth();
+    return () => {
+      cancelled = true;
+    };
   }, [setState]);
 
   /* ── Merchant prefill (URL merchantId) ── */
@@ -275,6 +359,238 @@ function HomeContent() {
     if (!isClientCheckoutFlow && paymentStep === 'card') setState('card-wait');
   }, [isClientCheckoutFlow, paymentStep, setState]);
 
+  useEffect(() => {
+    if (paymentStep === 'amount') setState('amount-input');
+  }, [paymentStep, setState]);
+
+  const applyClientPaymentOutcome = (response: PaymentResultPayload, fallbackContext?: PendingThreeDSContext | null) => {
+    const eventAmount = fallbackContext?.amount ?? amount;
+    const eventType = (fallbackContext?.paymentType as typeof selectedType) || selectedType;
+    setPaymentResult(response);
+
+    if (response.success) {
+      const txn = response.transaction;
+      const authCode = txn?.authorization_code || txn?.authorizationCode || '';
+      const txnId = txn?.transaction_id || txn?.transactionId || txn?.stan || '';
+      const maskedPan = selectedCard?.maskedPan || fallbackContext?.maskedPan || '****';
+
+      setLastTransactionId(txn?.id || null);
+      setCurrentTransaction({
+        approved: true,
+        responseCode: txn?.response_code || '00',
+        responseMessage: 'Approved',
+        authorizationCode: authCode,
+        processingTime: 0,
+        matchedRules: [],
+        timestamp: new Date()
+      });
+      addToHistory({
+        id: txnId || txn?.id || String(Date.now()),
+        amount: eventAmount,
+        type: eventType,
+        status: 'APPROVED',
+        responseCode: txn?.response_code || '00',
+        authorizationCode: authCode,
+        maskedPan,
+        timestamp: new Date(),
+        matchedRules: []
+      });
+
+      if (selectedCard) {
+        setSelectedCard({ ...selectedCard, balance: selectedCard.balance - amount });
+      }
+      return;
+    }
+
+    const errorCode = typeof response.responseCode === 'string'
+      ? response.responseCode
+      : (typeof response.response_code === 'string' ? response.response_code : '05');
+    const errorMsg = typeof response.error === 'string'
+      ? response.error
+      : (typeof response.message === 'string' ? response.message : 'Declined');
+    const failedTxn = response.transaction;
+    const maskedPan = selectedCard?.maskedPan || fallbackContext?.maskedPan || '****';
+
+    setCurrentTransaction({
+      approved: false,
+      responseCode: errorCode,
+      responseMessage: errorMsg,
+      matchedRules: [],
+      processingTime: 0,
+      timestamp: new Date()
+    });
+    addToHistory({
+      id: failedTxn?.transaction_id || failedTxn?.id || `DECLINED-${Date.now()}`,
+      amount: eventAmount,
+      type: eventType,
+      status: 'DECLINED',
+      responseCode: errorCode,
+      authorizationCode: '',
+      maskedPan,
+      timestamp: new Date(),
+      matchedRules: []
+    });
+  };
+
+  const applyMerchantPaymentOutcome = (
+    approved: boolean,
+    params: { responseCode: string; responseMessage: string; authorizationCode?: string; processingTime?: number; maskedPan: string; fallbackContext?: PendingThreeDSContext | null }
+  ) => {
+    const eventAmount = params.fallbackContext?.amount ?? amount;
+    const eventType = (params.fallbackContext?.paymentType as typeof selectedType) || selectedType;
+    setPaymentResult(
+      approved
+        ? { success: true, responseCode: params.responseCode, transaction: { authorization_code: params.authorizationCode, response_code: params.responseCode } }
+        : { success: false, error: params.responseMessage, responseCode: params.responseCode }
+    );
+
+    setCurrentTransaction({
+      approved,
+      responseCode: params.responseCode,
+      responseMessage: params.responseMessage,
+      authorizationCode: params.authorizationCode || '',
+      matchedRules: [],
+      processingTime: params.processingTime || 0,
+      timestamp: new Date()
+    });
+
+    addToHistory({
+      id: approved ? String(Date.now()) : `DECLINED-${Date.now()}`,
+      amount: eventAmount,
+      type: eventType,
+      status: approved ? 'APPROVED' : 'DECLINED',
+      responseCode: params.responseCode,
+      authorizationCode: approved ? (params.authorizationCode || '') : '',
+      maskedPan: params.maskedPan,
+      timestamp: new Date(),
+      matchedRules: []
+    });
+
+    setState(approved ? 'approved' : 'declined');
+  };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const returnedTransStatus = params.get('transStatus');
+    const returnedAcsTransId = params.get('acsTransId');
+
+    if (!returnedTransStatus && !returnedAcsTransId) {
+      return;
+    }
+
+    const pendingContext = readPendingThreeDSContext();
+    if (!pendingContext || isResumingThreeDS) {
+      clearThreeDSReturnParams();
+      return;
+    }
+
+    if (pendingContext.mode === 'client' && (isAuthLoading || (urlToken && !tokenRestored) || !isAuthenticated)) {
+      return;
+    }
+
+    setThreeDSResumeContext(pendingContext);
+    clearThreeDSReturnParams();
+
+    if (returnedTransStatus !== 'Y' || !returnedAcsTransId) {
+      clearPendingThreeDSContext();
+      if (pendingContext.mode === 'merchant') {
+        applyMerchantPaymentOutcome(false, {
+          responseCode: '05',
+          responseMessage: '3D-Secure authentication failed',
+          maskedPan: pendingContext.maskedPan,
+          fallbackContext: pendingContext
+        });
+      } else {
+        applyClientPaymentOutcome({
+          success: false,
+          error: '3D-Secure authentication failed',
+          responseCode: '05'
+        }, pendingContext);
+      }
+      return;
+    }
+
+    const resumeAfterChallenge = async () => {
+      setIsResumingThreeDS(true);
+      setIsProcessing(true);
+      setPaymentResult(null);
+
+      try {
+        if (pendingContext.mode === 'merchant') {
+          if (!pendingContext.pan || !pendingContext.merchantId) {
+            throw new Error('Contexte 3DS marchand incomplet');
+          }
+
+          const result = await processTransaction({
+            pan: pendingContext.pan,
+            amount: pendingContext.amount,
+            type: pendingContext.paymentType as typeof selectedType,
+            merchantId: pendingContext.merchantId,
+            mcc: pendingContext.merchantMcc || undefined,
+            threeDSCompleted: true,
+            acsTransId: returnedAcsTransId,
+          });
+
+          clearPendingThreeDSContext();
+
+          applyMerchantPaymentOutcome(Boolean(result.approved), {
+            responseCode: result.responseCode,
+            responseMessage: result.responseMessage,
+            authorizationCode: result.authorizationCode || result.authCode || '',
+            processingTime: result.processingTime,
+            maskedPan: pendingContext.maskedPan,
+            fallbackContext: pendingContext
+          });
+          return;
+        }
+
+        if (!pendingContext.cardId || !pendingContext.merchantId) {
+          throw new Error('Contexte 3DS client incomplet');
+        }
+
+        const response = await simulateClientPayment({
+          cardId: pendingContext.cardId,
+          merchantId: pendingContext.merchantId,
+          amount: pendingContext.amount,
+          use3DS: true,
+          paymentType: pendingContext.paymentType,
+          threeDSCompleted: true,
+          acsTransId: returnedAcsTransId,
+        });
+
+        clearPendingThreeDSContext();
+        applyClientPaymentOutcome(response.success ? response : {
+          ...response,
+          success: false,
+          error: response.error || response.message || 'Aucune reponse exploitable.',
+          responseCode: response.responseCode || response.response_code || '96'
+        }, pendingContext);
+      } catch (error: unknown) {
+        clearPendingThreeDSContext();
+        const errMsg = getErrorMessage(error, 'Erreur systeme');
+        if (pendingContext.mode === 'merchant') {
+          applyMerchantPaymentOutcome(false, {
+            responseCode: '96',
+            responseMessage: errMsg,
+            maskedPan: pendingContext.maskedPan,
+            fallbackContext: pendingContext
+          });
+        } else {
+          applyClientPaymentOutcome({
+            success: false,
+            error: errMsg,
+            responseCode: '96'
+          }, pendingContext);
+        }
+      } finally {
+        setIsProcessing(false);
+        setIsResumingThreeDS(false);
+      }
+    };
+
+    void resumeAfterChallenge();
+  }, [isAuthLoading, isAuthenticated, isResumingThreeDS, tokenRestored, urlToken]);
+
   /* ── Handlers ── */
   const handleAmountComplete = () => {
     if (isClientCheckoutFlow) {
@@ -290,7 +606,10 @@ function HomeContent() {
 
   const handleCardRead = (data: CardData) => { setCardData(data); setState('amount-input'); };
 
-  const displayMaskedPan = selectedCard?.maskedPan || (cardData ? `**** **** **** ${cardData.pan.slice(-4)}` : '—');
+  const displayMaskedPan = selectedCard?.maskedPan
+    || (cardData ? `**** **** **** ${cardData.pan.slice(-4)}` : null)
+    || threeDSResumeContext?.maskedPan
+    || '—';
 
   /* ── Client payment handler ── */
   const handleProcessPayment = async () => {
@@ -302,33 +621,33 @@ function HomeContent() {
     setIsProcessing(true); setPaymentResult(null);
     try {
       const response = await simulateClientPayment({ cardId: selectedCard.id, merchantId: selectedMerchant.id, amount, use3DS: use3DS && selectedCard.threedsEnrolled, paymentType: selectedType });
+      if (!response.success && (response.responseCode === '65' || response.response_code === '65') && response.threeDSResult?.challengeUrl) {
+        const pendingContext: PendingThreeDSContext = {
+          mode: 'client',
+          amount,
+          paymentType: selectedType,
+          merchantId: selectedMerchant.id,
+          merchantName: selectedMerchant.merchantName,
+          merchantMcc: selectedMerchant.mcc,
+          cardId: selectedCard.id,
+          maskedPan: selectedCard.maskedPan,
+        };
+        writePendingThreeDSContext(pendingContext);
+        setThreeDSResumeContext(pendingContext);
+        window.location.assign(buildThreeDSRedirectUrl(response.threeDSResult.challengeUrl));
+        return;
+      }
+
       const normalizedError        = typeof response.error === 'string' ? response.error : (typeof response.message === 'string' ? response.message : undefined);
       const normalizedResponseCode = typeof response.responseCode === 'string' ? response.responseCode : (typeof response.response_code === 'string' ? response.response_code : '96');
       const normalizedResponse: PaymentResultPayload = response.success ? response : { ...response, success: false, error: normalizedError || 'Aucune réponse exploitable.', responseCode: normalizedResponseCode };
-      setPaymentResult(normalizedResponse);
-      if (normalizedResponse.success) {
-        const txn    = normalizedResponse.transaction;
-        const authCode = txn?.authorization_code || txn?.authorizationCode || '';
-        const txnId    = txn?.transaction_id || txn?.transactionId || txn?.stan || '';
-        setLastTransactionId(txn?.id || null);
-        setCurrentTransaction({ approved: true, responseCode: txn?.response_code || '00', responseMessage: 'Approved', authorizationCode: authCode, processingTime: 0, matchedRules: [], timestamp: new Date() });
-        addToHistory({ id: txnId || txn?.id || String(Date.now()), amount, type: selectedType, status: 'APPROVED', responseCode: txn?.response_code || '00', authorizationCode: authCode, maskedPan: selectedCard.maskedPan, timestamp: new Date(), matchedRules: [] });
-        setSelectedCard({ ...selectedCard, balance: selectedCard.balance - amount });
-      } else {
-        const errorCode = typeof normalizedResponse.responseCode === 'string' ? normalizedResponse.responseCode : (typeof normalizedResponse.response_code === 'string' ? normalizedResponse.response_code : '05');
-        const errorMsg  = typeof normalizedResponse.error === 'string' ? normalizedResponse.error : (typeof normalizedResponse.message === 'string' ? normalizedResponse.message : 'Declined');
-        const failedTxn = normalizedResponse.transaction;
-        setCurrentTransaction({ approved: false, responseCode: errorCode, responseMessage: errorMsg, matchedRules: [], processingTime: 0, timestamp: new Date() });
-        addToHistory({ id: failedTxn?.transaction_id || failedTxn?.id || `DECLINED-${Date.now()}`, amount, type: selectedType, status: 'DECLINED', responseCode: errorCode, authorizationCode: '', maskedPan: selectedCard.maskedPan, timestamp: new Date(), matchedRules: [] });
-      }
+      applyClientPaymentOutcome(normalizedResponse);
     } catch (error: unknown) {
       console.error('Payment error:', error);
       const responseData = isRecord(error) && isRecord(error.response) && isRecord((error.response as Record<string, unknown>).data) ? (error.response as Record<string, unknown>).data as Record<string, unknown> : null;
       const errMsg  = responseData && typeof responseData.error === 'string' ? responseData.error : (error instanceof Error ? error.message : 'Erreur système');
       const errCode = responseData && typeof responseData.responseCode === 'string' ? responseData.responseCode : '96';
-      setPaymentResult({ success: false, error: errMsg, responseCode: errCode });
-      setCurrentTransaction({ approved: false, responseCode: errCode, responseMessage: errMsg, matchedRules: [], processingTime: 0, timestamp: new Date() });
-      addToHistory({ id: `ERR-${Date.now()}`, amount, type: selectedType, status: 'DECLINED', responseCode: errCode, authorizationCode: '', maskedPan: selectedCard?.maskedPan || '****', timestamp: new Date(), matchedRules: [] });
+      applyClientPaymentOutcome({ success: false, error: errMsg, responseCode: errCode });
     } finally { setIsProcessing(false); }
   };
 
@@ -342,28 +661,46 @@ function HomeContent() {
     try {
       const result      = await processTransaction({ pan: cardData.pan, amount, type: selectedType, merchantId: selectedMerchant?.id, mcc: selectedMerchant?.mcc });
       const maskedPan   = `**** **** **** ${cardData.pan.slice(-4)}`;
-      if (result.approved) {
-        setPaymentResult({ success: true, responseCode: result.responseCode, transaction: { authorization_code: result.authorizationCode || result.authCode, response_code: result.responseCode } });
-        setCurrentTransaction({ approved: true, responseCode: result.responseCode, responseMessage: result.responseMessage, authorizationCode: result.authorizationCode || result.authCode || '', processingTime: result.processingTime, matchedRules: [], timestamp: new Date() });
-        addToHistory({ id: String(Date.now()), amount, type: selectedType, status: 'APPROVED', responseCode: result.responseCode, authorizationCode: result.authorizationCode || result.authCode || '', maskedPan, timestamp: new Date(), matchedRules: [] });
-        setState('approved');
-      } else {
-        setPaymentResult({ success: false, error: result.responseMessage, responseCode: result.responseCode });
-        setCurrentTransaction({ approved: false, responseCode: result.responseCode, responseMessage: result.responseMessage, matchedRules: [], processingTime: result.processingTime, timestamp: new Date() });
-        addToHistory({ id: `DECLINED-${Date.now()}`, amount, type: selectedType, status: 'DECLINED', responseCode: result.responseCode, authorizationCode: '', maskedPan, timestamp: new Date(), matchedRules: [] });
-        setState('declined');
+
+      if (!result.approved && result.responseCode === '65' && result.threeDSResult?.challengeUrl && selectedMerchant?.id) {
+        const pendingContext: PendingThreeDSContext = {
+          mode: 'merchant',
+          amount,
+          paymentType: selectedType,
+          merchantId: selectedMerchant.id,
+          merchantName: selectedMerchant.merchantName || 'Marchand',
+          merchantMcc: selectedMerchant.mcc || null,
+          pan: cardData.pan,
+          maskedPan,
+        };
+        writePendingThreeDSContext(pendingContext);
+        setThreeDSResumeContext(pendingContext);
+        window.location.assign(buildThreeDSRedirectUrl(result.threeDSResult.challengeUrl));
+        return;
       }
+
+      applyMerchantPaymentOutcome(Boolean(result.approved), {
+        responseCode: result.responseCode,
+        responseMessage: result.responseMessage,
+        authorizationCode: result.authorizationCode || result.authCode || '',
+        processingTime: result.processingTime,
+        maskedPan
+      });
     } catch (error: unknown) {
       console.error('Merchant payment error:', error);
       const errMsg = error instanceof Error ? error.message : 'Erreur système';
-      setPaymentResult({ success: false, error: errMsg, responseCode: '96' });
-      setCurrentTransaction({ approved: false, responseCode: '96', responseMessage: errMsg, matchedRules: [], processingTime: 0, timestamp: new Date() });
-      setState('declined');
+      applyMerchantPaymentOutcome(false, {
+        responseCode: '96',
+        responseMessage: errMsg,
+        maskedPan: cardData ? `**** **** **** ${cardData.pan.slice(-4)}` : '****'
+      });
     } finally { setIsProcessing(false); }
   };
 
   const handleNewTransaction = () => {
     const lockedMerchant = isClientCheckoutFlow ? selectedMerchant : null;
+    clearPendingThreeDSContext();
+    setThreeDSResumeContext(null);
     setPaymentResult(null); setPaymentStep('card'); setLastTransactionId(null); reset();
     if (lockedMerchant) setSelectedMerchant(lockedMerchant);
     setState('amount-input');
@@ -404,6 +741,7 @@ function HomeContent() {
     { key: 'confirm',  icon: CheckCircle2, label: 'Confirmer' },
   ];
   const currentStepIdx = STEPS.findIndex(s => s.key === paymentStep);
+  const resultAmount = paymentResult ? (threeDSResumeContext?.amount ?? amount) : amount;
 
   return (
     <TPEShell className="font-sans">
@@ -459,8 +797,7 @@ function HomeContent() {
             position:     'relative',
             border:       '1px solid rgba(255,255,255,0.12)',
             borderTop:    '1px solid rgba(255,255,255,0.20)',
-            background:   'rgba(0,0,0,0.55)',
-            backdropFilter: 'blur(24px)',
+            background:   'rgba(8,10,18,0.82)',
             boxShadow:    '0 24px 80px rgba(79,70,229,0.2), 0 4px 16px rgba(0,0,0,0.6)',
           }}>
             {/* Halo derrière */}
@@ -701,9 +1038,9 @@ function HomeContent() {
                 <h3 style={{ fontSize: 22, fontWeight: 700, color: paymentResult.success ? 'var(--bank-success)' : 'var(--bank-danger)', marginBottom: 6 }}>
                   {paymentResult.success ? 'Paiement Approuvé' : 'Paiement Refusé'}
                 </h3>
-                <p style={{ color: 'var(--bank-text-secondary)', marginBottom: 4, fontVariantNumeric: 'tabular-nums' }}>{amount.toFixed(2)} EUR</p>
+                <p style={{ color: 'var(--bank-text-secondary)', marginBottom: 4, fontVariantNumeric: 'tabular-nums' }}>{resultAmount.toFixed(2)} EUR</p>
                 <p style={{ fontSize: 12, color: 'var(--bank-text-tertiary)', marginBottom: 20 }}>
-                  {selectedMerchant?.merchantName} — {displayMaskedPan}
+                  {(selectedMerchant?.merchantName || threeDSResumeContext?.merchantName || 'Marchand')} — {displayMaskedPan}
                 </p>
 
                 <div style={{ borderRadius: 12, border: '1px solid var(--bank-border-subtle)', background: 'rgba(0,0,0,0.2)', padding: 14, marginBottom: 20, textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -790,25 +1127,4 @@ function HomeContent() {
   );
 }
 
-/* ══════════════════════════════════════════════════════
-   FALLBACK SUSPENSE
-   ══════════════════════════════════════════════════════ */
-function TerminalPageFallback() {
-  return (
-    <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0C0E1A', padding: 32 }}>
-      <div style={{ maxWidth: 480, width: '100%', borderRadius: 16, border: '1px solid rgba(255,255,255,0.08)', background: '#131525', padding: 40, textAlign: 'center' }}>
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}><BankSpinner size={40} /></div>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#f1f5f9', marginBottom: 8 }}>Chargement du terminal</h1>
-        <p style={{ fontSize: 14, color: '#64748b' }}>Initialisation de l&apos;interface de paiement…</p>
-      </div>
-    </main>
-  );
-}
-
-export default function Home() {
-  return (
-    <Suspense fallback={<TerminalPageFallback />}>
-      <HomeContent />
-    </Suspense>
-  );
-}
+export default HomeContent;

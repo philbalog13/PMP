@@ -6,10 +6,11 @@ import { BankShell }       from '@shared/components/banking/layout/BankShell';
 import { ClientSidebar }   from '@/components/banking/ClientSidebar';
 import { ClientTopbar }    from '@/components/banking/ClientTopbar';
 import { ClientMobileNav } from '@/components/banking/ClientMobileNav';
+import { AuthSessionGate } from '@/components/AuthSessionGate';
 
 /* ── Fonts (inchangé) ── */
-const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit' });
-const inter  = Inter({ subsets: ['latin'], variable: '--font-inter' });
+const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit', display: 'optional' });
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'optional' });
 
 export const metadata: Metadata = {
   title:       'MoneBank — Espace Client',
@@ -30,15 +31,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
            * Il gère : sidebar desktop, topbar sticky, bottom nav mobile,
            *           thème dark/light (localStorage), data-bank-theme/role.
            */}
-          <BankShell
-            role="client"
-            defaultTheme="dark"
-            sidebar={<ClientSidebar />}
-            topbar={<ClientTopbar />}
-            mobileNav={<ClientMobileNav />}
-          >
-            {children}
-          </BankShell>
+          <AuthSessionGate>
+            <BankShell
+              role="client"
+              defaultTheme="dark"
+              sidebar={<ClientSidebar />}
+              topbar={<ClientTopbar />}
+              mobileNav={<ClientMobileNav />}
+            >
+              {children}
+            </BankShell>
+          </AuthSessionGate>
         </AuthProvider>
       </body>
     </html>

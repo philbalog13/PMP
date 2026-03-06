@@ -1,7 +1,19 @@
 import React from 'react';
+import dynamic from 'next/dynamic';
 import { NotionLayout } from '@shared/components/notion/NotionLayout';
-import { InstructorSidebar } from '@/components/instructor/InstructorSidebar';
-import { InstructorTopbarContent } from '@/components/instructor/InstructorTopbarContent';
+import { NotionToastProvider } from '@shared/components/notion/NotionToast';
+
+const InstructorSidebar = dynamic(
+  () => import('@/components/instructor/InstructorSidebar').then((module) => module.InstructorSidebar),
+  {
+    loading: () => <div style={{ width: 'var(--n-sidebar-width)', height: '100%' }} />,
+  }
+);
+
+const InstructorTopbarContent = dynamic(
+  () => import('@/components/instructor/InstructorTopbarContent').then((module) => module.InstructorTopbarContent),
+  { loading: () => null }
+);
 
 /**
  * Instructor Layout — Shell Notion pour toutes les pages /instructor/*
@@ -21,11 +33,13 @@ import { InstructorTopbarContent } from '@/components/instructor/InstructorTopba
  */
 export default function InstructorLayout({ children }: { children: React.ReactNode }) {
   return (
-    <NotionLayout
-      sidebar={<InstructorSidebar />}
-      topbar={<InstructorTopbarContent />}
-    >
-      {children}
-    </NotionLayout>
+    <NotionToastProvider>
+      <NotionLayout
+        sidebar={<InstructorSidebar />}
+        topbar={<InstructorTopbarContent />}
+      >
+        {children}
+      </NotionLayout>
+    </NotionToastProvider>
   );
 }

@@ -22,25 +22,11 @@ import { useAuth } from '@shared/context/AuthContext';
 export default function Sidebar() {
     const pathname = usePathname();
     const [mobileOpen, setMobileOpen] = useState(false);
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
 
     const handleLogout = () => {
         setMobileOpen(false);
-        const token = localStorage.getItem('token');
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        localStorage.removeItem('role');
-        localStorage.removeItem('refreshToken');
-        document.cookie = 'token=; Max-Age=0; path=/';
-        document.cookie = 'refreshToken=; Max-Age=0; path=/';
-        if (token) {
-            fetch('/api/auth/logout', {
-                method: 'POST',
-                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-            }).catch(() => {});
-        }
-        const portalLogin = `${process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:3000'}/login`;
-        window.location.replace(portalLogin);
+        logout();
     };
 
     // Detect admin role (FORMATEUR has FULL_ACCESS)

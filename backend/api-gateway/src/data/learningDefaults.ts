@@ -6,6 +6,10 @@ export type WorkshopCatalogEntry = {
     description: string;
     sections: number;
     quizId: string | null;
+    quizTitle?: string | null;
+    quizPassPercentage?: number | null;
+    quizTimeLimitMinutes?: number | null;
+    quizQuestionCount?: number | null;
     difficulty: string | null;
     estimatedMinutes: number | null;
     moduleOrder: number;

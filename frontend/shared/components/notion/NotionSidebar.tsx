@@ -204,6 +204,7 @@ export function NotionSidebar({ logo, sections, user, onLogout }: NotionSidebarP
                   <li key={item.href}>
                     <Link
                       href={item.href}
+                      prefetch={false}
                       style={itemStyle}
                       onMouseEnter={e => {
                         if (!active) {

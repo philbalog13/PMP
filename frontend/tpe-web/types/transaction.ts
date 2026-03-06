@@ -27,6 +27,8 @@ export interface TransactionRequest {
     threeDsAuthenticated: boolean;
     isRecurring: boolean;
     isEcommerce: boolean;
+    threeDSCompleted?: boolean;
+    acsTransId?: string;
     location?: {
         country: string;
         city?: string;

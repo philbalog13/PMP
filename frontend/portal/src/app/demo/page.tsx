@@ -89,7 +89,6 @@ export default function DemoPage() {
                     <button
                         onClick={() => {
                             logout();
-                            window.location.href = '/login';
                         }}
                         className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl text-red-500 font-bold text-[10px] uppercase tracking-widest transition"
                     >

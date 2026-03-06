@@ -37,6 +37,7 @@ export function BankMobileNav({ items }: BankMobileNavProps) {
           <Link
             key={item.href}
             href={item.href}
+            prefetch={false}
             aria-current={isActive ? 'page' : undefined}
             aria-label={item.label}
             style={{

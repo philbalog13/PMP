@@ -973,7 +973,7 @@ function RoomPageInner({ rawCode }: { rawCode: string }) {
                                         {room.learningObjectives.length > 0 && (
                                             <div style={{ marginBottom: '16px' }}>
                                                 <p style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--n-text-tertiary)', marginBottom: '8px' }}>
-                                                    What you'll learn
+                                                    What you&apos;ll learn
                                                 </p>
                                                 <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: '5px' }}>
                                                     {room.learningObjectives.map((obj, i) => (
@@ -1064,7 +1064,7 @@ function RoomPageInner({ rawCode }: { rawCode: string }) {
                                 </div>
                                 <h2 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--n-text-primary)', marginBottom: '6px' }}>Room Completed!</h2>
                                 <p style={{ fontSize: '13px', color: 'var(--n-text-secondary)', marginBottom: '20px' }}>
-                                    You've successfully compromised the target and captured the flag.
+                                    You&apos;ve successfully compromised the target and captured the flag.
                                 </p>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '10px' }}>
                                     <Link href={`${APP_URLS.studentCtf}/${encodeURIComponent(normalizedCode)}/remediation`} style={{

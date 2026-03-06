@@ -1,389 +1,518 @@
-'use client';
+﻿'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useAuth } from '@shared/context/AuthContext';
+import { useAuth } from '../../auth/useAuth';
 import { UserRole } from '@shared/types/user';
 import {
-    Activity, Search, RefreshCcw, ArrowUpRight, ArrowDownLeft,
-    GitBranch, AlertTriangle, X
+  Activity,
+  AlertTriangle,
+  ArrowDownLeft,
+  ArrowUpRight,
+  GitBranch,
+  RefreshCcw,
+  Search,
+  X,
 } from 'lucide-react';
-import { NotionCard, NotionBadge, NotionSkeleton, NotionEmptyState } from '@shared/components/notion';
+import {
+  NotionBadge,
+  NotionButton,
+  NotionCard,
+  NotionEmptyState,
+  NotionPill,
+  NotionSkeleton,
+} from '@shared/components/notion';
 
 interface PlatformTransaction {
-    id: string;
-    transaction_id: string;
-    stan: string;
-    masked_pan: string;
-    client_id: string;
-    merchant_id: string;
-    amount: string;
-    currency: string;
-    type: string;
-    status: string;
-    response_code: string;
-    authorization_code: string;
-    merchant_name: string;
-    merchant_mcc: string;
-    terminal_id: string;
-    threeds_status: string;
-    fraud_score: string;
-    timestamp: string;
-    settled_at: string | null;
-    client_username: string;
-    client_first_name: string;
-    client_last_name: string;
-    merchant_username: string;
-    merchant_first_name: string;
-    merchant_last_name: string;
+  id: string;
+  transaction_id: string;
+  stan: string;
+  masked_pan: string;
+  client_id: string;
+  merchant_id: string;
+  amount: string;
+  currency: string;
+  type: string;
+  status: string;
+  response_code: string;
+  authorization_code: string;
+  merchant_name: string;
+  merchant_mcc: string;
+  terminal_id: string;
+  threeds_status: string;
+  fraud_score: string;
+  timestamp: string;
+  settled_at: string | null;
+  client_username: string;
+  client_first_name: string;
+  client_last_name: string;
+  merchant_username: string;
+  merchant_first_name: string;
+  merchant_last_name: string;
 }
 
 const STATUS_VARIANT: Record<string, 'success' | 'danger' | 'warning' | 'default'> = {
-    APPROVED: 'success',
-    DECLINED: 'danger',
-    PENDING:  'warning',
-    REFUNDED: 'default',
-    REVERSED: 'default',
+  APPROVED: 'success',
+  DECLINED: 'danger',
+  PENDING: 'warning',
+  REFUNDED: 'default',
+  REVERSED: 'default',
 };
 
 const STATUS_LABEL: Record<string, string> = {
-    APPROVED: 'Approuvée',
-    DECLINED: 'Refusée',
-    PENDING:  'En attente',
-    REFUNDED: 'Remboursée',
-    REVERSED: 'Annulée',
+  APPROVED: 'Approuvee',
+  DECLINED: 'Refusee',
+  PENDING: 'En attente',
+  REFUNDED: 'Remboursee',
+  REVERSED: 'Annulee',
 };
 
 export default function PlatformTransactionsPage() {
-    const router = useRouter();
-    const { isLoading, isAuthenticated, user } = useAuth();
-    const [transactions, setTransactions] = useState<PlatformTransaction[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState('ALL');
-    const [typeFilter, setTypeFilter] = useState('ALL');
-    const [selectedTxn, setSelectedTxn] = useState<PlatformTransaction | null>(null);
+  const router = useRouter();
+  const { isLoading, isAuthenticated, user, role } = useAuth(true);
 
-    const fetchTransactions = useCallback(async () => {
-        setLoading(true);
-        setError(null);
+  const [transactions, setTransactions] = useState<PlatformTransaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [typeFilter, setTypeFilter] = useState('ALL');
+  const [selectedTxn, setSelectedTxn] = useState<PlatformTransaction | null>(null);
+
+  const searchRef = useRef(searchTerm);
+  useEffect(() => {
+    searchRef.current = searchTerm;
+  }, [searchTerm]);
+
+  useEffect(() => {
+    if (!selectedTxn) return;
+    const prevOverflow = document.body.style.overflow;
+    const prevOverscroll = document.body.style.overscrollBehavior;
+    document.body.style.overflow = 'hidden';
+    document.body.style.overscrollBehavior = 'contain';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.body.style.overscrollBehavior = prevOverscroll;
+    };
+  }, [selectedTxn]);
+
+  const fetchTransactions = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') || '' : '';
+      const params = new URLSearchParams({ limit: '200', page: '1' });
+
+      if (statusFilter !== 'ALL') params.set('status', statusFilter);
+      if (typeFilter !== 'ALL') params.set('type', typeFilter);
+      if (searchRef.current.trim()) params.set('search', searchRef.current.trim());
+
+      const response = await fetch(`/api/platform/transactions?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        let message = `Erreur ${response.status}`;
         try {
-            const token = typeof window !== 'undefined' ? (localStorage.getItem('token') || '') : '';
-            const params = new URLSearchParams({ limit: '200', page: '1' });
-            if (statusFilter !== 'ALL') params.set('status', statusFilter);
-            if (typeFilter !== 'ALL') params.set('type', typeFilter);
-            if (searchTerm.trim()) params.set('search', searchTerm.trim());
-
-            const res = await fetch(`/api/platform/transactions?${params.toString()}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (!res.ok) {
-                const text = await res.text();
-                let msg = `Erreur ${res.status}`;
-                try { msg = JSON.parse(text)?.error || msg; } catch { /* plain text response */ }
-                throw new Error(msg);
-            }
-            const data = await res.json();
-            setTransactions(data.transactions || []);
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
+          message = JSON.parse(text)?.error || message;
+        } catch {
+          // plain text response
         }
-    }, [statusFilter, typeFilter, searchTerm]);
+        throw new Error(message);
+      }
 
-    useEffect(() => {
-        if (!isLoading && isAuthenticated) fetchTransactions();
-    }, [isLoading, isAuthenticated, fetchTransactions]);
-
-    /* ── Auth loading ──────────────────────────────────────────────────── */
-    if (isLoading) {
-        return (
-            <div style={{ padding: 'var(--n-space-8) var(--n-space-6)', maxWidth: '1080px', margin: '0 auto' }}>
-                <div style={{ marginBottom: 'var(--n-space-6)' }}>
-                    <NotionSkeleton type="line" width="220px" height="28px" />
-                    <div style={{ marginTop: 'var(--n-space-2)' }}><NotionSkeleton type="line" width="340px" height="14px" /></div>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--n-space-3)', marginBottom: 'var(--n-space-6)' }}>
-                    {[...Array(4)].map((_, i) => <NotionSkeleton key={i} type="stat" />)}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--n-space-2)' }}>
-                    {[...Array(8)].map((_, i) => <NotionSkeleton key={i} type="list" />)}
-                </div>
-            </div>
-        );
+      const payload = await response.json();
+      setTransactions(payload.transactions || []);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erreur de chargement');
+      setTransactions([]);
+    } finally {
+      setLoading(false);
     }
+  }, [statusFilter, typeFilter]);
 
-    /* ── Access check ──────────────────────────────────────────────────── */
-    if (!isAuthenticated || !user || (user.role !== UserRole.ETUDIANT && user.role !== UserRole.FORMATEUR)) {
-        return (
-            <div style={{ padding: 'var(--n-space-8) var(--n-space-6)', maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
-                <AlertTriangle size={40} style={{ color: 'var(--n-danger)', margin: '0 auto var(--n-space-4)' }} />
-                <h1 style={{ fontSize: 'var(--n-text-lg)', fontWeight: 'var(--n-weight-bold)' as React.CSSProperties['fontWeight'], color: 'var(--n-text-primary)', fontFamily: 'var(--n-font-sans)', marginBottom: 'var(--n-space-2)' }}>
-                    Accès restreint
-                </h1>
-                <p style={{ fontSize: 'var(--n-text-sm)', color: 'var(--n-text-secondary)', fontFamily: 'var(--n-font-sans)', marginBottom: 'var(--n-space-4)' }}>
-                    Cette page est réservée aux étudiants et formateurs.
-                </p>
-                <Link href="/" style={{ color: 'var(--n-accent)', fontSize: 'var(--n-text-sm)', fontFamily: 'var(--n-font-sans)' }}>
-                    Retour au portail
-                </Link>
-            </div>
-        );
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      void fetchTransactions();
     }
+  }, [isLoading, isAuthenticated, fetchTransactions]);
 
-    const approved = transactions.filter(t => t.status === 'APPROVED');
-    const declined = transactions.filter(t => t.status === 'DECLINED');
-    const volume   = approved.reduce((s, t) => s + parseFloat(t.amount), 0).toFixed(2);
+  const metrics = useMemo(() => {
+    const approved = transactions.filter((transaction) => transaction.status === 'APPROVED').length;
+    const declined = transactions.filter((transaction) => transaction.status === 'DECLINED').length;
+    const volume = transactions
+      .filter((transaction) => transaction.status === 'APPROVED')
+      .reduce((sum, transaction) => sum + Number.parseFloat(transaction.amount || '0'), 0);
 
-    /* ── Render ────────────────────────────────────────────────────────── */
+    return { approved, declined, volume };
+  }, [transactions]);
+
+  if (isLoading) {
     return (
-        <div style={{ padding: 'var(--n-space-8) var(--n-space-6)', maxWidth: '1080px', margin: '0 auto' }}>
+      <div className="n-page-container" style={{ maxWidth: '1200px' }}>
+        <NotionSkeleton type="line" width="220px" height="28px" />
+        <div style={{ marginTop: 'var(--n-space-2)' }}>
+          <NotionSkeleton type="line" width="340px" height="14px" />
+        </div>
+        <div
+          style={{
+            marginTop: 'var(--n-space-6)',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+            gap: 'var(--n-space-3)',
+          }}
+        >
+          {[...Array(4)].map((_, index) => (
+            <NotionSkeleton key={index} type="stat" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
-            {/* ── PAGE HEADER ─────────────────────────────────────────── */}
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--n-space-4)', marginBottom: 'var(--n-space-7)' }}>
-                <div>
-                    <h1 style={{ fontSize: '26px', fontWeight: 'var(--n-weight-bold)' as React.CSSProperties['fontWeight'], color: 'var(--n-text-primary)', fontFamily: 'var(--n-font-sans)', letterSpacing: '-0.02em', marginBottom: 'var(--n-space-1)' }}>
-                        Transactions Plateforme
-                    </h1>
-                    <p style={{ color: 'var(--n-text-secondary)', fontSize: 'var(--n-text-sm)', fontFamily: 'var(--n-font-sans)' }}>
-                        Vue globale de toutes les transactions de la plateforme PMP en temps réel.
-                    </p>
-                </div>
-                <button
-                    onClick={fetchTransactions}
-                    disabled={loading}
-                    style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)', padding: '6px 14px', borderRadius: 'var(--n-radius-sm)', border: '1px solid var(--n-border)', background: 'var(--n-bg-primary)', color: 'var(--n-text-secondary)', fontSize: 'var(--n-text-sm)', fontFamily: 'var(--n-font-sans)', cursor: loading ? 'default' : 'pointer', flexShrink: 0, opacity: loading ? 0.5 : 1 }}
-                    onMouseEnter={e => { if (!loading) (e.currentTarget as HTMLElement).style.borderColor = 'var(--n-border-strong)'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--n-border)'; }}
-                >
-                    <RefreshCcw size={13} /> Actualiser
-                </button>
+  if (!isAuthenticated || !user || (role !== UserRole.ETUDIANT && role !== UserRole.FORMATEUR)) {
+    return (
+      <div className="n-page-container" style={{ maxWidth: '720px' }}>
+        <NotionEmptyState
+          icon={<AlertTriangle size={26} />}
+          title="Acces restreint"
+          description="Cette page est reservee aux etudiants et formateurs connectes."
+          action={
+            <Link href="/" style={{ textDecoration: 'none' }}>
+              <NotionButton variant="primary">Retour au portail</NotionButton>
+            </Link>
+          }
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="n-page-container" style={{ maxWidth: '1200px' }}>
+      <NotionCard padding="lg">
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+            gap: 'var(--n-space-4)',
+            alignItems: 'center',
+          }}
+        >
+          <div>
+            <NotionPill variant="accent" icon={<Activity size={12} />}>
+              Transaction monitoring
+            </NotionPill>
+            <h1
+              style={{
+                margin: 'var(--n-space-3) 0 var(--n-space-2)',
+                fontSize: 'var(--n-text-2xl)',
+                color: 'var(--n-text-primary)',
+                fontWeight: 'var(--n-weight-bold)',
+              }}
+            >
+              Transactions plateforme
+            </h1>
+            <p style={{ margin: 0, color: 'var(--n-text-secondary)', fontSize: 'var(--n-text-sm)' }}>
+              Vue globale des flux monétiques PMP, avec detail transactionnel et timeline explicative.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <NotionButton variant="secondary" leftIcon={<RefreshCcw size={13} />} onClick={() => void fetchTransactions()} loading={loading}>
+              Actualiser
+            </NotionButton>
+          </div>
+        </div>
+      </NotionCard>
+
+      <div
+        style={{
+          marginTop: 'var(--n-space-4)',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+          gap: 'var(--n-space-3)',
+        }}
+      >
+        {[
+          { label: 'Total', value: transactions.length, tone: 'var(--n-text-primary)' },
+          { label: 'Approuvees', value: metrics.approved, tone: 'var(--n-success)' },
+          { label: 'Refusees', value: metrics.declined, tone: 'var(--n-danger)' },
+          { label: 'Volume EUR', value: metrics.volume.toFixed(2), tone: 'var(--n-accent)' },
+        ].map((stat) => (
+          <NotionCard key={stat.label} padding="md">
+            <div style={{ color: 'var(--n-text-tertiary)', fontSize: 'var(--n-text-xs)', textTransform: 'uppercase' }}>{stat.label}</div>
+            <div
+              style={{
+                marginTop: 'var(--n-space-2)',
+                color: stat.tone,
+                fontFamily: 'var(--n-font-mono)',
+                fontSize: 'var(--n-text-lg)',
+                fontWeight: 'var(--n-weight-bold)',
+              }}
+            >
+              {stat.value}
             </div>
+          </NotionCard>
+        ))}
+      </div>
 
-            {/* ── STAT CARDS ──────────────────────────────────────────── */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--n-space-3)', marginBottom: 'var(--n-space-7)' }}>
-                {[
-                    { label: 'Total',      value: transactions.length },
-                    { label: 'Approuvées', value: approved.length },
-                    { label: 'Refusées',   value: declined.length },
-                    { label: 'Volume EUR', value: volume },
-                ].map(({ label, value }) => (
-                    <NotionCard key={label} variant="default" padding="sm">
-                        <div style={{ padding: 'var(--n-space-2)', textAlign: 'center' }}>
-                            <div style={{ fontSize: '20px', fontWeight: 'var(--n-weight-bold)' as React.CSSProperties['fontWeight'], fontFamily: 'var(--n-font-mono)', color: 'var(--n-text-primary)', lineHeight: 1, marginBottom: '3px' }}>
-                                {value}
-                            </div>
-                            <div style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)' }}>{label}</div>
-                        </div>
-                    </NotionCard>
-                ))}
-            </div>
+      <NotionCard padding="md" style={{ marginTop: 'var(--n-space-4)' }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+            gap: 'var(--n-space-2)',
+            alignItems: 'center',
+          }}
+        >
+          <div style={{ position: 'relative' }}>
+            <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--n-text-tertiary)' }} />
+            <input
+              type="text"
+              className="n-input"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              onKeyDown={(event) => event.key === 'Enter' && void fetchTransactions()}
+              placeholder="Rechercher ID, PAN, marchand"
+              style={{ paddingLeft: '32px' }}
+              aria-label="Recherche transaction"
+            />
+          </div>
 
-            {/* ── FILTERS ─────────────────────────────────────────────── */}
-            <div style={{ display: 'flex', gap: 'var(--n-space-3)', marginBottom: 'var(--n-space-5)', flexWrap: 'wrap' }}>
-                {/* Search */}
-                <div style={{ position: 'relative', flex: 1, minWidth: '200px' }}>
-                    <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--n-text-tertiary)', pointerEvents: 'none' }} />
-                    <input
-                        type="text"
-                        placeholder="Rechercher (ID, PAN, marchand)…"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && fetchTransactions()}
-                        style={{ width: '100%', paddingLeft: '32px', paddingRight: '12px', paddingTop: '7px', paddingBottom: '7px', borderRadius: 'var(--n-radius-sm)', border: '1px solid var(--n-border)', background: 'var(--n-bg-primary)', color: 'var(--n-text-primary)', fontSize: 'var(--n-text-sm)', fontFamily: 'var(--n-font-sans)', outline: 'none', boxSizing: 'border-box' }}
-                        onFocus={e => (e.target as HTMLInputElement).style.borderColor = 'var(--n-border-strong)'}
-                        onBlur={e  => (e.target as HTMLInputElement).style.borderColor = 'var(--n-border)'}
-                    />
-                </div>
-                {/* Status */}
-                <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    style={{ padding: '7px 12px', borderRadius: 'var(--n-radius-sm)', border: '1px solid var(--n-border)', background: 'var(--n-bg-primary)', color: 'var(--n-text-secondary)', fontSize: 'var(--n-text-sm)', fontFamily: 'var(--n-font-sans)', outline: 'none', cursor: 'pointer' }}
-                >
-                    <option value="ALL">Tous statuts</option>
-                    <option value="APPROVED">Approuvé</option>
-                    <option value="DECLINED">Refusé</option>
-                    <option value="PENDING">En attente</option>
-                    <option value="REFUNDED">Remboursé</option>
-                </select>
-                {/* Type */}
-                <select
-                    value={typeFilter}
-                    onChange={(e) => setTypeFilter(e.target.value)}
-                    style={{ padding: '7px 12px', borderRadius: 'var(--n-radius-sm)', border: '1px solid var(--n-border)', background: 'var(--n-bg-primary)', color: 'var(--n-text-secondary)', fontSize: 'var(--n-text-sm)', fontFamily: 'var(--n-font-sans)', outline: 'none', cursor: 'pointer' }}
-                >
-                    <option value="ALL">Tous types</option>
-                    <option value="PURCHASE">Achat</option>
-                    <option value="REFUND">Remboursement</option>
-                    <option value="VOID">Annulation</option>
-                </select>
-            </div>
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="n-input" aria-label="Filtrer par statut">
+            <option value="ALL">Tous statuts</option>
+            <option value="APPROVED">Approuve</option>
+            <option value="DECLINED">Refuse</option>
+            <option value="PENDING">En attente</option>
+            <option value="REFUNDED">Rembourse</option>
+          </select>
 
-            {/* ── ERROR ───────────────────────────────────────────────── */}
-            {error && (
-                <div style={{ marginBottom: 'var(--n-space-5)', padding: 'var(--n-space-3) var(--n-space-4)', borderRadius: 'var(--n-radius-sm)', background: 'var(--n-danger-bg)', border: '1px solid var(--n-danger-border)', color: 'var(--n-danger)', fontSize: 'var(--n-text-sm)', fontFamily: 'var(--n-font-sans)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>{error}</span>
-                    <button onClick={fetchTransactions} style={{ fontSize: 'var(--n-text-xs)', textDecoration: 'underline', background: 'none', border: 'none', color: 'inherit', cursor: 'pointer' }}>Réessayer</button>
-                </div>
-            )}
+          <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} className="n-input" aria-label="Filtrer par type">
+            <option value="ALL">Tous types</option>
+            <option value="PURCHASE">Achat</option>
+            <option value="REFUND">Remboursement</option>
+            <option value="VOID">Annulation</option>
+          </select>
+        </div>
+      </NotionCard>
 
-            {/* ── TRANSACTION LIST ─────────────────────────────────────── */}
-            {loading ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--n-space-2)' }}>
-                    {[...Array(6)].map((_, i) => <NotionSkeleton key={i} type="list" />)}
-                </div>
-            ) : transactions.length === 0 ? (
-                <NotionEmptyState
-                    icon={<Activity size={28} />}
-                    title="Aucune transaction trouvée"
-                    description="Ajustez les filtres ou actualisez pour charger les transactions."
-                    action={
-                        <button
-                            onClick={fetchTransactions}
-                            style={{ display: 'inline-flex', alignItems: 'center', padding: '7px 16px', borderRadius: 'var(--n-radius-sm)', background: 'var(--n-accent)', color: '#fff', fontSize: 'var(--n-text-sm)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], fontFamily: 'var(--n-font-sans)', border: 'none', cursor: 'pointer' }}
-                        >
-                            Actualiser
-                        </button>
-                    }
-                />
-            ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--n-space-2)' }}>
-                    {transactions.map((tx) => (
-                        <NotionCard
-                            key={tx.id}
-                            variant="hover"
-                            padding="sm"
-                            onClick={() => setSelectedTxn(tx)}
-                            style={{ cursor: 'pointer' }}
-                        >
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--n-space-4)', padding: 'var(--n-space-1)' }}>
-                                {/* Left: icon + info */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-3)', flex: 1, minWidth: 0 }}>
-                                    <div style={{ width: '32px', height: '32px', borderRadius: 'var(--n-radius-sm)', background: 'var(--n-bg-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                        {tx.type === 'REFUND'
-                                            ? <ArrowDownLeft size={14} style={{ color: 'var(--n-info)' }} />
-                                            : <ArrowUpRight  size={14} style={{ color: 'var(--n-text-tertiary)' }} />
-                                        }
-                                    </div>
-                                    <div style={{ minWidth: 0, flex: 1 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)', flexWrap: 'wrap', marginBottom: '2px' }}>
-                                            <span style={{ fontSize: 'var(--n-text-sm)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], color: 'var(--n-text-primary)', fontFamily: 'var(--n-font-sans)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                {tx.merchant_name || 'N/A'}
-                                            </span>
-                                            <NotionBadge variant={STATUS_VARIANT[tx.status] || 'default'} size="sm">
-                                                {STATUS_LABEL[tx.status] || tx.status}
-                                            </NotionBadge>
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-3)', fontSize: 'var(--n-text-xs)', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)', flexWrap: 'wrap' }}>
-                                            <span style={{ fontFamily: 'var(--n-font-mono)' }}>{tx.masked_pan || '—'}</span>
-                                            <span>{tx.client_first_name ? `${tx.client_first_name} ${tx.client_last_name || ''}` : tx.client_username || 'Client'}</span>
-                                            <span>{tx.timestamp ? new Date(tx.timestamp).toLocaleString('fr-FR') : '—'}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                {/* Right: amount */}
-                                <div style={{ flexShrink: 0, textAlign: 'right' }}>
-                                    <span style={{ fontSize: 'var(--n-text-sm)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], color: 'var(--n-text-primary)', fontFamily: 'var(--n-font-mono)' }}>
-                                        {parseFloat(tx.amount).toFixed(2)}{' '}
-                                        <span style={{ color: 'var(--n-text-tertiary)', fontWeight: 400, fontFamily: 'var(--n-font-sans)' }}>{tx.currency || 'EUR'}</span>
-                                    </span>
-                                </div>
-                            </div>
-                        </NotionCard>
-                    ))}
-                </div>
-            )}
+      {error && (
+        <div
+          style={{
+            marginTop: 'var(--n-space-4)',
+            padding: 'var(--n-space-3) var(--n-space-4)',
+            borderRadius: 'var(--n-radius-sm)',
+            border: '1px solid var(--n-danger-border)',
+            background: 'var(--n-danger-bg)',
+            color: 'var(--n-danger)',
+            fontSize: 'var(--n-text-sm)',
+          }}
+        >
+          {error}
+        </div>
+      )}
 
-            {/* ── DETAIL MODAL ─────────────────────────────────────────── */}
-            {selectedTxn && (
-                <div
-                    style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--n-space-4)', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
-                    onClick={() => setSelectedTxn(null)}
-                >
-                    <div
-                        style={{ width: '100%', maxWidth: '520px', maxHeight: '90vh', overflowY: 'auto', borderRadius: 'var(--n-radius)', background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)', boxShadow: 'var(--n-shadow-lg)' }}
-                        onClick={e => e.stopPropagation()}
-                    >
-                        <div style={{ padding: 'var(--n-space-6)' }}>
-                            {/* Modal header */}
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--n-space-5)' }}>
-                                <h2 style={{ fontSize: 'var(--n-text-base)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], color: 'var(--n-text-primary)', fontFamily: 'var(--n-font-sans)' }}>
-                                    Détail Transaction
-                                </h2>
-                                <button
-                                    onClick={() => setSelectedTxn(null)}
-                                    style={{ padding: '4px', borderRadius: 'var(--n-radius-sm)', border: 'none', background: 'none', color: 'var(--n-text-tertiary)', cursor: 'pointer' }}
-                                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--n-bg-elevated)'}
-                                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'none'}
-                                >
-                                    <X size={16} />
-                                </button>
-                            </div>
-
-                            {/* Amount highlight */}
-                            <div style={{
-                                borderRadius: 'var(--n-radius-sm)',
-                                padding: 'var(--n-space-4)',
-                                marginBottom: 'var(--n-space-5)',
-                                textAlign: 'center',
-                                background:  selectedTxn.status === 'APPROVED' ? 'var(--n-success-bg)' : selectedTxn.status === 'DECLINED' ? 'var(--n-danger-bg)' : 'var(--n-bg-elevated)',
-                                border: `1px solid ${selectedTxn.status === 'APPROVED' ? 'var(--n-success-border)' : selectedTxn.status === 'DECLINED' ? 'var(--n-danger-border)' : 'var(--n-border)'}`,
-                            }}>
-                                <div style={{ fontSize: '24px', fontWeight: 'var(--n-weight-bold)' as React.CSSProperties['fontWeight'], color: 'var(--n-text-primary)', fontFamily: 'var(--n-font-mono)', marginBottom: 'var(--n-space-2)' }}>
-                                    {parseFloat(selectedTxn.amount).toFixed(2)} EUR
-                                </div>
-                                <NotionBadge variant={STATUS_VARIANT[selectedTxn.status] || 'default'}>
-                                    {STATUS_LABEL[selectedTxn.status] || selectedTxn.status}
-                                </NotionBadge>
-                            </div>
-
-                            {/* Fields */}
-                            <div style={{ marginBottom: 'var(--n-space-6)' }}>
-                                <ModalRow label="Transaction ID"  value={selectedTxn.transaction_id} />
-                                <ModalRow label="STAN"            value={selectedTxn.stan} />
-                                <ModalRow label="Code Auth."      value={selectedTxn.authorization_code} />
-                                <ModalRow label="Code Réponse"    value={selectedTxn.response_code} />
-                                <ModalRow label="Type"            value={selectedTxn.type} />
-                                <ModalRow label="Carte"           value={selectedTxn.masked_pan} />
-                                <ModalRow label="Terminal"        value={selectedTxn.terminal_id} />
-                                <ModalRow label="Marchand"        value={selectedTxn.merchant_name} />
-                                <ModalRow label="MCC"             value={selectedTxn.merchant_mcc} />
-                                <ModalRow label="Client"          value={selectedTxn.client_first_name ? `${selectedTxn.client_first_name} ${selectedTxn.client_last_name || ''}` : selectedTxn.client_username} />
-                                <ModalRow label="Score Fraude"    value={selectedTxn.fraud_score ? `${parseFloat(selectedTxn.fraud_score).toFixed(1)}/100` : 'N/A'} />
-                                <ModalRow label="3DS"             value={selectedTxn.threeds_status || 'N/A'} />
-                                <ModalRow label="Date"            value={selectedTxn.timestamp ? new Date(selectedTxn.timestamp).toLocaleString('fr-FR') : 'N/A'} />
-                                <ModalRow label="Réglé le"        value={selectedTxn.settled_at ? new Date(selectedTxn.settled_at).toLocaleString('fr-FR') : 'Non réglé'} />
-                            </div>
-
-                            {/* Timeline CTA */}
-                            <button
-                                onClick={() => { setSelectedTxn(null); router.push(`/student/transactions/${selectedTxn.id}/timeline`); }}
-                                style={{ width: '100%', padding: 'var(--n-space-3)', borderRadius: 'var(--n-radius-sm)', background: 'var(--n-accent)', color: '#fff', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], fontSize: 'var(--n-text-sm)', fontFamily: 'var(--n-font-sans)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--n-space-2)' }}
-                                onMouseEnter={e => (e.currentTarget as HTMLElement).style.opacity = '0.88'}
-                                onMouseLeave={e => (e.currentTarget as HTMLElement).style.opacity = '1'}
-                            >
-                                <GitBranch size={16} />
-                                Voir la Timeline Interactive
-                            </button>
-                        </div>
+      <div style={{ marginTop: 'var(--n-space-4)', display: 'flex', flexDirection: 'column', gap: 'var(--n-space-2)' }}>
+        {loading ? (
+          [...Array(6)].map((_, index) => <NotionSkeleton key={index} type="card" />)
+        ) : transactions.length === 0 ? (
+          <NotionEmptyState
+            icon={<Activity size={24} />}
+            title="Aucune transaction trouvee"
+            description="Ajustez vos filtres ou relancez la recherche."
+          />
+        ) : (
+          transactions.map((transaction) => (
+            <NotionCard key={transaction.id} variant="hover" padding="md" onClick={() => setSelectedTxn(transaction)}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--n-space-3)', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-3)', minWidth: 0 }}>
+                  <div
+                    style={{
+                      width: '34px',
+                      height: '34px',
+                      borderRadius: 'var(--n-radius-sm)',
+                      border: '1px solid var(--n-border)',
+                      background: 'var(--n-bg-secondary)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {transaction.type === 'REFUND' ? (
+                      <ArrowDownLeft size={14} style={{ color: 'var(--n-info)' }} />
+                    ) : (
+                      <ArrowUpRight size={14} style={{ color: 'var(--n-text-tertiary)' }} />
+                    )}
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ display: 'flex', gap: 'var(--n-space-2)', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <span
+                        style={{
+                          color: 'var(--n-text-primary)',
+                          fontSize: 'var(--n-text-sm)',
+                          fontWeight: 'var(--n-weight-semibold)',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {transaction.merchant_name || 'N/A'}
+                      </span>
+                      <NotionBadge variant={STATUS_VARIANT[transaction.status] || 'default'} size="sm">
+                        {STATUS_LABEL[transaction.status] || transaction.status}
+                      </NotionBadge>
                     </div>
+                    <div style={{ marginTop: '4px', display: 'flex', gap: 'var(--n-space-2)', flexWrap: 'wrap' }}>
+                      <NotionPill variant="default">{transaction.masked_pan || '-'}</NotionPill>
+                      <NotionPill variant="default">
+                        {transaction.client_first_name
+                          ? `${transaction.client_first_name} ${transaction.client_last_name || ''}`
+                          : transaction.client_username || 'Client'}
+                      </NotionPill>
+                    </div>
+                  </div>
                 </div>
-            )}
+                <span style={{ color: 'var(--n-text-primary)', fontFamily: 'var(--n-font-mono)', fontSize: 'var(--n-text-sm)', fontWeight: 'var(--n-weight-bold)', flexShrink: 0 }}>
+                  {Number.parseFloat(transaction.amount || '0').toFixed(2)} {transaction.currency || 'EUR'}
+                </span>
+              </div>
+            </NotionCard>
+          ))
+        )}
+      </div>
+
+      {selectedTxn && (
+        <div
+          className="n-modal-backdrop"
+          onClick={() => setSelectedTxn(null)}
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'center',
+            padding: 'max(12px, var(--n-space-4))',
+            overflowY: 'auto',
+            overscrollBehavior: 'contain',
+          }}
+        >
+          <div
+            className="n-modal"
+            style={{ width: '100%', maxWidth: '560px', maxHeight: 'calc(100vh - 24px)', display: 'flex', flexDirection: 'column' }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div style={{ padding: 'var(--n-space-5)', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--n-space-4)' }}>
+                <h2 style={{ margin: 0, color: 'var(--n-text-primary)', fontSize: 'var(--n-text-lg)' }}>Detail transaction</h2>
+                <button
+                  type="button"
+                  onClick={() => setSelectedTxn(null)}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--n-text-tertiary)' }}
+                  aria-label="Fermer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div
+                style={{
+                  border: '1px solid var(--n-border)',
+                  borderRadius: 'var(--n-radius-sm)',
+                  background: 'var(--n-bg-secondary)',
+                  padding: 'var(--n-space-4)',
+                  marginBottom: 'var(--n-space-4)',
+                  textAlign: 'center',
+                }}
+              >
+                <div style={{ color: 'var(--n-text-primary)', fontFamily: 'var(--n-font-mono)', fontSize: 'var(--n-text-xl)', fontWeight: 'var(--n-weight-bold)' }}>
+                  {Number.parseFloat(selectedTxn.amount || '0').toFixed(2)} EUR
+                </div>
+                <div style={{ marginTop: 'var(--n-space-2)' }}>
+                  <NotionBadge variant={STATUS_VARIANT[selectedTxn.status] || 'default'}>{STATUS_LABEL[selectedTxn.status] || selectedTxn.status}</NotionBadge>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gap: 'var(--n-space-2)' }}>
+                <TxnRow label="Transaction ID" value={selectedTxn.transaction_id} />
+                <TxnRow label="STAN" value={selectedTxn.stan} />
+                <TxnRow label="Code auth" value={selectedTxn.authorization_code} />
+                <TxnRow label="Code reponse" value={selectedTxn.response_code} />
+                <TxnRow label="Type" value={selectedTxn.type} />
+                <TxnRow label="Carte" value={selectedTxn.masked_pan} />
+                <TxnRow label="Terminal" value={selectedTxn.terminal_id} />
+                <TxnRow label="Marchand" value={selectedTxn.merchant_name} />
+                <TxnRow label="MCC" value={selectedTxn.merchant_mcc} />
+                <TxnRow
+                  label="Client"
+                  value={
+                    selectedTxn.client_first_name
+                      ? `${selectedTxn.client_first_name} ${selectedTxn.client_last_name || ''}`
+                      : selectedTxn.client_username
+                  }
+                />
+                <TxnRow
+                  label="Score fraude"
+                  value={selectedTxn.fraud_score ? `${Number.parseFloat(selectedTxn.fraud_score).toFixed(1)}/100` : 'N/A'}
+                />
+                <TxnRow label="3DS" value={selectedTxn.threeds_status || 'N/A'} />
+                <TxnRow
+                  label="Date"
+                  value={selectedTxn.timestamp ? new Date(selectedTxn.timestamp).toLocaleString('fr-FR') : 'N/A'}
+                />
+                <TxnRow
+                  label="Reglement"
+                  value={selectedTxn.settled_at ? new Date(selectedTxn.settled_at).toLocaleString('fr-FR') : 'Non regle'}
+                />
+              </div>
+
+              <div style={{ marginTop: 'var(--n-space-4)', paddingBottom: 'var(--n-space-1)' }}>
+                <NotionButton
+                  fullWidth
+                  leftIcon={<GitBranch size={14} />}
+                  onClick={() => {
+                    const id = selectedTxn.id;
+                    setSelectedTxn(null);
+                    router.push(`/student/transactions/${id}/timeline`);
+                  }}
+                >
+                  Voir la timeline
+                </NotionButton>
+              </div>
+            </div>
+          </div>
         </div>
-    );
+      )}
+    </div>
+  );
 }
 
-function ModalRow({ label, value }: { label: string; value: string | null | undefined }) {
-    return (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 'var(--n-space-2) 0', borderBottom: '1px solid var(--n-border)' }}>
-            <span style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)', flexShrink: 0 }}>{label}</span>
-            <span style={{ fontSize: 'var(--n-text-xs)', color: 'var(--n-text-primary)', fontFamily: 'var(--n-font-mono)', textAlign: 'right', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {value || 'N/A'}
-            </span>
-        </div>
-    );
+function TxnRow({ label, value }: { label: string; value: string | null | undefined }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 'var(--n-space-2) 0',
+        borderBottom: '1px solid var(--n-border)',
+      }}
+    >
+      <span style={{ color: 'var(--n-text-tertiary)', fontSize: 'var(--n-text-xs)' }}>{label}</span>
+      <span
+        style={{
+          color: 'var(--n-text-primary)',
+          fontFamily: 'var(--n-font-mono)',
+          fontSize: 'var(--n-text-xs)',
+          maxWidth: '280px',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {value || 'N/A'}
+      </span>
+    </div>
+  );
 }
+

@@ -2,7 +2,7 @@
 # Makefile for Plateforme Monétique Pédagogique
 # ==============================================
 
-.PHONY: help start stop restart logs logs-follow test status clean keys init build ps health ssl-init ssl-renew-start ssl-renew-stop prod prod-lite prod-lite-ui prod-lite-full dev monitoring ctf full down down-lite down-volumes trim-docker
+.PHONY: help start stop restart logs logs-follow test status clean keys init build ps health ssl-init ssl-renew-start ssl-renew-stop prod prod-lite prod-lite-ui prod-lite-full dev monitoring ctf full down down-lite down-volumes trim-docker runtime-up runtime-down runtime-restart runtime-logs runtime-smoke runtime-frontend-smoke runtime-test-all
 
 # Colors for terminal output
 RED := \033[0;31m
@@ -10,7 +10,6 @@ GREEN := \033[0;32m
 YELLOW := \033[1;33m
 BLUE := \033[0;34m
 NC := \033[0m # No Color
-
 # Default target
 .DEFAULT_GOAL := help
 
@@ -130,6 +129,35 @@ full: ## Démarrer tous les services (31 conteneurs)
 	@echo "$(GREEN)Démarrage PMP - mode complet (31 conteneurs)...$(NC)"
 	@docker compose --profile dev --profile monitoring --profile ctf up -d
 	@echo "$(GREEN)✓ Tous les services démarrés$(NC)"
+
+# ==============================================
+# Runtime stack (UA + CTF tests)
+# ==============================================
+
+runtime-up: ## Demarrer la stack runtime complete (UA + CTF)
+	@node scripts/runtime-stack.mjs up
+
+runtime-down: ## Arreter la stack runtime
+	@node scripts/runtime-stack.mjs down
+
+runtime-restart: ## Redemarrer la stack runtime
+	@node scripts/runtime-stack.mjs down
+	@node scripts/runtime-stack.mjs up
+
+runtime-logs: ## Suivre les logs de la stack runtime
+	@node scripts/runtime-stack.mjs logs
+
+runtime-smoke: ## Lancer le smoke test UA + CTF
+	@node scripts/runtime-stack.mjs smoke
+
+runtime-frontend-smoke: ## Lancer le smoke frontend par application
+	@node scripts/runtime-stack.mjs frontend-smoke
+
+runtime-test-all: ## Demarrer runtime puis executer tous les smokes runtime
+	@node scripts/runtime-stack.mjs test-all
+
+runtime-evidence: ## Demarrer runtime puis exporter la preuve standardisee
+	@node scripts/runtime-stack.mjs evidence
 
 down: ## Arrêter et supprimer les conteneurs (tous profils)
 	@echo "$(RED)Arrêt de PMP...$(NC)"

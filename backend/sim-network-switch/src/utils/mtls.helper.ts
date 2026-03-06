@@ -13,7 +13,7 @@ import https from 'https';
 import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
-import type { Express } from 'express';
+import type { Application } from 'express';
 
 export interface MTLSContext {
     caCertPem: string;
@@ -100,7 +100,7 @@ export function createMTLSAgent(ctx: MTLSContext): https.Agent {
  * Start an HTTPS server with mTLS (mutual TLS).
  * Requires connecting clients to present a certificate signed by our CA.
  */
-export function startMTLSServer(app: Express, port: number, ctx: MTLSContext): https.Server {
+export function startMTLSServer(app: Application, port: number, ctx: MTLSContext): https.Server {
     const server = https.createServer(
         {
             ca: ctx.caCertPem,

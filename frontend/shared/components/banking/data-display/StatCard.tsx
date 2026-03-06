@@ -1,35 +1,40 @@
 import { TrendingDown, TrendingUp, type LucideIcon } from 'lucide-react';
 import { BankSkeleton } from '../feedback/BankSkeleton';
 
-/* ══════════════════════════════════════════════════════
-   TYPES
-   ══════════════════════════════════════════════════════ */
 interface StatCardDelta {
-  value:  number;   /* positif = hausse, négatif = baisse */
-  period: string;   /* ex: "vs hier", "ce mois" */
+  value: number;
+  period: string;
+  positive?: boolean;
+  displayValue?: string;
 }
 
 interface StatCardProps {
-  label:    string;
-  value:    string | number;
-  delta?:   StatCardDelta;
-  icon?:    LucideIcon;
+  label: string;
+  value: string | number;
+  delta?: StatCardDelta;
+  icon?: LucideIcon;
   loading?: boolean;
-  accent?:  boolean;   /* bordure accent */
-  /** Indexe pour l'animation stagger (0-based) */
-  index?:   number;
+  accent?: boolean;
+  index?: number;
 }
 
-/* ══════════════════════════════════════════════════════
-   COMPOSANT
-   ══════════════════════════════════════════════════════ */
-export function StatCard({ label, value, delta, icon: Icon, loading = false, accent = false, index = 0 }: StatCardProps) {
+export function StatCard({
+  label,
+  value,
+  delta,
+  icon: Icon,
+  loading = false,
+  accent = false,
+  index = 0,
+}: StatCardProps) {
   if (loading) {
     return <BankSkeleton variant="stat-card" />;
   }
 
-  const deltaPositive = delta && delta.value >= 0;
-  const DeltaIcon     = deltaPositive ? TrendingUp : TrendingDown;
+  const deltaPositive = delta ? (delta.positive ?? delta.value >= 0) : false;
+  const DeltaIcon = deltaPositive ? TrendingUp : TrendingDown;
+  const deltaValueText = delta?.displayValue
+    ?? `${delta && delta.value > 0 ? '+' : ''}${delta?.value.toFixed(1)}%`;
 
   return (
     <div
@@ -38,7 +43,6 @@ export function StatCard({ label, value, delta, icon: Icon, loading = false, acc
         animationDelay: `${index * 80}ms`,
       }}
     >
-      {/* Header : label + icône */}
       <div
         style={{
           display: 'flex',
@@ -69,7 +73,6 @@ export function StatCard({ label, value, delta, icon: Icon, loading = false, acc
         )}
       </div>
 
-      {/* Valeur */}
       <div
         className="bk-stat-value"
         style={{ marginBottom: delta ? 'var(--bank-space-2)' : 0 }}
@@ -77,7 +80,6 @@ export function StatCard({ label, value, delta, icon: Icon, loading = false, acc
         {value}
       </div>
 
-      {/* Delta */}
       {delta && (
         <div
           style={{
@@ -98,7 +100,7 @@ export function StatCard({ label, value, delta, icon: Icon, loading = false, acc
               color: deltaPositive ? 'var(--bank-success-text)' : 'var(--bank-danger-text)',
             }}
           >
-            {deltaPositive ? '+' : ''}{delta.value.toFixed(1)}%
+            {deltaValueText}
           </span>
           <span className="bk-caption">{delta.period}</span>
         </div>

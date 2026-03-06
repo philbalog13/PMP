@@ -142,11 +142,12 @@ const roleMenuSections: Record<UserRole, MenuSection[]> = {
 
 export function UserMenu({ user, role, colors, roleLabels, onLogout }: UserMenuProps) {
     const pathname = usePathname();
-    const [isOpen, setIsOpen] = useState(false);
+    const [openPathname, setOpenPathname] = useState<string | null>(null);
     const menuRef = useRef<HTMLDivElement>(null);
     const menuId = useId();
     const menuButtonId = `${menuId}-button`;
     const menuPanelId = `${menuId}-panel`;
+    const isOpen = openPathname === pathname;
 
     const normalizedRole = normalizeRole(role);
     const RoleIcon = roleIcons[normalizedRole] || User;
@@ -182,21 +183,23 @@ export function UserMenu({ user, role, colors, roleLabels, onLogout }: UserMenuP
         return chars.join('') || 'U';
     }, [displayName]);
 
-    const closeMenu = useCallback(() => setIsOpen(false), []);
-    const toggleMenu = useCallback(() => setIsOpen((prev) => !prev), []);
+    const closeMenu = useCallback(() => setOpenPathname(null), []);
+    const toggleMenu = useCallback(() => {
+        setOpenPathname((prev) => (prev === pathname ? null : pathname));
+    }, [pathname]);
 
     useEffect(() => {
         if (!isOpen) return;
 
         const handleClickOutside = (event: MouseEvent | PointerEvent) => {
             if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-                setIsOpen(false);
+                closeMenu();
             }
         };
 
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.key === 'Escape') {
-                setIsOpen(false);
+                closeMenu();
             }
         };
 
@@ -206,11 +209,7 @@ export function UserMenu({ user, role, colors, roleLabels, onLogout }: UserMenuP
             document.removeEventListener('pointerdown', handleClickOutside);
             document.removeEventListener('keydown', handleKeyDown);
         };
-    }, [isOpen]);
-
-    useEffect(() => {
-        setIsOpen(false);
-    }, [pathname]);
+    }, [closeMenu, isOpen]);
 
     const renderNavItem = (item: MenuItem) => {
         const Icon = item.icon;
@@ -251,7 +250,7 @@ export function UserMenu({ user, role, colors, roleLabels, onLogout }: UserMenuP
     };
 
     const handleLogout = () => {
-        setIsOpen(false);
+        closeMenu();
         onLogout();
     };
 

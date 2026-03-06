@@ -71,15 +71,16 @@ interface Badge {
 }
 
 const WORKSHOP_TITLES: Record<string, string> = {
-    'intro': 'Introduction aux Paiements',
-    'iso8583': 'ISO 8583 - Messages',
-    'hsm-keys': 'HSM et Gestion des Clés',
+    intro: 'Introduction aux paiements',
+    iso8583: 'ISO 8583 - Messages',
+    'hsm-keys': 'HSM et gestion des cles',
     '3ds-flow': 'Flux 3D Secure',
-    'fraud-detection': 'Détection de Fraude',
-    'emv': 'Cartes EMV'
+    'fraud-detection': 'Detection de fraude',
+    emv: 'Cartes EMV'
 };
 
 type UnknownRecord = Record<string, unknown>;
+
 const toRecord = (value: unknown): UnknownRecord => (
     value !== null && typeof value === 'object' ? (value as UnknownRecord) : {}
 );
@@ -95,6 +96,19 @@ const normalizeStudent = (raw: unknown): StudentDetail => {
         role: String(r.role ?? ''),
         status: String(r.status ?? ''),
         createdAt: String(r.createdAt ?? r.created_at ?? '')
+    };
+};
+
+const normalizeStats = (raw: unknown): StudentStats => {
+    const r = toRecord(raw);
+    return {
+        totalXP: Number(r.totalXP ?? r.total_xp ?? 0),
+        workshopsCompleted: Number(r.workshopsCompleted ?? r.workshops_completed ?? 0),
+        quizzesPassed: Number(r.quizzesPassed ?? r.quizzes_passed ?? 0),
+        totalQuizzes: Number(r.totalQuizzes ?? r.total_quizzes ?? 0),
+        avgQuizScore: Number(r.avgQuizScore ?? r.avg_quiz_score ?? 0),
+        badgeCount: Number(r.badgeCount ?? r.badge_count ?? 0),
+        exercisesAssigned: Number(r.exercisesAssigned ?? r.exercises_assigned ?? 0)
     };
 };
 
@@ -137,10 +151,22 @@ const normalizeBadge = (raw: unknown): Badge => {
     };
 };
 
+const readResponseError = async (response: Response, fallback: string): Promise<string> => {
+    try {
+        const payload = await response.json() as UnknownRecord;
+        const message = payload.error ?? payload.message;
+        return typeof message === 'string' && message.trim().length > 0
+            ? message
+            : `${fallback} (${response.status})`;
+    } catch {
+        return `${fallback} (${response.status})`;
+    }
+};
+
 export default function StudentDetailPage() {
     const { isLoading: authLoading } = useAuth(true);
     const params = useParams();
-    const studentId = params.id as string;
+    const studentId = Array.isArray(params.id) ? params.id[0] : params.id;
 
     const [student, setStudent] = useState<StudentDetail | null>(null);
     const [stats, setStats] = useState<StudentStats | null>(null);
@@ -148,57 +174,75 @@ export default function StudentDetailPage() {
     const [quizzes, setQuizzes] = useState<QuizResult[]>([]);
     const [badges, setBadges] = useState<Badge[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [notFound, setNotFound] = useState(false);
+
+    const resetStudentState = () => {
+        setStudent(null);
+        setStats(null);
+        setProgress([]);
+        setQuizzes([]);
+        setBadges([]);
+    };
 
     const fetchStudentData = useCallback(async () => {
+        if (!studentId) {
+            setLoading(false);
+            setNotFound(true);
+            return;
+        }
+
         try {
+            setLoading(true);
+            setError(null);
+            setNotFound(false);
+
             const token = localStorage.getItem('token');
             const response = await fetch(`/api/users/${studentId}/progress`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${token}` }
             });
 
             if (response.ok) {
                 const data = await response.json();
+                if (!data?.student) {
+                    throw new Error('Reponse etudiant incomplete');
+                }
+
                 setStudent(normalizeStudent(data.student));
-                setStats(data.stats);
+                setStats(normalizeStats(data.stats));
                 setProgress((data.progress || []).map(normalizeProgress));
                 setQuizzes((data.quizzes || []).map(normalizeQuiz));
                 setBadges((data.badges || []).map(normalizeBadge));
-            } else {
-                setStudent({ id: studentId, username: 'etudiant_01', email: 'etudiant@pmp.edu', firstName: 'Jean', lastName: 'Dupont', role: 'ROLE_ETUDIANT', status: 'ACTIVE', createdAt: '2024-01-01T10:00:00Z' });
-                setStats({ totalXP: 450, workshopsCompleted: 2, quizzesPassed: 3, totalQuizzes: 4, avgQuizScore: 85, badgeCount: 5, exercisesAssigned: 2 });
-                setProgress([
-                    { workshopId: 'intro', status: 'COMPLETED', progressPercent: 100, currentSection: 5, totalSections: 5, timeSpentMinutes: 45, startedAt: '2024-01-05', completedAt: '2024-01-06' },
-                    { workshopId: 'iso8583', status: 'COMPLETED', progressPercent: 100, currentSection: 8, totalSections: 8, timeSpentMinutes: 120, startedAt: '2024-01-07', completedAt: '2024-01-10' },
-                    { workshopId: 'hsm-keys', status: 'IN_PROGRESS', progressPercent: 50, currentSection: 3, totalSections: 6, timeSpentMinutes: 60, startedAt: '2024-01-12', completedAt: null },
-                ]);
-                setQuizzes([
-                    { quizId: 'quiz-intro', workshopId: 'intro', score: 9, maxScore: 10, percentage: 90, passed: true, submittedAt: '2024-01-06T14:30:00Z' },
-                    { quizId: 'quiz-iso8583', workshopId: 'iso8583', score: 8, maxScore: 10, percentage: 80, passed: true, submittedAt: '2024-01-10T16:00:00Z' },
-                    { quizId: 'quiz-hsm', workshopId: 'hsm-keys', score: 7, maxScore: 10, percentage: 70, passed: false, submittedAt: '2024-01-14T11:00:00Z' },
-                ]);
-                setBadges([
-                    { badgeType: 'FIRST_LOGIN', badgeName: 'Bienvenue !', badgeDescription: 'Première connexion', badgeIcon: 'star', xpAwarded: 10, earnedAt: '2024-01-01' },
-                    { badgeType: 'FIRST_QUIZ', badgeName: 'Premier Quiz', badgeDescription: 'Passer son premier quiz', badgeIcon: 'clipboard-check', xpAwarded: 20, earnedAt: '2024-01-06' },
-                    { badgeType: 'WORKSHOP_COMPLETE', badgeName: 'Atelier Terminé', badgeDescription: 'Terminer un atelier', badgeIcon: 'book-open', xpAwarded: 30, earnedAt: '2024-01-06' },
-                ]);
+                return;
             }
-        } catch (error) {
-            console.error('Failed to fetch student data:', error);
+
+            resetStudentState();
+
+            if (response.status === 404) {
+                setNotFound(true);
+                return;
+            }
+
+            setError(await readResponseError(response, 'Impossible de charger la fiche etudiant'));
+        } catch (fetchError: unknown) {
+            console.error('Failed to fetch student data:', fetchError);
+            resetStudentState();
+            setError(fetchError instanceof Error ? fetchError.message : 'Impossible de charger la fiche etudiant');
         } finally {
             setLoading(false);
         }
     }, [studentId]);
 
     useEffect(() => {
-        if (studentId) fetchStudentData();
-    }, [studentId, fetchStudentData]);
+        void fetchStudentData();
+    }, [fetchStudentData]);
 
     if (authLoading || loading) {
         return (
             <div style={{ minHeight: '100vh', background: 'var(--n-bg-secondary)', padding: '32px 24px' }}>
                 <NotionSkeleton type="line" />
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '12px', marginTop: '24px' }}>
-                    {[0,1,2,3].map(i => <NotionSkeleton key={i} type="stat" />)}
+                    {[0, 1, 2, 3].map((index) => <NotionSkeleton key={index} type="stat" />)}
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', marginTop: '24px' }}>
                     <NotionSkeleton type="card" />
@@ -208,13 +252,59 @@ export default function StudentDetailPage() {
         );
     }
 
-    if (!student) {
+    if (error) {
+        return (
+            <div style={{ minHeight: '100vh', background: 'var(--n-bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+                <div style={{ maxWidth: '480px', width: '100%', background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)', borderRadius: '12px', padding: '24px', textAlign: 'center' }}>
+                    <h1 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--n-text-primary)', marginBottom: '12px' }}>Fiche etudiant indisponible</h1>
+                    <p style={{ fontSize: '14px', color: 'var(--n-text-secondary)', margin: '0 0 20px' }}>{error}</p>
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                        <button
+                            type="button"
+                            onClick={() => void fetchStudentData()}
+                            style={{
+                                border: 'none',
+                                borderRadius: '8px',
+                                background: 'var(--n-accent)',
+                                color: 'white',
+                                padding: '10px 16px',
+                                fontSize: '13px',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                            }}
+                        >
+                            Reessayer
+                        </button>
+                        <Link
+                            href="/instructor/students"
+                            style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderRadius: '8px',
+                                border: '1px solid var(--n-border)',
+                                padding: '10px 16px',
+                                fontSize: '13px',
+                                fontWeight: 500,
+                                color: 'var(--n-text-primary)',
+                                textDecoration: 'none'
+                            }}
+                        >
+                            Retour a la liste
+                        </Link>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (notFound || !student) {
         return (
             <div style={{ minHeight: '100vh', background: 'var(--n-bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <div style={{ textAlign: 'center' }}>
-                    <h1 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--n-text-primary)', marginBottom: '12px' }}>Étudiant non trouvé</h1>
+                    <h1 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--n-text-primary)', marginBottom: '12px' }}>Etudiant non trouve</h1>
                     <Link href="/instructor/students" style={{ fontSize: '14px', color: 'var(--n-accent)', textDecoration: 'none' }}>
-                        ← Retour à la liste
+                        Retour a la liste
                     </Link>
                 </div>
             </div>
@@ -225,17 +315,24 @@ export default function StudentDetailPage() {
 
     return (
         <div style={{ minHeight: '100vh', background: 'var(--n-bg-secondary)' }}>
-            {/* Page header */}
             <div style={{ background: 'var(--n-bg-primary)', borderBottom: '1px solid var(--n-border)', padding: '20px 24px' }}>
                 <Link href="/instructor/students" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--n-text-secondary)', textDecoration: 'none', marginBottom: '12px' }}>
-                    <ArrowLeft size={14} /> Retour aux étudiants
+                    <ArrowLeft size={14} /> Retour aux etudiants
                 </Link>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                         <div style={{
-                            width: '52px', height: '52px', borderRadius: '50%',
-                            background: 'var(--n-accent)', display: 'flex', alignItems: 'center',
-                            justifyContent: 'center', fontSize: '18px', fontWeight: 700, color: 'white', flexShrink: 0,
+                            width: '52px',
+                            height: '52px',
+                            borderRadius: '50%',
+                            background: 'var(--n-accent)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '18px',
+                            fontWeight: 700,
+                            color: 'white',
+                            flexShrink: 0,
                         }}>
                             {initials}
                         </div>
@@ -247,7 +344,10 @@ export default function StudentDetailPage() {
                         </div>
                     </div>
                     <span style={{
-                        padding: '4px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 600,
+                        padding: '4px 12px',
+                        borderRadius: '999px',
+                        fontSize: '12px',
+                        fontWeight: 600,
                         background: student.status === 'ACTIVE' ? 'var(--n-success-bg)' : 'var(--n-danger-bg)',
                         border: `1px solid ${student.status === 'ACTIVE' ? 'var(--n-success-border)' : 'var(--n-danger-border)'}`,
                         color: student.status === 'ACTIVE' ? 'var(--n-success)' : 'var(--n-danger)',
@@ -258,13 +358,11 @@ export default function StudentDetailPage() {
             </div>
 
             <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-
-                {/* Stats Grid */}
                 {stats && (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '12px' }}>
                         {[
                             { icon: <Zap size={18} />, label: 'Total XP', value: stats.totalXP, accent: 'var(--n-accent)', bg: 'var(--n-accent-light)' },
-                            { icon: <BookOpen size={18} />, label: 'Ateliers terminés', value: `${stats.workshopsCompleted}/6`, accent: 'var(--n-success)', bg: 'var(--n-success-bg)' },
+                            { icon: <BookOpen size={18} />, label: 'Ateliers termines', value: `${stats.workshopsCompleted}/6`, accent: 'var(--n-success)', bg: 'var(--n-success-bg)' },
                             { icon: <Target size={18} />, label: 'Score moyen quiz', value: `${stats.avgQuizScore}%`, accent: '#7c3aed', bg: '#f5f3ff' },
                             { icon: <Trophy size={18} />, label: 'Badges obtenus', value: stats.badgeCount, accent: 'var(--n-warning)', bg: 'var(--n-warning-bg)' },
                         ].map(({ icon, label, value, accent, bg }) => (
@@ -281,23 +379,20 @@ export default function StudentDetailPage() {
                     </div>
                 )}
 
-                {/* Main 2-col layout */}
                 <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px' }}>
-
-                    {/* Workshop Progress */}
                     <div>
                         <h2 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--n-text-primary)', marginBottom: '12px' }}>Progression des ateliers</h2>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {Object.keys(WORKSHOP_TITLES).map((workshopId) => {
-                                const progressData = progress.find(p => p.workshopId === workshopId);
+                                const progressData = progress.find((item) => item.workshopId === workshopId);
                                 const percent = progressData?.progressPercent || 0;
                                 const status = progressData?.status || 'NOT_STARTED';
                                 const statusConfig: Record<string, { label: string; color: string; bg: string; border: string }> = {
-                                    COMPLETED: { label: 'Terminé', color: 'var(--n-success)', bg: 'var(--n-success-bg)', border: 'var(--n-success-border)' },
+                                    COMPLETED: { label: 'Termine', color: 'var(--n-success)', bg: 'var(--n-success-bg)', border: 'var(--n-success-border)' },
                                     IN_PROGRESS: { label: 'En cours', color: 'var(--n-accent)', bg: 'var(--n-accent-light)', border: 'var(--n-accent-border)' },
-                                    NOT_STARTED: { label: 'Non commencé', color: 'var(--n-text-tertiary)', bg: 'var(--n-bg-secondary)', border: 'var(--n-border)' },
+                                    NOT_STARTED: { label: 'Non commence', color: 'var(--n-text-tertiary)', bg: 'var(--n-bg-secondary)', border: 'var(--n-border)' },
                                 };
-                                const sc = statusConfig[status] ?? statusConfig.NOT_STARTED;
+                                const statusStyles = statusConfig[status] ?? statusConfig.NOT_STARTED;
 
                                 return (
                                     <div key={workshopId} style={{ background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)', borderRadius: '8px', padding: '14px 16px' }}>
@@ -309,11 +404,16 @@ export default function StudentDetailPage() {
                                                 </p>
                                             </div>
                                             <span style={{
-                                                padding: '2px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: 500,
-                                                background: sc.bg, border: `1px solid ${sc.border}`, color: sc.color,
+                                                padding: '2px 8px',
+                                                borderRadius: '999px',
+                                                fontSize: '11px',
+                                                fontWeight: 500,
+                                                background: statusStyles.bg,
+                                                border: `1px solid ${statusStyles.border}`,
+                                                color: statusStyles.color,
                                                 height: 'fit-content',
                                             }}>
-                                                {sc.label}
+                                                {statusStyles.label}
                                             </span>
                                         </div>
                                         <NotionProgress
@@ -323,7 +423,7 @@ export default function StudentDetailPage() {
                                         />
                                         {progressData?.timeSpentMinutes ? (
                                             <p style={{ fontSize: '11px', color: 'var(--n-text-tertiary)', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                <Clock size={11} /> {progressData.timeSpentMinutes} min passées
+                                                <Clock size={11} /> {progressData.timeSpentMinutes} min passees
                                             </p>
                                         ) : null}
                                     </div>
@@ -332,15 +432,12 @@ export default function StudentDetailPage() {
                         </div>
                     </div>
 
-                    {/* Sidebar */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
-                        {/* Quiz Results */}
                         <div>
-                            <h2 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--n-text-primary)', marginBottom: '10px' }}>Résultats quiz</h2>
+                            <h2 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--n-text-primary)', marginBottom: '10px' }}>Resultats quiz</h2>
                             <div style={{ background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)', borderRadius: '8px', overflow: 'hidden' }}>
                                 {quizzes.length === 0 ? (
-                                    <p style={{ padding: '20px', fontSize: '13px', color: 'var(--n-text-tertiary)', textAlign: 'center' }}>Aucun quiz passé</p>
+                                    <p style={{ padding: '20px', fontSize: '13px', color: 'var(--n-text-tertiary)', textAlign: 'center' }}>Aucun quiz passe</p>
                                 ) : quizzes.map((quiz, index) => (
                                     <div key={quiz.quizId} style={{ padding: '12px 14px', borderTop: index !== 0 ? '1px solid var(--n-border)' : 'none' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
@@ -360,7 +457,6 @@ export default function StudentDetailPage() {
                             </div>
                         </div>
 
-                        {/* Badges */}
                         <div>
                             <h2 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--n-text-primary)', marginBottom: '10px' }}>Badges obtenus</h2>
                             <div style={{ background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)', borderRadius: '8px', padding: '12px' }}>
@@ -370,7 +466,9 @@ export default function StudentDetailPage() {
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '8px' }}>
                                         {badges.map((badge) => (
                                             <div key={badge.badgeType} title={badge.badgeDescription} style={{
-                                                display: 'flex', flexDirection: 'column', alignItems: 'center',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
                                                 padding: '10px 6px',
                                                 background: 'var(--n-warning-bg)',
                                                 border: '1px solid var(--n-warning-border)',
@@ -386,7 +484,6 @@ export default function StudentDetailPage() {
                             </div>
                         </div>
 
-                        {/* Student Info */}
                         <div>
                             <h2 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--n-text-primary)', marginBottom: '10px' }}>Informations</h2>
                             <div style={{ background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)', borderRadius: '8px', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>

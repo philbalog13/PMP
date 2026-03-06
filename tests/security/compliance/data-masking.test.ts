@@ -1,11 +1,11 @@
 /**
- * Data Masking Compliance Test
- * Verification of sensitive data masking across the system
+ * Data Masking Compliance Test (mock)
+ * Demonstrates expectations only; live masking proof is separate.
  */
 
 import { describe, it, expect } from '@jest/globals';
 
-describe('Data Masking Compliance', () => {
+describe('Data Masking Compliance (mock)', () => {
     it('should mask PAN in logs', () => {
         const log = 'Processing payment for 4111111111111111';
         const maskedLog = log.replace(/\b\d{12,19}\b/, 'CORRECTLY_MASKED'); // Mock implementation

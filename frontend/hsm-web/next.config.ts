@@ -1,5 +1,14 @@
 import type { NextConfig } from "next";
+import fs from 'fs';
 import path from 'path';
+
+const sharedDirCandidates = [
+  path.resolve(__dirname, '../shared'),
+  path.resolve(__dirname, './shared'),
+];
+
+const sharedDir = sharedDirCandidates.find((candidate) => fs.existsSync(candidate))
+  || sharedDirCandidates[0];
 
 const nextConfig: NextConfig = {
   output: "standalone",
@@ -9,7 +18,7 @@ const nextConfig: NextConfig = {
   webpack: (config) => {
     config.resolve.alias = {
       ...config.resolve.alias,
-      '@shared': path.resolve(__dirname, '../shared'),
+      '@shared': sharedDir,
     };
     return config;
   },

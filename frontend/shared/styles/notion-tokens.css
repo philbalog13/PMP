@@ -1,270 +1,243 @@
 /*
- * ═══════════════════════════════════════════════════════
- *   NOTION DESIGN TOKENS — PMP Platform
- *   Style minimaliste / aéré / orienté contenu
- *   Compatible Tailwind v4 · Importé par design-tokens.css
- * ═══════════════════════════════════════════════════════
- *
- *   Usage : var(--n-*) dans tous les composants Notion-style
- *   Ne remplace PAS les tokens MISSION CIPHER (--primary-*, --bg-*)
- *   Les deux systèmes coexistent pendant la migration
+ * Learning Notion Tokens
+ * Shared by student and instructor experiences.
  */
 
 @layer base {
   :root {
-    /* ══════════════════════════════════════
-     *  BACKGROUNDS — Light mode (défaut)
-     * ══════════════════════════════════════ */
-    --n-bg-primary:    #ffffff;       /* fond de page */
-    --n-bg-secondary:  #f7f7f5;       /* sidebar, code blocks */
-    --n-bg-tertiary:   #efefed;       /* hover states, dividers */
-    --n-bg-elevated:   #ffffff;       /* cards, popovers */
+    /* Surfaces */
+    --n-bg-primary: #f7faff;
+    --n-bg-secondary: #eef4ff;
+    --n-bg-tertiary: #e4edff;
+    --n-bg-elevated: #ffffff;
 
-    /* ══════════════════════════════════════
-     *  BORDERS & DIVIDERS
-     * ══════════════════════════════════════ */
-    --n-border:        #e6e6e4;       /* border standard */
-    --n-border-strong: #d0d0ce;       /* border emphasisé */
-    --n-divider:       #e9e9e7;       /* séparateurs HR */
+    /* Borders */
+    --n-border: #d8e4ff;
+    --n-border-strong: #bfd3ff;
+    --n-divider: #dfe9ff;
 
-    /* ══════════════════════════════════════
-     *  TEXTE
-     * ══════════════════════════════════════ */
-    --n-text-primary:   #1a1a1a;      /* corps de texte */
-    --n-text-secondary: #6b7280;      /* labels, meta, timestamps */
-    --n-text-tertiary:  #9ca3af;      /* placeholders, disabled */
-    --n-text-inverse:   #ffffff;      /* texte sur fond sombre */
+    /* Text */
+    --n-text-primary: #0e172b;
+    --n-text-secondary: #3d527c;
+    --n-text-tertiary: #5f749d;
+    --n-text-inverse: #ffffff;
 
-    /* ══════════════════════════════════════
-     *  ACCENT — 1 seule couleur, utilisée sparingly
-     * ══════════════════════════════════════ */
-    --n-accent:         #2563eb;      /* blue-600, liens, focus, CTA */
-    --n-accent-hover:   #1d4ed8;      /* blue-700, hover */
-    --n-accent-light:   #eff4fe;      /* fond teinté, selected states */
-    --n-accent-border:  #c7d9fd;      /* borders avec accent */
+    /* Core accents */
+    --n-accent: #1e8fff;
+    --n-accent-hover: #0078ea;
+    --n-accent-light: #e9f4ff;
+    --n-accent-border: #b5dcff;
+    --n-reward: #bf4dff;
+    --n-reward-bg: #f7ecff;
+    --n-reward-border: #e4baff;
+    --n-glow-accent: 0 0 28px rgba(30, 143, 255, 0.24);
+    --n-glow-reward: 0 0 24px rgba(191, 77, 255, 0.2);
 
-    /* ══════════════════════════════════════
-     *  SEMANTIC COLORS — désaturés, éditoriaux
-     * ══════════════════════════════════════ */
-    --n-success:        #0a7c4e;
-    --n-success-bg:     #f0faf6;
-    --n-success-border: #b7e5d5;
+    /* Semantics */
+    --n-success: #02b08a;
+    --n-success-bg: #e9fff9;
+    --n-success-border: #9be8d6;
 
-    --n-warning:        #9e6b00;
-    --n-warning-bg:     #fef9ec;
-    --n-warning-border: #fae3a1;
+    --n-warning: #bd8200;
+    --n-warning-bg: #fff8e8;
+    --n-warning-border: #ffe1a2;
 
-    --n-danger:         #c73a3a;
-    --n-danger-bg:      #fff1f1;
-    --n-danger-border:  #fbc8c8;
+    --n-danger: #d8486a;
+    --n-danger-bg: #fff0f5;
+    --n-danger-border: #ffc2d1;
 
-    --n-info:           #1e6fa5;
-    --n-info-bg:        #eff7fd;
-    --n-info-border:    #b3d9f6;
+    --n-info: #1d73dc;
+    --n-info-bg: #ebf5ff;
+    --n-info-border: #bbd9ff;
 
-    /* ══════════════════════════════════════
-     *  LEVEL COLORS — désaturés pour cohérence
-     * ══════════════════════════════════════ */
-    --n-level-beginner:        #0a7c4e;
-    --n-level-beginner-bg:     #f0faf6;
-    --n-level-beginner-border: #b7e5d5;
+    /* Learning levels */
+    --n-level-beginner: #02b08a;
+    --n-level-beginner-bg: #e9fff9;
+    --n-level-beginner-border: #9be8d6;
 
-    --n-level-inter:        #9e6b00;
-    --n-level-inter-bg:     #fef9ec;
-    --n-level-inter-border: #fae3a1;
+    --n-level-inter: #bd8200;
+    --n-level-inter-bg: #fff8e8;
+    --n-level-inter-border: #ffe1a2;
 
-    --n-level-advanced:        #c45b00;
-    --n-level-advanced-bg:     #fff4ed;
-    --n-level-advanced-border: #fdd0a8;
+    --n-level-advanced: #835cff;
+    --n-level-advanced-bg: #f2ecff;
+    --n-level-advanced-border: #d0b8ff;
 
-    --n-level-expert:        #c73a3a;
-    --n-level-expert-bg:     #fff1f1;
-    --n-level-expert-border: #fbc8c8;
+    --n-level-expert: #d8486a;
+    --n-level-expert-bg: #fff0f5;
+    --n-level-expert-border: #ffc2d1;
 
-    /* ══════════════════════════════════════
-     *  SEVERITY COLORS (defense lab)
-     * ══════════════════════════════════════ */
-    --n-severity-critical:        #b91c1c;
-    --n-severity-critical-bg:     #fef2f2;
-    --n-severity-critical-border: #fca5a5;
+    /* Severity */
+    --n-severity-critical: #d8486a;
+    --n-severity-critical-bg: #fff0f5;
+    --n-severity-critical-border: #ffc2d1;
 
-    --n-severity-high:        #c45b00;
-    --n-severity-high-bg:     #fff4ed;
-    --n-severity-high-border: #fdd0a8;
+    --n-severity-high: #835cff;
+    --n-severity-high-bg: #f2ecff;
+    --n-severity-high-border: #d0b8ff;
 
-    --n-severity-medium:        #9e6b00;
-    --n-severity-medium-bg:     #fef9ec;
-    --n-severity-medium-border: #fae3a1;
+    --n-severity-medium: #bd8200;
+    --n-severity-medium-bg: #fff8e8;
+    --n-severity-medium-border: #ffe1a2;
 
-    --n-severity-low:        #0a7c4e;
-    --n-severity-low-bg:     #f0faf6;
-    --n-severity-low-border: #b7e5d5;
+    --n-severity-low: #02b08a;
+    --n-severity-low-bg: #e9fff9;
+    --n-severity-low-border: #9be8d6;
 
-    /* ══════════════════════════════════════
-     *  SHADOWS — portée légère, aucun glow
-     * ══════════════════════════════════════ */
-    --n-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
-    --n-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
-    --n-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.04);
-    --n-shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.08), 0 4px 8px rgba(0, 0, 0, 0.04);
-    --n-shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.10);
+    /* Elevation */
+    --n-shadow-xs: 0 1px 3px rgba(12, 39, 94, 0.06);
+    --n-shadow-sm: 0 4px 12px rgba(11, 36, 95, 0.08);
+    --n-shadow-md: 0 8px 24px rgba(8, 31, 90, 0.12);
+    --n-shadow-lg: 0 16px 40px rgba(5, 20, 62, 0.16);
+    --n-shadow-xl: 0 28px 68px rgba(3, 14, 46, 0.2);
 
-    /* ══════════════════════════════════════
-     *  BORDER RADIUS — cohérent et modéré
-     * ══════════════════════════════════════ */
-    --n-radius-xs: 3px;    /* badges inline, tags petits */
-    --n-radius-sm: 4px;    /* boutons, inputs, items nav */
-    --n-radius-md: 6px;    /* cartes, popovers, tooltips */
-    --n-radius-lg: 8px;    /* modals, panels */
-    --n-radius-xl: 12px;   /* sections hero */
+    /* Radius */
+    --n-radius-xs: 6px;
+    --n-radius-sm: 10px;
+    --n-radius-md: 16px;
+    --n-radius-lg: 20px;
+    --n-radius-xl: 24px;
+    --n-radius: var(--n-radius-lg);
 
-    /* ══════════════════════════════════════
-     *  SPACING SCALE — base 4px
-     * ══════════════════════════════════════ */
-    --n-space-1:   4px;
-    --n-space-2:   8px;
-    --n-space-3:  12px;
-    --n-space-4:  16px;
-    --n-space-5:  20px;
-    --n-space-6:  24px;
-    --n-space-8:  32px;
+    /* Spacing */
+    --n-space-1: 4px;
+    --n-space-2: 8px;
+    --n-space-3: 12px;
+    --n-space-4: 16px;
+    --n-space-5: 20px;
+    --n-space-6: 24px;
+    --n-space-8: 32px;
     --n-space-10: 40px;
     --n-space-12: 48px;
     --n-space-16: 64px;
     --n-space-20: 80px;
 
-    /* ══════════════════════════════════════
-     *  TYPOGRAPHY
-     * ══════════════════════════════════════ */
-    --n-font-sans: var(--font-geist-sans, 'Inter', system-ui, -apple-system, sans-serif);
-    --n-font-mono: var(--font-geist-mono, 'JetBrains Mono', 'Fira Code', monospace);
+    /* Typography */
+    --n-font-sans: var(--font-geist-sans, "Sora", "Segoe UI", system-ui, sans-serif);
+    --n-font-mono: var(--font-geist-mono, "JetBrains Mono", "Fira Code", monospace);
 
-    /* Tailles — Notion utilise 14-15px pour le body */
-    --n-text-xs:   11px;    /* labels, timestamps, badges */
-    --n-text-sm:   13px;    /* secondary content, captions */
-    --n-text-base: 14px;    /* body text standard */
-    --n-text-md:   15px;    /* body accent, liste items */
-    --n-text-lg:   18px;    /* h3, section titles */
-    --n-text-xl:   22px;    /* h2, page sections */
-    --n-text-2xl:  28px;    /* h1 page title */
-    --n-text-3xl:  36px;    /* hero text */
+    --n-text-xs: 11px;
+    --n-text-sm: 13px;
+    --n-text-base: 14px;
+    --n-text-md: 16px;
+    --n-text-lg: 20px;
+    --n-text-xl: 24px;
+    --n-text-2xl: 32px;
+    --n-text-3xl: 40px;
 
-    /* Weights */
-    --n-weight-regular:  400;
-    --n-weight-medium:   500;
+    --n-weight-regular: 400;
+    --n-weight-medium: 500;
     --n-weight-semibold: 600;
-    --n-weight-bold:     700;
+    --n-weight-bold: 700;
 
-    /* Line heights */
-    --n-leading-tight:   1.25;
-    --n-leading-snug:    1.375;
-    --n-leading-normal:  1.5;
-    --n-leading-relaxed: 1.625;   /* body standard */
-    --n-leading-loose:   1.75;    /* leçons, théorie longue */
+    --n-leading-tight: 1.2;
+    --n-leading-snug: 1.35;
+    --n-leading-normal: 1.5;
+    --n-leading-relaxed: 1.625;
+    --n-leading-loose: 1.75;
 
-    /* Letter spacing */
-    --n-tracking-tight:   -0.015em;
-    --n-tracking-normal:   0em;
-    --n-tracking-wide:     0.025em;   /* labels */
-    --n-tracking-widest:   0.08em;    /* section headers uppercase */
+    --n-tracking-tight: -0.02em;
+    --n-tracking-normal: 0;
+    --n-tracking-wide: 0.03em;
+    --n-tracking-widest: 0.08em;
 
-    /* ══════════════════════════════════════
-     *  TRANSITIONS — courtes, utilitaires
-     * ══════════════════════════════════════ */
-    --n-ease:        cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    --n-ease-out:    cubic-bezier(0.0, 0.0, 0.2, 1.0);
+    /* Motion */
+    --n-ease: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    --n-ease-out: cubic-bezier(0, 0, 0.2, 1);
     --n-ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
 
-    --n-duration-xs:  80ms;    /* focus ring, checkbox */
-    --n-duration-sm: 150ms;    /* hover states standard */
-    --n-duration-md: 200ms;    /* card hover, badge appear */
-    --n-duration-lg: 300ms;    /* sidebar toggle, modal */
-    --n-duration-xl: 400ms;    /* page transitions */
+    --n-duration-xs: 80ms;
+    --n-duration-sm: 150ms;
+    --n-duration-md: 220ms;
+    --n-duration-lg: 320ms;
+    --n-duration-xl: 460ms;
 
-    /* ══════════════════════════════════════
-     *  LAYOUT DIMENSIONS
-     * ══════════════════════════════════════ */
-    --n-sidebar-width:   240px;
-    --n-topbar-height:    48px;
-    --n-content-max:     720px;   /* max-width contenu texte */
-    --n-content-max-wide: 1100px; /* max-width listes/grids */
+    /* Layout */
+    --n-sidebar-width: 280px;
+    --n-topbar-height: 58px;
+    --n-content-max: 760px;
+    --n-content-max-wide: 1200px;
+    --n-surface-grain: 0.08;
   }
 
-  /* ══════════════════════════════════════════
-   *  DARK MODE — activé par data-theme="dark"
-   * ══════════════════════════════════════════ */
   [data-theme='notion-dark'],
+  [data-learning-theme='dark'],
   .notion-dark {
-    --n-bg-primary:    #191919;
-    --n-bg-secondary:  #202020;
-    --n-bg-tertiary:   #2a2a2a;
-    --n-bg-elevated:   #252525;
+    --n-bg-primary: #070e1d;
+    --n-bg-secondary: #0b1630;
+    --n-bg-tertiary: #112145;
+    --n-bg-elevated: #0d1936;
 
-    --n-border:        #333333;
-    --n-border-strong: #404040;
-    --n-divider:       #2e2e2e;
+    --n-border: #1d315f;
+    --n-border-strong: #28457f;
+    --n-divider: #1a2d57;
 
-    --n-text-primary:   #e8e8e8;    /* pas blanc pur — moins fatigant */
-    --n-text-secondary: #9a9a9a;
-    --n-text-tertiary:  #5c5c5c;
+    --n-text-primary: #e8f3ff;
+    --n-text-secondary: #a9c3e6;
+    --n-text-tertiary: #8faad0;
 
-    --n-accent:         #5b8ef7;    /* bleu éclairci pour dark */
-    --n-accent-hover:   #7aa3f9;
-    --n-accent-light:   #1a2240;
-    --n-accent-border:  #2d3d6a;
+    --n-accent: #20c5ff;
+    --n-accent-hover: #5fd7ff;
+    --n-accent-light: #092743;
+    --n-accent-border: #1a4775;
+    --n-reward: #d17bff;
+    --n-reward-bg: #261039;
+    --n-reward-border: #5d2d8b;
+    --n-glow-accent: 0 0 30px rgba(32, 197, 255, 0.3);
+    --n-glow-reward: 0 0 26px rgba(209, 123, 255, 0.26);
 
-    --n-success:        #34d399;
-    --n-success-bg:     #0a1f14;
-    --n-success-border: #0f4029;
+    --n-success: #32e5bd;
+    --n-success-bg: #062820;
+    --n-success-border: #0f5b4a;
 
-    --n-warning:        #fbbf24;
-    --n-warning-bg:     #1f1500;
-    --n-warning-border: #3d2e00;
+    --n-warning: #ffcd56;
+    --n-warning-bg: #2f2200;
+    --n-warning-border: #6e4f0c;
 
-    --n-danger:         #f87171;
-    --n-danger-bg:      #1f0a0a;
-    --n-danger-border:  #3d1515;
+    --n-danger: #ff7795;
+    --n-danger-bg: #300d1a;
+    --n-danger-border: #6d2339;
 
-    --n-info:           #60a5fa;
-    --n-info-bg:        #0a1220;
-    --n-info-border:    #153060;
+    --n-info: #63b6ff;
+    --n-info-bg: #081b36;
+    --n-info-border: #1d3f72;
 
-    --n-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.25);
-    --n-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.30), 0 1px 2px rgba(0, 0, 0, 0.20);
-    --n-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.25), 0 2px 4px rgba(0, 0, 0, 0.20);
-    --n-shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.30), 0 4px 8px rgba(0, 0, 0, 0.20);
-    --n-shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.40);
+    --n-shadow-xs: 0 2px 6px rgba(0, 3, 12, 0.22);
+    --n-shadow-sm: 0 8px 18px rgba(0, 5, 20, 0.34);
+    --n-shadow-md: 0 14px 32px rgba(0, 8, 28, 0.42);
+    --n-shadow-lg: 0 26px 52px rgba(0, 8, 30, 0.5);
+    --n-shadow-xl: 0 40px 84px rgba(0, 10, 35, 0.58);
 
-    --n-level-beginner:        #34d399;
-    --n-level-beginner-bg:     #0a1f14;
-    --n-level-beginner-border: #0f4029;
+    --n-level-beginner: #32e5bd;
+    --n-level-beginner-bg: #062820;
+    --n-level-beginner-border: #0f5b4a;
 
-    --n-level-inter:        #fbbf24;
-    --n-level-inter-bg:     #1f1500;
-    --n-level-inter-border: #3d2e00;
+    --n-level-inter: #ffcd56;
+    --n-level-inter-bg: #2f2200;
+    --n-level-inter-border: #6e4f0c;
 
-    --n-level-advanced:        #fb923c;
-    --n-level-advanced-bg:     #1a0e00;
-    --n-level-advanced-border: #3d2200;
+    --n-level-advanced: #9e87ff;
+    --n-level-advanced-bg: #1d143f;
+    --n-level-advanced-border: #4b37a6;
 
-    --n-level-expert:        #f87171;
-    --n-level-expert-bg:     #1f0a0a;
-    --n-level-expert-border: #3d1515;
+    --n-level-expert: #ff7795;
+    --n-level-expert-bg: #300d1a;
+    --n-level-expert-border: #6d2339;
 
-    --n-severity-critical:        #f87171;
-    --n-severity-critical-bg:     #1f0a0a;
-    --n-severity-critical-border: #3d1515;
+    --n-severity-critical: #ff7795;
+    --n-severity-critical-bg: #300d1a;
+    --n-severity-critical-border: #6d2339;
 
-    --n-severity-high:        #fb923c;
-    --n-severity-high-bg:     #1a0e00;
-    --n-severity-high-border: #3d2200;
+    --n-severity-high: #9e87ff;
+    --n-severity-high-bg: #1d143f;
+    --n-severity-high-border: #4b37a6;
 
-    --n-severity-medium:        #fbbf24;
-    --n-severity-medium-bg:     #1f1500;
-    --n-severity-medium-border: #3d2e00;
+    --n-severity-medium: #ffcd56;
+    --n-severity-medium-bg: #2f2200;
+    --n-severity-medium-border: #6e4f0c;
 
-    --n-severity-low:        #34d399;
-    --n-severity-low-bg:     #0a1f14;
-    --n-severity-low-border: #0f4029;
+    --n-severity-low: #32e5bd;
+    --n-severity-low-bg: #062820;
+    --n-severity-low-border: #0f5b4a;
   }
 }

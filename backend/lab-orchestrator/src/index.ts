@@ -9,6 +9,7 @@ const DOCKER_PROXY_URL = process.env.DOCKER_PROXY_URL || 'http://docker-socket-p
 const LAB_ACCESS_PROXY_BASE_PATH = process.env.LAB_ACCESS_PROXY_BASE_PATH || '/lab';
 const LAB_ATTACKBOX_CONTAINER_NAME = process.env.LAB_ATTACKBOX_CONTAINER_NAME || 'pmp-ctf-attackbox';
 const LAB_ATTACKBOX_CONTAINER_IMAGE = process.env.LAB_ATTACKBOX_CONTAINER_IMAGE || 'pmp-ctf-attackbox';
+const LAB_CONTROL_NETWORK_NAME = process.env.LAB_CONTROL_NETWORK_NAME || 'monetic-network';
 const LAB_ENABLE_DOCKER_ACTIONS = String(process.env.LAB_ENABLE_DOCKER_ACTIONS || 'false').toLowerCase() === 'true';
 
 app.use(express.json({ limit: '2mb' }));
@@ -227,10 +228,22 @@ app.post('/orchestrator/sessions/provision', requireSecret, async (req: Request,
         const manifest = req.body?.manifest && typeof req.body.manifest === 'object'
             ? req.body.manifest
             : {};
+        const flowSource = String(req.body?.flowSource || 'CTF').trim().toUpperCase() === 'UA' ? 'UA' : 'CTF';
+        const isolationMode = String(req.body?.isolationMode || '').trim().toUpperCase() === 'DEDICATED_FULL'
+            ? 'DEDICATED_FULL'
+            : 'SHARED_ATTACKBOX';
         const attackboxPath = String(req.body?.attackboxPath || `${LAB_ACCESS_PROXY_BASE_PATH}/sessions/${sessionCode}/attackbox`);
         const targets = Array.isArray(manifest.targets) ? manifest.targets : [];
 
+        if (isolationMode === 'DEDICATED_FULL' && !LAB_ENABLE_DOCKER_ACTIONS) {
+            return res.status(503).json({
+                success: false,
+                error: 'Dedicated isolation requires LAB_ENABLE_DOCKER_ACTIONS=true',
+            });
+        }
+
         const instances: Array<Record<string, any>> = [];
+        let attackboxHost = LAB_ATTACKBOX_CONTAINER_NAME;
 
         if (LAB_ENABLE_DOCKER_ACTIONS) {
             // 1. Create isolated network
@@ -290,25 +303,72 @@ app.post('/orchestrator/sessions/provision', requireSecret, async (req: Request,
                 }
             }
 
-            // 3. Connect AttackBox to session network
+            // 3. Resolve attackbox strategy
             const attackboxIp = computeAttackboxIp(cidrBlock);
-            try {
-                await connectToNetwork(networkName, LAB_ATTACKBOX_CONTAINER_NAME, attackboxIp);
-                console.log(`[orchestrator] connected ${LAB_ATTACKBOX_CONTAINER_NAME} to ${networkName} at ${attackboxIp}`);
-            } catch (error: any) {
-                console.error(`[orchestrator] failed to connect attackbox: ${error.message}`);
-            }
+            if (isolationMode === 'DEDICATED_FULL') {
+                const dedicatedAttackboxName = buildContainerName('attackbox', sessionCode);
+                try {
+                    const result = await createAndStartContainer({
+                        name: dedicatedAttackboxName,
+                        image: LAB_ATTACKBOX_CONTAINER_IMAGE,
+                        networkName,
+                        ipAddress: attackboxIp,
+                        sessionCode,
+                        env: [],
+                    });
 
-            instances.unshift({
-                instanceKind: 'ATTACKBOX',
-                instanceName: `attackbox-${sessionCode}`,
-                containerId: null,
-                image: LAB_ATTACKBOX_CONTAINER_IMAGE,
-                internalIp: attackboxIp,
-                accessHost: LAB_ATTACKBOX_CONTAINER_NAME,
-                accessPort: 7681,
-                metadata: { dockerActionsEnabled: true, shared: true },
-            });
+                    if (LAB_CONTROL_NETWORK_NAME && LAB_CONTROL_NETWORK_NAME !== networkName) {
+                        await connectToNetwork(LAB_CONTROL_NETWORK_NAME, dedicatedAttackboxName);
+                    }
+
+                    attackboxHost = dedicatedAttackboxName;
+                    instances.unshift({
+                        instanceKind: 'ATTACKBOX',
+                        instanceName: dedicatedAttackboxName,
+                        containerId: result.containerId,
+                        image: LAB_ATTACKBOX_CONTAINER_IMAGE,
+                        internalIp: attackboxIp,
+                        accessHost: dedicatedAttackboxName,
+                        accessPort: 7681,
+                        metadata: {
+                            dockerActionsEnabled: true,
+                            shared: false,
+                            flowSource,
+                            isolationMode,
+                        },
+                    });
+                } catch (error: any) {
+                    console.error(`[orchestrator] failed to create dedicated attackbox: ${error.message}`);
+                    return res.status(503).json({
+                        success: false,
+                        error: 'Dedicated attackbox provisioning failed',
+                    });
+                }
+            } else {
+                try {
+                    await connectToNetwork(networkName, LAB_ATTACKBOX_CONTAINER_NAME, attackboxIp);
+                    console.log(`[orchestrator] connected ${LAB_ATTACKBOX_CONTAINER_NAME} to ${networkName} at ${attackboxIp}`);
+                } catch (error: any) {
+                    console.error(`[orchestrator] failed to connect attackbox: ${error.message}`);
+                }
+
+                attackboxHost = LAB_ATTACKBOX_CONTAINER_NAME;
+                instances.unshift({
+                    instanceKind: 'ATTACKBOX',
+                    instanceName: `attackbox-${sessionCode}`,
+                    containerId: null,
+                    image: LAB_ATTACKBOX_CONTAINER_IMAGE,
+                    internalIp: attackboxIp,
+                    accessHost: LAB_ATTACKBOX_CONTAINER_NAME,
+                    accessPort: 7681,
+                    metadata: {
+                        dockerActionsEnabled: true,
+                        shared: true,
+                        flowSource,
+                        isolationMode,
+                    },
+                });
+            }
         } else {
             const primaryTarget = targets[0] || {};
             instances.push({
@@ -319,7 +379,7 @@ app.post('/orchestrator/sessions/provision', requireSecret, async (req: Request,
                 internalIp: null,
                 accessHost: 'ctf-attackbox',
                 accessPort: 7681,
-                metadata: { dockerActionsEnabled: false },
+                metadata: { dockerActionsEnabled: false, flowSource, isolationMode },
             });
             instances.push({
                 instanceKind: 'TARGET',
@@ -329,7 +389,7 @@ app.post('/orchestrator/sessions/provision', requireSecret, async (req: Request,
                 internalIp: machineIp,
                 accessHost: null,
                 accessPort: null,
-                metadata: { dockerActionsEnabled: false },
+                metadata: { dockerActionsEnabled: false, flowSource, isolationMode },
             });
         }
 
@@ -337,7 +397,7 @@ app.post('/orchestrator/sessions/provision', requireSecret, async (req: Request,
             success: true,
             machineIp,
             attackboxPath,
-            attackboxHost: LAB_ATTACKBOX_CONTAINER_NAME,
+            attackboxHost,
             attackboxPort: 7681,
             instances,
         });

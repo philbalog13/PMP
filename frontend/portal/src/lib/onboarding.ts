@@ -51,3 +51,16 @@ export function markOnboardingDoneLocally(user: UserIdentity): void {
 
     localStorage.setItem(key, 'true');
 }
+
+export function clearOnboardingDoneLocally(user: UserIdentity): void {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    const key = getOnboardingStorageKey(user);
+    if (!key) {
+        return;
+    }
+
+    localStorage.removeItem(key);
+}

@@ -1,6 +1,7 @@
 /**
- * Security Penetration Tests
- * Tests for common security vulnerabilities in payment systems
+ * Security Regression Tests (mock)
+ * Pedagogical checks that validate local heuristics only.
+ * These tests do not call PMP services and are not live platform proof.
  */
 
 import { describe, it, expect, beforeAll } from '@jest/globals';
@@ -165,7 +166,7 @@ const COMMAND_INJECTION_PAYLOADS: InjectionPayload[] = [
 ];
 
 // Test Suites
-describe('Security Penetration Tests', () => {
+describe('Security Penetration Tests (mock)', () => {
     let apiClient: MockAPIClient;
 
     beforeAll(() => {
@@ -300,7 +301,7 @@ describe('Security Penetration Tests', () => {
     });
 });
 
-describe('OWASP Top 10 Checks', () => {
+describe('OWASP Top 10 Checks (mock)', () => {
     it('A01:2021 - Broken Access Control: Role verification', () => {
         const userRole = 'user';
         const adminEndpoint = '/admin/settings';

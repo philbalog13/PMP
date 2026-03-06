@@ -6,6 +6,7 @@ import { Request, Response } from 'express';
 import { query } from '../config/database';
 import { logger } from '../utils/logger';
 import { awardQuizBadges } from '../services/ctfEvaluation.service';
+import { getModuleUaSummary } from '../services/cursusUa.service';
 
 async function fetchCursusContentTotals(): Promise<Array<{ cursus_id: string; total: number }>> {
     try {
@@ -337,6 +338,16 @@ export const getModuleContent = async (req: Request, res: Response) => {
             )
         ]);
 
+        let uaUnits: any[] = [];
+        if (userId) {
+            try {
+                uaUnits = await getModuleUaSummary(userId, moduleId);
+            } catch (summaryError: any) {
+                logger.warn('getModuleContent ua summary fallback', { moduleId, error: summaryError.message });
+                uaUnits = [];
+            }
+        }
+
         // Student progress for this module
         let completedChapterIds: string[] = [];
         if (userId) {
@@ -360,6 +371,7 @@ export const getModuleContent = async (req: Request, res: Response) => {
             module: modulePayload,
             chapters: chaptersRows,
             units: chaptersRows,
+            uaUnits,
             quiz: quizResult.rows[0] || null,
             exercise: exercises[0] || null, // Backward compatibility for old clients
             exercises,

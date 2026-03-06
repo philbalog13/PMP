@@ -38,6 +38,7 @@ function NavItem({ item }: { item: BankNavItem }) {
   return (
     <Link
       href={item.href}
+      prefetch={false}
       className={`bk-nav-item${isActive ? ' bk-nav-item--active' : ''}`}
       aria-current={isActive ? 'page' : undefined}
     >
@@ -79,7 +80,9 @@ export function BankSidebar({
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
-        overflow: 'hidden',
+        minHeight: 0,
+        overflowX: 'hidden',
+        overflowY: 'auto',
       }}
     >
       {/* ── Logo ── */}
@@ -99,7 +102,8 @@ export function BankSidebar({
       <nav
         aria-label="Navigation principale"
         style={{
-          flex: 1,
+          flex: '1 1 auto',
+          minHeight: 0,
           overflowY: 'auto',
           overflowX: 'hidden',
           padding: 'var(--bank-space-3) var(--bank-space-2)',

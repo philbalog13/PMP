@@ -2,12 +2,10 @@ import type { NextConfig } from "next";
 import path from 'path';
 
 const nextConfig: NextConfig = {
-  typescript: {
-    ignoreBuildErrors: true,
-  },
   output: 'standalone',
   experimental: {
     externalDir: true,
+    optimizePackageImports: ['lucide-react'],
   },
   turbopack: {
     resolveAlias: {

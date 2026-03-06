@@ -25,9 +25,9 @@ ENV NEXT_PUBLIC_PORTAL_URL=$NEXT_PUBLIC_PORTAL_URL
 # Copy dependencies from deps stage
 COPY --from=deps /app/hsm-web/node_modules ./node_modules
 
-# Copy shared directory and install its dependencies
-COPY shared ./shared
-RUN cd ./shared && npm install
+# Copy shared directory in the same relative layout as local development.
+COPY shared ../shared
+RUN cd ../shared && npm install
 
 # Copy application code
 COPY hsm-web .

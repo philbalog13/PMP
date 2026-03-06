@@ -24,13 +24,9 @@ export async function POST(request: NextRequest) {
             headers,
             body: JSON.stringify(body),
         });
-
-        if (!response.ok) {
-            throw new Error(`Backend returned ${response.status}`);
-        }
-
-        const data = await response.json();
-        return NextResponse.json(data);
+        const text = await response.text();
+        const data = text ? JSON.parse(text) : {};
+        return NextResponse.json(data, { status: response.status });
     } catch (error) {
         console.error('Transaction API error:', error);
         return NextResponse.json(

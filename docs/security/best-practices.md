@@ -20,7 +20,7 @@
 
 -   **No Defaults**: Change `JWT_SECRET` in production `.env`.
 -   **Least Privilege**: Docker containers run as non-root users (simulated user `node`).
--   **Sanitization**: All inputs are sanitized to prevent SQL Injection (tested in `penetration.test.ts`).
+-   **Sanitization**: SQL-injection resistance is verified with the live suite `tests/security/penetration/sql-injection.test.ts`; pedagogical mock regressions stay isolated under `tests/security/`.
 
 ## Compliance (Pedagogical)
 

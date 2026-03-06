@@ -77,40 +77,52 @@ const normalizePositiveAmount = (value: any): number | null => {
 
 const roundCurrency = (value: number): number => Math.round(value * 100) / 100;
 
-const buildRealTransactionIntegrityClause = (alias?: string): string => {
+// Merchant-facing views must include transactions from external cardholders too.
+// A merchant transaction is valid if the merchant side is real, and any linked
+// client/card references are internally coherent when present.
+export const buildMerchantTransactionVisibilityClause = (alias?: string): string => {
     const tx = alias ? `${alias}.` : '';
     return `
-        ${tx}client_id IS NOT NULL
-        AND ${tx}merchant_id IS NOT NULL
-        AND EXISTS (
-            SELECT 1
-            FROM users.users u_client
-            WHERE u_client.id = ${tx}client_id
-              AND u_client.role = 'ROLE_CLIENT'
-        )
-        AND EXISTS (
-            SELECT 1
-            FROM users.users u_merchant
-            WHERE u_merchant.id = ${tx}merchant_id
-              AND u_merchant.role = 'ROLE_MARCHAND'
-        )
-        AND EXISTS (
-            SELECT 1
-            FROM client.bank_accounts ba
-            WHERE ba.client_id = ${tx}client_id
-        )
-        AND EXISTS (
-            SELECT 1
-            FROM merchant.accounts ma
-            WHERE ma.merchant_id = ${tx}merchant_id
-        )
-        AND (
-            ${tx}card_id IS NULL
-            OR EXISTS (
+        (
+            ${tx}merchant_id IS NOT NULL
+            AND EXISTS (
                 SELECT 1
-                FROM client.virtual_cards vc
-                WHERE vc.id = ${tx}card_id
-                  AND vc.client_id = ${tx}client_id
+                FROM users.users u_merchant
+                WHERE u_merchant.id = ${tx}merchant_id
+                  AND u_merchant.role = 'ROLE_MARCHAND'
+            )
+            AND EXISTS (
+                SELECT 1
+                FROM merchant.accounts ma
+                WHERE ma.merchant_id = ${tx}merchant_id
+            )
+            AND (
+                ${tx}client_id IS NULL
+                OR (
+                    EXISTS (
+                        SELECT 1
+                        FROM users.users u_client
+                        WHERE u_client.id = ${tx}client_id
+                          AND u_client.role = 'ROLE_CLIENT'
+                    )
+                    AND EXISTS (
+                        SELECT 1
+                        FROM client.bank_accounts ba
+                        WHERE ba.client_id = ${tx}client_id
+                    )
+                )
+            )
+            AND (
+                ${tx}card_id IS NULL
+                OR EXISTS (
+                    SELECT 1
+                    FROM client.virtual_cards vc
+                    WHERE vc.id = ${tx}card_id
+                      AND (
+                          ${tx}client_id IS NULL
+                          OR vc.client_id = ${tx}client_id
+                      )
+                )
             )
         )
     `;
@@ -281,7 +293,7 @@ export const getDashboard = async (req: Request, res: Response) => {
                  FROM client.transactions
                  WHERE merchant_id = $1
                    AND DATE(timestamp) = CURRENT_DATE
-                   AND ${buildRealTransactionIntegrityClause()}`,
+                   AND ${buildMerchantTransactionVisibilityClause()}`,
                 [userId]
             ),
             query(
@@ -297,7 +309,7 @@ export const getDashboard = async (req: Request, res: Response) => {
                         response_code, authorization_code, terminal_id, timestamp
                  FROM client.transactions
                  WHERE merchant_id = $1
-                   AND ${buildRealTransactionIntegrityClause()}
+                   AND ${buildMerchantTransactionVisibilityClause()}
                  ORDER BY timestamp DESC LIMIT 10`,
                 [userId]
             ),
@@ -309,7 +321,7 @@ export const getDashboard = async (req: Request, res: Response) => {
                  FROM client.transactions
                  WHERE merchant_id = $1
                    AND timestamp >= NOW() - INTERVAL '7 days'
-                   AND ${buildRealTransactionIntegrityClause()}
+                   AND ${buildMerchantTransactionVisibilityClause()}
                  GROUP BY DATE(timestamp)
                  ORDER BY date DESC`,
                 [userId]
@@ -573,7 +585,7 @@ export const settleAccount = async (req: Request, res: Response) => {
                   AND status = 'APPROVED'
                   AND type = 'PURCHASE'
                   AND settled_at IS NULL
-                  AND ${buildRealTransactionIntegrityClause()}
+                  AND ${buildMerchantTransactionVisibilityClause()}
              ),
              to_settle AS (
                 SELECT id
@@ -1165,7 +1177,7 @@ export const getTransactions = async (req: Request, res: Response) => {
 
         let whereConditions = [
             'merchant_id = $1',
-            buildRealTransactionIntegrityClause()
+            buildMerchantTransactionVisibilityClause()
         ];
         let params: any[] = [userId];
         let paramIndex = 2;
@@ -1242,7 +1254,7 @@ export const getTransactionById = async (req: Request, res: Response) => {
             `SELECT * FROM client.transactions
              WHERE id = $1
                AND merchant_id = $2
-               AND ${buildRealTransactionIntegrityClause()}`,
+               AND ${buildMerchantTransactionVisibilityClause()}`,
             [id, userId]
         );
 
@@ -1270,7 +1282,7 @@ export const getTransactionTimeline = async (req: Request, res: Response) => {
              LEFT JOIN merchant.pos_terminals m ON m.merchant_id = t.merchant_id
              WHERE t.id = $1
                AND t.merchant_id = $2
-               AND ${buildRealTransactionIntegrityClause('t')}
+               AND ${buildMerchantTransactionVisibilityClause('t')}
              LIMIT 1`,
             [id, userId]
         );
@@ -1347,7 +1359,7 @@ export const refundTransaction = async (req: Request, res: Response) => {
             `SELECT * FROM client.transactions
              WHERE id = $1
                AND merchant_id = $2
-               AND ${buildRealTransactionIntegrityClause()}`,
+               AND ${buildMerchantTransactionVisibilityClause()}`,
             [id, userId]
         );
 
@@ -1490,7 +1502,7 @@ export const voidTransaction = async (req: Request, res: Response) => {
             `SELECT * FROM client.transactions
              WHERE id = $1
                AND merchant_id = $2
-               AND ${buildRealTransactionIntegrityClause()}`,
+               AND ${buildMerchantTransactionVisibilityClause()}`,
             [id, userId]
         );
 
@@ -1659,7 +1671,7 @@ export const getPOSById = async (req: Request, res: Response) => {
              FROM client.transactions
              WHERE terminal_id = $1
                AND merchant_id = $2
-               AND ${buildRealTransactionIntegrityClause()}
+               AND ${buildMerchantTransactionVisibilityClause()}
              ORDER BY timestamp DESC LIMIT 10`,
             [result.rows[0].terminal_id, userId]
         );
@@ -1849,7 +1861,7 @@ export const getDailyReport = async (req: Request, res: Response) => {
              FROM client.transactions
              WHERE merchant_id = $1
                AND DATE(timestamp) = $2
-               AND ${buildRealTransactionIntegrityClause()}`,
+               AND ${buildMerchantTransactionVisibilityClause()}`,
             [userId, date]
         );
 
@@ -1865,7 +1877,7 @@ export const getDailyReport = async (req: Request, res: Response) => {
              FROM client.transactions
              WHERE merchant_id = $1
                AND DATE(timestamp) = $2
-               AND ${buildRealTransactionIntegrityClause()}
+               AND ${buildMerchantTransactionVisibilityClause()}
              GROUP BY EXTRACT(HOUR FROM timestamp)
              ORDER BY hour`,
             [userId, date]
@@ -1920,7 +1932,7 @@ export const getReconciliationReport = async (req: Request, res: Response) => {
              FROM client.transactions
              WHERE merchant_id = $1
                ${dateFilter}
-               AND ${buildRealTransactionIntegrityClause()}
+               AND ${buildMerchantTransactionVisibilityClause()}
              ORDER BY timestamp`,
             params
         );
@@ -1977,7 +1989,7 @@ export const exportReport = async (req: Request, res: Response) => {
             `SELECT * FROM client.transactions
              WHERE merchant_id = $1
                AND DATE(timestamp) BETWEEN $2 AND $3
-               AND ${buildRealTransactionIntegrityClause()}
+               AND ${buildMerchantTransactionVisibilityClause()}
              ORDER BY timestamp`,
             [userId, fromDate, toDate]
         );

@@ -62,6 +62,13 @@ export interface SimulatedClientPaymentResponse extends ApiObject {
     error?: string;
     responseCode?: string;
     response_code?: string;
+    message?: string;
+    threeDSResult?: {
+        transStatus?: string;
+        challengeUrl?: string;
+        acsTransId?: string;
+        eci?: string;
+    };
     transaction?: {
         id?: string;
         transaction_id?: string;
@@ -98,7 +105,7 @@ function readTokenFromCookie(): string | null {
     if (typeof document === 'undefined') return null;
     const tokenEntry = document.cookie
         .split('; ')
-        .find((item) => item.startsWith('token='));
+        .find((item: string) => item.startsWith('token='));
     if (!tokenEntry) return null;
 
     const cookieToken = tokenEntry.split('=')[1];
@@ -149,7 +156,7 @@ async function ensureAuthToken(): Promise<string | null> {
         })
             .then(async (response) => {
                 if (!response.ok) return null;
-                const data = await response.json();
+                const data = (await response.json()) as { token?: string } | null;
                 const token = data?.token ?? null;
                 if (token) {
                     window.localStorage.setItem('token', token);
@@ -414,6 +421,8 @@ export async function simulateClientPayment(data: {
     amount: number;
     use3DS?: boolean;
     paymentType?: string;
+    threeDSCompleted?: boolean;
+    acsTransId?: string;
 }): Promise<SimulatedClientPaymentResponse> {
     const response = await apiClient.post<SimulatedClientPaymentResponse>('/api/client/transactions/simulate', data, {
         // Accept 400 (business decline) and 404 (card/merchant not found) as valid responses
@@ -429,6 +438,7 @@ export async function simulateClientPayment(data: {
 
     const payload = asRecord(response.data);
     const rawTransaction = asRecord(payload.transaction);
+    const rawThreeDSResult = asRecord(payload.threeDSResult);
     const transaction = Object.keys(rawTransaction).length > 0
         ? {
             ...rawTransaction,
@@ -439,6 +449,14 @@ export async function simulateClientPayment(data: {
             authorization_code: typeof rawTransaction.authorization_code === 'string' ? rawTransaction.authorization_code : undefined,
             authorizationCode: typeof rawTransaction.authorizationCode === 'string' ? rawTransaction.authorizationCode : undefined,
             response_code: typeof rawTransaction.response_code === 'string' ? rawTransaction.response_code : undefined,
+        }
+        : undefined;
+    const threeDSResult = Object.keys(rawThreeDSResult).length > 0
+        ? {
+            transStatus: typeof rawThreeDSResult.transStatus === 'string' ? rawThreeDSResult.transStatus : undefined,
+            challengeUrl: typeof rawThreeDSResult.challengeUrl === 'string' ? rawThreeDSResult.challengeUrl : undefined,
+            acsTransId: typeof rawThreeDSResult.acsTransId === 'string' ? rawThreeDSResult.acsTransId : undefined,
+            eci: typeof rawThreeDSResult.eci === 'string' ? rawThreeDSResult.eci : undefined,
         }
         : undefined;
     const normalizedError = typeof payload.error === 'string'
@@ -454,8 +472,10 @@ export async function simulateClientPayment(data: {
         ...payload,
         success: Boolean(payload.success),
         error: normalizedError,
+        message: typeof payload.message === 'string' ? payload.message : undefined,
         responseCode: normalizedResponseCode,
         response_code: typeof payload.response_code === 'string' ? payload.response_code : undefined,
+        threeDSResult,
         transaction,
         ledgerBooked: typeof payload.ledgerBooked === 'boolean' ? payload.ledgerBooked : undefined
     };
