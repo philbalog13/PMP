@@ -25,6 +25,23 @@ interface NewStudent {
     group: string;
 }
 
+const INPUT_STYLE: React.CSSProperties = {
+    width: '100%',
+    padding: '10px 12px',
+    borderRadius: 8,
+    border: '1px solid var(--n-border)',
+    background: 'var(--n-bg-secondary)',
+    color: 'var(--n-text-primary)',
+    fontSize: 14,
+    outline: 'none',
+    boxSizing: 'border-box',
+};
+
+const INPUT_WITH_ICON_STYLE: React.CSSProperties = {
+    ...INPUT_STYLE,
+    paddingLeft: 38,
+};
+
 export default function AddStudentPage() {
     const router = useRouter();
     const [mode, setMode] = useState<'single' | 'bulk'>('single');
@@ -112,7 +129,6 @@ export default function AddStudentPage() {
         setIsSubmitting(true);
         setError('');
 
-        // Validation
         if (!student.firstName || !student.lastName || !student.email || !student.password) {
             setError('Tous les champs sont requis');
             setIsSubmitting(false);
@@ -138,7 +154,7 @@ export default function AddStudentPage() {
                 router.push('/instructor/students');
             }, 2000);
         } catch (err: any) {
-            setError(getErrorMessage(err, 'Erreur lors de la création de l’étudiant'));
+            setError(getErrorMessage(err, 'Erreur lors de la création de l\'étudiant'));
         } finally {
             setIsSubmitting(false);
         }
@@ -206,138 +222,135 @@ export default function AddStudentPage() {
 
     if (success) {
         return (
-            <div className="min-h-screen bg-slate-950 pt-24 pb-12 flex items-center justify-center">
-                <div className="text-center">
-                    <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <CheckCircle2 size={40} className="text-emerald-400" />
+            <div style={{ minHeight: '100vh', background: 'var(--n-bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ textAlign: 'center' }}>
+                    <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'var(--n-success-bg)', border: '1px solid var(--n-success-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+                        <CheckCircle2 size={36} style={{ color: 'var(--n-success)' }} />
                     </div>
-                    <h1 className="text-2xl font-bold text-white mb-2">
+                    <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--n-text-primary)', marginBottom: 8 }}>
                         {mode === 'single' ? 'Étudiant créé avec succès !' : 'Étudiants importés avec succès !'}
                     </h1>
-                    <p className="text-slate-400">Redirection en cours...</p>
+                    <p style={{ fontSize: 14, color: 'var(--n-text-tertiary)' }}>Redirection en cours...</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-slate-950 pt-24 pb-12">
-            <div className="max-w-2xl mx-auto px-6">
-                {/* Header */}
-                <div className="mb-8">
+        <div style={{ minHeight: '100vh', background: 'var(--n-bg-secondary)' }}>
+            {/* Page Header */}
+            <div style={{ background: 'var(--n-bg-primary)', borderBottom: '1px solid var(--n-border)', padding: '24px 32px' }}>
+                <div style={{ maxWidth: 720, margin: '0 auto' }}>
                     <Link
                         href="/instructor/students"
-                        className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-4"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--n-text-tertiary)', textDecoration: 'none', marginBottom: 12 }}
                     >
-                        <ArrowLeft size={18} />
+                        <ArrowLeft size={14} />
                         Retour à la liste
                     </Link>
-                    <h1 className="text-3xl font-bold text-white mb-2">Ajouter un étudiant</h1>
-                    <p className="text-slate-400">
+                    <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--n-text-primary)', margin: 0 }}>Ajouter un étudiant</h1>
+                    <p style={{ fontSize: 13, color: 'var(--n-text-tertiary)', margin: '4px 0 0' }}>
                         Créez un nouveau compte étudiant ou importez plusieurs étudiants en masse
                     </p>
                 </div>
+            </div>
 
+            {/* Content */}
+            <div style={{ padding: '32px', maxWidth: 720, margin: '0 auto' }}>
                 {/* Mode Toggle */}
-                <div className="flex gap-2 mb-8">
-                    <button
-                        onClick={() => setMode('single')}
-                        className={`flex-1 py-3 px-4 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 ${
-                            mode === 'single'
-                                ? 'bg-blue-500 text-white'
-                                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                        }`}
-                    >
-                        <User size={18} />
-                        Un seul étudiant
-                    </button>
-                    <button
-                        onClick={() => setMode('bulk')}
-                        className={`flex-1 py-3 px-4 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 ${
-                            mode === 'bulk'
-                                ? 'bg-blue-500 text-white'
-                                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                        }`}
-                    >
-                        <Users size={18} />
-                        Import en masse
-                    </button>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 24, background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)', borderRadius: 10, padding: 4 }}>
+                    {(['single', 'bulk'] as const).map(m => (
+                        <button
+                            key={m}
+                            onClick={() => setMode(m)}
+                            style={{
+                                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                                padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 500,
+                                cursor: 'pointer', border: 'none', transition: 'all 0.15s',
+                                background: mode === m ? 'var(--n-accent)' : 'transparent',
+                                color: mode === m ? '#fff' : 'var(--n-text-secondary)',
+                            }}
+                        >
+                            {m === 'single' ? <User size={15} /> : <Users size={15} />}
+                            {m === 'single' ? 'Un seul étudiant' : 'Import en masse'}
+                        </button>
+                    ))}
                 </div>
 
-                {/* Error Message */}
+                {/* Error */}
                 {error && (
-                    <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center gap-3">
-                        <AlertCircle size={20} className="text-red-400" />
-                        <span className="text-red-400">{error}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'var(--n-danger-bg)', border: '1px solid var(--n-danger-border)', borderRadius: 8, color: 'var(--n-danger)', fontSize: 13, marginBottom: 20 }}>
+                        <AlertCircle size={16} />
+                        {error}
                     </div>
                 )}
 
                 {/* Single Student Form */}
                 {mode === 'single' && (
-                    <form onSubmit={handleSubmit} className="bg-slate-800/50 border border-white/10 rounded-2xl p-6 space-y-6">
-                        <div className="grid grid-cols-2 gap-4">
+                    <form onSubmit={handleSubmit} style={{ background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)', borderRadius: 10, padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                             <div>
-                                <label className="text-sm text-slate-400 mb-2 block">Prénom</label>
-                                <div className="relative">
-                                    <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--n-text-secondary)', marginBottom: 6 }}>Prénom</label>
+                                <div style={{ position: 'relative' }}>
+                                    <User size={15} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--n-text-tertiary)', pointerEvents: 'none' }} />
                                     <input
                                         type="text"
                                         value={student.firstName}
                                         onChange={(e) => setStudent({ ...student, firstName: e.target.value })}
                                         placeholder="Jean"
-                                        className="w-full pl-12 pr-4 py-3 bg-slate-900 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                                        style={{ ...INPUT_WITH_ICON_STYLE }}
                                     />
                                 </div>
                             </div>
                             <div>
-                                <label className="text-sm text-slate-400 mb-2 block">Nom</label>
+                                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--n-text-secondary)', marginBottom: 6 }}>Nom</label>
                                 <input
                                     type="text"
                                     value={student.lastName}
                                     onChange={(e) => setStudent({ ...student, lastName: e.target.value })}
                                     placeholder="Dupont"
-                                    className="w-full px-4 py-3 bg-slate-900 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                                    style={INPUT_STYLE}
                                 />
                             </div>
                         </div>
 
                         <div>
-                            <label className="text-sm text-slate-400 mb-2 block">Email</label>
-                            <div className="relative">
-                                <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--n-text-secondary)', marginBottom: 6 }}>Email</label>
+                            <div style={{ position: 'relative' }}>
+                                <Mail size={15} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--n-text-tertiary)', pointerEvents: 'none' }} />
                                 <input
                                     type="email"
                                     value={student.email}
                                     onChange={(e) => setStudent({ ...student, email: e.target.value })}
                                     placeholder="jean.dupont@pmp.edu"
-                                    className="w-full pl-12 pr-4 py-3 bg-slate-900 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                                    style={{ ...INPUT_WITH_ICON_STYLE }}
                                 />
                             </div>
                         </div>
 
                         <div>
-                            <label className="text-sm text-slate-400 mb-2 block">Mot de passe</label>
-                            <div className="relative">
-                                <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--n-text-secondary)', marginBottom: 6 }}>Mot de passe</label>
+                            <div style={{ position: 'relative' }}>
+                                <Lock size={15} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--n-text-tertiary)', pointerEvents: 'none' }} />
                                 <input
                                     type={showPassword ? 'text' : 'password'}
                                     value={student.password}
                                     onChange={(e) => setStudent({ ...student, password: e.target.value })}
                                     placeholder="Minimum 8 caractères"
-                                    className="w-full pl-12 pr-24 py-3 bg-slate-900 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                                    style={{ ...INPUT_WITH_ICON_STYLE, paddingRight: 104 }}
                                 />
-                                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                                <div style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', display: 'flex', gap: 4, alignItems: 'center' }}>
                                     <button
                                         type="button"
                                         onClick={() => setShowPassword(!showPassword)}
-                                        className="p-2 hover:bg-white/5 rounded-lg transition-colors"
+                                        style={{ padding: 6, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--n-text-tertiary)' }}
                                     >
-                                        {showPassword ? <EyeOff size={16} className="text-slate-400" /> : <Eye size={16} className="text-slate-400" />}
+                                        {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
                                     </button>
                                     <button
                                         type="button"
                                         onClick={generatePassword}
-                                        className="px-2 py-1 text-xs bg-blue-500/20 text-blue-400 rounded hover:bg-blue-500/30 transition-colors"
+                                        style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--n-accent-border)', background: 'var(--n-accent-bg)', color: 'var(--n-accent)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
                                     >
                                         Générer
                                     </button>
@@ -346,11 +359,11 @@ export default function AddStudentPage() {
                         </div>
 
                         <div>
-                            <label className="text-sm text-slate-400 mb-2 block">Groupe / Promotion</label>
+                            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--n-text-secondary)', marginBottom: 6 }}>Groupe / Promotion</label>
                             <select
                                 value={student.group}
                                 onChange={(e) => setStudent({ ...student, group: e.target.value })}
-                                className="w-full px-4 py-3 bg-slate-900 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                                style={{ ...INPUT_STYLE }}
                             >
                                 <option value="Promotion 2026">Promotion 2026</option>
                                 <option value="Promotion 2025">Promotion 2025</option>
@@ -361,16 +374,16 @@ export default function AddStudentPage() {
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className="w-full py-4 bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 24px', borderRadius: 8, background: isSubmitting ? 'var(--n-accent-bg)' : 'var(--n-accent)', color: isSubmitting ? 'var(--n-accent)' : '#fff', fontSize: 14, fontWeight: 600, border: 'none', cursor: isSubmitting ? 'not-allowed' : 'pointer', opacity: isSubmitting ? 0.7 : 1 }}
                         >
                             {isSubmitting ? (
                                 <>
-                                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/30 border-t-white"></div>
+                                    <div style={{ width: 16, height: 16, border: '2px solid currentColor', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
                                     Création en cours...
                                 </>
                             ) : (
                                 <>
-                                    <UserPlus size={20} />
+                                    <UserPlus size={16} />
                                     Créer l&apos;étudiant
                                 </>
                             )}
@@ -380,86 +393,77 @@ export default function AddStudentPage() {
 
                 {/* Bulk Import Form */}
                 {mode === 'bulk' && (
-                    <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-6 space-y-6">
-                        <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
-                            <h3 className="text-sm font-medium text-white mb-2">Format attendu (CSV)</h3>
-                            <p className="text-xs text-slate-400 mb-2">
-                                Une ligne par étudiant : prénom, nom, email
-                            </p>
-                            <code className="text-xs text-emerald-400 block">
+                    <div style={{ background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)', borderRadius: 10, padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+                        <div style={{ padding: '14px 16px', background: 'var(--n-accent-bg)', border: '1px solid var(--n-accent-border)', borderRadius: 8 }}>
+                            <h3 style={{ fontSize: 13, fontWeight: 600, color: 'var(--n-text-primary)', margin: '0 0 6px' }}>Format attendu (CSV)</h3>
+                            <p style={{ fontSize: 12, color: 'var(--n-text-tertiary)', margin: '0 0 8px' }}>Une ligne par étudiant : prénom, nom, email</p>
+                            <code style={{ fontSize: 12, color: 'var(--n-success)', fontFamily: 'monospace' }}>
                                 Jean,Dupont,jean.dupont@pmp.edu<br />
                                 Marie,Martin,marie.martin@pmp.edu
                             </code>
                         </div>
 
                         <div>
-                            <label className="text-sm text-slate-400 mb-2 block">Données des étudiants</label>
+                            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--n-text-secondary)', marginBottom: 6 }}>Données des étudiants</label>
                             <textarea
                                 value={bulkStudents}
                                 onChange={(e) => setBulkStudents(e.target.value)}
-                                placeholder="Jean,Dupont,jean.dupont@pmp.edu
-Marie,Martin,marie.martin@pmp.edu"
+                                placeholder={'Jean,Dupont,jean.dupont@pmp.edu\nMarie,Martin,marie.martin@pmp.edu'}
                                 rows={10}
-                                className="w-full px-4 py-3 bg-slate-900 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 font-mono text-sm"
+                                style={{ ...INPUT_STYLE, fontFamily: 'monospace', fontSize: 12, resize: 'vertical', paddingTop: 10, paddingBottom: 10 }}
                             />
                         </div>
 
-                        <div className="flex items-center gap-4">
-                            <button
-                                onClick={() => document.getElementById('file-upload')?.click()}
-                                className="flex-1 py-3 bg-slate-700 text-white rounded-xl hover:bg-slate-600 transition-colors flex items-center justify-center gap-2"
-                            >
-                                <Upload size={18} />
-                                Importer un fichier CSV
-                            </button>
-                            <input
-                                id="file-upload"
-                                type="file"
-                                accept=".csv"
-                                className="hidden"
-                                onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) {
-                                        const reader = new FileReader();
-                                        reader.onload = (event) => {
-                                            setBulkStudents(event.target?.result as string);
-                                        };
-                                        reader.readAsText(file);
-                                    }
-                                }}
-                            />
-                        </div>
+                        <button
+                            onClick={() => document.getElementById('file-upload')?.click()}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 16px', borderRadius: 8, border: '1px solid var(--n-border)', background: 'var(--n-bg-secondary)', color: 'var(--n-text-secondary)', fontSize: 13, cursor: 'pointer' }}
+                        >
+                            <Upload size={15} />
+                            Importer un fichier CSV
+                        </button>
+                        <input
+                            id="file-upload"
+                            type="file"
+                            accept=".csv"
+                            style={{ display: 'none' }}
+                            onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                    const reader = new FileReader();
+                                    reader.onload = (event) => {
+                                        setBulkStudents(event.target?.result as string);
+                                    };
+                                    reader.readAsText(file);
+                                }
+                            }}
+                        />
 
                         <div>
-                            <label className="text-sm text-slate-400 mb-2 block">Groupe / Promotion</label>
-                            <select
-                                value={bulkGroup}
-                                onChange={(e) => setBulkGroup(e.target.value)}
-                                className="w-full px-4 py-3 bg-slate-900 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                            >
+                            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--n-text-secondary)', marginBottom: 6 }}>Groupe / Promotion</label>
+                            <select value={bulkGroup} onChange={(e) => setBulkGroup(e.target.value)} style={{ ...INPUT_STYLE }}>
                                 <option value="Promotion 2026">Promotion 2026</option>
                                 <option value="Promotion 2025">Promotion 2025</option>
                                 <option value="Formation Continue">Formation Continue</option>
                             </select>
                         </div>
 
-                        <p className="text-xs text-slate-500">
+                        <p style={{ fontSize: 12, color: 'var(--n-text-tertiary)', margin: 0 }}>
                             Les mots de passe sont générés automatiquement pendant l&apos;import.
                         </p>
 
                         <button
                             onClick={handleBulkSubmit}
                             disabled={isSubmitting || !bulkStudents.trim()}
-                            className="w-full py-4 bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 24px', borderRadius: 8, background: 'var(--n-accent)', color: '#fff', fontSize: 14, fontWeight: 600, border: 'none', cursor: isSubmitting || !bulkStudents.trim() ? 'not-allowed' : 'pointer', opacity: isSubmitting || !bulkStudents.trim() ? 0.5 : 1 }}
                         >
                             {isSubmitting ? (
                                 <>
-                                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/30 border-t-white"></div>
+                                    <div style={{ width: 16, height: 16, border: '2px solid currentColor', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
                                     Import en cours...
                                 </>
                             ) : (
                                 <>
-                                    <Users size={20} />
+                                    <Users size={16} />
                                     Importer les étudiants
                                 </>
                             )}

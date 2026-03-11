@@ -165,4 +165,22 @@ router.post('/webhooks', merchantController.createWebhook);
  */
 router.delete('/webhooks/:id', merchantController.deleteWebhook);
 
+/**
+ * POST /api/merchant/telecollecte
+ * Submit end-of-day batch (Télécollecte ISO 8583 TC33) via acquirer to clearing engine
+ */
+router.post('/telecollecte', merchantController.telecollecte);
+
+/**
+ * GET /api/merchant/clearing/batches
+ * List clearing batch runs from sim-clearing-engine
+ */
+router.get('/clearing/batches', merchantController.getClearingBatches);
+
+/**
+ * GET /api/merchant/clearing/batches/:id
+ * Get details of a specific clearing batch
+ */
+router.get('/clearing/batches/:id', merchantController.getClearingBatch);
+
 export default router;

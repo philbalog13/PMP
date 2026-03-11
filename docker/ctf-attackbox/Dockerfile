@@ -133,6 +133,10 @@ COPY docker/ctf-attackbox/config/.bashrc /root/.bashrc
 COPY docker/ctf-attackbox/config/banner.sh /etc/profile.d/01-banner.sh
 COPY docker/ctf-attackbox/config/aliases.sh /etc/profile.d/02-aliases.sh
 
+# Fix Windows CRLF line endings that break bash scripts
+RUN sed -i 's/\r$//' /entrypoint.sh /usr/local/bin/lab /usr/local/bin/tools /usr/local/bin/smoke-tools \
+    /etc/profile.d/01-banner.sh /etc/profile.d/02-aliases.sh 2>/dev/null || true
+
 RUN chmod +x /entrypoint.sh /usr/local/bin/lab /usr/local/bin/tools /usr/local/bin/smoke-tools \
     /opt/attackbox/samples/timing-attack.py \
     /opt/attackbox/samples/iso8583-probe.py \

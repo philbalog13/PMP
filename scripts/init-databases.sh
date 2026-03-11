@@ -77,6 +77,8 @@ CREATE TABLE IF NOT EXISTS cards.virtual_cards (
     status VARCHAR(20) DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'BLOCKED', 'EXPIRED', 'SUSPENDED')),
     bin VARCHAR(6) NOT NULL,
     user_id UUID,
+    pki_cert TEXT,
+    pki_private_key TEXT,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW(),
     last_transaction_date DATE
@@ -436,6 +438,70 @@ GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA users TO $POSTGRES_USER;
 echo "✓ Permissions granted"
 
 # ==============================================
+# CLEARING SCHEMA (Télécollecte / Back-Office)
+# ==============================================
+
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+    CREATE SCHEMA IF NOT EXISTS clearing;
+
+    -- Batch files submitted by POS terminals at end of day
+    CREATE TABLE IF NOT EXISTS clearing.batch_files (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        terminal_id VARCHAR(20) NOT NULL,
+        merchant_id VARCHAR(100) NOT NULL,
+        submitted_at TIMESTAMPTZ DEFAULT NOW(),
+        processed_at TIMESTAMPTZ,
+        status VARCHAR(20) DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'PROCESSING', 'COMPLETED', 'PARTIAL', 'FAILED')),
+        total_amount DECIMAL(12,2) DEFAULT 0,
+        transaction_count INTEGER DEFAULT 0,
+        reconciled_count INTEGER DEFAULT 0,
+        discrepancy_amount DECIMAL(12,2) DEFAULT 0
+    );
+
+    -- Individual transactions within a batch
+    CREATE TABLE IF NOT EXISTS clearing.batch_transactions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        batch_id UUID REFERENCES clearing.batch_files(id) ON DELETE CASCADE,
+        transaction_id UUID,
+        pan_masked VARCHAR(25),
+        amount DECIMAL(12,2),
+        currency VARCHAR(3) DEFAULT 'EUR',
+        response_code VARCHAR(4),
+        transaction_type VARCHAR(20),
+        authorized_at TIMESTAMPTZ,
+        reconciled BOOLEAN DEFAULT false,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    -- Indexes for performance
+    CREATE INDEX IF NOT EXISTS idx_clearing_batch_merchant ON clearing.batch_files(merchant_id);
+    CREATE INDEX IF NOT EXISTS idx_clearing_batch_terminal ON clearing.batch_files(terminal_id);
+    CREATE INDEX IF NOT EXISTS idx_clearing_batch_status ON clearing.batch_files(status);
+    CREATE INDEX IF NOT EXISTS idx_clearing_txn_batch ON clearing.batch_transactions(batch_id);
+
+    -- View: daily clearing summary per merchant
+    CREATE OR REPLACE VIEW clearing.daily_summary AS
+        SELECT
+            bf.merchant_id,
+            DATE(bf.submitted_at) as clearing_date,
+            COUNT(*) as batch_count,
+            SUM(bf.transaction_count) as total_transactions,
+            SUM(bf.reconciled_count) as total_reconciled,
+            SUM(bf.total_amount) as total_amount,
+            SUM(bf.discrepancy_amount) as total_discrepancy
+        FROM clearing.batch_files bf
+        WHERE bf.status IN ('COMPLETED', 'PARTIAL')
+        GROUP BY bf.merchant_id, DATE(bf.submitted_at)
+        ORDER BY clearing_date DESC;
+
+    GRANT USAGE ON SCHEMA clearing TO PUBLIC;
+    GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA clearing TO PUBLIC;
+    GRANT USAGE ON ALL SEQUENCES IN SCHEMA clearing TO PUBLIC;
+EOSQL
+
+echo "✓ Clearing schema created"
+
+# ==============================================
 # Summary
 # ==============================================
 
@@ -443,9 +509,9 @@ echo ""
 echo "=========================================="
 echo "  ✓ Database initialization complete!"
 echo "=========================================="
-echo "Schemas created: 4"
-echo "Tables created: 10+"
-echo "Views created: 2"
+echo "Schemas created: 5 (cards, transactions, security, merchants/users, clearing)"
+echo "Tables created: 12+"
+echo "Views created: 3"
 echo "Triggers created: 3"
 echo ""
 echo "Ready for pedagogical data seeding..."

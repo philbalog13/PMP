@@ -27,6 +27,20 @@ describe('Key Management Service', () => {
 
             expect(key.algorithm).toBe('3DES');
         });
+
+        it('should generate DES key with 8-byte payload', () => {
+            const key = keyService.generateKey('DES-KEY', 'TMK', 'DES');
+
+            expect(key.algorithm).toBe('DES');
+            expect(key.keyData).toHaveLength(16);
+        });
+
+        it('should fall back to 16 bytes for unknown algorithm input', () => {
+            const key = keyService.generateKey('FALLBACK-KEY', 'DEK', 'UNKNOWN' as any);
+
+            expect(key.algorithm).toBe('UNKNOWN');
+            expect(key.keyData).toHaveLength(32);
+        });
     });
 
     describe('getKey', () => {
@@ -96,6 +110,31 @@ describe('Key Management Service', () => {
         });
     });
 
+    describe('getKeyData', () => {
+        it('should return raw key data for existing key', () => {
+            const key = keyService.generateKey('DATA-TEST', 'DEK', 'AES-128');
+
+            expect(keyService.getKeyData(key.id)).toBe(key.keyData);
+        });
+
+        it('should return null for missing key', () => {
+            expect(keyService.getKeyData('missing-key')).toBeNull();
+        });
+    });
+
+    describe('updateKeyStatus', () => {
+        it('should update key status when key exists', () => {
+            const key = keyService.generateKey('STATUS-TEST', 'DEK', 'AES-128');
+
+            expect(keyService.updateKeyStatus(key.id, 'EXPIRED')).toBe(true);
+            expect(keyService.getKey(key.id)?.status).toBe('EXPIRED');
+        });
+
+        it('should return false when key does not exist', () => {
+            expect(keyService.updateKeyStatus('missing-key', 'EXPIRED')).toBe(false);
+        });
+    });
+
     describe('importKey', () => {
         it('should import key with calculated KCV', () => {
             const keyData = '0123456789ABCDEF0123456789ABCDEF';
@@ -104,6 +143,32 @@ describe('Key Management Service', () => {
             expect(imported.name).toBe('IMPORTED');
             expect(imported.status).toBe('ACTIVE');
             expect(imported.kcv).toHaveLength(6);
+        });
+
+        it('should fall back to 000000 KCV for invalid key material', () => {
+            const imported = keyService.importKey('BROKEN', 'DEK', 'AES-256', '1234');
+
+            expect(imported.kcv).toBe('000000');
+        });
+    });
+
+    describe('exportKey', () => {
+        it('should export active key in unsafe clear format', () => {
+            const key = keyService.generateKey('EXPORT-TEST', 'DEK', 'AES-128');
+            const exported = keyService.exportKey(key.id);
+
+            expect(exported).toEqual({
+                keyBlock: `UNSAFE_CLEAR:${key.keyData}`,
+                kcv: key.kcv
+            });
+        });
+
+        it('should not export inactive or missing keys', () => {
+            const key = keyService.generateKey('EXPORT-DISABLED', 'DEK', 'AES-128');
+            keyService.updateKeyStatus(key.id, 'SUSPENDED');
+
+            expect(keyService.exportKey(key.id)).toBeNull();
+            expect(keyService.exportKey('missing-key')).toBeNull();
         });
     });
 });

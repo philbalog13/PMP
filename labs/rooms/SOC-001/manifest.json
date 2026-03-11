@@ -1,0 +1,13 @@
+﻿{
+  "roomCode": "SOC-001",
+  "title": "The Social Engineer's Wire",
+  "ttlMinutes": 120,
+  "maxExtensionMinutes": 60,
+  "hybrid": true,
+  "entryTarget": null,
+  "targets": [],
+  "tasks": [
+    { "taskId": "SOC-001-T1", "hasMachine": false, "questionType": "QUIZ", "requiresFlag": false },
+    { "taskId": "SOC-001-T2", "hasMachine": false, "questionType": "TEXT", "requiresFlag": true }
+  ]
+}

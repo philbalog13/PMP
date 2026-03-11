@@ -1,23 +1,31 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useAuth } from '../../auth/useAuth';
 import {
-    CreditCard,
-    Wifi,
+    ArrowRight,
     CheckCircle2,
-    XCircle,
-    Keyboard,
+    ChevronRight,
+    CreditCard,
     Eye,
     EyeOff,
-    RotateCcw,
-    Printer,
     Info,
-    ArrowRight,
+    Keyboard,
+    Printer,
+    RefreshCcw,
+    RotateCcw,
     Shield,
-    ChevronRight
+    Wifi,
+    XCircle,
 } from 'lucide-react';
-import Link from 'next/link';
+import { BankPageHeader } from '@shared/components/banking/layout/BankPageHeader';
+import { BankButton } from '@shared/components/banking/primitives/BankButton';
+import { BankBadge } from '@shared/components/banking/primitives/BankBadge';
+import { BankInput } from '@shared/components/banking/primitives/BankInput';
+import { BankSpinner } from '@shared/components/banking/primitives/BankSpinner';
+import { AmountInput } from '@shared/components/banking/forms/AmountInput';
+import { BankSelect, type BankSelectOption } from '@shared/components/banking/forms/BankSelect';
 
 type PaymentMode = 'chip' | 'contactless' | 'manual';
 type TransactionStep = 'idle' | 'amount' | 'card' | 'pin' | 'processing' | 'result';
@@ -36,6 +44,20 @@ interface MerchantTerminal {
     terminalName: string;
     status: string;
 }
+
+const STEP_ORDER: Array<{ id: Exclude<TransactionStep, 'idle'>; label: string }> = [
+    { id: 'amount', label: 'Montant' },
+    { id: 'card', label: 'Carte' },
+    { id: 'pin', label: 'PIN' },
+    { id: 'processing', label: 'Traitement' },
+    { id: 'result', label: 'Resultat' },
+];
+
+const MODE_OPTIONS: BankSelectOption[] = [
+    { value: 'contactless', label: 'Sans contact' },
+    { value: 'chip', label: 'Puce' },
+    { value: 'manual', label: 'Manuel' },
+];
 
 export default function POSTerminalPage() {
     const { isLoading } = useAuth(true);
@@ -82,10 +104,27 @@ export default function POSTerminalPage() {
         fetchTerminals();
     }, []);
 
+    const terminalOptions = useMemo<BankSelectOption[]>(() => {
+        if (!terminals.length) {
+            return [{ value: '', label: 'Terminal auto' }];
+        }
+        return terminals.map((terminal) => ({
+            value: terminal.terminalId,
+            label: `${terminal.terminalId} - ${terminal.terminalName}${terminal.status !== 'ACTIVE' ? ` (${terminal.status})` : ''}`,
+            disabled: terminal.status !== 'ACTIVE',
+        }));
+    }, [terminals]);
+
+    const amountValueNumber = useMemo(() => {
+        if (!amount) return null;
+        const parsed = Number.parseFloat(amount.replace(/\s/g, '').replace(',', '.'));
+        return Number.isFinite(parsed) ? parsed : null;
+    }, [amount]);
+
     const formatAmount = (value: string) => {
         const num = value.replace(/[^\d]/g, '');
         if (!num) return '';
-        const cents = parseInt(num) / 100;
+        const cents = Number.parseInt(num, 10) / 100;
         return cents.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     };
 
@@ -95,7 +134,7 @@ export default function POSTerminalPage() {
             return;
         }
         if (digit === 'backspace') {
-            setAmount(prev => prev.slice(0, -1));
+            setAmount((prev) => prev.slice(0, -1));
             return;
         }
         if (amount.replace(/[^\d]/g, '').length < 8) {
@@ -110,22 +149,21 @@ export default function POSTerminalPage() {
             return;
         }
         if (digit === 'backspace') {
-            setPin(prev => prev.slice(0, -1));
+            setPin((prev) => prev.slice(0, -1));
             return;
         }
         if (pin.length < 4) {
-            setPin(prev => prev + digit);
+            setPin((prev) => prev + digit);
         }
     };
 
     const startTransaction = () => {
-        if (!amount || parseFloat(amount.replace(/\s/g, '').replace(',', '.')) === 0) return;
+        if (!amount || Number.parseFloat(amount.replace(/\s/g, '').replace(',', '.')) === 0) return;
         setApiError(null);
         setStep('card');
     };
 
     const processCard = () => {
-        // Simulate card reading
         if (paymentMode === 'manual') {
             if (!cardNumber || cardNumber.length < 16) return;
         }
@@ -146,7 +184,7 @@ export default function POSTerminalPage() {
         setStep('processing');
         setApiError(null);
 
-        const amountNum = parseFloat(amount.replace(/\s/g, '').replace(',', '.'));
+        const amountNum = Number.parseFloat(amount.replace(/\s/g, '').replace(',', '.'));
         const token = localStorage.getItem('token');
 
         try {
@@ -170,7 +208,6 @@ export default function POSTerminalPage() {
             }
 
             const transaction = payload.transaction || {};
-            // Backend returns `approved` as a boolean and `transaction.status` as APPROVED/DECLINED
             const approved = payload.approved === true || transaction.status === 'APPROVED';
             const txnResponseCode = transaction.response_code || transaction.responseCode || '';
 
@@ -182,8 +219,9 @@ export default function POSTerminalPage() {
                 rrn: transaction.stan || transaction.transaction_id || '',
                 timestamp: transaction.timestamp || new Date().toISOString()
             });
-        } catch (error: any) {
-            setApiError(error.message || 'Erreur réseau');
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Erreur reseau';
+            setApiError(message);
             setResult({
                 success: false,
                 responseCode: '96',
@@ -205,7 +243,7 @@ export default function POSTerminalPage() {
     };
 
     const generateIso8583Request = () => {
-        const amountCents = Math.round(parseFloat(amount.replace(/\s/g, '').replace(',', '.')) * 100);
+        const amountCents = Math.round(Number.parseFloat(amount.replace(/\s/g, '').replace(',', '.')) * 100);
         const now = new Date();
         return `MTI: 0100 (Authorization Request)
 DE002: ${cardNumber.slice(0, 6)}******${cardNumber.slice(-4)} (PAN)
@@ -236,7 +274,7 @@ DE055: 9F26...9F27... (EMV Data)`;
         return `MTI: 0110 (Authorization Response)
 DE002: ${cardNumber.slice(0, 6)}******${cardNumber.slice(-4)} (PAN)
 DE003: 000000 (Processing Code)
-DE004: ${Math.round(parseFloat(amount.replace(/\s/g, '').replace(',', '.')) * 100).toString().padStart(12, '0')} (Amount)
+DE004: ${Math.round(Number.parseFloat(amount.replace(/\s/g, '').replace(',', '.')) * 100).toString().padStart(12, '0')} (Amount)
 DE011: ${result.rrn?.slice(0, 6)} (STAN)
 DE037: ${result.rrn} (RRN)
 DE038: ${result.authCode || ''} (Authorization Code)
@@ -246,431 +284,350 @@ DE042: MERCHANT001     (Merchant ID)
 DE055: 91...9F27... (EMV Response Data)`;
     };
 
+    const currentStepIndex = STEP_ORDER.findIndex((item) => item.id === (step === 'idle' ? 'amount' : step));
+
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+            <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <BankSpinner size={40} />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-slate-950 pt-24 pb-12">
-            <div className="max-w-5xl mx-auto px-6">
-                {/* Breadcrumb */}
-                <div className="text-xs text-slate-500 mb-6">
-                    <Link href="/merchant" className="hover:text-purple-400">Dashboard Marchand</Link>
-                    <ChevronRight size={12} className="inline mx-1" />
-                    <span className="text-purple-400">Terminal POS</span>
-                </div>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: 'var(--bank-space-6)' }}>
+            <div className="bk-caption" style={{ marginBottom: 'var(--bank-space-4)' }}>
+                <Link href="/merchant" style={{ color: 'var(--bank-text-tertiary)', textDecoration: 'none' }}>Dashboard Marchand</Link>
+                <ChevronRight size={12} style={{ display: 'inline', margin: '0 6px' }} />
+                <span style={{ color: 'var(--bank-accent)' }}>Terminal POS</span>
+            </div>
 
-                {/* Header */}
-                <div className="text-center mb-8">
-                    <h1 className="text-3xl font-bold text-white mb-2">Terminal de Paiement Électronique</h1>
-                    <p className="text-slate-400">
-                        Simulez un encaissement avec visualisation des messages ISO 8583
-                    </p>
-                </div>
+            <BankPageHeader
+                title="Terminal POS"
+                subtitle="Simulation d encaissement avec messages ISO 8583 et etapes de traitement."
+            />
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* POS Terminal */}
-                    <div className="bg-gradient-to-b from-slate-800 to-slate-900 rounded-3xl p-6 border border-white/10 shadow-2xl">
-                        {/* Terminal Screen */}
-                        <div className="bg-slate-950 rounded-2xl p-6 mb-6 min-h-[300px] border border-slate-700">
-                            {/* Idle State */}
-                            {step === 'idle' && (
-                                <div className="h-full flex flex-col">
-                                    <div className="text-center mb-6">
-                                        <p className="text-slate-400 text-sm mb-2">Montant à encaisser</p>
-                                        <p className="text-4xl font-bold text-white font-mono">
-                                            {amount || '0,00'} <span className="text-2xl">EUR</span>
-                                        </p>
-                                    </div>
-
-                                    <div className="mb-4">
-                                        <p className="text-slate-400 text-xs mb-2">Terminal marchand</p>
-                                        <select
-                                            value={selectedTerminalId}
-                                            onChange={(event) => setSelectedTerminalId(event.target.value)}
-                                            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-sm"
-                                        >
-                                            {terminals.length === 0 && (
-                                                <option value="">Terminal auto</option>
-                                            )}
-                                            {terminals.map((terminal) => (
-                                                <option key={terminal.terminalId} value={terminal.terminalId}>
-                                                    {terminal.terminalId} - {terminal.terminalName}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    {/* Payment Mode Selection */}
-                                    <div className="grid grid-cols-3 gap-2 mb-6">
-                                        <button
-                                            onClick={() => setPaymentMode('contactless')}
-                                            className={`p-3 rounded-xl flex flex-col items-center gap-1 transition-colors ${
-                                                paymentMode === 'contactless'
-                                                    ? 'bg-purple-500/20 border-2 border-purple-500'
-                                                    : 'bg-slate-800 border-2 border-transparent hover:border-slate-600'
-                                            }`}
-                                        >
-                                            <Wifi size={20} className={`rotate-90 ${paymentMode === 'contactless' ? 'text-purple-400' : 'text-slate-400'}`} />
-                                            <span className="text-xs text-slate-300">Sans contact</span>
-                                        </button>
-                                        <button
-                                            onClick={() => setPaymentMode('chip')}
-                                            className={`p-3 rounded-xl flex flex-col items-center gap-1 transition-colors ${
-                                                paymentMode === 'chip'
-                                                    ? 'bg-purple-500/20 border-2 border-purple-500'
-                                                    : 'bg-slate-800 border-2 border-transparent hover:border-slate-600'
-                                            }`}
-                                        >
-                                            <CreditCard size={20} className={paymentMode === 'chip' ? 'text-purple-400' : 'text-slate-400'} />
-                                            <span className="text-xs text-slate-300">Puce</span>
-                                        </button>
-                                        <button
-                                            onClick={() => setPaymentMode('manual')}
-                                            className={`p-3 rounded-xl flex flex-col items-center gap-1 transition-colors ${
-                                                paymentMode === 'manual'
-                                                    ? 'bg-purple-500/20 border-2 border-purple-500'
-                                                    : 'bg-slate-800 border-2 border-transparent hover:border-slate-600'
-                                            }`}
-                                        >
-                                            <Keyboard size={20} className={paymentMode === 'manual' ? 'text-purple-400' : 'text-slate-400'} />
-                                            <span className="text-xs text-slate-300">Manuel</span>
-                                        </button>
-                                    </div>
-
-                                    {/* Keypad */}
-                                    <div className="grid grid-cols-3 gap-2">
-                                        {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'clear', '0', 'backspace'].map((key) => (
-                                            <button
-                                                key={key}
-                                                onClick={() => handleAmountInput(key)}
-                                                className={`p-4 rounded-xl font-bold text-lg transition-colors ${
-                                                    key === 'clear'
-                                                        ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
-                                                        : key === 'backspace'
-                                                        ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30'
-                                                        : 'bg-slate-800 text-white hover:bg-slate-700'
-                                                }`}
-                                            >
-                                                {key === 'clear' ? 'C' : key === 'backspace' ? '←' : key}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Card Reading State */}
-                            {step === 'card' && (
-                                <div className="h-full flex flex-col items-center justify-center">
-                                    {paymentMode === 'manual' ? (
-                                        <div className="w-full">
-                                            <p className="text-slate-400 text-sm text-center mb-4">Entrez le numéro de carte</p>
-                                            <input
-                                                type="text"
-                                                value={cardNumber}
-                                                onChange={(e) => setCardNumber(e.target.value.replace(/\D/g, '').slice(0, 16))}
-                                                placeholder="4532 8921 7654 4532"
-                                                className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-xl text-white text-center font-mono text-xl tracking-widest focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                            />
-                                            <p className="text-xs text-slate-500 text-center mt-2">
-                                                (Test: 4532892176544532)
-                                            </p>
-                                        </div>
-                                    ) : (
-                                        <>
-                                            <div className="w-20 h-20 rounded-full bg-purple-500/20 flex items-center justify-center mb-4 animate-pulse">
-                                                {paymentMode === 'contactless' ? (
-                                                    <Wifi size={40} className="text-purple-400 rotate-90" />
-                                                ) : (
-                                                    <CreditCard size={40} className="text-purple-400" />
-                                                )}
-                                            </div>
-                                            <p className="text-white text-lg font-medium mb-2">
-                                                {paymentMode === 'contactless'
-                                                    ? 'Présentez votre carte'
-                                                    : 'Insérez votre carte'}
-                                            </p>
-                                            <p className="text-slate-400 text-sm">
-                                                {amount} EUR
-                                            </p>
-                                        </>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* PIN Entry State */}
-                            {step === 'pin' && (
-                                <div className="h-full flex flex-col">
-                                    <p className="text-slate-400 text-sm text-center mb-4">Entrez votre code PIN</p>
-                                    <div className="flex justify-center gap-3 mb-6">
-                                        {[0, 1, 2, 3].map((i) => (
-                                            <div
-                                                key={i}
-                                                className={`w-12 h-12 rounded-lg border-2 flex items-center justify-center ${
-                                                    pin.length > i
-                                                        ? 'border-purple-500 bg-purple-500/20'
-                                                        : 'border-slate-600'
-                                                }`}
-                                            >
-                                                {pin.length > i && (
-                                                    showPin ? (
-                                                        <span className="text-white font-bold">{pin[i]}</span>
-                                                    ) : (
-                                                        <div className="w-3 h-3 rounded-full bg-purple-400"></div>
-                                                    )
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    <button
-                                        onClick={() => setShowPin(!showPin)}
-                                        className="flex items-center justify-center gap-2 text-slate-400 text-sm mb-4"
-                                    >
-                                        {showPin ? <EyeOff size={16} /> : <Eye size={16} />}
-                                        {showPin ? 'Masquer' : 'Afficher'}
-                                    </button>
-
-                                    <div className="grid grid-cols-3 gap-2">
-                                        {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'clear', '0', 'backspace'].map((key) => (
-                                            <button
-                                                key={key}
-                                                onClick={() => handlePinInput(key)}
-                                                className={`p-3 rounded-xl font-bold transition-colors ${
-                                                    key === 'clear'
-                                                        ? 'bg-red-500/20 text-red-400'
-                                                        : key === 'backspace'
-                                                        ? 'bg-yellow-500/20 text-yellow-400'
-                                                        : 'bg-slate-800 text-white hover:bg-slate-700'
-                                                }`}
-                                            >
-                                                {key === 'clear' ? 'C' : key === 'backspace' ? '←' : key}
-                                            </button>
-                                        ))}
-                                    </div>
-
-                                    <p className="text-xs text-slate-500 text-center mt-4">(Test PIN: 1234)</p>
-                                </div>
-                            )}
-
-                            {/* Processing State */}
-                            {step === 'processing' && (
-                                <div className="h-full flex flex-col items-center justify-center">
-                                    <div className="animate-spin rounded-full h-16 w-16 border-4 border-purple-500/30 border-t-purple-500 mb-6"></div>
-                                    <p className="text-white text-lg font-medium mb-2">Traitement en cours...</p>
-                                    <p className="text-slate-400 text-sm">Communication avec le réseau</p>
-                                </div>
-                            )}
-
-                            {/* Result State */}
-                            {step === 'result' && result && (
-                                <div className="h-full flex flex-col items-center justify-center">
-                                    {result.success ? (
-                                        <>
-                                            <div className="w-20 h-20 rounded-full bg-emerald-500/20 flex items-center justify-center mb-4">
-                                                <CheckCircle2 size={40} className="text-emerald-400" />
-                                            </div>
-                                            <p className="text-2xl font-bold text-white mb-2">APPROUVÉE</p>
-                                            <p className="text-emerald-400 font-mono mb-4">{amount} EUR</p>
-                                            <div className="text-center text-sm text-slate-400 space-y-1">
-                                                <p>Auth: <span className="text-white font-mono">{result.authCode}</span></p>
-                                                <p>RRN: <span className="text-white font-mono">{result.rrn}</span></p>
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <div className="w-20 h-20 rounded-full bg-red-500/20 flex items-center justify-center mb-4">
-                                                <XCircle size={40} className="text-red-400" />
-                                            </div>
-                                            <p className="text-2xl font-bold text-white mb-2">REFUSÉE</p>
-                                            <p className="text-red-400 mb-4">{result.responseMessage}</p>
-                                            <p className="text-sm text-slate-400">Code: {result.responseCode}</p>
-                                        </>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Terminal Buttons */}
-                        <div className="grid grid-cols-3 gap-3">
-                            <button
-                                onClick={resetTerminal}
-                                className="p-4 bg-red-500/20 text-red-400 rounded-xl hover:bg-red-500/30 transition-colors flex items-center justify-center gap-2"
+            <section className="bk-card" style={{ marginBottom: 'var(--bank-space-5)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${STEP_ORDER.length}, minmax(0, 1fr))`, gap: 'var(--bank-space-2)' }}>
+                    {STEP_ORDER.map((item, index) => {
+                        const active = index <= currentStepIndex;
+                        return (
+                            <div
+                                key={item.id}
+                                style={{
+                                    border: '1px solid var(--bank-border-subtle)',
+                                    borderRadius: 'var(--bank-radius-md)',
+                                    padding: 'var(--bank-space-2)',
+                                    textAlign: 'center',
+                                    background: active ? 'var(--bank-accent-subtle)' : 'var(--bank-bg-sunken)',
+                                }}
                             >
-                                <RotateCcw size={20} />
-                                Annuler
-                            </button>
+                                <p className="bk-caption" style={{ margin: 0, color: active ? 'var(--bank-accent)' : 'var(--bank-text-tertiary)' }}>
+                                    {index + 1}. {item.label}
+                                </p>
+                            </div>
+                        );
+                    })}
+                </div>
+            </section>
 
-                            {step === 'idle' && (
-                                <button
-                                    onClick={startTransaction}
-                                    disabled={!amount}
-                                    className="col-span-2 p-4 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-semibold"
-                                >
-                                    Valider
-                                    <ArrowRight size={20} />
-                                </button>
-                            )}
+            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 'var(--bank-space-5)' }} className="bk-pos-grid">
+                <section className="bk-card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--bank-space-4)' }}>
+                    <div
+                        style={{
+                            border: '1px solid var(--bank-border-subtle)',
+                            background: 'var(--bank-bg-sunken)',
+                            borderRadius: 'var(--bank-radius-xl)',
+                            padding: 'var(--bank-space-5)',
+                            minHeight: 330,
+                        }}
+                    >
+                        {step === 'idle' && (
+                            <div style={{ display: 'grid', gap: 'var(--bank-space-4)' }}>
+                                <AmountInput
+                                    label="Montant"
+                                    value={amountValueNumber}
+                                    onChange={(value) => {
+                                        if (value === null) {
+                                            setAmount('');
+                                            return;
+                                        }
+                                        setAmount(value.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+                                    }}
+                                    currency="EUR"
+                                    size="lg"
+                                    align="right"
+                                />
 
-                            {step === 'card' && (
-                                <button
-                                    onClick={processCard}
-                                    className="col-span-2 p-4 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition-colors flex items-center justify-center gap-2 font-semibold"
-                                >
-                                    {paymentMode === 'manual' ? 'Valider' : 'Simuler lecture'}
-                                    <CreditCard size={20} />
-                                </button>
-                            )}
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--bank-space-3)' }}>
+                                    <BankSelect
+                                        label="Terminal marchand"
+                                        value={selectedTerminalId}
+                                        onChange={(value) => setSelectedTerminalId(value)}
+                                        options={terminalOptions}
+                                    />
+                                    <BankSelect
+                                        label="Mode de paiement"
+                                        value={paymentMode}
+                                        onChange={(value) => setPaymentMode(value as PaymentMode)}
+                                        options={MODE_OPTIONS}
+                                    />
+                                </div>
 
-                            {step === 'pin' && (
-                                <button
-                                    onClick={verifyPin}
-                                    disabled={pin.length !== 4}
-                                    className="col-span-2 p-4 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-semibold"
-                                >
-                                    Confirmer PIN
-                                    <Shield size={20} />
-                                </button>
-                            )}
-
-                            {step === 'result' && (
-                                <>
-                                    <button className="p-4 bg-slate-700 text-white rounded-xl hover:bg-slate-600 transition-colors flex items-center justify-center gap-2">
-                                        <Printer size={20} />
-                                        Ticket
-                                    </button>
-                                    <button
-                                        onClick={resetTerminal}
-                                        className="p-4 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition-colors flex items-center justify-center gap-2 font-semibold"
-                                    >
-                                        Nouvelle vente
-                                    </button>
-                                </>
-                            )}
-                        </div>
-
-                        {apiError && (
-                            <div className="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-xs">
-                                {apiError}
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--bank-space-2)' }}>
+                                    {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'clear', '0', 'backspace'].map((key) => (
+                                        <BankButton
+                                            key={key}
+                                            variant={key === 'clear' ? 'danger' : 'ghost'}
+                                            onClick={() => handleAmountInput(key)}
+                                        >
+                                            {key === 'clear' ? 'C' : key === 'backspace' ? '←' : key}
+                                        </BankButton>
+                                    ))}
+                                </div>
                             </div>
                         )}
-                    </div>
 
-                    {/* ISO 8583 Messages Panel */}
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <h2 className="text-xl font-semibold text-white">Messages ISO 8583</h2>
-                            <span className="px-2 py-1 bg-purple-500/20 text-purple-400 text-xs rounded-full flex items-center gap-1">
-                                <Info size={12} /> Pédagogique
-                            </span>
-                        </div>
-
-                        {/* Request Message */}
-                        <div className="bg-slate-800/50 border border-white/10 rounded-xl overflow-hidden">
-                            <button
-                                onClick={() => setShowIso8583(!showIso8583)}
-                                className="w-full p-4 flex items-center justify-between text-left hover:bg-white/5 transition-colors"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-blue-500/20 rounded-lg">
-                                        <ArrowRight size={16} className="text-blue-400" />
-                                    </div>
-                                    <div>
-                                        <p className="text-white font-medium">0100 - Authorization Request</p>
-                                        <p className="text-xs text-slate-400">Message envoyé au réseau</p>
-                                    </div>
-                                </div>
-                                <Eye size={18} className="text-slate-400" />
-                            </button>
-
-                            {showIso8583 && (step === 'processing' || step === 'result') && (
-                                <div className="p-4 bg-slate-900 border-t border-white/5">
-                                    <pre className="text-xs font-mono text-slate-300 whitespace-pre-wrap">
-                                        {generateIso8583Request()}
-                                    </pre>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Response Message */}
-                        {step === 'result' && result && (
-                            <div className="bg-slate-800/50 border border-white/10 rounded-xl overflow-hidden">
-                                <button
-                                    onClick={() => setShowIso8583(!showIso8583)}
-                                    className="w-full p-4 flex items-center justify-between text-left hover:bg-white/5 transition-colors"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className={`p-2 rounded-lg ${result.success ? 'bg-emerald-500/20' : 'bg-red-500/20'}`}>
-                                            <ArrowRight size={16} className={`rotate-180 ${result.success ? 'text-emerald-400' : 'text-red-400'}`} />
+                        {step === 'card' && (
+                            <div style={{ display: 'grid', gap: 'var(--bank-space-4)' }}>
+                                {paymentMode === 'manual' ? (
+                                    <BankInput
+                                        label="Numero de carte"
+                                        value={cardNumber}
+                                        onChange={(event) => setCardNumber(event.target.value.replace(/\D/g, '').slice(0, 16))}
+                                        placeholder="4532 8921 7654 4532"
+                                        prefix={CreditCard}
+                                    />
+                                ) : (
+                                    <div style={{ textAlign: 'center', padding: 'var(--bank-space-8) 0' }}>
+                                        <div style={{ marginBottom: 'var(--bank-space-4)' }}>
+                                            {paymentMode === 'contactless' ? (
+                                                <Wifi size={54} style={{ color: 'var(--bank-accent)', transform: 'rotate(90deg)' }} />
+                                            ) : (
+                                                <CreditCard size={54} style={{ color: 'var(--bank-accent)' }} />
+                                            )}
                                         </div>
-                                        <div>
-                                            <p className="text-white font-medium">0110 - Authorization Response</p>
-                                            <p className={`text-xs ${result.success ? 'text-emerald-400' : 'text-red-400'}`}>
-                                                Code {result.responseCode}: {result.responseMessage}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <Eye size={18} className="text-slate-400" />
-                                </button>
-
-                                {showIso8583 && (
-                                    <div className="p-4 bg-slate-900 border-t border-white/5">
-                                        <pre className="text-xs font-mono text-slate-300 whitespace-pre-wrap">
-                                            {generateIso8583Response()}
-                                        </pre>
+                                        <p style={{ margin: 0, color: 'var(--bank-text-primary)', fontWeight: 'var(--bank-font-semibold)' }}>
+                                            {paymentMode === 'contactless' ? 'Presentez la carte' : 'Inserez la carte'}
+                                        </p>
+                                        <p className="bk-caption" style={{ marginTop: 6 }}>{amount || '0,00'} EUR</p>
                                     </div>
                                 )}
                             </div>
                         )}
 
-                        {/* Response Codes Reference */}
-                        <div className="bg-slate-800/50 border border-white/10 rounded-xl p-4">
-                            <h3 className="text-sm font-medium text-white mb-3">Codes de réponse courants</h3>
-                            <div className="space-y-2 text-xs">
-                                <div className="flex items-center gap-2">
-                                    <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 rounded font-mono">00</span>
-                                    <span className="text-slate-300">Approuvée</span>
+                        {step === 'pin' && (
+                            <div style={{ display: 'grid', gap: 'var(--bank-space-4)' }}>
+                                <p style={{ margin: 0, color: 'var(--bank-text-secondary)', textAlign: 'center' }}>Entrez le code PIN</p>
+                                <div style={{ display: 'flex', justifyContent: 'center', gap: 'var(--bank-space-2)' }}>
+                                    {[0, 1, 2, 3].map((i) => (
+                                        <div
+                                            key={i}
+                                            style={{
+                                                width: 46,
+                                                height: 46,
+                                                borderRadius: 'var(--bank-radius-md)',
+                                                border: `1px solid ${pin.length > i ? 'var(--bank-accent)' : 'var(--bank-border-default)'}`,
+                                                display: 'grid',
+                                                placeItems: 'center',
+                                                background: pin.length > i ? 'var(--bank-accent-subtle)' : 'var(--bank-bg-elevated)',
+                                            }}
+                                        >
+                                            {pin.length > i ? (showPin ? <span>{pin[i]}</span> : '•') : null}
+                                        </div>
+                                    ))}
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="px-2 py-0.5 bg-red-500/20 text-red-400 rounded font-mono">51</span>
-                                    <span className="text-slate-300">Fonds insuffisants</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="px-2 py-0.5 bg-red-500/20 text-red-400 rounded font-mono">14</span>
-                                    <span className="text-slate-300">Numéro de carte invalide</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="px-2 py-0.5 bg-red-500/20 text-red-400 rounded font-mono">54</span>
-                                    <span className="text-slate-300">Carte expirée</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded font-mono">05</span>
-                                    <span className="text-slate-300">Ne pas honorer</span>
+                                <BankButton variant="ghost" size="sm" icon={showPin ? EyeOff : Eye} onClick={() => setShowPin((prev) => !prev)}>
+                                    {showPin ? 'Masquer PIN' : 'Afficher PIN'}
+                                </BankButton>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--bank-space-2)' }}>
+                                    {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'clear', '0', 'backspace'].map((key) => (
+                                        <BankButton
+                                            key={key}
+                                            variant={key === 'clear' ? 'danger' : 'ghost'}
+                                            onClick={() => handlePinInput(key)}
+                                        >
+                                            {key === 'clear' ? 'C' : key === 'backspace' ? '←' : key}
+                                        </BankButton>
+                                    ))}
                                 </div>
                             </div>
-                        </div>
+                        )}
 
-                        {/* Info */}
-                        <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
-                            <div className="flex items-start gap-3">
-                                <Info size={20} className="text-blue-400 flex-shrink-0 mt-0.5" />
-                                <div className="text-sm text-slate-300">
-                                    <p className="font-medium text-white mb-1">Mode simulation</p>
-                                    <p>
-                                        Les montants {'<'} 1000 EUR sont approuvés à 90%.
-                                        Le PIN de test est <code className="text-purple-400">1234</code>.
+                        {step === 'processing' && (
+                            <div style={{ minHeight: 250, display: 'grid', placeItems: 'center', textAlign: 'center' }}>
+                                <div>
+                                    <BankSpinner size={52} />
+                                    <p style={{ marginTop: 'var(--bank-space-4)', color: 'var(--bank-text-primary)', fontWeight: 'var(--bank-font-semibold)' }}>
+                                        Traitement en cours
                                     </p>
+                                    <p className="bk-caption">Communication avec le reseau bancaire...</p>
                                 </div>
                             </div>
+                        )}
+
+                        {step === 'result' && result && (
+                            <div style={{ minHeight: 250, display: 'grid', placeItems: 'center', textAlign: 'center', gap: 'var(--bank-space-3)' }}>
+                                {result.success ? (
+                                    <CheckCircle2 size={56} style={{ color: 'var(--bank-success)' }} />
+                                ) : (
+                                    <XCircle size={56} style={{ color: 'var(--bank-danger)' }} />
+                                )}
+                                <BankBadge
+                                    variant={result.success ? 'success' : 'danger'}
+                                    label={result.success ? 'APPROUVEE' : 'REFUSEE'}
+                                />
+                                <p style={{ margin: 0, color: 'var(--bank-text-primary)', fontWeight: 'var(--bank-font-semibold)' }}>
+                                    {amount || '0,00'} EUR
+                                </p>
+                                <p className="bk-caption" style={{ margin: 0 }}>
+                                    Code {result.responseCode} - {result.responseMessage}
+                                </p>
+                                <p className="bk-caption" style={{ margin: 0, fontFamily: 'var(--bank-font-mono)' }}>
+                                    AUTH {result.authCode || '-'} · RRN {result.rrn || '-'}
+                                </p>
+                            </div>
+                        )}
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 'var(--bank-space-2)', flexWrap: 'wrap' }}>
+                        <BankButton variant="danger" icon={RotateCcw} onClick={resetTerminal}>
+                            Annuler
+                        </BankButton>
+
+                        {step === 'idle' && (
+                            <BankButton onClick={startTransaction} iconRight={ArrowRight} disabled={!amount}>
+                                Simuler transaction
+                            </BankButton>
+                        )}
+
+                        {step === 'card' && (
+                            <BankButton onClick={processCard} icon={paymentMode === 'manual' ? Keyboard : CreditCard}>
+                                {paymentMode === 'manual' ? 'Valider la carte' : 'Simuler lecture'}
+                            </BankButton>
+                        )}
+
+                        {step === 'pin' && (
+                            <BankButton onClick={verifyPin} icon={Shield} disabled={pin.length !== 4}>
+                                Confirmer PIN
+                            </BankButton>
+                        )}
+
+                        {step === 'result' && (
+                            <>
+                                <BankButton variant="ghost" icon={Printer}>
+                                    Ticket
+                                </BankButton>
+                                <BankButton onClick={resetTerminal} icon={RefreshCcw}>
+                                    Nouvelle vente
+                                </BankButton>
+                            </>
+                        )}
+                    </div>
+
+                    {apiError && (
+                        <div style={{
+                            borderRadius: 'var(--bank-radius-lg)',
+                            border: '1px solid color-mix(in srgb, var(--bank-danger) 30%, transparent)',
+                            background: 'color-mix(in srgb, var(--bank-danger) 8%, transparent)',
+                            color: 'var(--bank-danger)',
+                            padding: 'var(--bank-space-3)',
+                            fontSize: 'var(--bank-text-sm)',
+                        }}>
+                            {apiError}
+                        </div>
+                    )}
+                </section>
+
+                <section className="bk-card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--bank-space-4)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h2 style={{ margin: 0, fontSize: 'var(--bank-text-base)', color: 'var(--bank-text-primary)' }}>
+                            Messages ISO 8583
+                        </h2>
+                        <BankBadge variant="info" icon={Info} label="Pedagogique" />
+                    </div>
+
+                    <div style={{ border: '1px solid var(--bank-border-subtle)', borderRadius: 'var(--bank-radius-lg)', overflow: 'hidden' }}>
+                        <button
+                            onClick={() => setShowIso8583((prev) => !prev)}
+                            style={{
+                                width: '100%',
+                                background: 'var(--bank-bg-surface)',
+                                color: 'var(--bank-text-primary)',
+                                border: 'none',
+                                padding: 'var(--bank-space-4)',
+                                textAlign: 'left',
+                                cursor: 'pointer',
+                            }}
+                        >
+                            0100 - Authorization Request
+                        </button>
+                        {showIso8583 && (step === 'processing' || step === 'result') && (
+                            <pre style={{
+                                margin: 0,
+                                padding: 'var(--bank-space-4)',
+                                background: 'var(--bank-bg-sunken)',
+                                color: 'var(--bank-text-secondary)',
+                                fontSize: 11,
+                                overflowX: 'auto',
+                                whiteSpace: 'pre-wrap',
+                            }}>{generateIso8583Request()}</pre>
+                        )}
+                    </div>
+
+                    {step === 'result' && result && (
+                        <div style={{ border: '1px solid var(--bank-border-subtle)', borderRadius: 'var(--bank-radius-lg)', overflow: 'hidden' }}>
+                            <div style={{ padding: 'var(--bank-space-4)', background: 'var(--bank-bg-surface)', color: 'var(--bank-text-primary)' }}>
+                                0110 - Authorization Response
+                            </div>
+                            {showIso8583 && (
+                                <pre style={{
+                                    margin: 0,
+                                    padding: 'var(--bank-space-4)',
+                                    background: 'var(--bank-bg-sunken)',
+                                    color: 'var(--bank-text-secondary)',
+                                    fontSize: 11,
+                                    overflowX: 'auto',
+                                    whiteSpace: 'pre-wrap',
+                                }}>{generateIso8583Response()}</pre>
+                            )}
+                        </div>
+                    )}
+
+                    <div style={{ border: '1px solid var(--bank-border-subtle)', borderRadius: 'var(--bank-radius-lg)', padding: 'var(--bank-space-4)' }}>
+                        <h3 style={{ marginTop: 0, marginBottom: 'var(--bank-space-3)', fontSize: 'var(--bank-text-sm)', color: 'var(--bank-text-primary)' }}>
+                            Codes de reponse courants
+                        </h3>
+                        <div style={{ display: 'grid', gap: 'var(--bank-space-2)' }}>
+                            <BankBadge variant="success" label="00 - Approuvee" />
+                            <BankBadge variant="danger" label="51 - Fonds insuffisants" />
+                            <BankBadge variant="danger" label="14 - Numero de carte invalide" />
+                            <BankBadge variant="danger" label="54 - Carte expiree" />
+                            <BankBadge variant="warning" label="05 - Ne pas honorer" />
                         </div>
                     </div>
-                </div>
+
+                    <div style={{
+                        borderRadius: 'var(--bank-radius-lg)',
+                        border: '1px solid color-mix(in srgb, var(--bank-info) 30%, transparent)',
+                        background: 'color-mix(in srgb, var(--bank-info) 10%, transparent)',
+                        padding: 'var(--bank-space-4)',
+                    }}>
+                        <p style={{ margin: 0, color: 'var(--bank-text-primary)', fontSize: 'var(--bank-text-sm)', fontWeight: 'var(--bank-font-medium)' }}>
+                            Mode simulation
+                        </p>
+                        <p className="bk-caption" style={{ marginTop: 6, marginBottom: 0 }}>
+                            Les montants inferieurs a 1000 EUR sont generalement approuves. PIN de test: 1234.
+                        </p>
+                    </div>
+                </section>
             </div>
+
+            <style>{`
+              @media (max-width: 1024px) {
+                .bk-pos-grid { grid-template-columns: 1fr !important; }
+              }
+            `}</style>
         </div>
     );
 }
-

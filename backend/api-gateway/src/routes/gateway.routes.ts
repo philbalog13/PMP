@@ -278,7 +278,18 @@ router.post('/api/transaction/process', async (req: Request, res: Response) => {
     try {
         const { pan, amount, merchantId } = req.body;
         if (!pan || !amount || !merchantId) return res.status(400).json({ success: false, error: 'Missing required fields', correlationId });
-        const result = await orchestrator.processTransaction({ pan, amount: parseFloat(amount), currency: req.body.currency || 'EUR', merchantId, terminalId: req.body.terminalId || 'WEB001', mcc: req.body.mcc, country: req.body.country, isEcommerce: req.body.isEcommerce });
+        const result = await orchestrator.processTransaction({
+            pan,
+            amount: parseFloat(amount),
+            currency: req.body.currency || 'EUR',
+            merchantId,
+            terminalId: req.body.terminalId || 'WEB001',
+            mcc: req.body.mcc,
+            country: req.body.country,
+            isEcommerce: req.body.isEcommerce,
+            threeDSCompleted: Boolean(req.body.threeDSCompleted),
+            acsTransId: typeof req.body.acsTransId === 'string' ? req.body.acsTransId : undefined,
+        });
         res.status(result.approved ? 200 : 402).json({ success: result.approved, ...result, correlationId });
     } catch (error: any) {
         res.status(500).json({ success: false, error: 'Transaction processing failed', correlationId });

@@ -1,738 +1,633 @@
 ﻿'use client';
 
-import { useState, useEffect, useCallback, type ReactNode } from 'react';
-import Link from 'next/link';
-import { Beaker, AlertTriangle, RefreshCw, Zap, Shield, Clock, ChevronRight, CheckCircle2, X } from 'lucide-react';
-
-interface Toast {
-    id: number;
-    message: string;
-    type: 'success' | 'info';
-}
+import { useCallback, useEffect, useId, useMemo, useState } from 'react';
+import { AlertTriangle, Beaker, RefreshCw, Shield, Zap } from 'lucide-react';
+import {
+  NotionButton,
+  NotionCard,
+  NotionPill,
+  NotionProgress,
+  NotionSkeleton,
+  useNotionToast,
+} from '@shared/components/notion';
 
 interface LabConditions {
-    latencyMs: number;
-    authFailureRate: number;
-    fraudInjection: boolean;
-    hsmLatencyMs: number;
-    networkErrors: boolean;
+  latencyMs: number;
+  authFailureRate: number;
+  fraudInjection: boolean;
+  hsmLatencyMs: number;
+  networkErrors: boolean;
 }
 
 interface CtfVulnerabilityControls {
-    allowReplay: boolean;
-    weakKeysEnabled: boolean;
-    verboseErrors: boolean;
-    keyLeakInLogs: boolean;
+  allowReplay: boolean;
+  weakKeysEnabled: boolean;
+  verboseErrors: boolean;
+  keyLeakInLogs: boolean;
 }
 
 const DEFAULT_CONDITIONS: LabConditions = {
-    latencyMs: 0,
-    authFailureRate: 0,
-    fraudInjection: false,
-    hsmLatencyMs: 0,
-    networkErrors: false,
+  latencyMs: 0,
+  authFailureRate: 0,
+  fraudInjection: false,
+  hsmLatencyMs: 0,
+  networkErrors: false,
 };
 
 const DEFAULT_CTF_VULNERABILITIES: CtfVulnerabilityControls = {
-    allowReplay: false,
-    weakKeysEnabled: false,
-    verboseErrors: false,
-    keyLeakInLogs: false,
+  allowReplay: false,
+  weakKeysEnabled: false,
+  verboseErrors: false,
+  keyLeakInLogs: false,
 };
 
+function readToken() {
+  return localStorage.getItem('token');
+}
+
 export default function LabControlPage() {
-    const [conditions, setConditions] = useState<LabConditions>(DEFAULT_CONDITIONS);
-    const [ctfVulnerabilities, setCtfVulnerabilities] = useState<CtfVulnerabilityControls>(DEFAULT_CTF_VULNERABILITIES);
-    const [toasts, setToasts] = useState<Toast[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [applying, setApplying] = useState(false);
-    const [applyingCtfVulns, setApplyingCtfVulns] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+  const { pushToast } = useNotionToast();
 
-    const showToast = useCallback((message: string, type: 'success' | 'info' = 'success') => {
-        const id = Date.now();
-        setToasts((prev) => [...prev, { id, message, type }]);
-        setTimeout(() => {
-            setToasts((prev) => prev.filter((toast) => toast.id !== id));
-        }, 3500);
-    }, []);
+  const [conditions, setConditions] = useState<LabConditions>(DEFAULT_CONDITIONS);
+  const [ctfVulnerabilities, setCtfVulnerabilities] = useState<CtfVulnerabilityControls>(DEFAULT_CTF_VULNERABILITIES);
 
-    const dismissToast = (id: number) => {
-        setToasts((prev) => prev.filter((toast) => toast.id !== id));
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [applyingConditions, setApplyingConditions] = useState(false);
+  const [applyingCtf, setApplyingCtf] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const normalizeConditions = useCallback((payload: Record<string, unknown> | null | undefined): LabConditions => {
+    const latencyMs = Number(payload?.latencyMs ?? payload?.latency ?? 0);
+    const authFailureRate = Number(payload?.authFailureRate ?? payload?.authFailRate ?? 0);
+    const hsmLatencyMs = Number(payload?.hsmLatencyMs ?? payload?.hsmLatency ?? 0);
+
+    return {
+      latencyMs: Number.isFinite(latencyMs) ? latencyMs : 0,
+      authFailureRate: Number.isFinite(authFailureRate) ? authFailureRate : 0,
+      fraudInjection: Boolean(payload?.fraudInjection),
+      hsmLatencyMs: Number.isFinite(hsmLatencyMs) ? hsmLatencyMs : 0,
+      networkErrors: Boolean(payload?.networkErrors),
     };
+  }, []);
 
-    const readToken = () => localStorage.getItem('token');
+  const normalizeCtfVulnerabilities = useCallback(
+    (payload: Record<string, unknown> | null | undefined): CtfVulnerabilityControls => ({
+      allowReplay: Boolean(payload?.allowReplay),
+      weakKeysEnabled: Boolean(payload?.weakKeysEnabled),
+      verboseErrors: Boolean(payload?.verboseErrors),
+      keyLeakInLogs: Boolean(payload?.keyLeakInLogs),
+    }),
+    []
+  );
 
-    const normalizeConditions = useCallback((payload: Record<string, unknown> | null | undefined): LabConditions => {
-        const latencyMs = Number(payload?.latencyMs ?? payload?.latency ?? 0);
-        const authFailureRate = Number(payload?.authFailureRate ?? payload?.authFailRate ?? 0);
-        const hsmLatencyMs = Number(payload?.hsmLatencyMs ?? payload?.hsmLatency ?? 0);
+  const fetchConditions = useCallback(async () => {
+    const token = readToken();
+    if (!token) {
+      setError('Session introuvable');
+      return;
+    }
 
-        return {
-            latencyMs: Number.isFinite(latencyMs) ? latencyMs : 0,
-            authFailureRate: Number.isFinite(authFailureRate) ? authFailureRate : 0,
-            fraudInjection: Boolean(payload?.fraudInjection),
-            hsmLatencyMs: Number.isFinite(hsmLatencyMs) ? hsmLatencyMs : 0,
-            networkErrors: Boolean(payload?.networkErrors),
-        };
-    }, []);
+    const response = await fetch('/api/progress/lab/conditions', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
-    const normalizeCtfVulnerabilities = useCallback((payload: Record<string, unknown> | null | undefined): CtfVulnerabilityControls => ({
-        allowReplay: Boolean(payload?.allowReplay),
-        weakKeysEnabled: Boolean(payload?.weakKeysEnabled),
-        verboseErrors: Boolean(payload?.verboseErrors),
-        keyLeakInLogs: Boolean(payload?.keyLeakInLogs),
-    }), []);
+    if (!response.ok) {
+      throw new Error(`Erreur API (${response.status})`);
+    }
 
-    const fetchConditions = useCallback(async () => {
-        const token = readToken();
-        if (!token) {
-            setError('Session introuvable.');
-            setLoading(false);
-            return;
-        }
+    const payload = await response.json();
+    setConditions(normalizeConditions(payload.conditions));
+  }, [normalizeConditions]);
 
-        try {
-            setError(null);
-            const response = await fetch('/api/progress/lab/conditions', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+  const fetchCtfVulnerabilities = useCallback(async () => {
+    const token = readToken();
+    if (!token) {
+      setError('Session introuvable');
+      return;
+    }
 
-            if (!response.ok) {
-                throw new Error(`Erreur API (${response.status})`);
-            }
+    const response = await fetch('/api/hsm/config', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
-            const data = await response.json();
-            setConditions(normalizeConditions(data.conditions));
-        } catch (err: any) {
-            setError(err.message || 'Impossible de charger les conditions du lab.');
-        } finally {
-            setLoading(false);
-        }
-    }, [normalizeConditions]);
+    if (!response.ok) {
+      throw new Error(`Erreur API (${response.status})`);
+    }
 
-    const fetchCtfVulnerabilities = useCallback(async () => {
-        const token = readToken();
-        if (!token) {
-            setError('Session introuvable.');
-            return;
-        }
+    const payload = await response.json();
+    setCtfVulnerabilities(normalizeCtfVulnerabilities(payload.vulnerabilities));
+  }, [normalizeCtfVulnerabilities]);
 
-        try {
-            setError(null);
-            const response = await fetch('/api/hsm/config', {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            });
+  const refreshAll = useCallback(async () => {
+    try {
+      setError(null);
+      setRefreshing(true);
+      await Promise.all([fetchConditions(), fetchCtfVulnerabilities()]);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Impossible de charger les conditions du lab';
+      setError(message);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [fetchConditions, fetchCtfVulnerabilities]);
 
-            if (!response.ok) {
-                throw new Error(`Erreur API (${response.status})`);
-            }
+  useEffect(() => {
+    void refreshAll();
+  }, [refreshAll]);
 
-            const data = await response.json();
-            setCtfVulnerabilities(normalizeCtfVulnerabilities(data.vulnerabilities));
-        } catch (err: any) {
-            setError(err.message || 'Impossible de charger la config VulnEngine CTF.');
-        }
-    }, [normalizeCtfVulnerabilities]);
-
-    const refreshAll = useCallback(async () => {
-        await Promise.all([fetchConditions(), fetchCtfVulnerabilities()]);
-    }, [fetchConditions, fetchCtfVulnerabilities]);
-
-    useEffect(() => {
-        void refreshAll();
-    }, [refreshAll]);
-
-    const activeCount = [
+  const activeCount = useMemo(
+    () =>
+      [
         conditions.latencyMs > 0,
         conditions.authFailureRate > 0,
         conditions.fraudInjection,
         conditions.hsmLatencyMs > 0,
         conditions.networkErrors,
-    ].filter(Boolean).length;
+      ].filter(Boolean).length,
+    [conditions]
+  );
 
-    const activeVulnerabilityCount = [
+  const activeVulnerabilityCount = useMemo(
+    () =>
+      [
         ctfVulnerabilities.allowReplay,
         ctfVulnerabilities.weakKeysEnabled,
         ctfVulnerabilities.verboseErrors,
         ctfVulnerabilities.keyLeakInLogs,
-    ].filter(Boolean).length;
+      ].filter(Boolean).length,
+    [ctfVulnerabilities]
+  );
 
-    const handleApplyConditions = async () => {
-        const token = readToken();
-        if (!token) {
-            showToast('Session expiree, reconnectez-vous.', 'info');
-            return;
-        }
-
-        setApplying(true);
-
-        try {
-            setError(null);
-            const response = await fetch('/api/progress/lab/conditions', {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify(conditions)
-            });
-
-            if (!response.ok) {
-                throw new Error(`Erreur API (${response.status})`);
-            }
-
-            const data = await response.json();
-            setConditions(normalizeConditions(data.conditions));
-            showToast(`${activeCount} condition${activeCount !== 1 ? 's' : ''} appliquee${activeCount !== 1 ? 's' : ''} avec succes`);
-        } catch (err: any) {
-            setError(err.message || 'Erreur lors de la mise a jour des conditions.');
-            showToast('Application des conditions echouee', 'info');
-        } finally {
-            setApplying(false);
-        }
-    };
-
-    const handleReset = async () => {
-        const token = readToken();
-        if (!token) {
-            showToast('Session expiree, reconnectez-vous.', 'info');
-            return;
-        }
-
-        setApplying(true);
-
-        try {
-            setError(null);
-            const response = await fetch('/api/progress/lab/conditions/reset', {
-                method: 'POST',
-                headers: { Authorization: `Bearer ${token}` }
-            });
-
-            if (!response.ok) {
-                throw new Error(`Erreur API (${response.status})`);
-            }
-
-            const data = await response.json();
-            setConditions(normalizeConditions(data.conditions));
-            showToast('Environnement reinitialise', 'info');
-        } catch (err: any) {
-            setError(err.message || 'Erreur lors de la reinitialisation.');
-            showToast('Reinitialisation echouee', 'info');
-        } finally {
-            setApplying(false);
-        }
-    };
-
-    const handleApplyCtfVulnerabilities = async () => {
-        const token = readToken();
-        if (!token) {
-            showToast('Session expiree, reconnectez-vous.', 'info');
-            return;
-        }
-
-        setApplyingCtfVulns(true);
-
-        try {
-            setError(null);
-            const response = await fetch('/api/hsm/config', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                    vulnerabilities: ctfVulnerabilities,
-                }),
-            });
-
-            if (!response.ok) {
-                throw new Error(`Erreur API (${response.status})`);
-            }
-
-            const data = await response.json();
-            setCtfVulnerabilities(normalizeCtfVulnerabilities(data.vulnerabilities));
-            showToast(`${activeVulnerabilityCount} toggle${activeVulnerabilityCount > 1 ? 's' : ''} CTF applique${activeVulnerabilityCount > 1 ? 's' : ''}`);
-        } catch (err: any) {
-            setError(err.message || 'Erreur lors de la mise a jour des toggles CTF.');
-            showToast('Application des toggles CTF echouee', 'info');
-        } finally {
-            setApplyingCtfVulns(false);
-        }
-    };
-
-    const handleResetCtfVulnerabilities = async () => {
-        const token = readToken();
-        if (!token) {
-            showToast('Session expiree, reconnectez-vous.', 'info');
-            return;
-        }
-
-        setApplyingCtfVulns(true);
-
-        try {
-            setError(null);
-            const response = await fetch('/api/hsm/config', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                    vulnerabilities: DEFAULT_CTF_VULNERABILITIES,
-                }),
-            });
-
-            if (!response.ok) {
-                throw new Error(`Erreur API (${response.status})`);
-            }
-
-            const data = await response.json();
-            setCtfVulnerabilities(normalizeCtfVulnerabilities(data.vulnerabilities));
-            showToast('Toggles CTF reinitialises', 'info');
-        } catch (err: any) {
-            setError(err.message || 'Erreur lors de la reinitialisation des toggles CTF.');
-            showToast('Reinitialisation toggles CTF echouee', 'info');
-        } finally {
-            setApplyingCtfVulns(false);
-        }
-    };
-
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">
-                <div className="flex flex-col items-center gap-4">
-                    <Beaker className="animate-bounce w-12 h-12 text-orange-500" />
-                    <span className="text-sm text-slate-500">Chargement des conditions du lab...</span>
-                </div>
-            </div>
-        );
+  const handleApplyConditions = useCallback(async () => {
+    const token = readToken();
+    if (!token) {
+      pushToast({ variant: 'error', title: 'Session invalide' });
+      return;
     }
 
+    try {
+      setError(null);
+      setApplyingConditions(true);
+
+      const response = await fetch('/api/progress/lab/conditions', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(conditions),
+      });
+
+      if (!response.ok) throw new Error(`Erreur API (${response.status})`);
+
+      const payload = await response.json();
+      setConditions(normalizeConditions(payload.conditions));
+      pushToast({
+        variant: 'success',
+        title: 'Conditions appliquees',
+        message: `${activeCount} condition${activeCount > 1 ? 's' : ''} active${activeCount > 1 ? 's' : ''}`,
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Application des conditions echouee';
+      setError(message);
+      pushToast({ variant: 'error', title: 'Echec application', message });
+    } finally {
+      setApplyingConditions(false);
+    }
+  }, [activeCount, conditions, normalizeConditions, pushToast]);
+
+  const handleResetConditions = useCallback(async () => {
+    const token = readToken();
+    if (!token) {
+      pushToast({ variant: 'error', title: 'Session invalide' });
+      return;
+    }
+
+    try {
+      setError(null);
+      setApplyingConditions(true);
+
+      const response = await fetch('/api/progress/lab/conditions/reset', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) throw new Error(`Erreur API (${response.status})`);
+
+      const payload = await response.json();
+      setConditions(normalizeConditions(payload.conditions));
+      pushToast({ variant: 'info', title: 'Conditions reinitialisees' });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Reset impossible';
+      setError(message);
+      pushToast({ variant: 'error', title: 'Reset echoue', message });
+    } finally {
+      setApplyingConditions(false);
+    }
+  }, [normalizeConditions, pushToast]);
+
+  const handleApplyCtf = useCallback(async () => {
+    const token = readToken();
+    if (!token) {
+      pushToast({ variant: 'error', title: 'Session invalide' });
+      return;
+    }
+
+    try {
+      setError(null);
+      setApplyingCtf(true);
+
+      const response = await fetch('/api/hsm/config', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ vulnerabilities: ctfVulnerabilities }),
+      });
+
+      if (!response.ok) throw new Error(`Erreur API (${response.status})`);
+
+      const payload = await response.json();
+      setCtfVulnerabilities(normalizeCtfVulnerabilities(payload.vulnerabilities));
+      pushToast({
+        variant: 'success',
+        title: 'Toggles CTF appliques',
+        message: `${activeVulnerabilityCount} vulnerability toggle${activeVulnerabilityCount > 1 ? 's' : ''} actif${activeVulnerabilityCount > 1 ? 's' : ''}`,
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Application CTF impossible';
+      setError(message);
+      pushToast({ variant: 'error', title: 'Echec CTF toggle', message });
+    } finally {
+      setApplyingCtf(false);
+    }
+  }, [activeVulnerabilityCount, ctfVulnerabilities, normalizeCtfVulnerabilities, pushToast]);
+
+  const handleResetCtf = useCallback(async () => {
+    const token = readToken();
+    if (!token) {
+      pushToast({ variant: 'error', title: 'Session invalide' });
+      return;
+    }
+
+    try {
+      setError(null);
+      setApplyingCtf(true);
+
+      const response = await fetch('/api/hsm/config', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ vulnerabilities: DEFAULT_CTF_VULNERABILITIES }),
+      });
+
+      if (!response.ok) throw new Error(`Erreur API (${response.status})`);
+
+      const payload = await response.json();
+      setCtfVulnerabilities(normalizeCtfVulnerabilities(payload.vulnerabilities));
+      pushToast({ variant: 'info', title: 'Toggles CTF reinitialises' });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Reset CTF impossible';
+      setError(message);
+      pushToast({ variant: 'error', title: 'Reset CTF echoue', message });
+    } finally {
+      setApplyingCtf(false);
+    }
+  }, [normalizeCtfVulnerabilities, pushToast]);
+
+  if (loading) {
     return (
-        <div className="min-h-screen bg-slate-950 text-white pt-24 pb-12 px-6">
-            <div className="fixed top-20 right-6 z-50 flex flex-col gap-2">
-                {toasts.map((toast) => (
-                    <div
-                        key={toast.id}
-                        className={`flex items-center gap-3 px-4 py-3 rounded-xl border shadow-lg animate-in slide-in-from-right backdrop-blur-sm ${
-                            toast.type === 'success'
-                                ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300'
-                                : 'bg-blue-500/20 border-blue-500/30 text-blue-300'
-                        }`}
-                    >
-                        <CheckCircle2 size={18} />
-                        <span className="text-sm font-medium">{toast.message}</span>
-                        <button onClick={() => dismissToast(toast.id)} className="ml-2 opacity-60 hover:opacity-100">
-                            <X size={14} />
-                        </button>
-                    </div>
-                ))}
-            </div>
-
-            <div className="max-w-5xl mx-auto space-y-8">
-                <div className="text-xs text-slate-500">
-                    <Link href="/instructor" className="hover:text-blue-400">Dashboard</Link>
-                    <ChevronRight size={12} className="inline mx-1" />
-                    <span className="text-blue-400">Controle Lab</span>
-                </div>
-
-                <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                        <div className="p-3 bg-orange-500/20 rounded-xl border border-orange-500/30">
-                            <Beaker className="w-7 h-7 text-orange-400" />
-                        </div>
-                        <div>
-                            <h1 className="text-3xl font-bold">Controle Laboratoire</h1>
-                            <p className="text-slate-400 mt-1">
-                                Injection de conditions d&apos;erreur pour tests pedagogiques
-                            </p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <button
-                            onClick={() => {
-                                void refreshAll();
-                            }}
-                            className="px-4 py-2 bg-slate-800 rounded-xl font-medium hover:bg-slate-700 transition flex items-center gap-2"
-                        >
-                            <RefreshCw className="w-4 h-4" />
-                            Actualiser
-                        </button>
-                        {activeCount > 0 && (
-                            <div className="flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-full">
-                                <Zap className="w-4 h-4 text-amber-400" />
-                                <span className="text-xs font-bold text-amber-400">
-                                    {activeCount} condition{activeCount > 1 ? 's' : ''} active{activeCount > 1 ? 's' : ''}
-                                </span>
-                            </div>
-                        )}
-                        {activeVulnerabilityCount > 0 && (
-                            <div className="flex items-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-full">
-                                <AlertTriangle className="w-4 h-4 text-red-300" />
-                                <span className="text-xs font-bold text-red-300">
-                                    {activeVulnerabilityCount} vuln CTF active{activeVulnerabilityCount > 1 ? 's' : ''}
-                                </span>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {error && (
-                    <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl text-sm text-red-300">
-                        {error}
-                    </div>
-                )}
-
-                <div className="bg-orange-500/10 border border-orange-500/30 p-4 rounded-xl flex items-start gap-3">
-                    <AlertTriangle className="w-5 h-5 text-orange-400 flex-shrink-0 mt-0.5" />
-                    <div className="text-sm">
-                        <p className="font-bold text-orange-400">Mode Formateur Actif</p>
-                        <p className="text-slate-300 mt-1">
-                            Les conditions appliquees ici affectent les sessions de tous les etudiants connectes.
-                        </p>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <ControlCard
-                        title="Latence Reseau"
-                        icon={<Clock className="w-6 h-6" />}
-                        color="blue"
-                        active={conditions.latencyMs > 0}
-                    >
-                        <div className="space-y-4">
-                            <div>
-                                <div className="flex justify-between mb-2">
-                                    <label className="text-sm font-medium">Delai (ms)</label>
-                                    <span className="text-sm font-bold text-blue-400">{conditions.latencyMs} ms</span>
-                                </div>
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="500"
-                                    step="10"
-                                    value={conditions.latencyMs}
-                                    onChange={(e) => setConditions((prev) => ({ ...prev, latencyMs: Number(e.target.value) }))}
-                                    className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
-                                />
-                                <div className="flex justify-between text-xs text-slate-500 mt-1">
-                                    <span>0ms</span>
-                                    <span>500ms</span>
-                                </div>
-                            </div>
-                            <p className="text-xs text-slate-400">Simule une connexion lente pour tester la resilience des applications.</p>
-                        </div>
-                    </ControlCard>
-
-                    <ControlCard
-                        title="Echecs d'Authentification"
-                        icon={<Shield className="w-6 h-6" />}
-                        color="red"
-                        active={conditions.authFailureRate > 0}
-                    >
-                        <div className="space-y-4">
-                            <div>
-                                <div className="flex justify-between mb-2">
-                                    <label className="text-sm font-medium">Taux d&apos;echec (%)</label>
-                                    <span className="text-sm font-bold text-red-400">{conditions.authFailureRate}%</span>
-                                </div>
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="100"
-                                    step="5"
-                                    value={conditions.authFailureRate}
-                                    onChange={(e) => setConditions((prev) => ({ ...prev, authFailureRate: Number(e.target.value) }))}
-                                    className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
-                                />
-                                <div className="flex justify-between text-xs text-slate-500 mt-1">
-                                    <span>0%</span>
-                                    <span>100%</span>
-                                </div>
-                            </div>
-                            <p className="text-xs text-slate-400">Simule des refus d&apos;autorisation aleatoires (05, 51, 54...).</p>
-                        </div>
-                    </ControlCard>
-
-                    <ControlCard
-                        title="Latence HSM"
-                        icon={<Shield className="w-6 h-6" />}
-                        color="purple"
-                        active={conditions.hsmLatencyMs > 0}
-                    >
-                        <div className="space-y-4">
-                            <div>
-                                <div className="flex justify-between mb-2">
-                                    <label className="text-sm font-medium">Delai cryptographique (ms)</label>
-                                    <span className="text-sm font-bold text-purple-400">{conditions.hsmLatencyMs} ms</span>
-                                </div>
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="300"
-                                    step="10"
-                                    value={conditions.hsmLatencyMs}
-                                    onChange={(e) => setConditions((prev) => ({ ...prev, hsmLatencyMs: Number(e.target.value) }))}
-                                    className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
-                                />
-                                <div className="flex justify-between text-xs text-slate-500 mt-1">
-                                    <span>0ms</span>
-                                    <span>300ms</span>
-                                </div>
-                            </div>
-                            <p className="text-xs text-slate-400">Simule un HSM surcharge.</p>
-                        </div>
-                    </ControlCard>
-
-                    <ControlCard
-                        title="Injection Fraude"
-                        icon={<AlertTriangle className="w-6 h-6" />}
-                        color="yellow"
-                        active={conditions.fraudInjection}
-                    >
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium">Mode Fraude Actif</span>
-                                <button
-                                    onClick={() => setConditions((prev) => ({ ...prev, fraudInjection: !prev.fraudInjection }))}
-                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
-                                        conditions.fraudInjection ? 'bg-yellow-500' : 'bg-slate-700'
-                                    }`}
-                                >
-                                    <span
-                                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                                            conditions.fraudInjection ? 'translate-x-6' : 'translate-x-1'
-                                        }`}
-                                    />
-                                </button>
-                            </div>
-                            <p className="text-xs text-slate-400">Injecte des patterns detectables (velocity abuse, geolocalisation suspecte).</p>
-                            {conditions.fraudInjection && (
-                                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
-                                    <p className="text-xs text-yellow-400 font-bold flex items-center gap-2">
-                                        <AlertTriangle size={14} />
-                                        Actif: les etudiants verront des alertes de fraude
-                                    </p>
-                                </div>
-                            )}
-                        </div>
-                    </ControlCard>
-                </div>
-
-                <div className="bg-slate-900/60 border border-white/10 rounded-2xl p-6 space-y-4">
-                    <h2 className="text-xl font-bold">Options Avancees</h2>
-
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="font-medium">Erreurs Reseau Aleatoires</p>
-                            <p className="text-xs text-slate-400 mt-1">
-                                Simule des timeouts et connexions refusees.
-                            </p>
-                        </div>
-                        <button
-                            onClick={() => setConditions((prev) => ({ ...prev, networkErrors: !prev.networkErrors }))}
-                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
-                                conditions.networkErrors ? 'bg-red-500' : 'bg-slate-700'
-                            }`}
-                        >
-                            <span
-                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                                    conditions.networkErrors ? 'translate-x-6' : 'translate-x-1'
-                                }`}
-                            />
-                        </button>
-                    </div>
-                </div>
-
-                <div className="bg-slate-900/60 border border-white/10 rounded-2xl p-6 space-y-4">
-                    <div className="flex items-center justify-between gap-4">
-                        <div>
-                            <h2 className="text-xl font-bold">CTF Vulnerability Controls</h2>
-                            <p className="text-xs text-slate-400 mt-1">
-                                Pilotage direct de VulnEngine HSM pour les challenges REPLAY/HSM.
-                            </p>
-                        </div>
-                        <button
-                            onClick={() => {
-                                void fetchCtfVulnerabilities();
-                            }}
-                            className="px-3 py-2 bg-slate-800 rounded-lg text-xs hover:bg-slate-700 transition flex items-center gap-2"
-                        >
-                            <RefreshCw className="w-4 h-4" />
-                            Lire etat
-                        </button>
-                    </div>
-
-                    <div className="space-y-3">
-                        <CtfToggleRow
-                            title="allowReplay"
-                            description="Autorise le rejeu d'une meme transaction (REPLAY-001)."
-                            enabled={ctfVulnerabilities.allowReplay}
-                            onToggle={() => setCtfVulnerabilities((prev) => ({ ...prev, allowReplay: !prev.allowReplay }))}
-                        />
-                        <CtfToggleRow
-                            title="weakKeysEnabled"
-                            description="Active des cles faibles/predictibles (HSM-002)."
-                            enabled={ctfVulnerabilities.weakKeysEnabled}
-                            onToggle={() => setCtfVulnerabilities((prev) => ({ ...prev, weakKeysEnabled: !prev.weakKeysEnabled }))}
-                        />
-                        <CtfToggleRow
-                            title="verboseErrors"
-                            description="Expose plus d'informations techniques dans les erreurs."
-                            enabled={ctfVulnerabilities.verboseErrors}
-                            onToggle={() => setCtfVulnerabilities((prev) => ({ ...prev, verboseErrors: !prev.verboseErrors }))}
-                        />
-                        <CtfToggleRow
-                            title="keyLeakInLogs"
-                            description="Journalise du materiel sensible dans les logs (HSM-003)."
-                            enabled={ctfVulnerabilities.keyLeakInLogs}
-                            onToggle={() => setCtfVulnerabilities((prev) => ({ ...prev, keyLeakInLogs: !prev.keyLeakInLogs }))}
-                        />
-                    </div>
-
-                    <div className="flex gap-3">
-                        <button
-                            onClick={handleApplyCtfVulnerabilities}
-                            disabled={applyingCtfVulns}
-                            className="px-5 py-2.5 bg-red-600 rounded-xl font-bold hover:bg-red-500 transition flex items-center gap-2 text-sm disabled:opacity-60"
-                        >
-                            {applyingCtfVulns ? (
-                                <>
-                                    <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                    Application...
-                                </>
-                            ) : (
-                                <>
-                                    <Zap className="w-4 h-4" />
-                                    Appliquer toggles CTF
-                                </>
-                            )}
-                        </button>
-                        <button
-                            onClick={handleResetCtfVulnerabilities}
-                            disabled={applyingCtfVulns}
-                            className="px-5 py-2.5 bg-slate-800 rounded-xl font-bold hover:bg-slate-700 transition flex items-center gap-2 text-sm disabled:opacity-60"
-                        >
-                            <RefreshCw className="w-4 h-4" />
-                            Reset CTF
-                        </button>
-                    </div>
-                </div>
-
-                <div className="flex gap-4">
-                    <button
-                        onClick={handleApplyConditions}
-                        disabled={applying}
-                        className="flex-1 px-8 py-4 bg-emerald-600 rounded-2xl font-bold hover:bg-emerald-500 transition flex items-center justify-center gap-2 disabled:opacity-60"
-                    >
-                        {applying ? (
-                            <>
-                                <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                Application...
-                            </>
-                        ) : (
-                            <>
-                                <Zap className="w-5 h-5" />
-                                Appliquer les Conditions
-                            </>
-                        )}
-                    </button>
-                    <button
-                        onClick={handleReset}
-                        disabled={applying}
-                        className="px-8 py-4 bg-slate-800 rounded-2xl font-bold hover:bg-slate-700 transition flex items-center gap-2 disabled:opacity-60"
-                    >
-                        <RefreshCw className="w-5 h-5" />
-                        Reinitialiser
-                    </button>
-                </div>
-
-                <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-6">
-                    <h3 className="font-bold text-blue-400 mb-2">Cas d&apos;usage pedagogiques</h3>
-                    <ul className="space-y-2 text-sm text-slate-300">
-                        <li><strong>Latence 300ms</strong> - Gestion de timeout et retry logic</li>
-                        <li><strong>Echecs auth 20%</strong> - Lecture des codes de refus ISO 8583</li>
-                        <li><strong>Mode Fraude</strong> - Tests des detecteurs de patterns suspects</li>
-                        <li><strong>HSM lent</strong> - Impact des operations cryptographiques</li>
-                    </ul>
-                </div>
-            </div>
+      <div className="n-page-container" style={{ maxWidth: '1200px' }}>
+        <NotionSkeleton type="line" width="220px" height="28px" />
+        <div style={{ marginTop: 'var(--n-space-2)' }}>
+          <NotionSkeleton type="line" width="360px" height="14px" />
         </div>
-    );
-}
-
-function ControlCard({
-    title,
-    icon,
-    color,
-    active,
-    children,
-}: {
-    title: string;
-    icon: ReactNode;
-    color: string;
-    active?: boolean;
-    children: ReactNode;
-}) {
-    const colors: Record<string, string> = {
-        blue: 'bg-blue-500/20 border-blue-500/30 text-blue-400',
-        red: 'bg-red-500/20 border-red-500/30 text-red-400',
-        purple: 'bg-purple-500/20 border-purple-500/30 text-purple-400',
-        yellow: 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400',
-    };
-
-    return (
-        <div className={`bg-slate-900/60 border rounded-2xl p-6 space-y-4 transition ${
-            active ? 'border-white/20' : 'border-white/10'
-        }`}>
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg border ${colors[color]}`}>{icon}</div>
-                    <h3 className="text-lg font-bold">{title}</h3>
-                </div>
-                {active && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 uppercase tracking-wider">
-                        Actif
-                    </span>
-                )}
-            </div>
-            {children}
+        <div
+          style={{
+            marginTop: 'var(--n-space-6)',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+            gap: 'var(--n-space-3)',
+          }}
+        >
+          {[...Array(4)].map((_, index) => (
+            <NotionSkeleton key={index} type="card" />
+          ))}
         </div>
+      </div>
     );
-}
+  }
 
-function CtfToggleRow({
-    title,
-    description,
-    enabled,
-    onToggle,
-}: {
-    title: string;
-    description: string;
-    enabled: boolean;
-    onToggle: () => void;
-}) {
-    return (
-        <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 flex items-center justify-between gap-3">
-            <div>
-                <p className="font-mono text-sm text-slate-100">{title}</p>
-                <p className="text-xs text-slate-400 mt-0.5">{description}</p>
-            </div>
-            <button
-                onClick={onToggle}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
-                    enabled ? 'bg-red-500' : 'bg-slate-700'
-                }`}
+  return (
+    <div className="n-page-container" style={{ maxWidth: '1200px' }}>
+      <NotionCard padding="lg">
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: 'var(--n-space-4)',
+            alignItems: 'center',
+          }}
+        >
+          <div>
+            <NotionPill variant="warning" icon={<Beaker size={12} />}>
+              Laboratoire pedagogique
+            </NotionPill>
+            <h1
+              style={{
+                margin: 'var(--n-space-3) 0 var(--n-space-2)',
+                color: 'var(--n-text-primary)',
+                fontSize: 'var(--n-text-2xl)',
+                fontWeight: 'var(--n-weight-bold)',
+              }}
             >
-                <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                        enabled ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                />
-            </button>
+              Controle laboratoire
+            </h1>
+            <p style={{ margin: 0, color: 'var(--n-text-secondary)', fontSize: 'var(--n-text-sm)' }}>
+              Injectez des perturbations realismes pour entrainer la cohorte sur incidents monétiques.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--n-space-2)', flexWrap: 'wrap' }}>
+            <NotionButton variant="secondary" leftIcon={<RefreshCw size={13} />} loading={refreshing} onClick={() => void refreshAll()}>
+              Actualiser
+            </NotionButton>
+            <NotionPill variant={activeCount > 0 ? 'warning' : 'default'} icon={<Zap size={11} />}>
+              {activeCount} condition{activeCount > 1 ? 's' : ''} active{activeCount > 1 ? 's' : ''}
+            </NotionPill>
+            <NotionPill variant={activeVulnerabilityCount > 0 ? 'danger' : 'default'} icon={<Shield size={11} />}>
+              {activeVulnerabilityCount} toggle CTF
+            </NotionPill>
+          </div>
         </div>
-    );
+      </NotionCard>
+
+      {error && (
+        <div
+          style={{
+            marginTop: 'var(--n-space-4)',
+            padding: 'var(--n-space-3) var(--n-space-4)',
+            borderRadius: 'var(--n-radius-sm)',
+            border: '1px solid var(--n-danger-border)',
+            background: 'var(--n-danger-bg)',
+            color: 'var(--n-danger)',
+            fontSize: 'var(--n-text-sm)',
+            display: 'flex',
+            gap: 'var(--n-space-2)',
+            alignItems: 'center',
+          }}
+        >
+          <AlertTriangle size={14} /> {error}
+        </div>
+      )}
+
+      <div
+        style={{
+          marginTop: 'var(--n-space-4)',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gap: 'var(--n-space-3)',
+        }}
+      >
+        <NotionCard padding="md">
+          <h2 style={{ margin: '0 0 var(--n-space-3)', color: 'var(--n-text-primary)', fontSize: 'var(--n-text-base)' }}>Conditions runtime</h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--n-space-3)' }}>
+            <RangeControl
+              label="Latence reseau"
+              value={conditions.latencyMs}
+              min={0}
+              max={500}
+              step={10}
+              suffix="ms"
+              accent="var(--n-accent)"
+              onChange={(value) => setConditions((prev) => ({ ...prev, latencyMs: value }))}
+            />
+            <RangeControl
+              label="Echec authentification"
+              value={conditions.authFailureRate}
+              min={0}
+              max={100}
+              step={5}
+              suffix="%"
+              accent="var(--n-danger)"
+              onChange={(value) => setConditions((prev) => ({ ...prev, authFailureRate: value }))}
+            />
+            <RangeControl
+              label="Latence HSM"
+              value={conditions.hsmLatencyMs}
+              min={0}
+              max={300}
+              step={10}
+              suffix="ms"
+              accent="var(--n-reward)"
+              onChange={(value) => setConditions((prev) => ({ ...prev, hsmLatencyMs: value }))}
+            />
+
+            <ToggleControl
+              label="Injection fraude"
+              description="Injecte des patterns suspects detectables"
+              enabled={conditions.fraudInjection}
+              onToggle={() => setConditions((prev) => ({ ...prev, fraudInjection: !prev.fraudInjection }))}
+            />
+            <ToggleControl
+              label="Erreurs reseau aleatoires"
+              description="Simule des timeouts et connexions refusees"
+              enabled={conditions.networkErrors}
+              onToggle={() => setConditions((prev) => ({ ...prev, networkErrors: !prev.networkErrors }))}
+            />
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 'var(--n-space-2)' }}>
+              <NotionButton variant="primary" loading={applyingConditions} onClick={() => void handleApplyConditions()}>
+                Appliquer
+              </NotionButton>
+              <NotionButton variant="secondary" loading={applyingConditions} onClick={() => void handleResetConditions()}>
+                Reinitialiser
+              </NotionButton>
+            </div>
+          </div>
+        </NotionCard>
+
+        <NotionCard padding="md">
+          <h2 style={{ margin: '0 0 var(--n-space-3)', color: 'var(--n-text-primary)', fontSize: 'var(--n-text-base)' }}>CTF vulnerability toggles</h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--n-space-2)' }}>
+            <ToggleControl
+              label="allowReplay"
+              description="Autorise le rejeu transactionnel"
+              enabled={ctfVulnerabilities.allowReplay}
+              onToggle={() => setCtfVulnerabilities((prev) => ({ ...prev, allowReplay: !prev.allowReplay }))}
+            />
+            <ToggleControl
+              label="weakKeysEnabled"
+              description="Active des cles faibles"
+              enabled={ctfVulnerabilities.weakKeysEnabled}
+              onToggle={() => setCtfVulnerabilities((prev) => ({ ...prev, weakKeysEnabled: !prev.weakKeysEnabled }))}
+            />
+            <ToggleControl
+              label="verboseErrors"
+              description="Expose plus de detail technique"
+              enabled={ctfVulnerabilities.verboseErrors}
+              onToggle={() => setCtfVulnerabilities((prev) => ({ ...prev, verboseErrors: !prev.verboseErrors }))}
+            />
+            <ToggleControl
+              label="keyLeakInLogs"
+              description="Journalise du materiel sensible"
+              enabled={ctfVulnerabilities.keyLeakInLogs}
+              onToggle={() => setCtfVulnerabilities((prev) => ({ ...prev, keyLeakInLogs: !prev.keyLeakInLogs }))}
+            />
+
+            <div style={{ marginTop: 'var(--n-space-2)' }}>
+              <NotionProgress
+                value={Math.round((activeVulnerabilityCount / 4) * 100)}
+                variant={activeVulnerabilityCount >= 2 ? 'danger' : 'warning'}
+                size="thin"
+                showLabel
+                label={`${activeVulnerabilityCount}/4 actifs`}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 'var(--n-space-2)' }}>
+              <NotionButton variant="reward" loading={applyingCtf} onClick={() => void handleApplyCtf()}>
+                Appliquer CTF
+              </NotionButton>
+              <NotionButton variant="secondary" loading={applyingCtf} onClick={() => void handleResetCtf()}>
+                Reset CTF
+              </NotionButton>
+            </div>
+          </div>
+        </NotionCard>
+      </div>
+
+      <NotionCard padding="md" style={{ marginTop: 'var(--n-space-4)' }}>
+        <h3 style={{ margin: '0 0 var(--n-space-3)', color: 'var(--n-text-primary)', fontSize: 'var(--n-text-base)' }}>Cas d usage pedagogiques</h3>
+        <ul
+          style={{
+            margin: 0,
+            paddingLeft: 'var(--n-space-4)',
+            color: 'var(--n-text-secondary)',
+            fontSize: 'var(--n-text-sm)',
+            lineHeight: 'var(--n-leading-relaxed)',
+          }}
+        >
+          <li>Latence 300ms: entrainement au timeout et retry logic.</li>
+          <li>Echec auth 20%: lecture des codes de refus ISO 8583.</li>
+          <li>Fraude active: detection de patterns anormaux.</li>
+          <li>HSM lent: analyse des impacts cryptographiques.</li>
+        </ul>
+      </NotionCard>
+    </div>
+  );
 }
+
+function RangeControl({
+  label,
+  value,
+  min,
+  max,
+  step,
+  suffix,
+  accent,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  suffix: string;
+  accent: string;
+  onChange: (value: number) => void;
+}) {
+  const inputId = useId();
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+        <label htmlFor={inputId} style={{ color: 'var(--n-text-secondary)', fontSize: 'var(--n-text-sm)' }}>
+          {label}
+        </label>
+        <span style={{ color: 'var(--n-text-primary)', fontFamily: 'var(--n-font-mono)', fontSize: 'var(--n-text-sm)' }}>
+          {value} {suffix}
+        </span>
+      </div>
+      <input
+        id={inputId}
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+        aria-label={label}
+        style={{ width: '100%', accentColor: accent }}
+      />
+    </div>
+  );
+}
+
+function ToggleControl({
+  label,
+  description,
+  enabled,
+  onToggle,
+}: {
+  label: string;
+  description: string;
+  enabled: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      style={{
+        width: '100%',
+        border: '1px solid var(--n-border)',
+        borderRadius: 'var(--n-radius-sm)',
+        background: 'var(--n-bg-elevated)',
+        padding: 'var(--n-space-3)',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        cursor: 'pointer',
+        textAlign: 'left',
+      }}
+      aria-pressed={enabled}
+      aria-label={label}
+    >
+      <div>
+        <div style={{ color: 'var(--n-text-primary)', fontSize: 'var(--n-text-sm)', fontWeight: 'var(--n-weight-medium)' }}>{label}</div>
+        <div style={{ color: 'var(--n-text-tertiary)', fontSize: 'var(--n-text-xs)' }}>{description}</div>
+      </div>
+      <span
+        style={{
+          width: '38px',
+          height: '20px',
+          borderRadius: '999px',
+          background: enabled ? 'var(--n-accent)' : 'var(--n-border-strong)',
+          position: 'relative',
+          transition: 'background var(--n-duration-sm) var(--n-ease)',
+          flexShrink: 0,
+        }}
+      >
+        <span
+          style={{
+            position: 'absolute',
+            top: '2px',
+            left: enabled ? '20px' : '2px',
+            width: '16px',
+            height: '16px',
+            borderRadius: '999px',
+            background: '#fff',
+            transition: 'left var(--n-duration-sm) var(--n-ease)',
+          }}
+        />
+      </span>
+    </button>
+  );
+}
+

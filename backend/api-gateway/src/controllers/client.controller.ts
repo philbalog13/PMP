@@ -3,6 +3,8 @@
  * Virtual cards and transactions for clients
  */
 import { Request, Response } from 'express';
+import axios from 'axios';
+import { config } from '../config';
 import { pool, query } from '../config/database';
 import { logger } from '../utils/logger';
 import { v4 as uuidv4 } from 'uuid';
@@ -29,6 +31,51 @@ type ClientAccountEntryInput = {
     description?: string | null;
     metadata?: Record<string, any> | null;
     allowNegative?: boolean;
+};
+
+type ThreeDSChallengeSnapshot = {
+    transStatus: string;
+    challengeUrl?: string;
+    acsTransId?: string;
+    eci?: string;
+    authenticationValue?: string;
+};
+
+const initiateThreeDSAuthentication = async (params: {
+    pan: string;
+    amount: number;
+    merchantId: string;
+    transactionId: string;
+}): Promise<ThreeDSChallengeSnapshot> => {
+    const response = await axios.post<ThreeDSChallengeSnapshot>(
+        `${config.services.acsSimulator}/authenticate`,
+        {
+            pan: params.pan,
+            amount: params.amount,
+            currency: 'EUR',
+            merchantId: params.merchantId,
+            transactionId: params.transactionId,
+            cardholderName: params.amount >= 500 ? 'TEST USER' : undefined,
+        },
+        {
+            timeout: 10000,
+            headers: { 'Content-Type': 'application/json' }
+        }
+    );
+
+    return response.data;
+};
+
+const fetchThreeDSChallengeResult = async (acsTransId: string): Promise<ThreeDSChallengeSnapshot> => {
+    const response = await axios.get<ThreeDSChallengeSnapshot>(
+        `${config.services.acsSimulator}/challenge/result/${encodeURIComponent(acsTransId)}`,
+        {
+            timeout: 10000,
+            headers: { 'Content-Type': 'application/json' }
+        }
+    );
+
+    return response.data;
 };
 
 const TRANSFER_TYPES = ['SEPA', 'INSTANT'] as const;
@@ -1516,7 +1563,17 @@ export const listMerchants = async (req: Request, res: Response) => {
 export const simulatePayment = async (req: Request, res: Response) => {
     try {
         const userId = (req as any).user?.userId;
-        const { cardId, amount, merchantId, merchantName, merchantMcc, paymentType, use3DS } = req.body;
+        const {
+            cardId,
+            amount,
+            merchantId,
+            merchantName,
+            merchantMcc,
+            paymentType,
+            use3DS,
+            threeDSCompleted,
+            acsTransId
+        } = req.body;
 
         if (!cardId || !amount) {
             return res.status(400).json({ success: false, error: 'Missing required fields (cardId, amount)' });
@@ -1755,19 +1812,92 @@ export const simulatePayment = async (req: Request, res: Response) => {
         let threedsStatus: string | null = null;
         let threedsVersion: string | null = null;
         let eci: string | null = null;
+        let resolvedAcsTransId: string | null = typeof acsTransId === 'string' ? acsTransId.trim() || null : null;
 
         if (use3DS && card.threeds_enrolled) {
             threedsVersion = '2.2.0';
-            threedsStatus = 'Y';
-            eci = '05';
-            addStep('3DS Authentication', 'security', 'success', {
-                version: '2.2.0',
-                transStatus: 'Y',
-                eci: '05',
-                authMethod: parsedAmount < 30 ? 'FRICTIONLESS' : 'CHALLENGE',
-                dsTransId: uuidv4(),
-                acsTransId: uuidv4()
-            });
+
+            if (threeDSCompleted) {
+                if (!resolvedAcsTransId) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'acsTransId is required to resume a 3D-Secure challenge',
+                        responseCode: '96',
+                        processingSteps
+                    });
+                }
+
+                const challengeResult = await fetchThreeDSChallengeResult(resolvedAcsTransId);
+                threedsStatus = challengeResult.transStatus || 'N';
+                eci = challengeResult.eci || (threedsStatus === 'Y' ? '05' : null);
+
+                addStep('3DS Authentication', 'security', threedsStatus === 'Y' ? 'success' : 'failed', {
+                    version: '2.2.0',
+                    transStatus: threedsStatus,
+                    eci,
+                    authMethod: 'CHALLENGE',
+                    acsTransId: resolvedAcsTransId,
+                    resumed: true
+                });
+
+                if (threedsStatus !== 'Y') {
+                    return res.status(400).json({
+                        success: false,
+                        error: '3D-Secure authentication failed',
+                        responseCode: '05',
+                        threeDSResult: challengeResult,
+                        processingSteps
+                    });
+                }
+            } else {
+                const challengeResult = await initiateThreeDSAuthentication({
+                    pan: String(card.pan || ''),
+                    amount: parsedAmount,
+                    merchantId: resolvedMerchantId || 'MERCHANT_001',
+                    transactionId: `3DS_${Date.now()}`
+                });
+
+                resolvedAcsTransId = challengeResult.acsTransId || null;
+
+                if (challengeResult.transStatus === 'C') {
+                    addStep('3DS Authentication', 'security', 'challenge', {
+                        version: '2.2.0',
+                        transStatus: challengeResult.transStatus,
+                        authMethod: 'CHALLENGE',
+                        acsTransId: challengeResult.acsTransId,
+                        challengeUrl: challengeResult.challengeUrl
+                    });
+
+                    return res.status(202).json({
+                        success: false,
+                        message: '3D-Secure challenge required',
+                        responseCode: '65',
+                        threeDSResult: challengeResult,
+                        processingSteps
+                    });
+                }
+
+                threedsStatus = challengeResult.transStatus || 'N';
+                eci = challengeResult.eci || (threedsStatus === 'Y' ? '05' : null);
+
+                addStep('3DS Authentication', 'security', threedsStatus === 'Y' ? 'success' : 'failed', {
+                    version: '2.2.0',
+                    transStatus: threedsStatus,
+                    eci,
+                    authMethod: 'FRICTIONLESS',
+                    acsTransId: challengeResult.acsTransId || null
+                });
+
+                if (threedsStatus !== 'Y') {
+                    return res.status(400).json({
+                        success: false,
+                        error: '3D-Secure authentication failed',
+                        responseCode: '05',
+                        threeDSResult: challengeResult,
+                        processingSteps
+                    });
+                }
+            }
         } else if (use3DS && !card.threeds_enrolled) {
             addStep('3DS Authentication', 'security', 'skipped', {
                 reason: 'Card not enrolled in 3DS'

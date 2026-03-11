@@ -5,10 +5,10 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 COPY . .
 RUN npm run build
-RUN npm prune --production
+RUN npm prune --omit=dev
 
 FROM node:20-alpine AS production
 RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001 -G nodejs

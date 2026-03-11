@@ -1,217 +1,359 @@
-'use client';
+﻿'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useAuth } from '../../auth/useAuth';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
+import { Award, Lock, RefreshCw, Sparkles, Trophy } from 'lucide-react';
+import { useAuth } from '../../auth/useAuth';
 import {
-    Award,
-    ChevronRight,
-    Loader2,
-    Lock,
-    RefreshCw,
-    Trophy,
-    Zap
-} from 'lucide-react';
+  NotionBadge,
+  NotionButton,
+  NotionCard,
+  NotionEmptyState,
+  NotionPill,
+  NotionProgress,
+  NotionProgressRing,
+  NotionSkeleton,
+} from '@shared/components/notion';
 
 type BadgeRow = {
-    type: string;
-    name: string;
-    description: string;
-    icon: string;
-    xp: number;
-    earned: boolean;
-    earnedAt?: string;
+  type: string;
+  name: string;
+  description: string;
+  icon: string;
+  xp: number;
+  earned: boolean;
+  earnedAt?: string;
 };
 
 type BadgeResponse = {
-    badges: BadgeRow[];
-    earned: number;
-    total: number;
-    totalXP: number;
+  badges: BadgeRow[];
+  earned: number;
+  total: number;
+  totalXP: number;
+};
+
+const BADGE_EMOJI: Record<string, string> = {
+  star: '??',
+  'clipboard-check': '??',
+  award: '??',
+  trophy: '??',
+  'book-open': '??',
+  'graduation-cap': '??',
+  zap: '?',
+  flame: '??',
+  flag: '??',
+  droplet: '??',
+  terminal: '???',
+  crown: '??',
+  layers: '???',
 };
 
 function getAuthHeaders(): HeadersInit | null {
-    const token = localStorage.getItem('token');
-    if (!token) {
-        return null;
-    }
-    return { Authorization: `Bearer ${token}` };
+  const token = localStorage.getItem('token');
+  if (!token) return null;
+  return { Authorization: `Bearer ${token}` };
 }
-
-const BADGE_EMOJI: Record<string, string> = {
-    star: '\u{1F3AF}',
-    'clipboard-check': '\u{1F4CB}',
-    award: '\u{1F3C5}',
-    trophy: '\u{1F3C6}',
-    'book-open': '\u{1F4D6}',
-    'graduation-cap': '\u{1F393}',
-    zap: '\u26A1',
-    flame: '\u{1F525}',
-    flag: '\u{1F6A9}',
-    droplet: '\u{1F4A7}',
-    terminal: '\u{1F5A5}\uFE0F',
-    crown: '\u{1F451}',
-    layers: '\u{1F5C2}\uFE0F'
-};
 
 export default function StudentBadgesPage() {
-    const { isLoading } = useAuth(true);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [data, setData] = useState<BadgeResponse | null>(null);
+  const { isLoading } = useAuth(true);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<BadgeResponse | null>(null);
 
-    const loadBadges = useCallback(async () => {
-        const headers = getAuthHeaders();
-        if (!headers) {
-            setError('Session invalide');
-            setLoading(false);
-            return;
-        }
-
-        try {
-            setLoading(true);
-            setError(null);
-
-            const response = await fetch('/api/progress/badges', { headers });
-            if (!response.ok) {
-                const payload = await response.json().catch(() => null);
-                throw new Error(payload?.error || 'Impossible de charger les badges');
-            }
-
-            const payload = await response.json();
-            setData({
-                badges: payload.badges || [],
-                earned: Number(payload.earned || 0),
-                total: Number(payload.total || 0),
-                totalXP: Number(payload.totalXP || 0)
-            });
-        } catch (loadError: unknown) {
-            setError(loadError instanceof Error ? loadError.message : 'Impossible de charger les badges');
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        if (isLoading) {
-            return;
-        }
-        loadBadges();
-    }, [isLoading, loadBadges]);
-
-    const completionRate = useMemo(() => {
-        if (!data || data.total === 0) {
-            return 0;
-        }
-        return Math.round((data.earned / data.total) * 100);
-    }, [data]);
-
-    if (isLoading || loading) {
-        return (
-            <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-                <div className="flex items-center gap-3 text-slate-300">
-                    <Loader2 className="animate-spin" />
-                    Chargement des badges...
-                </div>
-            </div>
-        );
+  const loadBadges = useCallback(async () => {
+    const headers = getAuthHeaders();
+    if (!headers) {
+      setError('Session invalide');
+      setLoading(false);
+      return;
     }
 
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch('/api/progress/badges', { headers });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error || 'Impossible de charger les badges');
+      }
+
+      const payload = await response.json();
+      setData({
+        badges: payload.badges || [],
+        earned: Number(payload.earned || 0),
+        total: Number(payload.total || 0),
+        totalXP: Number(payload.totalXP || 0),
+      });
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Impossible de charger les badges');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isLoading) return;
+    void loadBadges();
+  }, [isLoading, loadBadges]);
+
+  const completionRate = useMemo(() => {
+    if (!data || data.total === 0) return 0;
+    return Math.round((data.earned / data.total) * 100);
+  }, [data]);
+
+  const earned = data?.badges.filter((badge) => badge.earned) || [];
+  const locked = data?.badges.filter((badge) => !badge.earned) || [];
+
+  if (isLoading || loading) {
     return (
-        <div className="min-h-screen bg-slate-950 text-white pt-24 pb-12">
-            <div className="max-w-6xl mx-auto px-6 space-y-8">
-                <div className="text-xs text-slate-500">
-                    <Link href="/student" className="hover:text-emerald-400">Mon Parcours</Link>
-                    <ChevronRight size={12} className="inline mx-1" />
-                    <span className="text-emerald-400">Mes Badges</span>
-                </div>
-
-                <header className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-3xl font-bold mb-2">Mes Badges</h1>
-                        <p className="text-slate-400">Progression réelle basée sur vos quiz et ateliers.</p>
-                    </div>
-                    <button
-                        onClick={loadBadges}
-                        className="flex items-center gap-2 px-4 py-2 bg-slate-800 border border-white/10 text-white rounded-xl hover:bg-slate-700"
-                    >
-                        <RefreshCw size={18} />
-                        Actualiser
-                    </button>
-                </header>
-
-                {error && (
-                    <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 text-sm flex items-center justify-between">
-                        <span>{error}</span>
-                        <button onClick={loadBadges} className="text-red-400 hover:text-red-300 text-xs underline ml-4">
-                            Réessayer
-                        </button>
-                    </div>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-slate-900/70 border border-white/10 rounded-2xl p-5">
-                        <div className="flex items-center gap-3 mb-2 text-amber-400">
-                            <Trophy size={20} />
-                            <span className="text-sm text-slate-400">Badges obtenus</span>
-                        </div>
-                        <div className="text-3xl font-bold">
-                            {data?.earned || 0}
-                            <span className="text-lg text-slate-500"> / {data?.total || 0}</span>
-                        </div>
-                    </div>
-
-                    <div className="bg-slate-900/70 border border-white/10 rounded-2xl p-5">
-                        <div className="flex items-center gap-3 mb-2 text-emerald-400">
-                            <Zap size={20} />
-                            <span className="text-sm text-slate-400">XP via badges</span>
-                        </div>
-                        <div className="text-3xl font-bold">{(data?.totalXP || 0).toLocaleString()}</div>
-                    </div>
-
-                    <div className="bg-slate-900/70 border border-white/10 rounded-2xl p-5">
-                        <div className="flex items-center gap-3 mb-2 text-blue-400">
-                            <Award size={20} />
-                            <span className="text-sm text-slate-400">Complétion</span>
-                        </div>
-                        <div className="text-3xl font-bold">{completionRate}%</div>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {(data?.badges || []).map((badge) => (
-                        <div
-                            key={badge.type}
-                            className={`p-5 rounded-2xl border ${
-                                badge.earned
-                                    ? 'bg-slate-900/70 border-emerald-500/30'
-                                    : 'bg-slate-900/40 border-white/10 opacity-70'
-                            }`}
-                        >
-                            <div className="flex items-start justify-between mb-3">
-                                <div className="text-4xl">{BADGE_EMOJI[badge.icon] || '\u{1F396}\uFE0F'}</div>
-                                {badge.earned ? (
-                                    <span className="text-xs px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-300">Débloqué</span>
-                                ) : (
-                                    <span className="text-xs px-2 py-1 rounded-full bg-slate-700 text-slate-300 inline-flex items-center gap-1">
-                                        <Lock size={12} />
-                                        Verrouillé
-                                    </span>
-                                )}
-                            </div>
-
-                            <h3 className="font-semibold text-white mb-1">{badge.name}</h3>
-                            <p className="text-sm text-slate-400 mb-3">{badge.description}</p>
-                            <div className="text-xs text-amber-300">+{badge.xp} XP</div>
-                            {badge.earnedAt && (
-                                <div className="text-xs text-slate-500 mt-2">
-                                    Obtenu le {new Date(badge.earnedAt).toLocaleDateString('fr-FR')}
-                                </div>
-                            )}
-                        </div>
-                    ))}
-                </div>
-            </div>
+      <div className="n-page-container" style={{ maxWidth: '1200px' }}>
+        <NotionSkeleton type="line" width="180px" height="28px" />
+        <div style={{ marginTop: 'var(--n-space-2)' }}>
+          <NotionSkeleton type="line" width="320px" height="14px" />
         </div>
+        <div
+          style={{
+            marginTop: 'var(--n-space-6)',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+            gap: 'var(--n-space-3)',
+          }}
+        >
+          {[...Array(4)].map((_, i) => (
+            <NotionSkeleton key={i} type="stat" />
+          ))}
+        </div>
+      </div>
     );
+  }
+
+  return (
+    <div className="n-page-container" style={{ maxWidth: '1200px' }}>
+      <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
+        <NotionCard padding="lg">
+          <div
+            style={{
+              display: 'grid',
+              gap: 'var(--n-space-5)',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              alignItems: 'center',
+            }}
+          >
+            <div>
+              <NotionPill variant="accent" icon={<Award size={12} />}>
+                Badge collection
+              </NotionPill>
+              <h1
+                style={{
+                  margin: 'var(--n-space-3) 0 var(--n-space-2)',
+                  fontSize: 'var(--n-text-2xl)',
+                  color: 'var(--n-text-primary)',
+                  fontWeight: 'var(--n-weight-bold)',
+                }}
+              >
+                Mes badges
+              </h1>
+              <p style={{ margin: 0, color: 'var(--n-text-secondary)', fontSize: 'var(--n-text-sm)' }}>
+                Debloquez des recompenses en validant les parcours, quiz et labs CTF.
+              </p>
+
+              <div
+                style={{
+                  marginTop: 'var(--n-space-4)',
+                  padding: 'var(--n-space-4)',
+                  borderRadius: 'var(--n-radius-md)',
+                  border: '1px solid var(--n-reward-border)',
+                  background: 'linear-gradient(145deg, var(--n-reward-bg), var(--n-bg-elevated))',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)', marginBottom: 'var(--n-space-2)' }}>
+                  <Sparkles size={13} style={{ color: 'var(--n-reward)' }} />
+                  <span style={{ color: 'var(--n-reward)', fontSize: 'var(--n-text-xs)', fontWeight: 'var(--n-weight-semibold)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                    Progression badges
+                  </span>
+                </div>
+                <p style={{ margin: 0, color: 'var(--n-text-primary)', fontSize: 'var(--n-text-sm)' }}>
+                  {data?.earned || 0}/{data?.total || 0} badges debloques - {data?.totalXP || 0} XP collectes
+                </p>
+                <div style={{ marginTop: 'var(--n-space-3)' }}>
+                  <NotionProgress value={completionRate} variant="accent" size="thin" showLabel label={`${completionRate}%`} />
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--n-space-3)' }}>
+              <NotionProgressRing value={completionRate} label={`${completionRate}%`} />
+              <NotionPill variant="reward" icon={<Trophy size={11} />}>
+                {earned.length} badges actifs
+              </NotionPill>
+              <NotionButton variant="secondary" leftIcon={<RefreshCw size={13} />} onClick={() => void loadBadges()}>
+                Rafraichir
+              </NotionButton>
+            </div>
+          </div>
+        </NotionCard>
+      </motion.section>
+
+      {error && (
+        <div
+          style={{
+            marginTop: 'var(--n-space-4)',
+            padding: 'var(--n-space-3) var(--n-space-4)',
+            borderRadius: 'var(--n-radius-sm)',
+            border: '1px solid var(--n-danger-border)',
+            background: 'var(--n-danger-bg)',
+            color: 'var(--n-danger)',
+            fontSize: 'var(--n-text-sm)',
+          }}
+        >
+          {error}
+        </div>
+      )}
+
+      {!data?.badges?.length ? (
+        <div style={{ marginTop: 'var(--n-space-4)' }}>
+          <NotionEmptyState
+            icon={<Award size={28} />}
+            title="Aucun badge disponible"
+            description="Completez des ateliers et quiz pour debloquer vos premiers badges."
+            action={
+              <Link href="/student" style={{ textDecoration: 'none' }}>
+                <NotionButton variant="primary">Retour au parcours</NotionButton>
+              </Link>
+            }
+          />
+        </div>
+      ) : (
+        <>
+          <NotionCard padding="md" style={{ marginTop: 'var(--n-space-4)' }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+                gap: 'var(--n-space-3)',
+              }}
+            >
+              {[
+                { label: 'Debloques', value: `${data?.earned || 0}/${data?.total || 0}`, tone: 'var(--n-success)' },
+                { label: 'Verrouilles', value: `${locked.length}`, tone: 'var(--n-text-secondary)' },
+                { label: 'XP badges', value: `${data?.totalXP || 0}`, tone: 'var(--n-reward)' },
+                { label: 'Completion', value: `${completionRate}%`, tone: 'var(--n-accent)' },
+              ].map((item) => (
+                <NotionCard key={item.label} padding="md">
+                  <div style={{ color: 'var(--n-text-tertiary)', fontSize: 'var(--n-text-xs)', textTransform: 'uppercase' }}>{item.label}</div>
+                  <div
+                    style={{
+                      marginTop: 'var(--n-space-2)',
+                      color: item.tone,
+                      fontFamily: 'var(--n-font-mono)',
+                      fontSize: 'var(--n-text-lg)',
+                      fontWeight: 'var(--n-weight-bold)',
+                    }}
+                  >
+                    {item.value}
+                  </div>
+                </NotionCard>
+              ))}
+            </div>
+          </NotionCard>
+
+          {earned.length > 0 && (
+            <section style={{ marginTop: 'var(--n-space-4)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)', marginBottom: 'var(--n-space-3)' }}>
+                <h2 style={{ margin: 0, fontSize: 'var(--n-text-base)', color: 'var(--n-text-primary)' }}>Badges debloques</h2>
+                <NotionBadge variant="success" size="sm">
+                  {earned.length}
+                </NotionBadge>
+              </div>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                  gap: 'var(--n-space-3)',
+                }}
+              >
+                {earned.map((badge, index) => (
+                  <motion.div
+                    key={badge.type}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25, delay: index * 0.03 }}
+                  >
+                    <NotionCard variant="hover" padding="md" style={{ height: '100%', borderColor: 'var(--n-success-border)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <span style={{ fontSize: '34px' }} aria-hidden="true">
+                          {BADGE_EMOJI[badge.icon] || '??'}
+                        </span>
+                        <NotionBadge variant="success" size="sm">
+                          Actif
+                        </NotionBadge>
+                      </div>
+                      <h3 style={{ margin: 'var(--n-space-3) 0 var(--n-space-1)', color: 'var(--n-text-primary)', fontSize: 'var(--n-text-base)' }}>{badge.name}</h3>
+                      <p style={{ margin: 0, color: 'var(--n-text-secondary)', fontSize: 'var(--n-text-sm)', lineHeight: 'var(--n-leading-relaxed)' }}>
+                        {badge.description}
+                      </p>
+                      <div style={{ marginTop: 'var(--n-space-3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <NotionPill variant="reward">+{badge.xp} XP</NotionPill>
+                        <span style={{ color: 'var(--n-text-tertiary)', fontSize: 'var(--n-text-xs)' }}>
+                          {badge.earnedAt ? new Date(badge.earnedAt).toLocaleDateString('fr-FR') : ''}
+                        </span>
+                      </div>
+                    </NotionCard>
+                  </motion.div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {locked.length > 0 && (
+            <section style={{ marginTop: 'var(--n-space-4)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)', marginBottom: 'var(--n-space-3)' }}>
+                <h2 style={{ margin: 0, fontSize: 'var(--n-text-base)', color: 'var(--n-text-primary)' }}>Badges a debloquer</h2>
+                <NotionBadge variant="default" size="sm">
+                  {locked.length}
+                </NotionBadge>
+              </div>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                  gap: 'var(--n-space-3)',
+                }}
+              >
+                {locked.map((badge, index) => (
+                  <motion.div
+                    key={badge.type}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25, delay: index * 0.03 }}
+                  >
+                    <NotionCard padding="md" style={{ height: '100%', opacity: 0.68 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <span style={{ fontSize: '34px', filter: 'grayscale(1)' }} aria-hidden="true">
+                          {BADGE_EMOJI[badge.icon] || '??'}
+                        </span>
+                        <NotionBadge variant="default" size="sm">
+                          <Lock size={10} /> Lock
+                        </NotionBadge>
+                      </div>
+                      <h3 style={{ margin: 'var(--n-space-3) 0 var(--n-space-1)', color: 'var(--n-text-primary)', fontSize: 'var(--n-text-base)' }}>{badge.name}</h3>
+                      <p style={{ margin: 0, color: 'var(--n-text-secondary)', fontSize: 'var(--n-text-sm)', lineHeight: 'var(--n-leading-relaxed)' }}>
+                        {badge.description}
+                      </p>
+                      <div style={{ marginTop: 'var(--n-space-3)' }}>
+                        <NotionPill variant="default">+{badge.xp} XP</NotionPill>
+                      </div>
+                    </NotionCard>
+                  </motion.div>
+                ))}
+              </div>
+            </section>
+          )}
+        </>
+      )}
+    </div>
+  );
 }
+

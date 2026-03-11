@@ -1,0 +1,16 @@
+﻿{
+  "roomCode": "PAY-001",
+  "title": "The Unsecured Payment Terminal",
+  "ttlMinutes": 120,
+  "maxExtensionMinutes": 60,
+  "hybrid": true,
+  "entryTarget": "pos-terminal",
+  "targets": [
+    { "name": "pos-terminal", "image": "pmp-ctf-pay001-pos", "internalPort": 8080 },
+    { "name": "bank-backend", "image": "pmp-ctf-pay001-bank", "internalPort": 9090 }
+  ],
+  "tasks": [
+    { "taskId": "PAY-001-T1", "hasMachine": true, "questionType": "FLAG", "requiresFlag": false },
+    { "taskId": "PAY-001-T2", "hasMachine": true, "questionType": "FLAG", "requiresFlag": true }
+  ]
+}

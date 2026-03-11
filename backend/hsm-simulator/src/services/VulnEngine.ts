@@ -63,6 +63,7 @@ const CHALLENGE_DEFAULTS: Record<string, Partial<VulnerabilityConfig>> = {
 };
 
 const CONFIG_TTL_SECONDS = 86400;
+const GLOBAL_CONFIG_KEY = 'ctf:vuln:global:config';
 
 export class VulnEngine {
     private static redis: Redis | null = null;
@@ -70,6 +71,8 @@ export class VulnEngine {
     private static readonly memoryConfigs = new Map<string, VulnerabilityConfig>();
 
     private static readonly memoryActiveChallenge = new Map<string, string>();
+
+    private static memoryGlobalConfig: VulnerabilityConfig = { ...DEFAULT_CONFIG };
 
     static init(redis: Redis): void {
         this.redis = redis;
@@ -116,6 +119,72 @@ export class VulnEngine {
         } catch {
             return null;
         }
+    }
+
+    private static cloneConfig(config: VulnerabilityConfig): VulnerabilityConfig {
+        return {
+            ...DEFAULT_CONFIG,
+            ...config,
+        };
+    }
+
+    static async getGlobalConfig(): Promise<VulnerabilityConfig> {
+        if (this.redis) {
+            try {
+                const stored = await this.redis.get(GLOBAL_CONFIG_KEY);
+                const parsed = this.parseConfig(stored);
+                if (parsed) {
+                    this.memoryGlobalConfig = parsed;
+                    return this.cloneConfig(parsed);
+                }
+            } catch (error: any) {
+                logger.warn('[VulnEngine] Redis get global config failed, using memory fallback', {
+                    error: error.message,
+                });
+            }
+        }
+
+        return this.cloneConfig(this.memoryGlobalConfig);
+    }
+
+    static async updateGlobalConfig(patch: Partial<VulnerabilityConfig>): Promise<VulnerabilityConfig> {
+        const current = await this.getGlobalConfig();
+        const merged = this.cloneConfig({
+            ...current,
+            ...patch,
+        });
+
+        if (this.redis) {
+            try {
+                await this.redis.set(GLOBAL_CONFIG_KEY, JSON.stringify(merged));
+                this.memoryGlobalConfig = merged;
+                return this.cloneConfig(merged);
+            } catch (error: any) {
+                logger.warn('[VulnEngine] Redis update global config failed, using memory fallback', {
+                    error: error.message,
+                    patch,
+                });
+            }
+        }
+
+        this.memoryGlobalConfig = merged;
+        return this.cloneConfig(merged);
+    }
+
+    private static async resolveConfig(
+        studentId: string,
+        challengeCode?: string,
+    ): Promise<VulnerabilityConfig> {
+        if (!studentId) {
+            return this.getGlobalConfig();
+        }
+
+        const resolvedChallenge = challengeCode || await this.getActiveChallenge(studentId);
+        if (!resolvedChallenge) {
+            return this.getGlobalConfig();
+        }
+
+        return this.getStudentConfig(studentId, resolvedChallenge);
     }
 
     static async getStudentConfig(studentId: string, challengeCode?: string): Promise<VulnerabilityConfig> {
@@ -276,7 +345,8 @@ export class VulnEngine {
         const body = (req.body ?? {}) as Record<string, unknown>;
         const studentId = req.headers['x-student-id'] as string | undefined;
         const challengeCodeFromHeader = (req.headers['x-ctf-challenge-code'] as string | undefined)?.toUpperCase();
-        const config = await this.getStudentConfig(studentId || '', challengeCodeFromHeader);
+        const activeChallenge = challengeCodeFromHeader || await this.getActiveChallenge(studentId || '');
+        const config = await this.resolveConfig(studentId || '', activeChallenge || undefined);
 
         if (config.keyLeakInLogs) {
             if (body.key || body.keyLabel || body.pinBlock || body.clearKey) {
@@ -291,7 +361,7 @@ export class VulnEngine {
 
         (req as any).vulnConfig = config;
         (req as any).vulnStudentId = studentId;
-        (req as any).vulnChallengeCode = challengeCodeFromHeader || await this.getActiveChallenge(studentId || '');
+        (req as any).vulnChallengeCode = activeChallenge;
         next();
     }
 
@@ -303,10 +373,10 @@ export class VulnEngine {
         if (req && (req as any).vulnConfig) {
             return (req as any).vulnConfig as VulnerabilityConfig;
         }
-        return { ...DEFAULT_CONFIG };
+        return this.cloneConfig(this.memoryGlobalConfig);
     }
 
-    static updateConfig(newConfig: Partial<VulnerabilityConfig>): void {
-        logger.warn('[VulnEngine] updateConfig() deprecated, use per-student async methods', { newConfig });
+    static async updateConfig(newConfig: Partial<VulnerabilityConfig>): Promise<VulnerabilityConfig> {
+        return this.updateGlobalConfig(newConfig);
     }
 }

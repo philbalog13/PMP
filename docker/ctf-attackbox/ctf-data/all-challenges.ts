@@ -159,6 +159,20 @@ const CHALLENGES_INFRA = [
       description: 'Un endpoint /debug ou /metrics est expose en production avec des credentials et configurations internes.' },
 ];
 
+// THM-like Financial Security Rooms
+const CHALLENGES_THM = [
+    { code: 'PAY-001', title: 'The Unsecured Payment Terminal', category: 'MITM', points: 150,
+      description: 'Interceptez le trafic POS en clair, recuperez le user flag, puis exploitez une injection de commande admin.' },
+    { code: 'PCI-001', title: 'PCI-DSS Showdown', category: 'TOKEN_VAULT', points: 180,
+      description: 'Exploitez une SQLi e-commerce et reliez les preuves a un audit de controles PCI DSS.' },
+    { code: 'SOC-001', title: "The Social Engineer's Wire", category: 'FRAUD_CNP', points: 140,
+      description: 'Analyse d artefacts e-mail et de fraude au virement sans machine d exploitation classique.' },
+    { code: 'API-001', title: 'API: Attack on Transactions', category: 'PRIVILEGE_ESCALATION', points: 220,
+      description: 'Abusez une faille BOLA et enchainez vers une escalation de privileges sur API de paiement.' },
+    { code: 'DORA-001', title: "DORA's Recovery", category: 'BOSS', points: 300,
+      description: 'Compromission initiale puis reprise d activite et post-mortem selon une logique resilience.' },
+];
+
 // Boss Challenges
 const CHALLENGES_BOSS = [
     { code: 'BOSS-001', title: 'Full Chain POS→Issuer', category: 'BOSS', points: 500,
@@ -187,5 +201,6 @@ export const ALL_CHALLENGES = [
     ...CHALLENGES_KEY,
     ...CHALLENGES_ADV_FRAUD,
     ...CHALLENGES_INFRA,
+    ...CHALLENGES_THM,
     ...CHALLENGES_BOSS,
 ];

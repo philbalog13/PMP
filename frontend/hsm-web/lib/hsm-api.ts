@@ -97,6 +97,8 @@ export interface VulnerabilityConfig {
     weakKeysEnabled: boolean;
     verboseErrors: boolean;
     keyLeakInLogs: boolean;
+    simulateDown: boolean;
+    timingAttackEnabled: boolean;
 }
 
 export interface HsmStatusResponse {
@@ -127,6 +129,7 @@ export interface HsmCommandResponse {
     kcv?: string;
     full_check_value?: string;
     trace?: string[];
+    logs?: any[];
     error?: string;
     code?: string;
 }
@@ -225,6 +228,17 @@ export async function verifyMac(payload: VerifyMacPayload, token?: string | null
         body: payload,
         token,
     });
+}
+
+export async function deleteHsmKey(label: string, token?: string | null): Promise<HsmCommandResponse> {
+    return request<HsmCommandResponse>(`/hsm/keys/${label}`, {
+        method: 'DELETE',
+        token,
+    });
+}
+
+export async function getHsmLogs(token?: string | null): Promise<HsmCommandResponse> {
+    return request<HsmCommandResponse>('/hsm/logs', { token });
 }
 
 export async function getHsmStatus(token?: string | null): Promise<HsmStatusResponse> {

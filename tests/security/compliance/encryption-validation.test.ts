@@ -1,11 +1,11 @@
 /**
- * Encryption Validation Compliance Test
- * Verification of cryptographic standards
+ * Encryption Validation Compliance Test (mock)
+ * Static assertions for fast feedback, not live cryptographic evidence.
  */
 
 import { describe, it, expect } from '@jest/globals';
 
-describe('Encryption Validation', () => {
+describe('Encryption Validation (mock)', () => {
     it('should enforce AES-256 for data at rest', () => {
         const algo = 'AES-256-GCM';
         expect(algo).toBe('AES-256-GCM');

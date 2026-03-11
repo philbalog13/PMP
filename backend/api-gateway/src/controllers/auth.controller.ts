@@ -147,10 +147,13 @@ export const login = async (req: Request, res: Response) => {
  */
 export const logout = async (req: Request, res: Response) => {
     try {
-        // Extract token from Authorization header
         const authHeader = req.headers.authorization;
+        const refreshToken = typeof req.body?.refreshToken === 'string'
+            ? req.body.refreshToken.trim()
+            : '';
+        const hasBearerToken = Boolean(authHeader && authHeader.startsWith('Bearer '));
 
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        if (!hasBearerToken && !refreshToken) {
             res.status(400).json({
                 success: false,
                 error: 'No token provided',
@@ -159,33 +162,34 @@ export const logout = async (req: Request, res: Response) => {
             return;
         }
 
-        const token = authHeader.split(' ')[1];
+        let decoded: any = null;
+        if (hasBearerToken) {
+            const token = authHeader!.split(' ')[1];
+            decoded = token ? (jwt.decode(token) as any) : null;
 
-        // Decode token to get expiration time (without verification since we're revoking anyway)
-        const decoded = jwt.decode(token) as any;
+            if (decoded?.exp) {
+                // Calculate remaining TTL for token
+                const now = Math.floor(Date.now() / 1000);
+                const expiresInSeconds = decoded.exp - now;
 
-        if (!decoded || !decoded.exp) {
-            res.status(400).json({
-                success: false,
-                error: 'Invalid token format',
-                code: 'LOGOUT_INVALID_TOKEN'
-            });
-            return;
+                // Only blacklist if token hasn't expired yet
+                if (expiresInSeconds > 0) {
+                    await tokenBlacklist.blacklistToken(token, expiresInSeconds);
+                    logger.info('Access token revoked', { userId: decoded.userId });
+                }
+            } else {
+                logger.warn('Logout called with non-decodable access token');
+            }
         }
 
-        // Calculate remaining TTL for token
-        const now = Math.floor(Date.now() / 1000);
-        const expiresInSeconds = decoded.exp - now;
-
-        // Only blacklist if token hasn't expired yet
-        if (expiresInSeconds > 0) {
-            await tokenBlacklist.blacklistToken(token, expiresInSeconds);
-            logger.info('Token revoked', { userId: decoded.userId });
+        if (refreshToken) {
+            await refreshTokenService.revokeRefreshToken(refreshToken);
+            logger.info('Refresh token revoked on logout', { userId: decoded?.userId || null });
         }
 
         res.json({
             success: true,
-            message: 'Logged out successfully. Token has been revoked.'
+            message: 'Logged out successfully. Session tokens revoked.'
         });
     } catch (error: any) {
         logger.error('Logout error', { error: error.message });

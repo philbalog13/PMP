@@ -41,20 +41,7 @@ export default function SettingsPage() {
     };
 
     const handleLogout = () => {
-        const token = localStorage.getItem('token');
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        localStorage.removeItem('role');
-        localStorage.removeItem('refreshToken');
-        document.cookie = 'token=; Max-Age=0; path=/';
-        document.cookie = 'refreshToken=; Max-Age=0; path=/';
-        if (token) {
-            fetch('/api/auth/logout', {
-                method: 'POST',
-                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-            }).catch(() => {});
-        }
-        window.location.replace(`${process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:3000'}/login`);
+        logout();
     };
 
     const menuSections = [

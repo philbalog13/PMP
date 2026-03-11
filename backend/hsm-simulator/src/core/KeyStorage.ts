@@ -125,6 +125,10 @@ export class KeyStorage {
         this.keys.set(normalizedLabel, stored);
     }
 
+    deleteKey(label: string): boolean {
+        return this.keys.delete(label.trim().toUpperCase());
+    }
+
     getKey(label: string): StoredKey | undefined {
         return this.keys.get(label.trim().toUpperCase());
     }

@@ -10,6 +10,11 @@ import { config } from '../config';
 import { UserRole } from '../middleware/roles';
 import { provisionFinancialAccountForUser } from '../services/bankingProvisioning.service';
 
+const RESERVED_USER_ROUTE_SEGMENTS = new Set(['me']);
+
+const isReservedUserRouteSegment = (id: string): boolean =>
+    RESERVED_USER_ROUTE_SEGMENTS.has(id.toLowerCase());
+
 /**
  * Get all users (with pagination)
  */
@@ -137,6 +142,13 @@ export const getStudents = async (req: Request, res: Response) => {
 export const getUserById = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
+
+        if (isReservedUserRouteSegment(id)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Reserved user route segment. Use /api/users/me for the authenticated profile.'
+            });
+        }
 
         const result = await query(
             `SELECT id, username, email, first_name, last_name, role, status, created_at, updated_at
@@ -274,6 +286,13 @@ export const updateUser = async (req: Request, res: Response) => {
         const { id } = req.params;
         const { username, email, firstName, lastName, role } = req.body;
 
+        if (isReservedUserRouteSegment(id)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Reserved user route segment. Use /api/users/me for the authenticated profile.'
+            });
+        }
+
         // Build update query dynamically
         const updates: string[] = [];
         const params: any[] = [];
@@ -343,6 +362,13 @@ export const deleteUser = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
 
+        if (isReservedUserRouteSegment(id)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Reserved user route segment. Use /api/users/me for the authenticated profile.'
+            });
+        }
+
         // Prevent self-deletion
         if ((req as any).user?.userId === id) {
             return res.status(403).json({ success: false, error: 'Cannot delete yourself' });
@@ -379,6 +405,13 @@ export const updateUserStatus = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const { status } = req.body;
+
+        if (isReservedUserRouteSegment(id)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Reserved user route segment. Use /api/users/me for the authenticated profile.'
+            });
+        }
 
         const validStatuses = ['ACTIVE', 'INACTIVE', 'SUSPENDED'];
         if (!validStatuses.includes(status)) {
@@ -417,6 +450,13 @@ export const updateUserStatus = async (req: Request, res: Response) => {
 export const getStudentProgress = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
+
+        if (isReservedUserRouteSegment(id)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Reserved user route segment. Use /api/users/me for the authenticated profile.'
+            });
+        }
 
         // Get student info
         const userResult = await query(

@@ -1,6 +1,7 @@
 ﻿'use client';
 
 import Link from 'next/link';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Key,
   ShieldCheck,
@@ -10,10 +11,52 @@ import {
   Cpu,
   RefreshCw,
   Zap,
-  Calculator
+  Calculator,
+  Loader2
 } from 'lucide-react';
+import { useAuth } from '@shared/context/AuthContext';
+import { getHsmStatus, getHsmKeys, getHsmLogs, HsmStatus, HsmKey } from '@/lib/hsm-api';
 
 export default function Home() {
+  const { token } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState<HsmStatus | null>(null);
+  const [keysCount, setKeysCount] = useState<number>(0);
+  const [logs, setLogs] = useState<any[]>([]);
+
+  const fetchData = useCallback(async () => {
+    try {
+      const [statusRes, keysRes, logsRes] = await Promise.all([
+        getHsmStatus(token),
+        getHsmKeys(token),
+        getHsmLogs(token)
+      ]);
+
+      if (statusRes.success) setStatus(statusRes.status);
+      setKeysCount(keysRes.keys?.length || 0);
+      setLogs(logsRes.logs?.slice(0, 5) || []);
+    } catch (error) {
+      console.error('Failed to fetch dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    void fetchData();
+    const interval = setInterval(fetchData, 5000);
+    return () => clearInterval(interval);
+  }, [fetchData]);
+
+  if (loading && !status) {
+    return (
+      <div className="flex items-center justify-center p-24 text-slate-400 gap-2">
+        <Loader2 className="animate-spin" size={24} />
+        Initialize Secure Session...
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       {/* Header Section */}
@@ -23,8 +66,8 @@ export default function Home() {
           <p className="text-slate-400 mt-2">Hardware Security Module  -  Model PMP-9000-v2</p>
         </div>
         <div className="flex items-center gap-4">
-          <span className="px-3 py-1 rounded-full bg-green-500/10 text-green-500 text-xs font-semibold border border-green-500/20 animate-pulse">
-            SYSTEM ONLINE
+          <span className={`px-3 py-1 rounded-full text-xs font-semibold border animate-pulse ${status?.state === 'OPERATIONAL' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'}`}>
+            SYSTEM {status?.state || 'OFFLINE'}
           </span>
           <span className="text-slate-500 text-sm font-mono">FW: 4.2.0-secure</span>
         </div>
@@ -39,8 +82,8 @@ export default function Home() {
               <Key size={20} />
               <span className="text-sm font-semibold uppercase tracking-wider">Keys Loaded</span>
             </div>
-            <div className="text-3xl font-bold font-heading text-white">2,548</div>
-            <div className="text-xs text-slate-500 mt-2">LMK Active  -  98% Integrity</div>
+            <div className="text-3xl font-bold font-heading text-white">{keysCount.toLocaleString()}</div>
+            <div className="text-xs text-slate-500 mt-2">Active Slots: {status?.keysLoaded || 0}</div>
           </div>
         </div>
 
@@ -51,8 +94,8 @@ export default function Home() {
               <ShieldCheck size={20} />
               <span className="text-sm font-semibold uppercase tracking-wider">Security State</span>
             </div>
-            <div className="text-3xl font-bold font-heading text-white">SECURE</div>
-            <div className="text-xs text-slate-500 mt-2">No Tamper Events (30d)</div>
+            <div className="text-3xl font-bold font-heading text-white">{status?.state === 'OPERATIONAL' ? 'SECURE' : 'TAMPERED'}</div>
+            <div className="text-xs text-slate-500 mt-2">{status?.tamper.tampered ? 'Tamper Detected' : 'No Tamper Events'}</div>
           </div>
         </div>
 
@@ -61,10 +104,10 @@ export default function Home() {
           <div className="relative">
             <div className="flex items-center gap-3 mb-4 text-purple-400">
               <Activity size={20} />
-              <span className="text-sm font-semibold uppercase tracking-wider">Throughput</span>
+              <span className="text-sm font-semibold uppercase tracking-wider">Commands</span>
             </div>
-            <div className="text-3xl font-bold font-heading text-white">850 tps</div>
-            <div className="text-xs text-slate-500 mt-2">Peak: 1,200 tps</div>
+            <div className="text-3xl font-bold font-heading text-white">{status?.commandCount || 0}</div>
+            <div className="text-xs text-slate-500 mt-2">Global Operations Total</div>
           </div>
         </div>
 
@@ -73,10 +116,10 @@ export default function Home() {
           <div className="relative">
             <div className="flex items-center gap-3 mb-4 text-amber-400">
               <Cpu size={20} />
-              <span className="text-sm font-semibold uppercase tracking-wider">Crypto Load</span>
+              <span className="text-sm font-semibold uppercase tracking-wider">Uptime</span>
             </div>
-            <div className="text-3xl font-bold font-heading text-white">24%</div>
-            <div className="text-xs text-slate-500 mt-2">Temp: 42C  -  Fan: 30%</div>
+            <div className="text-3xl font-bold font-heading text-white">{status ? Math.floor(status.uptimeSec / 60) : 0}m</div>
+            <div className="text-xs text-slate-500 mt-2">Session: {status?.uptimeSec || 0}s</div>
           </div>
         </div>
       </div>
@@ -92,33 +135,29 @@ export default function Home() {
                 <Activity size={18} className="text-blue-500" />
                 Live Operations
               </h2>
-              <button className="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded-full transition text-slate-300">
+              <Link href="/security" className="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded-full transition text-slate-300">
                 View All
-              </button>
+              </Link>
             </div>
 
             <div className="space-y-4">
-              {[
-                { time: '10:42:05', op: 'PIN_VERIFY', src: 'TERM-001', status: 'OK', lat: '12ms' },
-                { time: '10:42:02', op: 'MAC_GEN', src: 'SWITCH-01', status: 'OK', lat: '8ms' },
-                { time: '10:41:58', op: 'KEY_EXPORT', src: 'CMS-ADMIN', status: 'OK', lat: '45ms' },
-                { time: '10:41:45', op: 'PIN_TRANSLATE', src: 'TERM-052', status: 'FAIL', lat: '15ms' },
-                { time: '10:41:30', op: 'ARQC_VERIFY', src: 'TERM-104', status: 'OK', lat: '22ms' },
-              ].map((log, i) => (
+              {logs.length > 0 ? logs.map((log, i) => (
                 <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-slate-900/50 border border-white/5 hover:border-white/10 transition">
                   <div className="flex items-center gap-4">
-                    <span className="text-xs font-mono text-slate-500">{log.time}</span>
-                    <span className="text-sm font-semibold text-white">{log.op}</span>
-                    <span className="text-xs text-slate-400 bg-slate-800 px-2 py-0.5 rounded">{log.src}</span>
+                    <span className="text-xs font-mono text-slate-500">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                    <span className="text-sm font-semibold text-white truncate max-w-[200px]">{log.message}</span>
                   </div>
                   <div className="flex items-center gap-4">
-                    <span className={`text-xs font-bold ${log.status === 'OK' ? 'text-green-500' : 'text-red-500'}`}>
-                      {log.status}
+                    <span className={`text-xs font-bold ${log.level === 'info' ? 'text-green-500' : 'text-amber-500'}`}>
+                      {log.level?.toUpperCase() || 'INFO'}
                     </span>
-                    <span className="text-xs font-mono text-slate-500 w-12 text-right">{log.lat}</span>
                   </div>
                 </div>
-              ))}
+              )) : (
+                <div className="p-12 text-center text-slate-500 text-sm italic">
+                  No recent operations logged.
+                </div>
+              )}
             </div>
           </div>
 

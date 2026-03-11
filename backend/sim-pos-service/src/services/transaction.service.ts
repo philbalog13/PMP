@@ -245,3 +245,77 @@ export const displayToUser = async (message: string, status: 'SUCCESS' | 'ERROR'
     console.log(`[POS DISPLAY] ------------------------------`);
     // In a real device, this would call hardware drivers
 };
+
+/**
+ * Phase 4: Télécollecte (End of day batch)
+ * Captures all APPROVED non-cleared transactions and sends them to the clearing engine
+ */
+export const performTelecollecte = async (merchantId: string = config.merchantId): Promise<any> => {
+    // Collect all approved transactions for this merchant.
+    // In a real system, we'd also track if they were already batch-cleared to avoid double processing.
+    const allTx = Array.from(transactions.values());
+    const pendingClearing = allTx.filter(tx =>
+        tx.status === 'APPROVED' &&
+        tx.merchantId === merchantId &&
+        // Using a custom flag 'cleared' on our side (not strictly typed but usable locally)
+        !(tx as any).cleared
+    );
+
+    if (pendingClearing.length === 0) {
+        return { success: true, message: 'No transactions pending for telecollecte', batchId: null, count: 0 };
+    }
+
+    const batchId = 'BATCH_' + uuidv4();
+    console.log(`[POS] Starting telecollecte batch ${batchId} for merchant ${merchantId} with ${pendingClearing.length} transactions`);
+
+    const batchData = {
+        batchId,
+        merchantId,
+        timestamp: new Date().toISOString(),
+        terminalId: 'POS001',
+        transactionCount: pendingClearing.length,
+        totalAmount: pendingClearing.reduce((sum, tx) => sum + tx.amount, 0),
+        currency: 'EUR', // simple assumption based on default
+        transactions: pendingClearing.map(tx => ({
+            transactionId: tx.id,
+            pan: tx.pan, // For clearing, PAN is often sent tokenized or encrypted, but here we simulate standard clearing file
+            amount: tx.amount,
+            currency: tx.currency,
+            authorizationCode: tx.authorizationCode,
+            transactionType: tx.transactionType,
+            completedAt: tx.completedAt
+        }))
+    };
+
+    try {
+        const response = await axios.post(
+            `${config.simClearingEngine?.url || 'http://sim-clearing-engine:8016'}/api/clearing/batch`,
+            batchData,
+            { timeout: config.simClearingEngine?.timeout || 15000 }
+        );
+
+        if (response.data && (response.data.success || response.status === 200)) {
+            // Mark transactions as cleared
+            pendingClearing.forEach(tx => {
+                (tx as any).cleared = true;
+                (tx as any).telecollecteBatchId = batchId;
+                transactions.set(tx.id, tx);
+            });
+            console.log(`[POS] Telecollecte SUCCESS: Batch ${batchId} cleared`);
+            return {
+                success: true,
+                message: 'Telecollecte completed successfully',
+                batchId,
+                count: pendingClearing.length,
+                totalAmount: batchData.totalAmount,
+                clearingResponse: response.data
+            };
+        } else {
+            console.error(`[POS] Telecollecte failed at clearing engine:`, response.data);
+            throw new Error('Clearing engine rejected the batch');
+        }
+    } catch (error: any) {
+        console.error(`[POS] Telecollecte error:`, error.message);
+        throw new Error(`Telecollecte failed to reach or process at clearing engine: ${error.message}`);
+    }
+};

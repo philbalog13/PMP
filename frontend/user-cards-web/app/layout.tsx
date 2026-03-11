@@ -1,33 +1,47 @@
 import type { Metadata } from 'next';
 import { Outfit, Inter } from 'next/font/google';
 import './globals.css';
-import Sidebar from '@/components/Sidebar';
-import { AuthProvider } from '@shared/context/AuthContext';
+import { AuthProvider }    from '@shared/context/AuthContext';
+import { BankShell }       from '@shared/components/banking/layout/BankShell';
+import { ClientSidebar }   from '@/components/banking/ClientSidebar';
+import { ClientTopbar }    from '@/components/banking/ClientTopbar';
+import { ClientMobileNav } from '@/components/banking/ClientMobileNav';
+import { AuthSessionGate } from '@/components/AuthSessionGate';
 
-const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit' });
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
+/* ── Fonts (inchangé) ── */
+const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit', display: 'optional' });
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'optional' });
 
 export const metadata: Metadata = {
-  title: 'Espace Client — MoneTIC',
+  title:       'MoneBank — Espace Client',
   description: 'Gestion de vos cartes et transactions — Plateforme Monétique Pédagogique MoneTIC',
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr" className={`${outfit.variable} ${inter.variable}`}>
       <head>
         <link rel="icon" href="/favicon.ico" />
       </head>
-      <body className="font-sans bg-slate-950 text-slate-50 selection:bg-blue-500/30 overflow-x-hidden antialiased">
+      <body>
         <AuthProvider>
-          <Sidebar />
-          <main className="md:ml-64 min-h-screen">
-            {children}
-          </main>
+          {/*
+           * BankShell remplace :
+           *   <Sidebar /> + <main className="md:ml-64 min-h-screen">
+           * Il gère : sidebar desktop, topbar sticky, bottom nav mobile,
+           *           thème dark/light (localStorage), data-bank-theme/role.
+           */}
+          <AuthSessionGate>
+            <BankShell
+              role="client"
+              defaultTheme="dark"
+              sidebar={<ClientSidebar />}
+              topbar={<ClientTopbar />}
+              mobileNav={<ClientMobileNav />}
+            >
+              {children}
+            </BankShell>
+          </AuthSessionGate>
         </AuthProvider>
       </body>
     </html>

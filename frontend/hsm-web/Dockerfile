@@ -16,14 +16,16 @@ WORKDIR /app/hsm-web
 
 # Build arguments for Next.js public env vars (needed at build time)
 ARG NEXT_PUBLIC_API_URL=http://localhost:8000
+ARG INTERNAL_API_URL=http://api-gateway:8000
 ARG NEXT_PUBLIC_PORTAL_URL=http://localhost:3000
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV INTERNAL_API_URL=$INTERNAL_API_URL
 ENV NEXT_PUBLIC_PORTAL_URL=$NEXT_PUBLIC_PORTAL_URL
 
 # Copy dependencies from deps stage
 COPY --from=deps /app/hsm-web/node_modules ./node_modules
 
-# Copy shared directory and install its dependencies
+# Copy shared directory in the same relative layout as local development.
 COPY shared ../shared
 RUN cd ../shared && npm install
 

@@ -1,18 +1,16 @@
-﻿'use client';
+'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import {
     BarChart3,
-    ChevronRight,
     RefreshCw,
-    Shield,
     Timer,
     Users,
     Flame,
     RotateCcw,
 } from 'lucide-react';
 import { useAuth } from '../../auth/useAuth';
+import { NotionProgress, NotionSkeleton } from '@shared/components/notion';
 
 interface ChallengeStat {
     challenge_code: string;
@@ -108,6 +106,19 @@ interface TelemetryVolumeRow {
     events_24h: number;
 }
 
+function Panel({ title, children }: { title: React.ReactNode; children: React.ReactNode }) {
+    return (
+        <div style={{ background: 'var(--n-bg-primary)', border: '1px solid var(--n-border)', borderRadius: '8px', overflow: 'hidden' }}>
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--n-border)', fontSize: '13px', fontWeight: 600, color: 'var(--n-text-primary)' }}>
+                {title}
+            </div>
+            <div style={{ padding: '12px 16px' }}>
+                {children}
+            </div>
+        </div>
+    );
+}
+
 export default function InstructorCtfDashboardPage() {
     const { isLoading } = useAuth(true);
 
@@ -126,9 +137,7 @@ export default function InstructorCtfDashboardPage() {
 
     const fetchData = useCallback(async () => {
         const token = localStorage.getItem('token');
-        if (!token) {
-            return;
-        }
+        if (!token) return;
 
         const headers = { Authorization: `Bearer ${token}` };
 
@@ -169,10 +178,7 @@ export default function InstructorCtfDashboardPage() {
     }, [fetchData]);
 
     useEffect(() => {
-        if (isLoading) {
-            return;
-        }
-
+        if (isLoading) return;
         refresh();
     }, [isLoading, refresh]);
 
@@ -184,23 +190,15 @@ export default function InstructorCtfDashboardPage() {
 
     const handleResetStudent = useCallback(async (studentId: string) => {
         const token = localStorage.getItem('token');
-        if (!token) {
-            return;
-        }
+        if (!token) return;
 
         try {
             const response = await fetch(`/api/ctf/admin/reset/${studentId}`, {
                 method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
+                headers: { Authorization: `Bearer ${token}` },
             });
-
             const payload = await response.json();
-            if (!response.ok) {
-                throw new Error(payload.error || 'Reset impossible');
-            }
-
+            if (!response.ok) throw new Error(payload.error || 'Reset impossible');
             await refresh();
         } catch (resetError: unknown) {
             setError(resetError instanceof Error ? resetError.message : 'Erreur reset progression');
@@ -209,220 +207,221 @@ export default function InstructorCtfDashboardPage() {
 
     if (isLoading || loading) {
         return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">
-                <div className="flex flex-col items-center gap-4">
-                    <Shield className="h-12 w-12 animate-bounce text-blue-400" />
-                    <p className="text-sm text-slate-400">Chargement dashboard CTF instructeur...</p>
+            <div style={{ minHeight: '100vh', background: 'var(--n-bg-secondary)', padding: '32px 24px' }}>
+                <NotionSkeleton type="line" />
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px', marginTop: '24px' }}>
+                    <NotionSkeleton type="card" />
+                    <NotionSkeleton type="card" />
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-slate-950 text-white pt-24 pb-12">
-            <div className="max-w-7xl mx-auto px-6">
-                <div className="text-xs text-slate-500 mb-6">
-                    <Link href="/instructor" className="hover:text-blue-300">Dashboard</Link>
-                    <ChevronRight size={12} className="inline mx-1" />
-                    <span className="text-blue-300">CTF</span>
-                </div>
-
-                <div className="mb-6 flex items-center justify-between gap-3">
+        <div style={{ minHeight: '100vh', background: 'var(--n-bg-secondary)' }}>
+            {/* Page header */}
+            <div style={{ background: 'var(--n-bg-primary)', borderBottom: '1px solid var(--n-border)', padding: '20px 24px' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                     <div>
-                        <h1 className="text-3xl font-black">CTF Instructor Console</h1>
-                        <p className="text-sm text-slate-400 mt-1">Suivi des résolutions, difficultés et étudiants bloqués.</p>
+                        <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--n-text-primary)', margin: 0 }}>
+                            CTF Instructor Console
+                        </h1>
+                        <p style={{ fontSize: '13px', color: 'var(--n-text-secondary)', marginTop: '4px' }}>
+                            Suivi des résolutions, difficultés et étudiants bloqués.
+                        </p>
                     </div>
                     <button
                         onClick={refresh}
-                        className={`px-4 py-2 rounded-xl border border-white/20 bg-slate-900/60 text-sm flex items-center gap-2 ${refreshing ? 'animate-pulse' : ''}`}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '6px',
+                            padding: '7px 14px', background: 'var(--n-bg-secondary)',
+                            border: '1px solid var(--n-border)', borderRadius: '6px',
+                            fontSize: '13px', color: 'var(--n-text-primary)', cursor: 'pointer',
+                        }}
                     >
-                        <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} /> Refresh
+                        <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} /> Refresh
                     </button>
                 </div>
-
                 {error && (
-                    <div className="mb-6 rounded-xl border border-red-500/40 bg-red-500/10 text-red-200 text-sm p-4">
+                    <div style={{ marginTop: '12px', padding: '10px 14px', background: 'var(--n-danger-bg)', border: '1px solid var(--n-danger-border)', borderRadius: '6px', fontSize: '13px', color: 'var(--n-danger)' }}>
                         {error}
                     </div>
                 )}
+            </div>
 
-                <div className="grid lg:grid-cols-3 gap-6 mb-6">
-                    <div className="lg:col-span-2 rounded-2xl border border-white/10 bg-slate-800/50 p-5">
-                        <h2 className="font-bold mb-4 flex items-center gap-2"><BarChart3 size={18} className="text-blue-300" /> Taux de résolution</h2>
-                        <div className="space-y-3">
+            <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+                {/* Taux de résolution + Plus difficiles */}
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
+                    <Panel title={<span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><BarChart3 size={14} style={{ color: 'var(--n-accent)' }} />Taux de résolution</span>}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            {challengeStats.length === 0 && <p style={{ fontSize: '12px', color: 'var(--n-text-tertiary)' }}>Aucune donnée.</p>}
                             {challengeStats.map((stat) => {
                                 const rate = Number(stat.resolution_rate || 0);
                                 return (
                                     <div key={stat.challenge_code}>
-                                        <div className="flex items-center justify-between text-xs mb-1">
-                                            <span className="text-slate-200">{stat.challenge_code} - {stat.title}</span>
-                                            <span className="text-slate-400">
-                                                {rate}% ({stat.unique_solvers} solveurs) - Axis {stat.avg_axis_score} - Drop-off {stat.dropoff_rate}%
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                            <span style={{ fontSize: '12px', color: 'var(--n-text-primary)' }}>{stat.challenge_code} — {stat.title}</span>
+                                            <span style={{ fontSize: '11px', color: 'var(--n-text-tertiary)' }}>
+                                                {rate}% ({stat.unique_solvers}) · Axis {stat.avg_axis_score} · Drop-off {stat.dropoff_rate}%
                                             </span>
                                         </div>
-                                        <div className="h-2 rounded-full bg-slate-700 overflow-hidden">
-                                            <div
-                                                className={`h-full ${rate >= 70 ? 'bg-emerald-500' : rate >= 40 ? 'bg-amber-500' : 'bg-red-500'}`}
-                                                style={{ width: `${Math.max(2, Math.min(100, rate))}%` }}
-                                            />
-                                        </div>
+                                        <NotionProgress value={rate} variant={rate >= 70 ? 'success' : rate >= 40 ? 'warning' : 'danger'} size="thin" />
                                     </div>
                                 );
                             })}
                         </div>
-                    </div>
+                    </Panel>
 
-                    <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-5">
-                        <h2 className="font-bold mb-4 flex items-center gap-2"><Flame size={18} className="text-orange-300" /> Plus difficiles</h2>
-                        <div className="space-y-3 text-sm">
+                    <Panel title={<span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Flame size={14} style={{ color: 'var(--n-danger)' }} />Plus difficiles</span>}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {hardestChallenges.map((stat) => (
-                                <div key={stat.challenge_code} className="rounded-lg border border-white/10 bg-slate-900/60 p-3">
-                                    <p className="font-semibold">{stat.challenge_code}</p>
-                                    <p className="text-xs text-slate-400 mt-1">Taux: {stat.resolution_rate}%</p>
-                                    <p className="text-xs text-slate-400">Temps moyen: {stat.avg_completion_minutes} min</p>
-                                    <p className="text-xs text-slate-400">Debrief: {stat.debrief_coverage_rate}%</p>
+                                <div key={stat.challenge_code} style={{ padding: '8px 10px', background: 'var(--n-bg-secondary)', border: '1px solid var(--n-border)', borderRadius: '6px' }}>
+                                    <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--n-text-primary)', margin: 0 }}>{stat.challenge_code}</p>
+                                    <p style={{ fontSize: '11px', color: 'var(--n-text-tertiary)', margin: '3px 0 0' }}>Taux: {stat.resolution_rate}%</p>
+                                    <p style={{ fontSize: '11px', color: 'var(--n-text-tertiary)', margin: '2px 0 0' }}>Temps moy: {stat.avg_completion_minutes} min</p>
+                                    <p style={{ fontSize: '11px', color: 'var(--n-text-tertiary)', margin: '2px 0 0' }}>Debrief: {stat.debrief_coverage_rate}%</p>
                                 </div>
                             ))}
                         </div>
-                    </div>
+                    </Panel>
                 </div>
 
-                <div className="grid lg:grid-cols-2 gap-6">
-                    <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-5">
-                        <h2 className="font-bold mb-4 flex items-center gap-2"><Timer size={18} className="text-amber-300" /> Soumissions récentes</h2>
-                        <div className="space-y-2 max-h-[420px] overflow-auto">
+                {/* Soumissions + Bloqués */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <Panel title={<span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Timer size={14} style={{ color: 'var(--n-warning)' }} />Soumissions récentes</span>}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '380px', overflowY: 'auto' }}>
                             {submissions.slice(0, 40).map((item) => {
                                 const name = [item.first_name, item.last_name].filter(Boolean).join(' ') || item.username;
                                 return (
-                                    <div key={item.id} className="rounded-lg border border-white/10 bg-slate-900/70 px-3 py-2 text-xs">
-                                        <div className="flex items-center justify-between gap-2">
-                                            <span className="text-slate-200">{name} - {item.challenge_code}</span>
-                                            <span className={item.is_correct ? 'text-emerald-300' : 'text-red-300'}>
+                                    <div key={item.id} style={{
+                                        padding: '8px 10px',
+                                        background: 'var(--n-bg-secondary)',
+                                        border: `1px solid ${item.is_correct ? 'var(--n-success-border)' : 'var(--n-danger-border)'}`,
+                                        borderRadius: '6px',
+                                    }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                                            <span style={{ fontSize: '12px', color: 'var(--n-text-primary)' }}>{name} — {item.challenge_code}</span>
+                                            <span style={{ fontSize: '11px', fontWeight: 600, color: item.is_correct ? 'var(--n-success)' : 'var(--n-danger)' }}>
                                                 {item.is_correct ? 'Correct' : 'Incorrect'}
                                             </span>
                                         </div>
-                                        <div className="mt-1 text-slate-400">
-                                            {new Date(item.submitted_at).toLocaleString('fr-FR')} - {item.mode} - {item.points_awarded} pts - Axis {item.axis_total_score}
-                                        </div>
+                                        <p style={{ fontSize: '11px', color: 'var(--n-text-tertiary)', margin: 0 }}>
+                                            {new Date(item.submitted_at).toLocaleString('fr-FR')} · {item.mode} · {item.points_awarded} pts · Axis {item.axis_total_score}
+                                        </p>
                                         {Array.isArray(item.feedback_codes) && item.feedback_codes.length > 0 && (
-                                            <div className="mt-1 text-[11px] text-slate-500">
+                                            <p style={{ fontSize: '10px', color: 'var(--n-text-tertiary)', margin: '2px 0 0' }}>
                                                 Feedback: {item.feedback_codes.slice(0, 3).join(', ')}
-                                            </div>
+                                            </p>
                                         )}
                                     </div>
                                 );
                             })}
                         </div>
-                    </div>
+                    </Panel>
 
-                    <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-5">
-                        <h2 className="font-bold mb-4 flex items-center gap-2"><Users size={18} className="text-rose-300" /> Étudiants bloqués (+2h)</h2>
-                        <div className="space-y-2 max-h-[420px] overflow-auto">
+                    <Panel title={<span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Users size={14} style={{ color: 'var(--n-danger)' }} />Étudiants bloqués (+2h)</span>}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '380px', overflowY: 'auto' }}>
                             {blockedStudents.length === 0 && (
-                                <div className="text-sm text-slate-400 rounded-lg border border-white/10 bg-slate-900/70 p-3">
+                                <div style={{ padding: '10px 12px', background: 'var(--n-success-bg)', border: '1px solid var(--n-success-border)', borderRadius: '6px', fontSize: '12px', color: 'var(--n-success)' }}>
                                     Aucun étudiant bloqué détecté.
                                 </div>
                             )}
-
                             {blockedStudents.map((student) => {
                                 const name = [student.first_name, student.last_name].filter(Boolean).join(' ') || student.username;
                                 return (
-                                    <div key={`${student.student_id}-${student.challenge_code}`} className="rounded-lg border border-white/10 bg-slate-900/70 p-3">
-                                        <p className="text-sm font-semibold">{name}</p>
-                                        <p className="text-xs text-slate-400 mt-1">{student.challenge_code} - {student.title}</p>
-                                        <p className="text-xs text-amber-300 mt-1">{student.hours_in_progress} h en cours</p>
-                                        <p className="text-xs text-slate-500 mt-1">
-                                            Step {student.current_guided_step} - essais rates {student.failed_attempts} - profil {student.learner_profile}
+                                    <div key={`${student.student_id}-${student.challenge_code}`} style={{ padding: '10px 12px', background: 'var(--n-warning-bg)', border: '1px solid var(--n-warning-border)', borderRadius: '6px' }}>
+                                        <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--n-text-primary)', margin: 0 }}>{name}</p>
+                                        <p style={{ fontSize: '11px', color: 'var(--n-text-secondary)', margin: '3px 0 0' }}>{student.challenge_code} — {student.title}</p>
+                                        <p style={{ fontSize: '11px', color: 'var(--n-warning)', fontWeight: 600, margin: '3px 0 0' }}>{student.hours_in_progress}h en cours</p>
+                                        <p style={{ fontSize: '11px', color: 'var(--n-text-tertiary)', margin: '2px 0 4px' }}>
+                                            Step {student.current_guided_step} · {student.failed_attempts} échecs · {student.learner_profile}
                                         </p>
                                         <button
                                             onClick={() => handleResetStudent(student.student_id)}
-                                            className="mt-2 px-2 py-1 rounded bg-red-600 hover:bg-red-500 text-xs flex items-center gap-1"
+                                            style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', background: 'var(--n-danger-bg)', border: '1px solid var(--n-danger-border)', borderRadius: '4px', fontSize: '11px', fontWeight: 600, color: 'var(--n-danger)', cursor: 'pointer' }}
                                         >
-                                            <RotateCcw size={12} /> Reset progression
+                                            <RotateCcw size={11} /> Reset progression
                                         </button>
                                     </div>
                                 );
                             })}
                         </div>
-                    </div>
+                    </Panel>
                 </div>
 
-                <div className="mt-6 grid lg:grid-cols-3 gap-6">
-                    <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-5">
-                        <h2 className="font-bold mb-4">Drop-off challenge</h2>
-                        <div className="space-y-2 max-h-[320px] overflow-auto">
+                {/* Drop-off · Debrief · Feedback */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+                    <Panel title="Drop-off challenge">
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '260px', overflowY: 'auto' }}>
                             {dropoffRows.slice(0, 12).map((row) => (
-                                <div key={`${row.challenge_code}-${row.dropoff_rate}`} className="rounded-lg border border-white/10 bg-slate-900/70 p-3 text-xs">
-                                    <p className="text-slate-200">{row.challenge_code} - {row.title}</p>
-                                    <p className="text-slate-400 mt-1">Started {row.started_count} / Completed {row.completed_count}</p>
-                                    <p className="text-amber-300 mt-1">Drop-off {row.dropoff_rate}%</p>
+                                <div key={`${row.challenge_code}-${row.dropoff_rate}`} style={{ padding: '8px 10px', background: 'var(--n-bg-secondary)', border: '1px solid var(--n-border)', borderRadius: '6px' }}>
+                                    <p style={{ fontSize: '12px', color: 'var(--n-text-primary)', margin: 0 }}>{row.challenge_code} — {row.title}</p>
+                                    <p style={{ fontSize: '11px', color: 'var(--n-text-tertiary)', margin: '2px 0 0' }}>Started {row.started_count} / Completed {row.completed_count}</p>
+                                    <p style={{ fontSize: '11px', fontWeight: 600, color: row.dropoff_rate > 50 ? 'var(--n-danger)' : 'var(--n-warning)', margin: '2px 0 0' }}>Drop-off {row.dropoff_rate}%</p>
                                 </div>
                             ))}
                         </div>
-                    </div>
+                    </Panel>
 
-                    <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-5">
-                        <h2 className="font-bold mb-4">Debrief coverage</h2>
-                        <div className="space-y-2 max-h-[320px] overflow-auto">
+                    <Panel title="Debrief coverage">
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '260px', overflowY: 'auto' }}>
                             {debriefRows.slice(0, 12).map((row) => (
-                                <div key={`${row.challenge_code}-${row.debrief_coverage_rate}`} className="rounded-lg border border-white/10 bg-slate-900/70 p-3 text-xs">
-                                    <p className="text-slate-200">{row.challenge_code} - {row.title}</p>
-                                    <p className="text-slate-400 mt-1">Debriefs {row.debrief_count}/{row.completed_count}</p>
-                                    <p className="text-cyan-300 mt-1">Coverage {row.debrief_coverage_rate}%</p>
+                                <div key={`${row.challenge_code}-${row.debrief_coverage_rate}`} style={{ padding: '8px 10px', background: 'var(--n-bg-secondary)', border: '1px solid var(--n-border)', borderRadius: '6px' }}>
+                                    <p style={{ fontSize: '12px', color: 'var(--n-text-primary)', margin: 0 }}>{row.challenge_code} — {row.title}</p>
+                                    <p style={{ fontSize: '11px', color: 'var(--n-text-tertiary)', margin: '2px 0 0' }}>Debriefs {row.debrief_count}/{row.completed_count}</p>
+                                    <p style={{ fontSize: '11px', fontWeight: 600, color: 'var(--n-accent)', margin: '2px 0 0' }}>Coverage {row.debrief_coverage_rate}%</p>
                                 </div>
                             ))}
                         </div>
-                    </div>
+                    </Panel>
 
-                    <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-5">
-                        <h2 className="font-bold mb-4">Feedback hotspots</h2>
-                        <div className="space-y-2 max-h-[320px] overflow-auto">
+                    <Panel title="Feedback hotspots">
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '260px', overflowY: 'auto' }}>
                             {feedbackHotspots.slice(0, 12).map((item) => (
-                                <div key={item.feedback_code} className="rounded-lg border border-white/10 bg-slate-900/70 p-3 text-xs">
-                                    <p className="text-slate-200">{item.feedback_code}</p>
-                                    <p className="text-slate-400 mt-1">{item.occurrences} occurrences</p>
+                                <div key={item.feedback_code} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: 'var(--n-bg-secondary)', border: '1px solid var(--n-border)', borderRadius: '6px' }}>
+                                    <span style={{ fontSize: '12px', color: 'var(--n-text-primary)' }}>{item.feedback_code}</span>
+                                    <span style={{ fontSize: '11px', color: 'var(--n-text-secondary)', fontFamily: 'var(--n-font-mono)' }}>{item.occurrences}×</span>
                                 </div>
                             ))}
                         </div>
-                    </div>
+                    </Panel>
                 </div>
 
-                <div className="mt-6 grid lg:grid-cols-3 gap-6">
-                    <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-5">
-                        <h2 className="font-bold mb-4">Learner profiles</h2>
-                        <div className="space-y-2 text-xs">
+                {/* Learner profiles · Step blockage · Telemetry */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+                    <Panel title="Learner profiles">
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             {learnerProfiles.map((item) => (
-                                <div key={item.learner_profile} className="rounded-lg border border-white/10 bg-slate-900/70 px-3 py-2 flex items-center justify-between">
-                                    <span>{item.learner_profile}</span>
-                                    <span className="font-mono text-cyan-200">{item.learners}</span>
+                                <div key={item.learner_profile} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: 'var(--n-bg-secondary)', border: '1px solid var(--n-border)', borderRadius: '6px' }}>
+                                    <span style={{ fontSize: '12px', color: 'var(--n-text-primary)' }}>{item.learner_profile}</span>
+                                    <span style={{ fontSize: '12px', color: 'var(--n-accent)', fontFamily: 'var(--n-font-mono)', fontWeight: 600 }}>{item.learners}</span>
                                 </div>
                             ))}
                         </div>
-                    </div>
+                    </Panel>
 
-                    <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-5">
-                        <h2 className="font-bold mb-4">Blockage by step</h2>
-                        <div className="space-y-2 max-h-[260px] overflow-auto text-xs">
+                    <Panel title="Blockage by step">
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '240px', overflowY: 'auto' }}>
                             {stepBlockage.slice(0, 12).map((item) => (
-                                <div key={`${item.challenge_code}-${item.current_guided_step}`} className="rounded-lg border border-white/10 bg-slate-900/70 p-3">
-                                    <p className="text-slate-200">{item.challenge_code} step {item.current_guided_step}</p>
-                                    <p className="text-slate-400 mt-1">{item.blocked_learners} etudiants bloques</p>
+                                <div key={`${item.challenge_code}-${item.current_guided_step}`} style={{ padding: '8px 10px', background: 'var(--n-bg-secondary)', border: '1px solid var(--n-border)', borderRadius: '6px' }}>
+                                    <p style={{ fontSize: '12px', color: 'var(--n-text-primary)', margin: 0 }}>{item.challenge_code} · step {item.current_guided_step}</p>
+                                    <p style={{ fontSize: '11px', color: 'var(--n-text-secondary)', margin: '2px 0 0' }}>{item.blocked_learners} étudiant{item.blocked_learners !== 1 ? 's' : ''} bloqué{item.blocked_learners !== 1 ? 's' : ''}</p>
                                 </div>
                             ))}
                         </div>
-                    </div>
+                    </Panel>
 
-                    <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-5">
-                        <h2 className="font-bold mb-4">Telemetry 24h</h2>
-                        <div className="space-y-2 max-h-[260px] overflow-auto text-xs">
+                    <Panel title="Telemetry 24h">
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '240px', overflowY: 'auto' }}>
                             {telemetryVolume.map((item) => (
-                                <div key={item.event_name} className="rounded-lg border border-white/10 bg-slate-900/70 px-3 py-2 flex items-center justify-between">
-                                    <span className="text-slate-200">{item.event_name}</span>
-                                    <span className="font-mono text-emerald-300">{item.events_24h}</span>
+                                <div key={item.event_name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: 'var(--n-bg-secondary)', border: '1px solid var(--n-border)', borderRadius: '6px' }}>
+                                    <span style={{ fontSize: '11px', color: 'var(--n-text-primary)' }}>{item.event_name}</span>
+                                    <span style={{ fontSize: '11px', color: 'var(--n-success)', fontFamily: 'var(--n-font-mono)', fontWeight: 600 }}>{item.events_24h}</span>
                                 </div>
                             ))}
                         </div>
-                    </div>
+                    </Panel>
                 </div>
             </div>
         </div>

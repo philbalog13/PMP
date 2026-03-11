@@ -55,6 +55,12 @@ export default function CardReaderSim({ onCardRead }: CardReaderSimProps) {
         setPan(card.pan);
         setExpiry(card.expiry);
         setCvv(card.cvv);
+        setErrors([]);
+
+        // UX: a preset card click should behave like a real "tap card" action.
+        if (!isDisabled) {
+            onCardRead({ pan: card.pan, expiryDate: card.expiry, cvv: card.cvv });
+        }
     };
 
     const handlePaste = async () => {

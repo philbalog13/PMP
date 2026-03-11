@@ -3,57 +3,80 @@
 ## Quick Start
 
 ```bash
-# 1. Generate cryptographic keys
-make keys
+# 1. Prepare environment
+cp .env.example .env
 
-# 2. Build and start all services
-make deploy
+# 2. Procedure officielle runtime (source de verite)
+node scripts/runtime-stack.mjs test-all
 
-# 3. Check status
-make health
+# 3. Variante : demarrer la stack seulement
+node scripts/runtime-stack.mjs up
+
+# 4. Variante : rejouer les smokes sans restart
+node scripts/runtime-stack.mjs smoke
+node scripts/runtime-stack.mjs frontend-smoke
+
+# 5. Export standardise des preuves runtime
+node scripts/runtime-stack.mjs evidence
+
+# Wrappers de compatibilite
+make runtime-test-all
+make runtime-evidence
+powershell -ExecutionPolicy Bypass -File scripts/deploy-runtime-test-all.ps1
 ```
+
+`scripts/runtime-stack.mjs` est la procedure standard unique. Le `Makefile` et le script PowerShell ne portent plus leur propre logique runtime.
 
 ## Prerequisites
 
 - Docker 24.x+
 - Docker Compose 2.x+
-- Make (GNU Make)
+- Node.js 20.x+
+- Make (GNU Make, optionnel pour les wrappers)
 - OpenSSL (for key generation on Windows: Git Bash or WSL)
 
 ## 🏗️ Infrastructure Overview
 
-### Services (17 total)
+### Services (29 total)
 
-**Frontend (2)**
-- `client-interface` - React client app (port 3000)
-- `merchant-interface` - Vue.js merchant app (port 3001)
+La liste ci-dessous correspond au runtime courant retourne par `docker compose -f docker-compose-runtime.yml config --services`.
 
-**Gateway (1)**
-- `api-gateway` - Express API Gateway (port 8000)
+**Frontends exposes (6)**
+- `portal` - Hub multi-roles (port 3000)
+- `client-interface` - Service runtime qui expose en realite `frontend/tpe-web` (port 3001)
+- `user-cards-web` - Espace client cartes et transactions (port 3004)
+- `hsm-web` - Interface HSM (port 3006)
+- `monitoring-dashboard` - Dashboard monitoring (port 3082)
+- `3ds-challenge-ui` - Page OTP 3DS (port 3088)
 
-**Core Microservices (7)**
-- `sim-card-service` - Virtual cards management
-- `sim-pos-service` - POS terminal simulation  
-- `sim-acquirer-service` - Acquirer bank
-- `sim-network-switch` - Payment network routing
-- `sim-issuer-service` - Issuer bank
-- `sim-auth-engine` - Authorization engine
-- `sim-fraud-detection` - Fraud detection
+**Gateway + coeur/securite (14)**
+- `api-gateway` - API Gateway (port 8000)
+- `sim-card-service` - Virtual cards management (port 8001)
+- `sim-pos-service` - POS terminal simulation (port 8002)
+- `sim-acquirer-service` - Acquirer bank (port 8003)
+- `sim-clearing-engine` - Clearing and settlement (port 8016)
+- `sim-network-switch` - Payment network routing (port 8004)
+- `sim-issuer-service` - Issuer bank (port 8005)
+- `sim-auth-engine` - Authorization engine (port 8006)
+- `sim-fraud-detection` - Fraud detection (port 8007)
+- `sim-monitoring-service` - Monitoring backend (port 3005)
+- `crypto-service` - Cryptographic operations (port 8010)
+- `hsm-simulator` - HSM simulation (port 8011)
+- `key-management` - Key lifecycle management (port 8012)
+- `acs-simulator` - 3DS backend simulator (port 8013)
 
-**Security Services (3)**
-- `crypto-service` - Cryptographic operations
-- `hsm-simulator` - HSM simulation
-- `key-management` - Key lifecycle management
+**Lab services (3)**
+- `lab-orchestrator` - Provisioning and lifecycle (port 8098)
+- `lab-access-proxy` - Secure browser access proxy (port 8099)
+- `ctf-attackbox` - Web terminal for labs (port 7681)
 
-**Data (3)**
+**Infra/data (6)**
 - `postgres` - PostgreSQL 14 (port 5432)
 - `redis` - Redis 7 cache (port 6379)
 - `pgadmin` - Database admin UI (port 5050)
-
-**Proxy & Monitoring (3)**
+- `docker-socket-proxy` - Controlled Docker API bridge
 - `nginx` - Reverse proxy with SSL (ports 80, 443)
-- `prometheus` - Metrics collection (port 9090)
-- `grafana` - Monitoring dashboards (port 3002)
+- `certbot-renew` - Let's Encrypt renewal helper
 
 ### Network
 
@@ -67,10 +90,11 @@ make health
 - `postgres-data` - Database persistence
 - `redis-data` - Cache persistence
 - `pgadmin-data` - PgAdmin configuration
-- `prometheus-data` - Metrics storage
-- `grafana-data` - Dashboards storage
+- `prometheus-data` / `grafana-data` - Legacy declarations still present in compose, but no active runtime service currently mounts them
 
 ## 📝 Makefile Commands
+
+Les commandes `runtime-*` ci-dessous sont des wrappers de compatibilite autour de `node scripts/runtime-stack.mjs`.
 
 ### Core Commands
 
@@ -166,9 +190,16 @@ docker compose up -d certbot-renew
 ```
 
 Public routes via Nginx:
-- `https://<domain>/` -> client interface (`client-interface`)
-- `https://<domain>/merchant/` -> portal (`portal`)
+- `https://<domain>/` -> portal (`portal`)
 - `https://<domain>/api/` -> API Gateway (`api-gateway`)
+- `https://<domain>/lab/` -> Lab access proxy (`lab-access-proxy`)
+
+Direct-only runtime ports:
+- `http://localhost:3001` -> `client-interface` (`tpe-web`)
+- `http://localhost:3004` -> `user-cards-web`
+- `http://localhost:3006` -> `hsm-web`
+- `http://localhost:3082` -> `monitoring-dashboard`
+- `http://localhost:3088` -> `3ds-challenge-ui`
 
 ### PowerShell automation (Windows)
 
@@ -249,32 +280,39 @@ Database is auto-initialized on first startup:
 
 ## 🌐 Access Points
 
-After running `make start`:
+After running `node scripts/runtime-stack.mjs up`:
 
 ### Applications
-- **Client Interface**: http://localhost:3000 or https://localhost
-- **Merchant Interface**: http://localhost:3001 or https://localhost/merchant
+- **Portal**: http://localhost:3000 or https://localhost
+- **Payment Terminal (`tpe-web`)**: http://localhost:3001
+- **User Cards Web**: http://localhost:3004
+- **HSM Web**: http://localhost:3006
+- **Monitoring Dashboard**: http://localhost:3082
+- **3DS Challenge UI**: http://localhost:3088
+- **CTF AttackBox**: http://localhost:7681
 - **API Gateway**: http://localhost:8000
+- **ACS Simulator**: http://localhost:8013
 
 ### Admin Tools
 - **PgAdmin**: http://localhost:5050
-  - Email: `admin@pmp.local`
-  - Password: `pgadmin_pass_2024`
-
-- **Grafana**: http://localhost:3002
-  - User: `admin`
-  - Password: `grafana_pass_2024`
-
-- **Prometheus**: http://localhost:9090
+  - Email: `PGADMIN_DEFAULT_EMAIL` from `.env`
+  - Password: `PGADMIN_DEFAULT_PASSWORD` from `.env`
 
 ### Databases (Direct)
 - **PostgreSQL**: localhost:5432
-  - User: `pmp_user`
-  - Password: `pmp_secure_pass_2024`
-  - Database: `pmp_db`
+  - User: `POSTGRES_USER` from `.env`
+  - Password: `POSTGRES_PASSWORD` from `.env`
+  - Database: `POSTGRES_DB` from `.env`
 
 - **Redis**: localhost:6379
-  - Password: `redis_pass_2024`
+  - Password: `REDIS_PASSWORD` from `.env`
+
+### Seed personas for auth/testing
+
+- `client@pmp.edu` / `qa-pass-123`
+- `bakery@pmp.edu` / `qa-pass-123`
+- `student01@pmp.edu` / `qa-pass-123`
+- `trainer@pmp.edu` / `qa-pass-123` + `code2fa=123456`
 
 ## 🔍 Health Checks
 
@@ -287,9 +325,9 @@ All services have health checks configured:
 
 Check health status:
 ```bash
-docker-compose ps
-# or
-make health
+docker compose -f docker-compose-runtime.yml ps
+node scripts/runtime-stack.mjs smoke
+node scripts/runtime-stack.mjs frontend-smoke
 ```
 
 ## 📊 Resource Limits
@@ -314,23 +352,23 @@ Each service has CPU and memory limits:
 
 ```bash
 # Check logs
-make logs
+node scripts/runtime-stack.mjs logs
 
 # Check specific service
-docker-compose logs <service-name>
+docker compose -f docker-compose-runtime.yml logs <service-name>
 
 # Restart specific service
-docker-compose restart <service-name>
+docker compose -f docker-compose-runtime.yml up -d <service-name>
 ```
 
 ### Database connection errors
 
 ```bash
 # Check PostgreSQL health
-docker-compose exec postgres pg_isready
+docker compose -f docker-compose-runtime.yml exec postgres pg_isready
 
 # Restart database
-docker-compose restart postgres
+docker compose -f docker-compose-runtime.yml up -d postgres
 
 # Reset database (⚠️ deletes data)
 make db-reset
@@ -338,11 +376,11 @@ make db-reset
 
 ### Port conflicts
 
-If ports are already in use, modify `docker-compose.yml`:
+If ports are already in use, modify `docker-compose-runtime.yml`:
 
 ```yaml
 ports:
-  - "3000:80"  # Change 3000 to another port
+  - "3000:3000"  # Example: change host port only
 ```
 
 ### SSL certificate issues

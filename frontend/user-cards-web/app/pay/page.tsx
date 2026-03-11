@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@shared/context/AuthContext';
 import { UserRole } from '@shared/types/user';
 import { APP_URLS } from '@shared/lib/app-urls';
@@ -8,7 +9,6 @@ import { clientApi, type Merchant } from '@/lib/api-client';
 import {
     AlertTriangle,
     ArrowRight,
-    ArrowUpDown,
     Building2,
     CreditCard,
     Hash,
@@ -20,29 +20,37 @@ import {
     Tag,
     Terminal,
 } from 'lucide-react';
+import { BankPageHeader } from '@shared/components/banking/layout/BankPageHeader';
+import { BankButton } from '@shared/components/banking/primitives/BankButton';
+import { BankBadge } from '@shared/components/banking/primitives/BankBadge';
+import { BankInput } from '@shared/components/banking/primitives/BankInput';
+import { BankSpinner } from '@shared/components/banking/primitives/BankSpinner';
+import { BankEmptyState } from '@shared/components/banking/feedback/BankEmptyState';
+import { BankSkeleton } from '@shared/components/banking/feedback/BankSkeleton';
+import { StatCard } from '@shared/components/banking/data-display/StatCard';
+import { BankSelect, type BankSelectOption } from '@shared/components/banking/forms/BankSelect';
 
 type SortKey = 'name' | 'terminal';
 
-// MCC → libellé lisible
 const MCC_LABELS: Record<string, string> = {
-    '5411': 'Supermarché / Épicerie',
+    '5411': 'Supermarche / Epicerie',
     '5812': 'Restaurant',
     '5541': 'Station-service',
     '5912': 'Pharmacie',
     '5311': 'Grand magasin',
     '5999': 'Commerce divers',
-    '7011': 'Hôtellerie',
+    '7011': 'Hotellerie',
     '4111': 'Transport local',
     '4121': 'Taxi / VTC',
-    '5621': 'Prêt-à-porter',
+    '5621': 'Pret-a-porter',
     '5661': 'Chaussures',
     '5734': 'Informatique / High-tech',
-    '7832': 'Cinéma',
+    '7832': 'Cinema',
     '5941': 'Articles de sport',
     '5045': 'Fournitures bureau',
 };
 
-const getMccLabel = (mcc: string): string => MCC_LABELS[mcc] || `Catégorie ${mcc}`;
+const getMccLabel = (mcc: string): string => MCC_LABELS[mcc] || `Categorie ${mcc}`;
 
 type MerchantOption = {
     id: string;
@@ -91,21 +99,25 @@ const buildTpeUrl = (merchantId: string): string => {
     return base.toString();
 };
 
-// Initiales du marchand pour l'avatar
 const getInitials = (name: string): string =>
     name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 
-// Couleur déterministe basée sur l'ID
 const AVATAR_COLORS = [
-    'from-blue-500 to-cyan-500',
-    'from-violet-500 to-purple-500',
-    'from-emerald-500 to-teal-500',
-    'from-orange-500 to-amber-500',
-    'from-rose-500 to-pink-500',
-    'from-indigo-500 to-blue-500',
+    'linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%)',
+    'linear-gradient(135deg, #8B5CF6 0%, #A855F7 100%)',
+    'linear-gradient(135deg, #10B981 0%, #14B8A6 100%)',
+    'linear-gradient(135deg, #F97316 0%, #F59E0B 100%)',
+    'linear-gradient(135deg, #F43F5E 0%, #EC4899 100%)',
+    'linear-gradient(135deg, #6366F1 0%, #3B82F6 100%)',
 ];
+
 const getAvatarColor = (id: string): string =>
     AVATAR_COLORS[id.charCodeAt(0) % AVATAR_COLORS.length];
+
+const SORT_OPTIONS: BankSelectOption[] = [
+    { value: 'name', label: 'Trier par nom' },
+    { value: 'terminal', label: 'Trier par terminal' },
+];
 
 export default function ClientPayPage() {
     const { isLoading, isAuthenticated, user } = useAuth();
@@ -164,8 +176,8 @@ export default function ClientPayPage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-cyan-500" />
+            <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <BankSpinner size={40} />
             </div>
         );
     }
@@ -174,14 +186,15 @@ export default function ClientPayPage() {
         return (
             <div className="min-h-screen bg-slate-950 flex items-center justify-center px-6">
                 <div className="max-w-md w-full rounded-2xl border border-white/10 bg-slate-900/70 p-8 text-center space-y-4">
-                    <h1 className="text-2xl font-bold text-white">Session expirée</h1>
-                    <p className="text-slate-400">Reconnectez-vous pour accéder à votre espace client.</p>
-                    <a
+                    <h1 className="text-2xl font-bold text-white">Session expiree</h1>
+                    <p className="text-slate-400">Reconnectez-vous pour acceder a votre espace client.</p>
+                    <Link
                         href={`${process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:3000'}/login`}
-                        className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-cyan-500 text-slate-950 font-semibold hover:bg-cyan-400 transition-colors"
+                        className="bk-btn bk-btn--primary"
+                        style={{ display: 'inline-flex', textDecoration: 'none' }}
                     >
                         Se connecter
-                    </a>
+                    </Link>
                 </div>
             </div>
         );
@@ -191,166 +204,243 @@ export default function ClientPayPage() {
         return (
             <div className="min-h-screen bg-slate-950 flex items-center justify-center px-6">
                 <div className="max-w-lg w-full rounded-2xl border border-white/10 bg-slate-900/70 p-8 text-center text-slate-400">
-                    Cette section est réservée aux titulaires de carte.
+                    Cette section est reservee aux titulaires de carte.
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-slate-950 py-8 pb-16">
-            <div className="max-w-5xl mx-auto px-6 space-y-7">
-
-                {/* Header */}
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div>
-                        <h1 className="text-2xl font-bold text-white">Payer chez un marchand</h1>
-                        <p className="text-sm text-slate-400 mt-1">
-                            Sélectionnez un marchand partenaire pour ouvrir son terminal de paiement.
-                        </p>
-                    </div>
-                    <button
+        <div style={{ maxWidth: 1120, margin: '0 auto', padding: 'var(--bank-space-6)' }}>
+            <BankPageHeader
+                title="Payer chez un marchand"
+                subtitle="Selectionnez un marchand partenaire puis ouvrez son terminal de paiement."
+                actions={
+                    <BankButton
+                        variant="ghost"
+                        size="sm"
+                        icon={RefreshCcw}
                         onClick={loadMerchants}
-                        disabled={isRefreshing}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 border border-white/10 text-sm text-white hover:bg-slate-700 disabled:opacity-50 transition"
+                        loading={isRefreshing}
                     >
-                        <RefreshCcw size={15} className={isRefreshing ? 'animate-spin' : ''} />
                         Actualiser
-                    </button>
-                </div>
+                    </BankButton>
+                }
+            />
 
-                {/* Recherche + Tri */}
-                <div className="flex gap-3 flex-wrap">
-                    <div className="relative flex-1 min-w-[200px]">
-                        <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            placeholder="Rechercher par nom, ville, MCC, TID, MID…"
-                            className="w-full pl-11 pr-4 py-3 rounded-xl bg-slate-800/70 border border-white/10 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 transition"
-                        />
-                    </div>
-                    <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800/70 border border-white/10 text-sm text-white">
-                        <ArrowUpDown size={14} className="text-slate-400 shrink-0" />
-                        <select
-                            value={sortBy}
-                            onChange={(e) => setSortBy(e.target.value as SortKey)}
-                            className="bg-transparent text-sm text-white focus:outline-none cursor-pointer"
+            <div
+                style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                    gap: 'var(--bank-space-4)',
+                    marginBottom: 'var(--bank-space-6)',
+                }}
+            >
+                <StatCard
+                    label="Marchands actifs"
+                    value={String(merchants.length)}
+                    icon={Store}
+                    loading={isRefreshing && merchants.length === 0}
+                    index={0}
+                />
+                <StatCard
+                    label="Resultats filtres"
+                    value={String(filteredMerchants.length)}
+                    icon={Search}
+                    loading={isRefreshing && merchants.length === 0}
+                    index={1}
+                />
+                <StatCard
+                    label="Mode paiement"
+                    value="3DS active"
+                    icon={ShieldCheck}
+                    loading={isRefreshing && merchants.length === 0}
+                    accent
+                    index={2}
+                />
+            </div>
+
+            <section className="bk-card" style={{ marginBottom: 'var(--bank-space-6)' }}>
+                <div
+                    style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'minmax(260px, 1fr) minmax(220px, 300px)',
+                        gap: 'var(--bank-space-3)',
+                    }}
+                    className="bk-pay-filters"
+                >
+                    <BankInput
+                        label="Recherche"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        placeholder="Nom, ville, MCC, TID, MID..."
+                        prefix={Search}
+                    />
+                    <BankSelect
+                        label="Tri"
+                        value={sortBy}
+                        onChange={(value) => setSortBy(value as SortKey)}
+                        options={SORT_OPTIONS}
+                    />
+                </div>
+            </section>
+
+            {error && (
+                <div
+                    style={{
+                        marginBottom: 'var(--bank-space-4)',
+                        borderRadius: 'var(--bank-radius-lg)',
+                        border: '1px solid color-mix(in srgb, var(--bank-danger) 30%, transparent)',
+                        background: 'color-mix(in srgb, var(--bank-danger) 8%, transparent)',
+                        color: 'var(--bank-danger)',
+                        padding: 'var(--bank-space-4)',
+                        fontSize: 'var(--bank-text-sm)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 'var(--bank-space-2)',
+                    }}
+                >
+                    <AlertTriangle size={16} />
+                    {error}
+                </div>
+            )}
+
+            {isRefreshing && merchants.length === 0 ? (
+                <div className="bk-card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--bank-space-2)' }}>
+                    <BankSkeleton variant="transaction-row" count={4} />
+                </div>
+            ) : filteredMerchants.length === 0 ? (
+                <div className="bk-card">
+                    <BankEmptyState
+                        icon={<Store size={22} />}
+                        title="Aucun marchand trouve"
+                        description="Ajustez la recherche ou rechargez la liste des partenaires disponibles."
+                        action={
+                            <BankButton variant="ghost" icon={RefreshCcw} onClick={loadMerchants}>
+                                Recharger
+                            </BankButton>
+                        }
+                    />
+                </div>
+            ) : (
+                <div
+                    style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+                        gap: 'var(--bank-space-4)',
+                    }}
+                >
+                    {filteredMerchants.map((merchant) => (
+                        <article
+                            key={merchant.id}
+                            className="bk-card bk-card--interactive"
+                            style={{ display: 'flex', flexDirection: 'column', gap: 'var(--bank-space-4)' }}
                         >
-                            <option value="name">Trier par nom</option>
-                            <option value="terminal">Trier par terminal</option>
-                        </select>
-                    </div>
-                </div>
-
-                {error && (
-                    <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200 flex items-center gap-2">
-                        <AlertTriangle size={15} className="shrink-0" />
-                        {error}
-                    </div>
-                )}
-
-                {/* Stats rapides */}
-                {merchants.length > 0 && (
-                    <div className="flex flex-wrap gap-3 text-xs text-slate-400">
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-slate-800/50 px-3 py-1.5">
-                            <Store size={12} />
-                            {merchants.length} marchand{merchants.length > 1 ? 's' : ''} disponible{merchants.length > 1 ? 's' : ''}
-                        </span>
-                        {searchTerm && (
-                            <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-cyan-300">
-                                {filteredMerchants.length} résultat{filteredMerchants.length > 1 ? 's' : ''}
-                            </span>
-                        )}
-                    </div>
-                )}
-
-                {/* Liste marchands */}
-                {isRefreshing && merchants.length === 0 ? (
-                    <div className="rounded-2xl border border-white/10 bg-slate-800/40 p-12 flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cyan-500" />
-                    </div>
-                ) : filteredMerchants.length === 0 ? (
-                    <div className="rounded-2xl border border-white/10 bg-slate-800/40 p-12 text-center space-y-2">
-                        <Store size={28} className="mx-auto text-slate-600" />
-                        <p className="text-slate-400 text-sm">Aucun marchand trouvé</p>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {filteredMerchants.map((merchant) => (
-                            <div
-                                key={merchant.id}
-                                className="rounded-2xl border border-white/8 bg-slate-900/60 hover:border-white/20 transition-all overflow-hidden group"
-                            >
-                                {/* Top: avatar + nom */}
-                                <div className="flex items-center gap-4 px-5 pt-5 pb-4 border-b border-white/5">
-                                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${getAvatarColor(merchant.id)} flex items-center justify-center text-white font-bold text-lg shrink-0 shadow-lg`}>
-                                        {getInitials(merchant.merchantName)}
-                                    </div>
-                                    <div className="min-w-0">
-                                        <p className="text-base font-semibold text-white truncate">{merchant.merchantName}</p>
-                                        <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
-                                            <MapPin size={11} />
-                                            {merchant.location}{merchant.city && merchant.location !== merchant.city ? ` — ${merchant.city}` : ''}
-                                        </p>
-                                    </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--bank-space-3)' }}>
+                                <div
+                                    aria-hidden="true"
+                                    style={{
+                                        width: 46,
+                                        height: 46,
+                                        borderRadius: 'var(--bank-radius-lg)',
+                                        background: getAvatarColor(merchant.id),
+                                        color: 'white',
+                                        display: 'grid',
+                                        placeItems: 'center',
+                                        fontWeight: 700,
+                                        fontSize: 15,
+                                        flexShrink: 0,
+                                    }}
+                                >
+                                    {getInitials(merchant.merchantName)}
                                 </div>
-
-                                {/* Identifiants techniques */}
-                                <div className="px-5 py-4 grid grid-cols-2 gap-3 text-xs">
-                                    <div className="flex items-start gap-2">
-                                        <Hash size={12} className="text-slate-500 mt-0.5 shrink-0" />
-                                        <div>
-                                            <p className="text-slate-500 uppercase tracking-wider text-[10px]">MID</p>
-                                            <p className="font-mono text-slate-200 mt-0.5 break-all">{merchant.id.slice(0, 16)}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-start gap-2">
-                                        <Terminal size={12} className="text-slate-500 mt-0.5 shrink-0" />
-                                        <div>
-                                            <p className="text-slate-500 uppercase tracking-wider text-[10px]">TID</p>
-                                            <p className="font-mono text-slate-200 mt-0.5">{merchant.terminalId || '—'}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-start gap-2">
-                                        <Tag size={12} className="text-slate-500 mt-0.5 shrink-0" />
-                                        <div>
-                                            <p className="text-slate-500 uppercase tracking-wider text-[10px]">MCC</p>
-                                            <p className="font-mono text-slate-200 mt-0.5">{merchant.mcc}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-start gap-2">
-                                        <Building2 size={12} className="text-slate-500 mt-0.5 shrink-0" />
-                                        <div>
-                                            <p className="text-slate-500 uppercase tracking-wider text-[10px]">Catégorie</p>
-                                            <p className="text-slate-200 mt-0.5 leading-tight">{getMccLabel(merchant.mcc)}</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* 3DS badge + bouton */}
-                                <div className="px-5 pb-5 flex items-center gap-3">
-                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2.5 py-1">
-                                        <ShieldCheck size={10} />
-                                        3DS activé
-                                    </span>
-                                    <span className="inline-flex items-center gap-1 text-[10px] text-slate-500 bg-slate-800/60 border border-white/5 rounded-full px-2.5 py-1">
-                                        <CreditCard size={10} />
-                                        CB / Visa / MC
-                                    </span>
-                                    <button
-                                        onClick={() => window.location.assign(buildTpeUrl(merchant.id))}
-                                        className="ml-auto inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold text-sm transition-colors shadow-md shadow-cyan-500/20"
+                                <div style={{ minWidth: 0 }}>
+                                    <h3
+                                        style={{
+                                            margin: 0,
+                                            fontSize: 'var(--bank-text-base)',
+                                            color: 'var(--bank-text-primary)',
+                                            fontWeight: 'var(--bank-font-semibold)',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            whiteSpace: 'nowrap',
+                                        }}
                                     >
-                                        Payer
-                                        <ArrowRight size={15} />
-                                    </button>
+                                        {merchant.merchantName}
+                                    </h3>
+                                    <p className="bk-caption" style={{ margin: '2px 0 0', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        <MapPin size={12} />
+                                        {merchant.location}{merchant.city && merchant.location !== merchant.city ? ` - ${merchant.city}` : ''}
+                                    </p>
                                 </div>
                             </div>
-                        ))}
-                    </div>
-                )}
-            </div>
+
+                            <div
+                                style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                                    gap: 'var(--bank-space-3)',
+                                }}
+                            >
+                                <div>
+                                    <p className="bk-label-upper" style={{ marginBottom: 4 }}>MID</p>
+                                    <p className="bk-body" style={{ margin: 0, fontFamily: 'var(--bank-font-mono)' }}>
+                                        <Hash size={12} style={{ marginRight: 6 }} />
+                                        {merchant.id.slice(0, 16)}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="bk-label-upper" style={{ marginBottom: 4 }}>TID</p>
+                                    <p className="bk-body" style={{ margin: 0, fontFamily: 'var(--bank-font-mono)' }}>
+                                        <Terminal size={12} style={{ marginRight: 6 }} />
+                                        {merchant.terminalId || '-'}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="bk-label-upper" style={{ marginBottom: 4 }}>MCC</p>
+                                    <p className="bk-body" style={{ margin: 0, fontFamily: 'var(--bank-font-mono)' }}>
+                                        <Tag size={12} style={{ marginRight: 6 }} />
+                                        {merchant.mcc}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="bk-label-upper" style={{ marginBottom: 4 }}>Categorie</p>
+                                    <p className="bk-body" style={{ margin: 0 }}>
+                                        <Building2 size={12} style={{ marginRight: 6 }} />
+                                        {getMccLabel(merchant.mcc)}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 'var(--bank-space-2)',
+                                    flexWrap: 'wrap',
+                                }}
+                            >
+                                <BankBadge variant="success" label="3DS active" icon={ShieldCheck} />
+                                <BankBadge variant="info" label="CB / Visa / MC" icon={CreditCard} />
+                                <BankButton
+                                    onClick={() => window.location.assign(buildTpeUrl(merchant.id))}
+                                    iconRight={ArrowRight}
+                                    size="sm"
+                                    style={{ marginLeft: 'auto' }}
+                                >
+                                    Payer
+                                </BankButton>
+                            </div>
+                        </article>
+                    ))}
+                </div>
+            )}
+
+            <style>{`
+              @media (max-width: 820px) {
+                .bk-pay-filters { grid-template-columns: 1fr !important; }
+              }
+            `}</style>
         </div>
     );
 }

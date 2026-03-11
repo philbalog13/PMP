@@ -1,0 +1,15 @@
+﻿{
+  "roomCode": "API-001",
+  "title": "API: Attack on Transactions",
+  "ttlMinutes": 120,
+  "maxExtensionMinutes": 60,
+  "hybrid": true,
+  "entryTarget": "payments-api",
+  "targets": [
+    { "name": "payments-api", "image": "pmp-ctf-api001", "internalPort": 5000 }
+  ],
+  "tasks": [
+    { "taskId": "API-001-T1", "hasMachine": true, "questionType": "FLAG", "requiresFlag": false },
+    { "taskId": "API-001-T2", "hasMachine": true, "questionType": "FLAG", "requiresFlag": true }
+  ]
+}

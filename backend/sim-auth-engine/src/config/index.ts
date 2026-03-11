@@ -20,6 +20,8 @@ const envSchema = Joi.object({
     REQUEST_TIMEOUT: Joi.number().default(5000),
     METRICS_ENABLED: Joi.boolean().default(true),
     METRICS_PREFIX: Joi.string().default('sim_auth_engine'),
+    KEY_MANAGEMENT_URL: Joi.string().uri().default('http://localhost:8012'),
+    MTLS_ENABLED: Joi.boolean().default(false),
 }).unknown(true);
 
 const { error, value: envVars } = envSchema.validate(process.env);
@@ -51,6 +53,8 @@ export const config = {
         prefix: envVars.METRICS_PREFIX as string,
     },
     timeout: envVars.REQUEST_TIMEOUT as number,
+    keyManagementUrl: envVars.KEY_MANAGEMENT_URL as string,
+    mtlsEnabled: envVars.MTLS_ENABLED as boolean,
 };
 
 export default config;

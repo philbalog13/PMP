@@ -1,10 +1,15 @@
 {
     "name": "pmp-security-tests",
     "version": "1.0.0",
-    "description": "Security penetration tests for PMP platform",
+    "description": "Security test suites for PMP platform, split into mock, service, and live proof levels",
     "scripts": {
-        "test": "jest",
-        "test:watch": "jest --watch"
+        "test": "npm run test:offline",
+        "test:offline": "jest --config jest.config.js --runInBand",
+        "test:mock": "jest --config jest.mock.config.js --runInBand",
+        "test:service": "jest --config jest.service.config.js --runInBand",
+        "test:live": "jest --config jest.live.config.js --runInBand",
+        "test:all": "npm run test:mock && npm run test:service && npm run test:live",
+        "test:watch": "jest --config jest.config.js --watch"
     },
     "devDependencies": {
         "@jest/globals": "^29.7.0",

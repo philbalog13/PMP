@@ -5,9 +5,13 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useAuth } from '../../../auth/useAuth';
 import {
-    BookOpen, Clock, ChevronRight, ArrowLeft, CheckCircle2,
-    Lock, Layers, Award, FileQuestion, Sparkles, Trophy, AlertCircle
+    BookOpen, Clock, ArrowLeft,
+    Layers, Award, FileQuestion, Trophy, Play, RotateCcw,
+    CheckCircle2,
 } from 'lucide-react';
+import { NotionCard, NotionBadge, NotionProgress, NotionSkeleton, NotionEmptyState } from '@shared/components/notion';
+
+/* ── Types ──────────────────────────────────────────────────────────────── */
 
 interface Module {
     id: string;
@@ -33,32 +37,37 @@ interface CursusDetail {
     module_count: number;
 }
 
-const LEVEL_LABELS: Record<string, { label: string; color: string; bg: string; border: string }> = {
-    DEBUTANT: { label: 'Débutant', color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
-    INTERMEDIAIRE: { label: 'Intermédiaire', color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
-    AVANCE: { label: 'Avancé', color: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/20' },
-    EXPERT: { label: 'Expert', color: 'text-violet-400', bg: 'bg-violet-500/10', border: 'border-violet-500/20' },
+/* ── Constants ──────────────────────────────────────────────────────────── */
+
+const LEVEL_VARIANT: Record<string, 'beginner' | 'inter' | 'advanced' | 'expert'> = {
+    DEBUTANT:      'beginner',
+    INTERMEDIAIRE: 'inter',
+    AVANCE:        'advanced',
+    EXPERT:        'expert',
 };
 
-const DIFF_COLORS: Record<string, { text: string; bg: string }> = {
-    '1': { text: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-    '2': { text: 'text-cyan-400', bg: 'bg-cyan-500/10' },
-    '3': { text: 'text-amber-400', bg: 'bg-amber-500/10' },
-    '4': { text: 'text-orange-400', bg: 'bg-orange-500/10' },
-    '5': { text: 'text-rose-400', bg: 'bg-rose-500/10' },
+const LEVEL_LABEL: Record<string, string> = {
+    DEBUTANT:      'Débutant',
+    INTERMEDIAIRE: 'Intermédiaire',
+    AVANCE:        'Avancé',
+    EXPERT:        'Expert',
 };
+
+const MODULE_ICONS = ['⚡', '🔐', '🛡️', '🔍', '💳', '🌐', '🔑', '📊', '🧩', '🏆'];
+
+/* ── Component ──────────────────────────────────────────────────────────── */
 
 export default function CursusDetailPage() {
     const { isLoading: authLoading } = useAuth(true);
-    const params = useParams();
+    const params   = useParams();
     const cursusId = params?.cursusId as string;
 
-    const [cursus, setCursus] = useState<CursusDetail | null>(null);
-    const [modules, setModules] = useState<Module[]>([]);
-    const [finalQuiz, setFinalQuiz] = useState<any>(null);
-    const [completedCount, setCompletedCount] = useState(0);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const [cursus,         setCursus]         = useState<CursusDetail | null>(null);
+    const [modules,        setModules]         = useState<Module[]>([]);
+    const [finalQuiz,      setFinalQuiz]       = useState<any>(null);
+    const [completedCount, setCompletedCount]  = useState(0);
+    const [loading,        setLoading]         = useState(true);
+    const [error,          setError]           = useState<string | null>(null);
 
     const fetchDetail = useCallback(async () => {
         if (!cursusId) return;
@@ -70,9 +79,7 @@ export default function CursusDetailPage() {
             const res = await fetch(`/api/cursus/${cursusId}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
-            if (!res.ok) {
-                throw new Error('Impossible de charger le cursus');
-            }
+            if (!res.ok) throw new Error('Impossible de charger le cursus');
             const data = await res.json();
             if (data.success) {
                 setCursus(data.cursus);
@@ -93,247 +100,268 @@ export default function CursusDetailPage() {
     }, [authLoading, fetchDetail]);
 
     const totalChapters = modules.reduce((sum, m) => sum + m.chapter_count, 0);
-    const progressPct = totalChapters > 0 ? Math.round((completedCount / totalChapters) * 100) : 0;
+    const progressPct   = totalChapters > 0 ? Math.round((completedCount / totalChapters) * 100) : 0;
 
-    const getDiffStars = (d: string) => {
-        const n = parseInt(d) || 1;
-        return '★'.repeat(n) + '☆'.repeat(Math.max(0, 5 - n));
-    };
+    /* ── Resume target ── */
+    const firstInProgress = modules.find(m => (m.completedChapters ?? 0) > 0 && (m.completedChapters ?? 0) < m.chapter_count);
+    const firstUnstarted  = modules.find(m => (m.completedChapters ?? 0) === 0);
+    const resumeTarget    = firstInProgress || firstUnstarted;
 
-    if (loading) {
+    /* ── Loading skeleton ────────────────────────────────────────────── */
+    if (authLoading || loading) {
         return (
-            <div className="min-h-screen bg-slate-950 text-white pt-24 pb-16">
-                <div className="max-w-4xl mx-auto px-6">
-                    <div className="animate-pulse space-y-6">
-                        <div className="h-4 w-32 bg-slate-800 rounded" />
-                        <div className="h-48 bg-slate-900/50 rounded-2xl border border-white/5" />
-                        <div className="space-y-3">
-                            {[...Array(4)].map((_, i) => (
-                                <div key={i} className="h-20 bg-slate-900/50 rounded-xl border border-white/5" />
-                            ))}
-                        </div>
-                    </div>
+            <div style={{ padding: 'var(--n-space-8) var(--n-space-6)', maxWidth: '860px', margin: '0 auto' }}>
+                <div style={{ marginBottom: 'var(--n-space-4)' }}>
+                    <NotionSkeleton type="line" width="120px" height="14px" />
+                </div>
+                <NotionSkeleton type="card" />
+                <div style={{ marginTop: 'var(--n-space-6)', display: 'flex', flexDirection: 'column', gap: 'var(--n-space-4)' }}>
+                    {[...Array(3)].map((_, i) => <NotionSkeleton key={i} type="card" />)}
                 </div>
             </div>
         );
     }
 
+    /* ── Error / not found ───────────────────────────────────────────── */
     if (!cursus) {
         return (
-            <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center gap-4 text-slate-400">
-                <BookOpen size={48} className="text-slate-700" />
-                <p>{error || 'Cursus non trouvé.'}</p>
-                {error && (
-                    <button onClick={fetchDetail} className="text-emerald-400 text-sm hover:underline">
-                        Réessayer
-                    </button>
-                )}
-                <Link href="/student/cursus" className="text-emerald-400 text-sm hover:underline flex items-center gap-1">
-                    <ArrowLeft size={14} /> Retour aux cursus
-                </Link>
+            <div style={{ padding: 'var(--n-space-8) var(--n-space-6)', maxWidth: '860px', margin: '0 auto' }}>
+                <NotionEmptyState
+                    icon={<BookOpen size={28} />}
+                    title={error || 'Cursus non trouvé.'}
+                    description="Vérifiez l'URL ou retournez à la liste des cursus."
+                    action={
+                        <div style={{ display: 'flex', gap: 'var(--n-space-3)', justifyContent: 'center', flexWrap: 'wrap' }}>
+                            {error && (
+                                <button onClick={fetchDetail} style={{ display: 'inline-flex', alignItems: 'center', padding: '7px 16px', borderRadius: 'var(--n-radius-sm)', background: 'var(--n-accent)', color: '#fff', fontSize: 'var(--n-text-sm)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], fontFamily: 'var(--n-font-sans)', border: 'none', cursor: 'pointer' }}>
+                                    Réessayer
+                                </button>
+                            )}
+                            <Link href="/student/cursus" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 16px', borderRadius: 'var(--n-radius-sm)', border: '1px solid var(--n-border)', color: 'var(--n-text-secondary)', fontSize: 'var(--n-text-sm)', fontFamily: 'var(--n-font-sans)', textDecoration: 'none' }}>
+                                <ArrowLeft size={14} /> Retour aux cursus
+                            </Link>
+                        </div>
+                    }
+                />
             </div>
         );
     }
 
-    const levelInfo = LEVEL_LABELS[cursus.level] || LEVEL_LABELS.DEBUTANT;
-
+    /* ── Render ──────────────────────────────────────────────────────── */
     return (
-        <div className="min-h-screen bg-slate-950 text-white pt-24 pb-16">
-            <div className="max-w-4xl mx-auto px-6">
-                {/* Breadcrumb */}
-                <div className="text-xs text-slate-500 mb-6 flex items-center gap-1.5">
-                    <Link href="/" className="hover:text-emerald-400 transition-colors">Accueil</Link>
-                    <ChevronRight size={12} />
-                    <Link href="/student" className="hover:text-emerald-400 transition-colors">Espace Étudiant</Link>
-                    <ChevronRight size={12} />
-                    <Link href="/student/cursus" className="hover:text-emerald-400 transition-colors">Cursus</Link>
-                    <ChevronRight size={12} />
-                    <span className="text-emerald-400 truncate max-w-[200px]">{cursus.title}</span>
+        <div style={{ padding: 'var(--n-space-8) var(--n-space-6)', maxWidth: '860px', margin: '0 auto' }}>
+
+            {/* Back link */}
+            <Link
+                href="/student/cursus"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--n-space-2)', fontSize: 'var(--n-text-sm)', color: 'var(--n-text-secondary)', fontFamily: 'var(--n-font-sans)', textDecoration: 'none', marginBottom: 'var(--n-space-5)' }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = 'var(--n-text-primary)'}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'var(--n-text-secondary)'}
+            >
+                <ArrowLeft size={15} /> Retour aux cursus
+            </Link>
+
+            {/* ══ HERO HEADER ════════════════════════════════════════════ */}
+            <NotionCard variant="default" padding="md" style={{ marginBottom: 'var(--n-space-7)' }}>
+                {/* Top accent bar */}
+                <div style={{ height: '3px', borderRadius: '3px 3px 0 0', background: 'var(--n-accent)', margin: 'calc(-1 * var(--n-space-4)) calc(-1 * var(--n-space-4)) var(--n-space-5)' }} />
+
+                {/* Level badge */}
+                <div style={{ marginBottom: 'var(--n-space-4)' }}>
+                    <NotionBadge variant={LEVEL_VARIANT[cursus.level] || 'beginner'}>
+                        {LEVEL_LABEL[cursus.level] || cursus.level}
+                    </NotionBadge>
                 </div>
 
-                {/* Back */}
-                <Link href="/student/cursus" className="inline-flex items-center gap-2 text-slate-400 hover:text-white text-sm mb-6 transition-colors">
-                    <ArrowLeft size={16} /> Retour aux cursus
-                </Link>
+                <h1 style={{ fontSize: '24px', fontWeight: 'var(--n-weight-bold)' as React.CSSProperties['fontWeight'], color: 'var(--n-text-primary)', fontFamily: 'var(--n-font-sans)', letterSpacing: '-0.02em', marginBottom: 'var(--n-space-3)' }}>
+                    {cursus.title}
+                </h1>
+                <p style={{ fontSize: 'var(--n-text-sm)', color: 'var(--n-text-secondary)', fontFamily: 'var(--n-font-sans)', lineHeight: 'var(--n-leading-relaxed)', marginBottom: 'var(--n-space-5)', maxWidth: '640px' }}>
+                    {cursus.description}
+                </p>
 
-                {/* Header card */}
-                <div className="relative overflow-hidden rounded-2xl bg-slate-900/50 border border-white/5 p-8 mb-8">
-                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(16,185,129,0.08),_transparent_60%)]" />
-                    <div className="relative z-10">
-                        <div className="flex items-start justify-between gap-4 mb-4">
-                            <div>
-                                <div className="flex items-center gap-3 mb-3">
-                                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide ${levelInfo.bg} ${levelInfo.color} ${levelInfo.border} border`}>
-                                        {levelInfo.label}
-                                    </span>
-                                </div>
-                                <h1 className="text-2xl md:text-3xl font-bold text-white mb-3">
-                                    {cursus.title}
-                                </h1>
-                                <p className="text-slate-400 text-sm leading-relaxed max-w-2xl">
-                                    {cursus.description}
-                                </p>
+                {/* Stat chips */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-5)', flexWrap: 'wrap', marginBottom: 'var(--n-space-5)' }}>
+                    {[
+                        { Icon: Layers,   label: `${cursus.module_count} modules`,           color: 'var(--n-accent)' },
+                        { Icon: Clock,    label: `${cursus.estimated_hours}h estimées`,       color: 'var(--n-info)' },
+                        { Icon: BookOpen, label: `${totalChapters} UA`,                color: 'var(--n-text-tertiary)' },
+                    ].map(({ Icon, label, color }) => (
+                        <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)', fontSize: 'var(--n-text-sm)', color: 'var(--n-text-secondary)', fontFamily: 'var(--n-font-sans)' }}>
+                            <div style={{ padding: '5px', borderRadius: 'var(--n-radius-sm)', background: 'var(--n-bg-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Icon size={13} style={{ color }} />
                             </div>
+                            {label}
                         </div>
+                    ))}
+                </div>
 
-                        {/* Stats chips */}
-                        <div className="flex items-center gap-6 mt-6 flex-wrap">
-                            <div className="flex items-center gap-2 text-sm text-slate-400">
-                                <div className="p-1.5 rounded-lg bg-emerald-500/10">
-                                    <Layers size={14} className="text-emerald-400" />
-                                </div>
-                                <span>{cursus.module_count} modules</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm text-slate-400">
-                                <div className="p-1.5 rounded-lg bg-cyan-500/10">
-                                    <Clock size={14} className="text-cyan-400" />
-                                </div>
-                                <span>{cursus.estimated_hours}h estimées</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm text-slate-400">
-                                <div className="p-1.5 rounded-lg bg-blue-500/10">
-                                    <BookOpen size={14} className="text-blue-400" />
-                                </div>
-                                <span>{totalChapters} chapitres</span>
-                            </div>
+                {/* Progress + Resume button */}
+                <div style={{ paddingTop: 'var(--n-space-5)', borderTop: '1px solid var(--n-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--n-space-5)', flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: '200px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--n-text-xs)', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)', marginBottom: 'var(--n-space-2)' }}>
+                            <span>Progression globale</span>
+                            <span style={{ color: progressPct >= 100 ? 'var(--n-success)' : 'var(--n-text-secondary)' }}>
+                                {completedCount}/{totalChapters} UA ({progressPct}%)
+                            </span>
                         </div>
-
-                        {/* Progress */}
-                        <div className="mt-6 pt-6 border-t border-white/5">
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm text-slate-400">Progression</span>
-                                <span className="text-sm font-semibold">
-                                    {completedCount}/{totalChapters} chapitres ({progressPct}%)
-                                </span>
-                            </div>
-                            <div className="h-2.5 bg-slate-800 rounded-full overflow-hidden">
-                                <div
-                                    className={`h-full rounded-full transition-all duration-700 ${progressPct >= 100
-                                        ? 'bg-gradient-to-r from-emerald-500 to-emerald-400'
-                                        : 'bg-gradient-to-r from-blue-500 to-cyan-400'
-                                        }`}
-                                    style={{ width: `${progressPct}%` }}
-                                />
-                            </div>
-                        </div>
-
-                        {/* Tags */}
-                        {cursus.tags && cursus.tags.length > 0 && (
-                            <div className="flex gap-2 mt-4 flex-wrap">
-                                {cursus.tags.map((tag) => (
-                                    <span key={tag} className="px-2 py-0.5 rounded-md bg-slate-800/80 text-slate-500 text-[10px] border border-white/5">
-                                        {tag}
-                                    </span>
-                                ))}
-                            </div>
-                        )}
+                        <NotionProgress value={progressPct} variant={progressPct >= 100 ? 'success' : 'accent'} size="thick" />
                     </div>
+
+                    {resumeTarget && progressPct < 100 && (
+                        <Link
+                            href={`/student/cursus/${cursusId}/${resumeTarget.id}`}
+                            style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 'var(--n-space-2)', padding: '8px 18px', borderRadius: 'var(--n-radius-sm)', background: 'var(--n-accent)', color: '#fff', fontSize: 'var(--n-text-sm)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], fontFamily: 'var(--n-font-sans)', textDecoration: 'none' }}
+                        >
+                            <Play size={14} fill="white" />
+                            {firstInProgress ? "Continuer l'apprentissage" : 'Commencer le cursus'}
+                        </Link>
+                    )}
+                    {progressPct >= 100 && (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--n-space-2)', fontSize: 'var(--n-text-sm)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], color: 'var(--n-success)', fontFamily: 'var(--n-font-sans)' }}>
+                            <Trophy size={15} /> Cursus complété !
+                        </span>
+                    )}
                 </div>
 
-                {/* Modules list */}
-                <h2 className="flex items-center gap-2 text-lg font-bold text-white mb-5">
-                    <Layers size={18} className="text-emerald-400" />
+                {/* Tags */}
+                {cursus.tags && cursus.tags.length > 0 && (
+                    <div style={{ display: 'flex', gap: 'var(--n-space-2)', marginTop: 'var(--n-space-4)', flexWrap: 'wrap' }}>
+                        {cursus.tags.map((tag) => (
+                            <NotionBadge key={tag} variant="default" size="sm">{tag}</NotionBadge>
+                        ))}
+                    </div>
+                )}
+            </NotionCard>
+
+            {/* ══ MODULE LIST ════════════════════════════════════════════ */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)', marginBottom: 'var(--n-space-5)' }}>
+                <Layers size={16} style={{ color: 'var(--n-accent)' }} />
+                <h2 style={{ fontSize: 'var(--n-text-base)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], color: 'var(--n-text-primary)', fontFamily: 'var(--n-font-sans)' }}>
                     Modules ({modules.length})
                 </h2>
+            </div>
 
-                <div className="space-y-3">
-                    {modules.map((mod, idx) => {
-                        const diffColor = DIFF_COLORS[mod.difficulty] || DIFF_COLORS['1'];
-                        const mastery = mod.masteryScore ?? 0;
-                        const hasStarted = (mod.completedChapters ?? 0) > 0;
-                        const masteryColor = mastery >= 80
-                            ? 'bg-emerald-500'
-                            : mastery >= 60
-                            ? 'bg-amber-500'
-                            : 'bg-rose-500';
-                        const masteryLabel = mastery >= 80
-                            ? 'Maîtrisé'
-                            : mastery >= 60
-                            ? 'En cours'
-                            : hasStarted
-                            ? 'Débuté'
-                            : '';
-                        const masteryTextColor = mastery >= 80
-                            ? 'text-emerald-400'
-                            : mastery >= 60
-                            ? 'text-amber-400'
-                            : 'text-rose-400';
-                        return (
-                            <Link key={mod.id} href={`/student/cursus/${cursusId}/${mod.id}`} className="group block">
-                                <div className="p-5 rounded-xl bg-slate-900/50 border border-white/5 transition-all duration-200 hover:border-emerald-500/20 hover:bg-slate-800/50 hover:translate-x-1">
-                                    <div className="flex items-center gap-4">
-                                        {/* Number badge */}
-                                        <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/15 flex items-center justify-center flex-shrink-0">
-                                            <span className="text-emerald-400 font-bold text-sm">{mod.module_order}</span>
-                                        </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--n-space-4)' }}>
+                {modules.map((mod, idx) => {
+                    const chaptersDone  = mod.completedChapters ?? 0;
+                    const completedPct  = mod.chapter_count > 0 ? Math.round((chaptersDone / mod.chapter_count) * 100) : 0;
+                    const isFullyDone   = completedPct >= 100;
+                    const hasStarted    = chaptersDone > 0 || (mod.masteryScore ?? 0) > 0;
+                    const quizDone      = (mod.quizBestScore ?? -1) >= 0;
+                    const icon          = MODULE_ICONS[idx % MODULE_ICONS.length];
 
-                                        {/* Content */}
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center justify-between gap-2">
-                                                <h3 className="text-white font-semibold text-sm group-hover:text-emerald-300 transition-colors truncate">
-                                                    {mod.title}
-                                                </h3>
-                                                {hasStarted && (
-                                                    <span className={`shrink-0 text-[10px] font-semibold ${masteryTextColor}`}>
-                                                        {masteryLabel} {mastery > 0 ? `${mastery}%` : ''}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className="flex items-center gap-3 mt-1 flex-wrap">
-                                                <span className="text-xs text-slate-500 flex items-center gap-1">
-                                                    <BookOpen size={11} /> {mod.completedChapters ?? 0}/{mod.chapter_count} chap.
-                                                </span>
-                                                <span className="text-xs text-slate-500 flex items-center gap-1">
-                                                    <Clock size={11} /> {mod.estimated_minutes >= 60 ? `${Math.floor(mod.estimated_minutes / 60)}h${mod.estimated_minutes % 60 > 0 ? ` ${mod.estimated_minutes % 60}min` : ''}` : `${mod.estimated_minutes}min`}
-                                                </span>
-                                                <span className={`text-xs ${diffColor.text}`}>
-                                                    {getDiffStars(mod.difficulty)}
-                                                </span>
-                                                {mod.quiz && (
-                                                    <span className={`text-xs flex items-center gap-1 ${(mod.quizBestScore ?? -1) >= 0 ? 'text-violet-300' : 'text-slate-500'}`}>
-                                                        <FileQuestion size={11} />
-                                                        {(mod.quizBestScore ?? -1) >= 0 ? `Quiz ${mod.quizBestScore}%` : 'Quiz'}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
+                    return (
+                        <NotionCard
+                            key={mod.id}
+                            variant="hover"
+                            padding="none"
+                            style={{ borderColor: isFullyDone ? 'var(--n-success-border)' : undefined, overflow: 'hidden' }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'stretch' }}>
+                                {/* Left accent stripe */}
+                                <div style={{ width: '3px', flexShrink: 0, background: isFullyDone ? 'var(--n-success)' : hasStarted ? 'var(--n-accent)' : 'var(--n-border)' }} />
 
-                                        <ChevronRight size={16} className="text-slate-600 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all flex-shrink-0" />
+                                {/* Content */}
+                                <div style={{ flex: 1, padding: 'var(--n-space-5)', minWidth: 0 }}>
+                                    {/* Module N label */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)', marginBottom: 'var(--n-space-2)', fontSize: 'var(--n-text-xs)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], fontFamily: 'var(--n-font-sans)', color: isFullyDone ? 'var(--n-success)' : 'var(--n-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                        {isFullyDone
+                                            ? <CheckCircle2 size={11} />
+                                            : <span style={{ width: '10px', height: '10px', borderRadius: '50%', border: '1.5px solid var(--n-border)', display: 'inline-block' }} />
+                                        }
+                                        Module {mod.module_order}
                                     </div>
 
-                                    {/* Mastery bar — shown only if started */}
+                                    <h3 style={{ fontSize: 'var(--n-text-base)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], color: 'var(--n-text-primary)', fontFamily: 'var(--n-font-sans)', marginBottom: 'var(--n-space-1)', lineHeight: 1.3 }}>
+                                        {mod.title}
+                                    </h3>
+
+                                    {mod.description && (
+                                        <p style={{ fontSize: 'var(--n-text-sm)', color: 'var(--n-text-secondary)', fontFamily: 'var(--n-font-sans)', lineHeight: 'var(--n-leading-relaxed)', marginBottom: 'var(--n-space-4)', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                                            {mod.description}
+                                        </p>
+                                    )}
+
+                                    {/* Stats */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-4)', fontSize: 'var(--n-text-xs)', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)', marginBottom: 'var(--n-space-4)', flexWrap: 'wrap' }}>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <BookOpen size={11} /> {mod.chapter_count} UA
+                                        </span>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <Clock size={11} />
+                                            {mod.estimated_minutes >= 60
+                                                ? `${Math.floor(mod.estimated_minutes / 60)}h${mod.estimated_minutes % 60 > 0 ? ` ${mod.estimated_minutes % 60}min` : ''}`
+                                                : `${mod.estimated_minutes}min`}
+                                        </span>
+                                        {mod.quiz && (
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: quizDone ? 'var(--n-accent)' : 'var(--n-text-tertiary)' }}>
+                                                <FileQuestion size={11} />
+                                                {quizDone ? `Quiz ${mod.quizBestScore}%` : 'Quiz inclus'}
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {/* Progress bar — only if started */}
                                     {hasStarted && (
-                                        <div className="mt-3 ml-16">
-                                            <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
-                                                <div
-                                                    className={`h-full rounded-full transition-all duration-500 ${masteryColor}`}
-                                                    style={{ width: `${mastery}%` }}
-                                                />
+                                        <div style={{ marginBottom: 'var(--n-space-4)' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--n-text-xs)', color: 'var(--n-text-tertiary)', fontFamily: 'var(--n-font-sans)', marginBottom: 'var(--n-space-1)' }}>
+                                                <span>{chaptersDone}/{mod.chapter_count} UA validées</span>
+                                                <span style={{ color: isFullyDone ? 'var(--n-success)' : 'var(--n-text-secondary)' }}>{completedPct}%</span>
                                             </div>
+                                            <NotionProgress value={completedPct} variant={isFullyDone ? 'success' : 'accent'} size="default" />
                                         </div>
                                     )}
-                                </div>
-                            </Link>
-                        );
-                    })}
-                </div>
 
-                {/* Final evaluation */}
-                {finalQuiz && (
-                    <div className="mt-8 p-6 rounded-2xl bg-gradient-to-br from-violet-600/15 to-blue-600/5 border border-violet-500/15 flex items-center gap-4">
-                        <div className="p-3 rounded-xl bg-violet-500/15 border border-violet-500/20 flex-shrink-0">
-                            <Trophy size={24} className="text-violet-400" />
+                                    {/* CTA */}
+                                    <Link
+                                        href={`/student/cursus/${cursusId}/${mod.id}`}
+                                        style={
+                                            isFullyDone
+                                                ? { display: 'inline-flex', alignItems: 'center', gap: 'var(--n-space-2)', padding: '6px 14px', borderRadius: 'var(--n-radius-sm)', border: '1px solid var(--n-border)', background: 'var(--n-bg-primary)', color: 'var(--n-text-secondary)', fontSize: 'var(--n-text-sm)', fontFamily: 'var(--n-font-sans)', textDecoration: 'none' }
+                                                : hasStarted
+                                                    ? { display: 'inline-flex', alignItems: 'center', gap: 'var(--n-space-2)', padding: '6px 14px', borderRadius: 'var(--n-radius-sm)', background: 'var(--n-accent)', color: '#fff', fontSize: 'var(--n-text-sm)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], fontFamily: 'var(--n-font-sans)', textDecoration: 'none' }
+                                                    : { display: 'inline-flex', alignItems: 'center', gap: 'var(--n-space-2)', padding: '6px 14px', borderRadius: 'var(--n-radius-sm)', background: 'var(--n-success-bg)', border: '1px solid var(--n-success-border)', color: 'var(--n-success)', fontSize: 'var(--n-text-sm)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], fontFamily: 'var(--n-font-sans)', textDecoration: 'none' }
+                                        }
+                                    >
+                                        {isFullyDone
+                                            ? <><RotateCcw size={13} /> Revoir</>
+                                            : hasStarted
+                                                ? <><Play size={13} fill="white" /> Continuer</>
+                                                : <><Play size={13} fill="currentColor" /> Démarrer</>
+                                        }
+                                    </Link>
+                                </div>
+
+                                {/* Icon panel */}
+                                <div style={{ width: '72px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderLeft: '1px solid var(--n-border)', background: isFullyDone ? 'var(--n-success-bg)' : 'var(--n-bg-elevated)' }}>
+                                    <span style={{ fontSize: '2rem', userSelect: 'none', filter: isFullyDone ? 'none' : 'grayscale(0.3)' }}>{icon}</span>
+                                </div>
+                            </div>
+                        </NotionCard>
+                    );
+                })}
+            </div>
+
+            {/* ══ FINAL QUIZ / CERTIFICATION ═════════════════════════════ */}
+            {finalQuiz && (
+                <NotionCard variant="default" padding="md" style={{ marginTop: 'var(--n-space-7)', borderColor: 'var(--n-accent-border)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-4)' }}>
+                        <div style={{ padding: 'var(--n-space-3)', borderRadius: 'var(--n-radius-sm)', background: 'var(--n-accent-light)', border: '1px solid var(--n-accent-border)', flexShrink: 0 }}>
+                            <Trophy size={22} style={{ color: 'var(--n-accent)' }} />
                         </div>
-                        <div className="flex-1 min-w-0">
-                            <h3 className="text-white font-bold text-base mb-1">{finalQuiz.title}</h3>
-                            <p className="text-slate-400 text-xs">
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <h3 style={{ fontSize: 'var(--n-text-base)', fontWeight: 'var(--n-weight-semibold)' as React.CSSProperties['fontWeight'], color: 'var(--n-text-primary)', fontFamily: 'var(--n-font-sans)', marginBottom: 'var(--n-space-1)' }}>
+                                {finalQuiz.title}
+                            </h3>
+                            <p style={{ fontSize: 'var(--n-text-sm)', color: 'var(--n-text-secondary)', fontFamily: 'var(--n-font-sans)' }}>
                                 Complétez tous les modules pour débloquer l&apos;évaluation finale et obtenir votre certificat.
                             </p>
                         </div>
-                        <Award size={20} className="text-violet-300 flex-shrink-0" />
+                        <Award size={18} style={{ color: 'var(--n-accent)', flexShrink: 0 }} />
                     </div>
-                )}
-            </div>
+                </NotionCard>
+            )}
         </div>
     );
 }

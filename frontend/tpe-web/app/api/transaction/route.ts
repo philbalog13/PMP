@@ -16,19 +16,17 @@ export async function POST(request: NextRequest) {
         }
 
         // Forward to the API gateway orchestration endpoint
-        const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://api-gateway:8000';
+        const backendUrl = process.env.INTERNAL_API_URL
+            || process.env.NEXT_PUBLIC_API_URL
+            || 'http://api-gateway:8000';
         const response = await fetch(`${backendUrl}/api/transaction/process`, {
             method: 'POST',
             headers,
             body: JSON.stringify(body),
         });
-
-        if (!response.ok) {
-            throw new Error(`Backend returned ${response.status}`);
-        }
-
-        const data = await response.json();
-        return NextResponse.json(data);
+        const text = await response.text();
+        const data = text ? JSON.parse(text) : {};
+        return NextResponse.json(data, { status: response.status });
     } catch (error) {
         console.error('Transaction API error:', error);
         return NextResponse.json(

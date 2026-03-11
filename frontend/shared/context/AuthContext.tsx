@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { User, AuthState, UserRole, Permission } from '../types/user';
 import { normalizeRole } from '../utils/roleUtils';
+import { APP_URLS } from '../lib/app-urls';
 
 interface AuthContextType extends AuthState {
     login: (token: string, user: User, refreshToken?: string | null) => void;
@@ -16,8 +17,11 @@ interface AuthContextType extends AuthState {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const ACCESS_TOKEN_COOKIE = 'token';
 const REFRESH_TOKEN_COOKIE = 'refreshToken';
-const ACCESS_TOKEN_TTL_SECONDS = 60 * 60 * 2;   // 2h — aligned with backend JWT_EXPIRES_IN
+const ACCESS_TOKEN_TTL_SECONDS = 60 * 60 * 2;   // 2h â€” aligned with backend JWT_EXPIRES_IN
 const REFRESH_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days
+const LOGOUT_MARKER_KEY = 'auth:logout-at';
+const LOGOUT_GRACE_MS = 10 * 60 * 1000;
+const LOGIN_REDIRECT_URL = `${APP_URLS.portal}/login`;
 
 /**
  * AuthProvider Component
@@ -137,6 +141,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return null;
     };
 
+    const hasRecentLogoutMarker = (): boolean => {
+        if (typeof window === 'undefined') return false;
+        const raw = localStorage.getItem(LOGOUT_MARKER_KEY);
+        if (!raw) return false;
+
+        const ts = Number(raw);
+        if (!Number.isFinite(ts)) {
+            localStorage.removeItem(LOGOUT_MARKER_KEY);
+            return false;
+        }
+
+        if (Date.now() - ts > LOGOUT_GRACE_MS) {
+            localStorage.removeItem(LOGOUT_MARKER_KEY);
+            return false;
+        }
+
+        return true;
+    };
+
+    const setLogoutMarker = (): void => {
+        if (typeof window === 'undefined') return;
+        localStorage.setItem(LOGOUT_MARKER_KEY, String(Date.now()));
+    };
+
+    const clearLogoutMarker = (): void => {
+        if (typeof window === 'undefined') return;
+        localStorage.removeItem(LOGOUT_MARKER_KEY);
+    };
+
     const setCookie = (name: string, value: string, maxAgeSeconds: number): void => {
         if (typeof document === 'undefined') return;
         const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
@@ -150,6 +183,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     const persistSession = (token: string, user: User, refreshToken?: string | null): void => {
+        clearLogoutMarker();
         const normalizedRole = normalizeUserRole(user.role);
         const normalizedUser: User = {
             ...user,
@@ -252,6 +286,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user: User;
         refreshToken: string | null;
     } | null> => {
+        if (hasRecentLogoutMarker()) {
+            return null;
+        }
+
         const localToken = localStorage.getItem('token');
         const localUser = parseStoredUser(localStorage.getItem('user'));
         const localRefreshToken = localStorage.getItem('refreshToken');
@@ -292,13 +330,77 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
     }, [refreshWithFallback]);
 
+    useEffect(() => {
+        const handleForcedLogout = () => {
+            clearSessionStorage();
+            setAuthState({
+                user: null,
+                token: null,
+                isAuthenticated: false,
+                isLoading: false,
+            });
+        };
+
+        window.addEventListener('auth:logout', handleForcedLogout);
+        return () => {
+            window.removeEventListener('auth:logout', handleForcedLogout);
+        };
+    }, []);
+
     /**
      * Initialize auth state from localStorage or cookie on mount
      */
     useEffect(() => {
         let cancelled = false;
 
-        const initializeAuth = async () => {
+        const setSignedOut = () => {
+            setAuthState({
+                user: null,
+                token: null,
+                isAuthenticated: false,
+                isLoading: false,
+            });
+        };
+
+        const bootstrapFromStorage = () => {
+            try {
+                if (hasRecentLogoutMarker()) {
+                    setSignedOut();
+                    return;
+                }
+
+                const localToken = localStorage.getItem('token');
+                const cookieToken = getCookie(ACCESS_TOKEN_COOKIE);
+                const localUser = parseStoredUser(localStorage.getItem('user'));
+
+                const activeToken =
+                    (localToken && !isTokenExpired(localToken) ? localToken : null) ??
+                    (cookieToken && !isTokenExpired(cookieToken) ? cookieToken : null);
+
+                if (!activeToken) {
+                    setSignedOut();
+                    return;
+                }
+
+                const payload = decodeToken(activeToken);
+                const activeUser = buildUserFromPayload(payload, localUser);
+                if (!activeUser) {
+                    setSignedOut();
+                    return;
+                }
+
+                setAuthState({
+                    user: activeUser,
+                    token: activeToken,
+                    isAuthenticated: true,
+                    isLoading: false,
+                });
+            } catch {
+                setSignedOut();
+            }
+        };
+
+        const revalidateAuthState = async () => {
             try {
                 const resolvedSession = await resolveSession();
                 if (cancelled) {
@@ -317,35 +419,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 }
 
                 clearSessionStorage();
-                setAuthState({
-                    user: null,
-                    token: null,
-                    isAuthenticated: false,
-                    isLoading: false,
-                });
+                setSignedOut();
             } catch (error) {
                 console.error('Failed to initialize auth:', error);
                 clearSessionStorage();
-                setAuthState({
-                    user: null,
-                    token: null,
-                    isAuthenticated: false,
-                    isLoading: false,
-                });
+                setSignedOut();
             }
         };
 
-        initializeAuth().catch(() => {
+        bootstrapFromStorage();
+
+        revalidateAuthState().catch(() => {
             if (cancelled) {
                 return;
             }
             clearSessionStorage();
-            setAuthState({
-                user: null,
-                token: null,
-                isAuthenticated: false,
-                isLoading: false,
-            });
+            setSignedOut();
         });
 
         return () => {
@@ -505,19 +594,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
      */
     const logout = useCallback(() => {
         const tokenToRevoke = authState.token || localStorage.getItem('token') || getCookie(ACCESS_TOKEN_COOKIE);
+        const refreshTokenToRevoke = localStorage.getItem('refreshToken') || getCookie(REFRESH_TOKEN_COOKIE);
+
         if (tokenToRevoke) {
             void fetch('/api/auth/logout', {
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${tokenToRevoke}`,
                     'Content-Type': 'application/json'
-                }
+                },
+                body: JSON.stringify({ refreshToken: refreshTokenToRevoke || null })
+            }).catch(() => {
+                // Local cleanup still guarantees logout UX even if backend revocation fails.
+            });
+        } else if (refreshTokenToRevoke) {
+            void fetch('/api/auth/logout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ refreshToken: refreshTokenToRevoke })
             }).catch(() => {
                 // Local cleanup still guarantees logout UX even if backend revocation fails.
             });
         }
 
+        setLogoutMarker();
         clearSessionStorage();
+        window.dispatchEvent(new Event('auth:logout'));
 
         setAuthState({
             user: null,
@@ -526,10 +630,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             isLoading: false,
         });
 
-        // Hard redirect to login — destroys React state tree and prevents
+        // Hard redirect to login â€” destroys React state tree and prevents
         // revalidation effects from restoring the session before the page
         // finishes navigating.
-        window.location.href = '/login';
+        window.location.replace(LOGIN_REDIRECT_URL);
+        setTimeout(() => {
+            if (window.location.href !== LOGIN_REDIRECT_URL) {
+                window.location.href = LOGIN_REDIRECT_URL;
+            }
+        }, 75);
     }, [authState.token]);
 
     /**

@@ -1,6 +1,6 @@
-![PMP Hero Header](docs/assets/hero-header.png)
+﻿![PMP Hero Header](docs/assets/hero-header.png)
 
-# 🏦 Plateforme Monétique Pédagogique (PMP)
+# ðŸ¦ Plateforme MonÃ©tique PÃ©dagogique (PMP)
 
 <div align="center">
 
@@ -10,90 +10,95 @@
 [![Frontend](https://img.shields.io/badge/Frontend-WIP-orange.svg)](https://github.com/philbalog13/PMP)
 [![Platform Status](https://img.shields.io/badge/Logic-Verified-brightgreen.svg)](https://github.com/philbalog13/PMP)
 
-**Un écosystème bancaire 100% logiciel conçu pour l'apprentissage profond des flux de transactions et de la sécurité cryptographique.**
+**Un Ã©cosystÃ¨me bancaire 100% logiciel conÃ§u pour l'apprentissage profond des flux de transactions et de la sÃ©curitÃ© cryptographique.**
 
 </div>
 
 ---
 
-## 🚀 État de la Plateforme (Dernière Vérification)
+## ðŸš€ Ã‰tat de la Plateforme (DerniÃ¨re VÃ©rification)
 
-| Composant | Statut | Détails |
+| Composant | Statut | DÃ©tails |
 | :--- | :--- | :--- |
-| **Logic Platform** | ✅ Opérationnel | 73 tests E2E réussis sur 77 (95%) |
-| **Backend Core** | ✅ Launché | 9 services microservices synchronisés |
-| **Infrastructure** | ✅ Sain | PostgreSQL & Redis configurés avec Health Checks |
-| **API Gateway** | ✅ Réparé | Circuit Breaker & JWT Validés |
-| **Sécurité (HSM)** | ✅ Actif | Simulateur HSM intégré et fonctionnel |
-| **Interface Client** | ✅ Complète | 6 pages avec Dark Neon Glassmorphism |
-| **Interface Marchand** | ✅ Complète | Terminal NEO avec mode simulation |
-| **Interface HSM** | ✅ Complète | Dashboard, Keys, Vulnerabilities |
+| **Logic Platform** | âœ… OpÃ©rationnel | 73 tests E2E rÃ©ussis sur 77 (95%) |
+| **Backend Core** | âœ… LaunchÃ© | 9 services microservices synchronisÃ©s |
+| **Infrastructure** | âœ… Sain | PostgreSQL & Redis configurÃ©s avec Health Checks |
+| **API Gateway** | âœ… RÃ©parÃ© | Circuit Breaker & JWT ValidÃ©s |
+| **SÃ©curitÃ© (HSM)** | âœ… Actif | Simulateur HSM intÃ©grÃ© et fonctionnel |
+| **Interface Client** | âœ… ComplÃ¨te | 6 pages avec Dark Neon Glassmorphism |
+| **Interface Marchand** | âœ… ComplÃ¨te | Terminal NEO avec mode simulation |
+| **Interface HSM** | âœ… ComplÃ¨te | Dashboard, Keys, Vulnerabilities |
 
 ---
 
-## 📋 Table des matières
+## ðŸ“‹ Table des matiÃ¨res
 
 - [Vue d'ensemble](#-vue-densemble)
-- [Architecture générale](#-architecture-générale)
+- [Architecture gÃ©nÃ©rale](#-architecture-gÃ©nÃ©rale)
 - [Applications Frontend](#-applications-frontend)
 - [Connexion Frontend-Backend](docs/FRONTEND_BACKEND_CONNECTION.md)
 - [Diagrammes](#-diagrammes)
-  - [Déploiement Docker Compose](#1-diagramme-de-déploiement-docker-compose)
-  - [Transaction approuvée](#2-diagramme-de-séquence---transaction-approuvée)
-  - [Transaction refusée](#3-diagramme-de-séquence---transaction-refusée-code-51)
-- [Spécifications techniques](#-spécifications-techniques-des-services)
+  - [DÃ©ploiement Docker Compose](#1-diagramme-de-dÃ©ploiement-docker-compose)
+  - [Transaction approuvÃ©e](#2-diagramme-de-sÃ©quence---transaction-approuvÃ©e)
+  - [Transaction refusÃ©e](#3-diagramme-de-sÃ©quence---transaction-refusÃ©e-code-51)
+- [SpÃ©cifications techniques](#-spÃ©cifications-techniques-des-services)
 - [Stack technologique](#-stack-technologique)
-- [Sécurité pédagogique](#-sécurité-pédagogique)
+- [SÃ©curitÃ© pÃ©dagogique](#-sÃ©curitÃ©-pÃ©dagogique)
 
 ---
 
-## 🎯 Vue d'ensemble
+## ðŸŽ¯ Vue d'ensemble
 
-La Plateforme Monétique Pédagogique (PMP) est un système éducatif permettant de comprendre le fonctionnement complet d'une transaction par carte bancaire, de l'initiation au paiement jusqu'à l'autorisation finale.
+La Plateforme MonÃ©tique PÃ©dagogique (PMP) est un systÃ¨me Ã©ducatif permettant de comprendre le fonctionnement complet d'une transaction par carte bancaire, de l'initiation au paiement jusqu'Ã  l'autorisation finale.
 
-### Objectifs pédagogiques
+### Objectifs pÃ©dagogiques
 
-- ✅ Simuler l'écosystème complet d'une transaction carte
-- ✅ Illustrer les rôles de chaque acteur (banque émettrice, acquéreur, réseau)
-- ✅ Démontrer les mécanismes de sécurité (cryptographie, HSM, détection fraude)
-- ✅ Expérimenter différents scénarios (approuvé, refusé, fraude)
+- âœ… Simuler l'Ã©cosystÃ¨me complet d'une transaction carte
+- âœ… Illustrer les rÃ´les de chaque acteur (banque Ã©mettrice, acquÃ©reur, rÃ©seau)
+- âœ… DÃ©montrer les mÃ©canismes de sÃ©curitÃ© (cryptographie, HSM, dÃ©tection fraude)
+- âœ… ExpÃ©rimenter diffÃ©rents scÃ©narios (approuvÃ©, refusÃ©, fraude)
 
 ---
 
-## 🎨 Applications Frontend
+## ðŸŽ¨ Applications Frontend
 
 Toutes les interfaces utilisent le **Dark Neon Glassmorphism** design system.
 
 | Application | Port | Description |
 |-------------|------|-------------|
-| **portal** | 3001 | Hub central multi-rôles (Client, Merchant, Student, Trainer) |
+| **portal** | 3000 | Hub central multi-rÃ´les (Client, Merchant, Student, Trainer) |
+| **tpe-web** | 3001 | Terminal de paiement marchand |
 | **user-cards-web** | 3004 | Interface client (cartes, transactions, stats) |
-| **tpe-web** | 3000 | Terminal de paiement marchand |
-| **hsm-web** | 3006 | Simulateur HSM (clés, vulnérabilités) |
+| **hsm-web** | 3006 | Simulateur HSM (clÃ©s, vulnÃ©rabilitÃ©s) |
 | **3ds-challenge-ui** | 3088 | Page OTP 3D Secure |
-| **monitoring-dashboard** | 3082 | Dashboard de supervision temps réel |
+| **monitoring-dashboard** | 3082 | Dashboard de supervision temps rÃ©el |
+
+Runtime source of truth:
+- CLI officiel: `node scripts/runtime-stack.mjs`
+- Compose officiel: `docker-compose-runtime.yml`
+- Nom de service runtime a connaitre: `client-interface` expose en realite l'application `frontend/tpe-web` sur `http://localhost:3001`
 
 ### 3DS Challenge UI (OTP)
 
-- URL : `http://localhost:3088/?txId=TX_123&acsTransId=ACS_123&returnUrl=http%3A%2F%2Flocalhost%3A3006%2Fresult`
-- OTP pédagogique : `123456`
-- Redirection : après succès, redirige vers `returnUrl` avec `transStatus=Y`, `txId`, `acsTransId`
+- URL : `http://localhost:3088/?txId=TX_123&acsTransId=ACS_123&returnUrl=http%3A%2F%2Flocalhost%3A3001%2F`
+- OTP pÃ©dagogique : `123456`
+- Redirection : aprÃ¨s succÃ¨s, redirige vers `returnUrl` avec `transStatus=Y`, `txId`, `acsTransId`
 
 ### Design System
 
 ```
-┌─────────────────────────────────────┐
-│     Dark Neon Glassmorphism         │
-├─────────────────────────────────────┤
-│  Background:  #020617 (Slate 950)   │
-│  Glass:       rgba(15,23,42,0.7)    │
-│  Primary:     #3b82f6 (Blue 500)    │
-│  Secondary:   #a855f7 (Purple 500)  │
-│  Fonts:       Outfit + Inter        │
-└─────────────────────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚     Dark Neon Glassmorphism         â”‚
+â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
+â”‚  Background:  #020617 (Slate 950)   â”‚
+â”‚  Glass:       rgba(15,23,42,0.7)    â”‚
+â”‚  Primary:     #3b82f6 (Blue 500)    â”‚
+â”‚  Secondary:   #a855f7 (Purple 500)  â”‚
+â”‚  Fonts:       Outfit + Inter        â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
-📖 **[Guide de connexion Frontend-Backend](docs/FRONTEND_BACKEND_CONNECTION.md)**
+ðŸ“– **[Guide de connexion Frontend-Backend](docs/FRONTEND_BACKEND_CONNECTION.md)**
 
 ---
 
@@ -111,23 +116,23 @@ graph TB
     subgraph "Business Services"
         CARD[Sim-Card-Service<br/>Cartes virtuelles]
         POS[Sim-POS-Service<br/>Terminal paiement]
-        ACQUIRER[Sim-Acquirer-Service<br/>Banque acquéreur]
-        SWITCH[Sim-Network-Switch<br/>Réseau paiement]
-        ISSUER[Sim-Issuer-Service<br/>Banque émettrice]
+        ACQUIRER[Sim-Acquirer-Service<br/>Banque acquÃ©reur]
+        SWITCH[Sim-Network-Switch<br/>RÃ©seau paiement]
+        ISSUER[Sim-Issuer-Service<br/>Banque Ã©mettrice]
         AUTH[Sim-Auth-Engine<br/>Autorisation]
         FRAUD[Sim-Fraud-Detection<br/>Anti-fraude]
     end
 
     subgraph "Security Layer"
         CRYPTO[Crypto-Service<br/>PIN/MAC/Signatures]
-        HSM[HSM-Simulator<br/>Sécurité matérielle]
-        KEYS[Key-Management<br/>Gestion clés]
+        HSM[HSM-Simulator<br/>SÃ©curitÃ© matÃ©rielle]
+        KEYS[Key-Management<br/>Gestion clÃ©s]
     end
 
     subgraph "Data Layer"
-        POSTGRES[(PostgreSQL<br/>Données persistantes)]
+        POSTGRES[(PostgreSQL<br/>DonnÃ©es persistantes)]
         REDIS[(Redis<br/>Cache/Sessions)]
-        MEMORY[(In-Memory DB<br/>Données temporaires)]
+        MEMORY[(In-Memory DB<br/>DonnÃ©es temporaires)]
     end
 
     CLIENT --> GATEWAY
@@ -164,248 +169,116 @@ graph TB
 
 ---
 
-## 📊 Diagrammes
+## ðŸ“Š Diagrammes
 
-### 1. Diagramme de déploiement Docker Compose
+### 1. Diagramme de dÃ©ploiement Docker Compose
+
+La verite runtime n'est plus le schema historique ci-dessous mais:
+- `docker-compose-runtime.yml` pour la liste exacte des services
+- `node scripts/runtime-stack.mjs` pour le bootstrap officiel
+
+Le runtime courant expose 29 services, dont:
+- 6 frontends: `portal`, `client-interface` (`tpe-web`), `user-cards-web`, `hsm-web`, `3ds-challenge-ui`, `monitoring-dashboard`
+- 14 services coeur/securite: `api-gateway`, `sim-*`, `crypto-service`, `hsm-simulator`, `key-management`, `acs-simulator`
+- 3 services lab: `lab-orchestrator`, `lab-access-proxy`, `ctf-attackbox`
+- 6 services infra: `postgres`, `redis`, `pgadmin`, `docker-socket-proxy`, `nginx`, `certbot-renew`
 
 ```mermaid
 graph TB
-    subgraph "Docker Network: pmp-network"
-        subgraph "Frontend Containers"
-            C1[client-interface:3000<br/>React/Nginx]
-            C2[merchant-interface:3001<br/>React/Nginx]
-        end
-
-        subgraph "Gateway"
-            GW[api-gateway:8000<br/>Node.js/Express]
-        end
-
-        subgraph "Core Services"
-            S1[sim-card-service:8001<br/>Node.js/TS]
-            S2[sim-pos-service:8002<br/>Node.js/TS]
-            S3[sim-acquirer-service:8003<br/>Node.js/TS]
-            S4[sim-network-switch:8004<br/>Node.js/TS]
-            S5[sim-issuer-service:8005<br/>Node.js/TS]
-            S6[sim-auth-engine:8006<br/>Node.js/TS]
-            S7[sim-fraud-detection:8007<br/>Node.js/TS]
-        end
-
-        subgraph "Security Services"
-            SEC1[crypto-service:8010<br/>Node.js/TS]
-            SEC2[hsm-simulator:8011<br/>Node.js/TS]
-            SEC3[key-management:8012<br/>Node.js/TS]
-        end
-
-        subgraph "Data Services"
-            DB1[(postgres:5432<br/>PostgreSQL 15)]
-            DB2[(redis:6379<br/>Redis 7)]
-        end
-
-        subgraph "Monitoring"
-            MON1[prometheus:9090]
-            MON2[grafana:3002]
-        end
+    subgraph "Frontends exposes"
+        PORTAL[portal:3000]
+        TPE[client-interface -> tpe-web:3001]
+        CARDS[user-cards-web:3004]
+        HSMW[hsm-web:3006]
+        THREEDS[3ds-challenge-ui:3088]
+        MONUI[monitoring-dashboard:3082]
     end
 
-    C1 -->|HTTP| GW
-    C2 -->|HTTP| GW
-    GW -->|REST| S1
-    GW -->|REST| S2
-    S2 -->|gRPC| S3
-    S3 -->|gRPC| S4
-    S4 -->|gRPC| S5
-    S5 -->|gRPC| S6
-    S6 -->|gRPC| S7
-    
-    S1 -.->|Crypto APIs| SEC1
-    S2 -.->|Crypto APIs| SEC1
-    S6 -.->|Crypto APIs| SEC1
-    SEC1 -.->|Keys| SEC2
-    SEC1 -.->|Keys| SEC3
-    
-    S1 -->|SQL| DB1
-    S3 -->|SQL| DB1
-    S5 -->|SQL| DB1
-    S6 -->|Cache| DB2
-    S7 -->|Cache| DB2
+    subgraph "Gateway et services"
+        GW[api-gateway:8000]
+        CARD[sim-card-service:8001]
+        POS[sim-pos-service:8002]
+        ACQ[sim-acquirer-service:8003]
+        CLR[sim-clearing-engine:8016]
+        SWT[sim-network-switch:8004]
+        ISS[sim-issuer-service:8005]
+        AUTH[sim-auth-engine:8006]
+        FRAUD[sim-fraud-detection:8007]
+        MONSVC[sim-monitoring-service:3005]
+        CRYPTO[crypto-service:8010]
+        HSM[hsm-simulator:8011]
+        KM[key-management:8012]
+        ACS[acs-simulator:8013]
+    end
 
-    MON1 -.->|Scrape| GW
-    MON1 -.->|Scrape| S1
-    MON1 -.->|Scrape| S2
-    MON1 -.->|Scrape| S3
-    MON1 -.->|Scrape| S4
-    MON1 -.->|Scrape| S5
-    MON1 -.->|Scrape| S6
-    MON1 -.->|Scrape| S7
-    MON2 -->|Query| MON1
+    subgraph "Lab"
+        LABO[lab-orchestrator:8098]
+        LABP[lab-access-proxy:8099]
+        CTF[ctf-attackbox:7681]
+    end
 
-    style C1 fill:#4fc3f7
-    style C2 fill:#4fc3f7
-    style GW fill:#ffb74d
-    style SEC1 fill:#ef5350
-    style SEC2 fill:#ef5350
-    style SEC3 fill:#ef5350
-    style DB1 fill:#66bb6a
-    style DB2 fill:#66bb6a
+    subgraph "Data"
+        DB[(postgres:5432)]
+        REDIS[(redis:6379)]
+    end
+
+    PORTAL --> GW
+    TPE --> GW
+    CARDS --> GW
+    HSMW --> GW
+    THREEDS --> ACS
+    MONUI --> MONSVC
+    GW --> CARD
+    GW --> POS
+    GW --> LABO
+    GW --> LABP
+    POS --> ACQ
+    ACQ --> CLR
+    ACQ --> SWT
+    SWT --> ISS
+    ISS --> AUTH
+    AUTH --> FRAUD
+    AUTH --> CRYPTO
+    CRYPTO --> HSM
+    CRYPTO --> KM
+    GW --> ACS
+    GW --> DB
+    GW --> REDIS
+    LABO --> CTF
 ```
 
-**Configuration Docker Compose:**
-
-```yaml
-version: '3.8'
-
-networks:
-  pmp-network:
-    driver: bridge
-
-volumes:
-  postgres-data:
-  redis-data:
-
-services:
-  # Frontend
-  client-interface:
-    build: ./frontend/client
-    ports: ["3000:80"]
-    environment:
-      - API_URL=http://api-gateway:8000
-    networks: [pmp-network]
-
-  merchant-interface:
-    build: ./frontend/merchant
-    ports: ["3001:80"]
-    environment:
-      - API_URL=http://api-gateway:8000
-    networks: [pmp-network]
-
-  # Gateway
-  api-gateway:
-    build: ./backend/api-gateway
-    ports: ["8000:8000"]
-    environment:
-      - NODE_ENV=development
-      - LOG_LEVEL=debug
-    networks: [pmp-network]
-
-  # Core Services
-  sim-card-service:
-    build: ./backend/sim-card-service
-    ports: ["8001:8001"]
-    depends_on: [postgres, redis, crypto-service]
-    networks: [pmp-network]
-
-  sim-pos-service:
-    build: ./backend/sim-pos-service
-    ports: ["8002:8002"]
-    depends_on: [crypto-service]
-    networks: [pmp-network]
-
-  sim-acquirer-service:
-    build: ./backend/sim-acquirer-service
-    ports: ["8003:8003"]
-    depends_on: [postgres]
-    networks: [pmp-network]
-
-  sim-network-switch:
-    build: ./backend/sim-network-switch
-    ports: ["8004:8004"]
-    networks: [pmp-network]
-
-  sim-issuer-service:
-    build: ./backend/sim-issuer-service
-    ports: ["8005:8005"]
-    depends_on: [postgres]
-    networks: [pmp-network]
-
-  sim-auth-engine:
-    build: ./backend/sim-auth-engine
-    ports: ["8006:8006"]
-    depends_on: [redis, crypto-service]
-    networks: [pmp-network]
-
-  sim-fraud-detection:
-    build: ./backend/sim-fraud-detection
-    ports: ["8007:8007"]
-    depends_on: [redis]
-    networks: [pmp-network]
-
-  # Security Services
-  crypto-service:
-    build: ./backend/crypto-service
-    ports: ["8010:8010"]
-    depends_on: [hsm-simulator, key-management]
-    networks: [pmp-network]
-
-  hsm-simulator:
-    build: ./backend/hsm-simulator
-    ports: ["8011:8011"]
-    networks: [pmp-network]
-
-  key-management:
-    build: ./backend/key-management
-    ports: ["8012:8012"]
-    depends_on: [postgres]
-    networks: [pmp-network]
-
-  # Databases
-  postgres:
-    image: postgres:15-alpine
-    ports: ["5432:5432"]
-    environment:
-      - POSTGRES_DB=pmp_db
-      - POSTGRES_USER=pmp_user
-      - POSTGRES_PASSWORD=pmp_pass
-    volumes: [postgres-data:/var/lib/postgresql/data]
-    networks: [pmp-network]
-
-  redis:
-    image: redis:7-alpine
-    ports: ["6379:6379"]
-    volumes: [redis-data:/data]
-    networks: [pmp-network]
-
-  # Monitoring
-  prometheus:
-    image: prom/prometheus
-    ports: ["9090:9090"]
-    volumes: [./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml]
-    networks: [pmp-network]
-
-  grafana:
-    image: grafana/grafana
-    ports: ["3002:3000"]
-    depends_on: [prometheus]
-    networks: [pmp-network]
-```
+Pour les ports exposes et les noms de conteneurs reellement utilises, se referer a:
+- `docker compose -f docker-compose-runtime.yml config --services`
+- `docker-compose-runtime.yml`
 
 ---
 
-### 2. Diagramme de séquence - Transaction approuvée
+### 2. Diagramme de sÃ©quence - Transaction approuvÃ©e
 
 ```mermaid
 sequenceDiagram
-    participant Client as 💳 Client<br/>(Interface Web)
-    participant POS as 🖥️ Terminal POS<br/>(Marchand)
-    participant Gateway as 🚪 API Gateway
-    participant Crypto as 🔐 Crypto Service
-    participant Acquirer as 🏦 Banque Acquéreur
-    participant Switch as 🔄 Réseau Switch
-    participant Issuer as 🏛️ Banque Émettrice
-    participant Auth as ✅ Auth Engine
-    participant Fraud as 🛡️ Fraud Detection
-    participant HSM as 🔒 HSM Simulator
-    participant DB as 💾 PostgreSQL
+    participant Client as ðŸ’³ Client<br/>(Interface Web)
+    participant POS as ðŸ–¥ï¸ Terminal POS<br/>(Marchand)
+    participant Gateway as ðŸšª API Gateway
+    participant Crypto as ðŸ” Crypto Service
+    participant Acquirer as ðŸ¦ Banque AcquÃ©reur
+    participant Switch as ðŸ”„ RÃ©seau Switch
+    participant Issuer as ðŸ›ï¸ Banque Ã‰mettrice
+    participant Auth as âœ… Auth Engine
+    participant Fraud as ðŸ›¡ï¸ Fraud Detection
+    participant HSM as ðŸ”’ HSM Simulator
+    participant DB as ðŸ’¾ PostgreSQL
 
-    Note over Client,DB: 📝 Phase 1: Préparation transaction
+    Note over Client,DB: ðŸ“ Phase 1: PrÃ©paration transaction
     
     Client->>POS: 1. Saisie carte virtuelle<br/>(PAN, Date exp, CVV)
     POS->>POS: 2. Collecte info transaction<br/>(montant, devise, merchant ID)
     POS->>Client: 3. Demande PIN
-    Client->>POS: 4. Saisie PIN (crypté côté client)
+    Client->>POS: 4. Saisie PIN (cryptÃ© cÃ´tÃ© client)
     
-    Note over POS,Crypto: 🔐 Phase 2: Sécurisation données
+    Note over POS,Crypto: ðŸ” Phase 2: SÃ©curisation donnÃ©es
     
-    POS->>Gateway: 5. POST /api/transaction/initiate<br/>+ données transaction
+    POS->>Gateway: 5. POST /api/transaction/initiate<br/>+ donnÃ©es transaction
     Gateway->>Crypto: 6. Encrypt PIN Block<br/>(format ISO-9564-1)
     Crypto->>HSM: 7. Request encryption key
     HSM-->>Crypto: 8. Return session key
@@ -413,20 +286,20 @@ sequenceDiagram
     Crypto->>Crypto: 10. Generate MAC (ISO 9797-1)
     Crypto-->>Gateway: 11. Encrypted PIN Block + MAC
     
-    Note over Gateway,Acquirer: 🏦 Phase 3: Routage acquéreur
+    Note over Gateway,Acquirer: ðŸ¦ Phase 3: Routage acquÃ©reur
     
     Gateway->>Acquirer: 12. Forward encrypted transaction
     Acquirer->>DB: 13. Log transaction (status: PENDING)
     DB-->>Acquirer: 14. Transaction ID: TXN-001
     Acquirer->>Acquirer: 15. Validate merchant<br/>(merchant ID, MCC, limits)
     
-    Note over Acquirer,Switch: 🔄 Phase 4: Routage réseau
+    Note over Acquirer,Switch: ðŸ”„ Phase 4: Routage rÃ©seau
     
     Acquirer->>Switch: 16. ISO 8583 Message (MTI: 0100)<br/>Authorization Request
     Switch->>Switch: 17. Route by BIN<br/>(6 premiers chiffres PAN)
     Switch->>Issuer: 18. Forward authorization request
     
-    Note over Issuer,Auth: ✅ Phase 5: Autorisation
+    Note over Issuer,Auth: âœ… Phase 5: Autorisation
     
     Issuer->>DB: 19. SELECT card details<br/>WHERE pan = 'XXXX'
     DB-->>Issuer: 20. Card status, limits, balance
@@ -436,11 +309,11 @@ sequenceDiagram
     Crypto->>HSM: 23. Decrypt PIN
     HSM-->>Crypto: 24. Decrypted PIN
     Crypto->>DB: 25. Compare with stored PIN hash
-    DB-->>Crypto: 26. PIN valid ✓
+    DB-->>Crypto: 26. PIN valid âœ“
     Crypto-->>Auth: 27. PIN verified
     
     Auth->>Auth: 28. Check card status<br/>(active, not expired)
-    Auth->>Auth: 29. Check balance<br/>(balance ≥ amount)
+    Auth->>Auth: 29. Check balance<br/>(balance â‰¥ amount)
     Auth->>Auth: 30. Check limits<br/>(daily, transaction)
     
     Auth->>Fraud: 31. Fraud check request
@@ -453,19 +326,19 @@ sequenceDiagram
     
     Auth-->>Issuer: 37. Authorization APPROVED<br/>Code: 00
     
-    Note over Issuer,POS: 📤 Phase 6: Réponse transaction
+    Note over Issuer,POS: ðŸ“¤ Phase 6: RÃ©ponse transaction
     
     Issuer->>Switch: 38. ISO 8583 Response (MTI: 0110)<br/>Response Code: 00 (APPROVED)
     Switch->>Acquirer: 39. Forward response
     Acquirer->>DB: 40. UPDATE transaction<br/>SET status = 'APPROVED'
     Acquirer->>Gateway: 41. Transaction approved<br/>+ Auth code
     Gateway->>POS: 42. HTTP 200<br/>{"status": "APPROVED", "code": "00"}
-    POS->>Client: 43. ✅ Paiement accepté<br/>Montant: 50.00 EUR
+    POS->>Client: 43. âœ… Paiement acceptÃ©<br/>Montant: 50.00 EUR
     
-    Note over Client,DB: ✅ Transaction complétée avec succès
+    Note over Client,DB: âœ… Transaction complÃ©tÃ©e avec succÃ¨s
 ```
 
-**Codes de réponse ISO 8583:**
+**Codes de rÃ©ponse ISO 8583:**
 - **00**: Approved
 - **05**: Do not honor
 - **14**: Invalid card
@@ -474,22 +347,22 @@ sequenceDiagram
 
 ---
 
-### 3. Diagramme de séquence - Transaction refusée (Code 51)
+### 3. Diagramme de sÃ©quence - Transaction refusÃ©e (Code 51)
 
 ```mermaid
 sequenceDiagram
-    participant Client as 💳 Client
-    participant POS as 🖥️ Terminal POS
-    participant Gateway as 🚪 API Gateway
-    participant Crypto as 🔐 Crypto Service
-    participant Acquirer as 🏦 Banque Acquéreur
-    participant Switch as 🔄 Réseau Switch
-    participant Issuer as 🏛️ Banque Émettrice
-    participant Auth as ✅ Auth Engine
-    participant Fraud as 🛡️ Fraud Detection
-    participant DB as 💾 PostgreSQL
+    participant Client as ðŸ’³ Client
+    participant POS as ðŸ–¥ï¸ Terminal POS
+    participant Gateway as ðŸšª API Gateway
+    participant Crypto as ðŸ” Crypto Service
+    participant Acquirer as ðŸ¦ Banque AcquÃ©reur
+    participant Switch as ðŸ”„ RÃ©seau Switch
+    participant Issuer as ðŸ›ï¸ Banque Ã‰mettrice
+    participant Auth as âœ… Auth Engine
+    participant Fraud as ðŸ›¡ï¸ Fraud Detection
+    participant DB as ðŸ’¾ PostgreSQL
 
-    Note over Client,DB: 📝 Phase 1-4: Identique au scénario approuvé
+    Note over Client,DB: ðŸ“ Phase 1-4: Identique au scÃ©nario approuvÃ©
     
     Client->>POS: 1. Saisie carte + PIN
     POS->>Gateway: 2. POST /api/transaction/initiate<br/>Montant: 500.00 EUR
@@ -500,22 +373,22 @@ sequenceDiagram
     Acquirer->>Switch: 7. ISO 8583 MTI: 0100
     Switch->>Issuer: 8. Route to issuer
     
-    Note over Issuer,Auth: ⚠️ Phase 5: Vérifications échouées
+    Note over Issuer,Auth: âš ï¸ Phase 5: VÃ©rifications Ã©chouÃ©es
     
     Issuer->>DB: 9. SELECT card_details<br/>WHERE pan = 'XXXX'
-    DB-->>Issuer: 10. Card data:<br/>• Status: ACTIVE ✓<br/>• Balance: 250.00 EUR<br/>• Daily limit: 1000 EUR
+    DB-->>Issuer: 10. Card data:<br/>â€¢ Status: ACTIVE âœ“<br/>â€¢ Balance: 250.00 EUR<br/>â€¢ Daily limit: 1000 EUR
     
     Issuer->>Auth: 11. Authorization request<br/>(Amount: 500.00 EUR)
     
     Auth->>Crypto: 12. Verify PIN
-    Crypto-->>Auth: 13. PIN valid ✓
+    Crypto-->>Auth: 13. PIN valid âœ“
     
-    Auth->>Auth: 14. Check card status<br/>✓ ACTIVE
+    Auth->>Auth: 14. Check card status<br/>âœ“ ACTIVE
     
-    Auth->>Auth: 15. Check balance<br/>❌ Balance (250) < Amount (500)
+    Auth->>Auth: 15. Check balance<br/>âŒ Balance (250) < Amount (500)
     
     rect rgb(255, 220, 220)
-        Note over Auth: ❌ INSUFFICIENT FUNDS DETECTED
+        Note over Auth: âŒ INSUFFICIENT FUNDS DETECTED
         Auth->>Auth: 16. Generate rejection<br/>Response Code: 51
     end
     
@@ -527,7 +400,7 @@ sequenceDiagram
     
     Auth-->>Issuer: 21. Authorization DECLINED<br/>Code: 51 - Insufficient Funds
     
-    Note over Issuer,POS: 📤 Phase 6: Propagation refus
+    Note over Issuer,POS: ðŸ“¤ Phase 6: Propagation refus
     
     Issuer->>Switch: 22. ISO 8583 MTI: 0110<br/>Response Code: 51
     Switch->>Acquirer: 23. Forward decline response
@@ -538,54 +411,54 @@ sequenceDiagram
     
     Gateway->>POS: 26. HTTP 200<br/>{"status": "DECLINED",<br/>"code": "51",<br/>"message": "Insufficient funds"}
     
-    POS->>Client: 27. ❌ Paiement refusé<br/>Fonds insuffisants
+    POS->>Client: 27. âŒ Paiement refusÃ©<br/>Fonds insuffisants
     
     rect rgb(255, 240, 240)
-        Note over Client,DB: ❌ Transaction refusée: Solde insuffisant<br/>Balance: 250 EUR | Demandé: 500 EUR
+        Note over Client,DB: âŒ Transaction refusÃ©e: Solde insuffisant<br/>Balance: 250 EUR | DemandÃ©: 500 EUR
     end
 ```
 
-**Autres scénarios de refus:**
+**Autres scÃ©narios de refus:**
 
-| Code | Description | Déclencheur pédagogique |
+| Code | Description | DÃ©clencheur pÃ©dagogique |
 |------|-------------|------------------------|
-| **05** | Do not honor | Carte bloquée manuellement |
+| **05** | Do not honor | Carte bloquÃ©e manuellement |
 | **14** | Invalid card | PAN inexistant en BDD |
 | **51** | Insufficient funds | Solde < Montant transaction |
-| **54** | Expired card | Date expiration dépassée |
-| **55** | Incorrect PIN | PIN erroné (3 tentatives max) |
+| **54** | Expired card | Date expiration dÃ©passÃ©e |
+| **55** | Incorrect PIN | PIN erronÃ© (3 tentatives max) |
 | **57** | Transaction not permitted | MCC marchand interdit |
-| **61** | Exceeds withdrawal limit | Dépassement limite quotidienne |
+| **61** | Exceeds withdrawal limit | DÃ©passement limite quotidienne |
 
 ---
 
-## 🔧 Spécifications techniques des services
+## ðŸ”§ SpÃ©cifications techniques des services
 
 ### Frontend Services
 
-#### 1. Client Interface (React/TypeScript)
+#### 1. User Cards Web (Next.js/TypeScript)
 
-**Responsabilités:**
-- Génération de cartes virtuelles conformes ISO/IEC 7812
-- Visualisation des transactions en temps réel
+**ResponsabilitÃ©s:**
+- GÃ©nÃ©ration de cartes virtuelles conformes ISO/IEC 7812
+- Visualisation des transactions en temps rÃ©el
 - Gestion du portefeuille de cartes
 
 **Technologies:**
 - React 18 + TypeScript
 - TailwindCSS + shadcn/ui
 - React Query pour state management
-- WebSocket pour notifications temps réel
+- WebSocket pour notifications temps rÃ©el
 
-**Endpoints utilisés:**
+**Endpoints utilisÃ©s:**
 ```typescript
 // API Calls
-POST   /api/cards/generate          // Générer nouvelle carte
-GET    /api/cards/:cardId           // Détails carte
+POST   /api/cards/generate          // GÃ©nÃ©rer nouvelle carte
+GET    /api/cards/:cardId           // DÃ©tails carte
 GET    /api/transactions/:cardId    // Historique transactions
-WS     /ws/notifications            // Notifications temps réel
+WS     /ws/notifications            // Notifications temps rÃ©el
 ```
 
-**Fonctionnalités clés:**
+**FonctionnalitÃ©s clÃ©s:**
 ```typescript
 interface VirtualCard {
   pan: string;              // 16 digits (format: 4111 1111 1111 1111)
@@ -601,20 +474,20 @@ interface VirtualCard {
 
 ---
 
-#### 2. Merchant Interface (Vue.js 3/TypeScript)
+#### 2. Payment Terminal Web (`tpe-web` / service runtime `client-interface`)
 
-**Responsabilités:**
+**ResponsabilitÃ©s:**
 - Terminal de paiement web (virtual POS)
-- Saisie sécurisée des transactions
-- Affichage résultats en temps réel
+- Saisie sÃ©curisÃ©e des transactions
+- Affichage rÃ©sultats en temps rÃ©el
 
 **Technologies:**
-- Vue.js 3 (Composition API) + TypeScript
-- Pinia pour state management
-- Vite pour bundling
-- PIN pad virtuel avec animations
+- Next.js App Router + TypeScript
+- React 19
+- TailwindCSS 4
+- PIN pad virtuel avec parcours 3DS challenge
 
-**Endpoints utilisés:**
+**Endpoints utilisÃ©s:**
 ```typescript
 POST   /api/pos/transaction          // Initier transaction
 GET    /api/pos/merchant/:id         // Info marchand
@@ -644,8 +517,8 @@ interface POSTransaction {
 #### 3. API Gateway (Express/TypeScript)
 
 **Port:** 8000  
-**Responsabilités:**
-- Routage des requêtes vers les microservices
+**ResponsabilitÃ©s:**
+- Routage des requÃªtes vers les microservices
 - Rate limiting (100 req/min par IP)
 - Authentication JWT
 - CORS management
@@ -668,7 +541,7 @@ const routes = {
 // Security middleware
 app.use(helmet());
 app.use(rateLimit({ windowMs: 60000, max: 100 }));
-app.use(cors({ origin: ['http://localhost:3000', 'http://localhost:3001'] }));
+app.use(cors({ origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3004', 'http://localhost:3006', 'http://localhost:3082', 'http://localhost:3088'] }));
 ```
 
 ---
@@ -676,14 +549,14 @@ app.use(cors({ origin: ['http://localhost:3000', 'http://localhost:3001'] }));
 #### 4. Sim-Card-Service (Node.js/TypeScript)
 
 **Port:** 8001  
-**Responsabilités:**
-- Génération de cartes virtuelles (PAN Luhn-compliant)
+**ResponsabilitÃ©s:**
+- GÃ©nÃ©ration de cartes virtuelles (PAN Luhn-compliant)
 - CRUD cartes utilisateurs
 - Gestion statuts cartes
 
-**Base de données:** PostgreSQL
+**Base de donnÃ©es:** PostgreSQL
 
-**Schéma principal:**
+**SchÃ©ma principal:**
 ```sql
 CREATE TABLE virtual_cards (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -706,7 +579,7 @@ CREATE INDEX idx_status ON virtual_cards(status);
 
 **API Endpoints:**
 ```typescript
-POST   /cards/generate               // Générer carte
+POST   /cards/generate               // GÃ©nÃ©rer carte
 GET    /cards/:id                    // Get card by ID
 PATCH  /cards/:id/status             // Update status
 DELETE /cards/:id                    // Delete card
@@ -737,10 +610,10 @@ function generateLuhnCompliantPAN(bin: string): string {
 #### 5. Sim-POS-Service (Node.js/TypeScript)
 
 **Port:** 8002  
-**Responsabilités:**
+**ResponsabilitÃ©s:**
 - Simulation terminal de paiement
-- Validation format données carte
-- Transmission vers acquéreur
+- Validation format donnÃ©es carte
+- Transmission vers acquÃ©reur
 
 **Communication:** REST API + gRPC vers Acquirer
 
@@ -755,7 +628,7 @@ interface POSValidation {
 }
 ```
 
-**Format message ISO 8583 (simplifié):**
+**Format message ISO 8583 (simplifiÃ©):**
 ```typescript
 interface ISO8583Message {
   mti: '0100';  // Authorization Request
@@ -781,14 +654,14 @@ interface ISO8583Message {
 #### 6. Sim-Acquirer-Service (Node.js/TypeScript)
 
 **Port:** 8003  
-**Responsabilités:**
+**ResponsabilitÃ©s:**
 - Banque du marchand
 - Logging transactions
-- Routage vers réseau de paiement
+- Routage vers rÃ©seau de paiement
 
-**Base de données:** PostgreSQL
+**Base de donnÃ©es:** PostgreSQL
 
-**Schéma:**
+**SchÃ©ma:**
 ```sql
 CREATE TABLE transactions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -814,9 +687,9 @@ CREATE TABLE merchants (
 ```
 
 **Codes MCC courants (Merchant Category Code):**
-- **5411**: Supermarché
+- **5411**: SupermarchÃ©
 - **5812**: Restaurants
-- **5999**: Commerce général
+- **5999**: Commerce gÃ©nÃ©ral
 - **6011**: Distributeurs automatiques
 
 ---
@@ -824,7 +697,7 @@ CREATE TABLE merchants (
 #### 7. Sim-Network-Switch (Node.js/TypeScript)
 
 **Port:** 8004  
-**Responsabilités:**
+**ResponsabilitÃ©s:**
 - Routage par BIN (Bank Identification Number)
 - Conversion format messages
 - Load balancing entre issuers
@@ -843,7 +716,7 @@ function routeByBIN(pan: string): string {
 }
 ```
 
-**Métriques:**
+**MÃ©triques:**
 ```typescript
 interface SwitchMetrics {
   totalMessages: number;
@@ -858,14 +731,14 @@ interface SwitchMetrics {
 #### 8. Sim-Issuer-Service (Node.js/TypeScript)
 
 **Port:** 8005  
-**Responsabilités:**
-- Banque émettrice de la carte
-- Vérification validité carte
+**ResponsabilitÃ©s:**
+- Banque Ã©mettrice de la carte
+- VÃ©rification validitÃ© carte
 - Transmission vers moteur d'autorisation
 
-**Base de données:** PostgreSQL
+**Base de donnÃ©es:** PostgreSQL
 
-**Schéma:**
+**SchÃ©ma:**
 ```sql
 CREATE TABLE issued_cards (
   id UUID PRIMARY KEY,
@@ -901,10 +774,10 @@ async function checkCardEligibility(pan: string): Promise<CardStatus> {
 #### 9. Sim-Auth-Engine (Node.js/TypeScript)
 
 **Port:** 8006  
-**Responsabilités:**
-- Vérification PIN
-- Contrôle limites/soldes
-- Décision finale (approve/decline)
+**ResponsabilitÃ©s:**
+- VÃ©rification PIN
+- ContrÃ´le limites/soldes
+- DÃ©cision finale (approve/decline)
 
 **Cache:** Redis (performances)
 
@@ -912,7 +785,7 @@ async function checkCardEligibility(pan: string): Promise<CardStatus> {
 ```typescript
 class AuthorizationEngine {
   async authorize(request: AuthRequest): Promise<AuthResponse> {
-    // 1. Vérifier PIN
+    // 1. VÃ©rifier PIN
     const pinValid = await this.cryptoService.verifyPIN(
       request.encryptedPIN,
       request.pan
@@ -921,35 +794,35 @@ class AuthorizationEngine {
       return this.decline('55', 'Incorrect PIN');
     }
     
-    // 2. Vérifier statut carte
+    // 2. VÃ©rifier statut carte
     const card = await this.getCard(request.pan);
     if (card.status !== 'ACTIVE') {
       return this.decline('14', 'Invalid card');
     }
     
-    // 3. Vérifier expiration
+    // 3. VÃ©rifier expiration
     if (this.isExpired(card.expiryDate)) {
       return this.decline('54', 'Expired card');
     }
     
-    // 4. Vérifier solde
+    // 4. VÃ©rifier solde
     if (card.balance < request.amount) {
       return this.decline('51', 'Insufficient funds');
     }
     
-    // 5. Vérifier limites
+    // 5. VÃ©rifier limites
     const dailySpent = await this.getDailySpent(request.pan);
     if (dailySpent + request.amount > card.dailyLimit) {
       return this.decline('61', 'Exceeds daily limit');
     }
     
-    // 6. Détection fraude
+    // 6. DÃ©tection fraude
     const fraudCheck = await this.fraudService.analyze(request);
     if (fraudCheck.riskScore > 80) {
       return this.decline('59', 'Suspected fraud');
     }
     
-    // 7. Débiter compte
+    // 7. DÃ©biter compte
     await this.debitAccount(request.pan, request.amount);
     
     // 8. Approuver
@@ -967,14 +840,14 @@ class AuthorizationEngine {
 #### 10. Sim-Fraud-Detection (Node.js/TypeScript)
 
 **Port:** 8007  
-**Responsabilités:**
-- Détection patterns suspects
+**ResponsabilitÃ©s:**
+- DÃ©tection patterns suspects
 - Scoring risque
 - Blocage automatique
 
-**Storage:** Redis (analyse temps réel) + In-Memory
+**Storage:** Redis (analyse temps rÃ©el) + In-Memory
 
-**Règles de détection:**
+**RÃ¨gles de dÃ©tection:**
 ```typescript
 interface FraudRule {
   name: string;
@@ -1013,7 +886,7 @@ const fraudRules: FraudRule[] = [
     name: 'Round Amount',
     weight: 15,
     check: (tx) => {
-      return tx.amount % 100 === 0 && tx.amount >= 500; // Montants ronds élevés
+      return tx.amount % 100 === 0 && tx.amount >= 500; // Montants ronds Ã©levÃ©s
     }
   },
   {
@@ -1038,10 +911,10 @@ function calculateRiskScore(transaction: Transaction): number {
 ```
 
 **Seuils d'action:**
-- **0-30**: Risque faible → Approuver
-- **31-60**: Risque moyen → Approuver + alerter
-- **61-80**: Risque élevé → Demander 3D Secure (pédagogique)
-- **81-100**: Risque critique → Refuser + bloquer carte
+- **0-30**: Risque faible â†’ Approuver
+- **31-60**: Risque moyen â†’ Approuver + alerter
+- **61-80**: Risque Ã©levÃ© â†’ Demander 3D Secure (pÃ©dagogique)
+- **81-100**: Risque critique â†’ Refuser + bloquer carte
 
 ---
 
@@ -1050,10 +923,10 @@ function calculateRiskScore(transaction: Transaction): number {
 #### 11. Crypto-Service (Node.js/TypeScript)
 
 **Port:** 8010  
-**Responsabilités:**
-- Chiffrement/déchiffrement PIN
-- Génération MAC (Message Authentication Code)
-- Signatures numériques
+**ResponsabilitÃ©s:**
+- Chiffrement/dÃ©chiffrement PIN
+- GÃ©nÃ©ration MAC (Message Authentication Code)
+- Signatures numÃ©riques
 
 **Algorithmes:**
 ```typescript
@@ -1096,23 +969,23 @@ class CryptoService {
 }
 ```
 
-**Types de clés:**
-- **KEK** (Key Encryption Key): Chiffre les autres clés
+**Types de clÃ©s:**
+- **KEK** (Key Encryption Key): Chiffre les autres clÃ©s
 - **PIN Encryption Key**: Chiffre les PIN blocks
-- **MAC Key**: Génération des MACs
-- **Data Encryption Key**: Chiffre données sensibles
+- **MAC Key**: GÃ©nÃ©ration des MACs
+- **Data Encryption Key**: Chiffre donnÃ©es sensibles
 
 ---
 
 #### 12. HSM-Simulator (Node.js/TypeScript)
 
 **Port:** 8011  
-**Responsabilités:**
-- Simuler HSM matériel (Hardware Security Module)
-- Stockage sécurisé clés cryptographiques
-- Génération aléatoire sécurisée
+**ResponsabilitÃ©s:**
+- Simuler HSM matÃ©riel (Hardware Security Module)
+- Stockage sÃ©curisÃ© clÃ©s cryptographiques
+- GÃ©nÃ©ration alÃ©atoire sÃ©curisÃ©e
 
-**Fonctions simulées:**
+**Fonctions simulÃ©es:**
 ```typescript
 class HSMSimulator {
   private keyStore: Map<string, CryptoKey> = new Map();
@@ -1164,7 +1037,7 @@ class HSMSimulator {
 }
 ```
 
-**Commandes HSM simulées (format Thales):**
+**Commandes HSM simulÃ©es (format Thales):**
 - **A0**: Generate key pair (RSA)
 - **A2**: Generate random number
 - **BA**: Encrypt PIN block
@@ -1177,14 +1050,14 @@ class HSMSimulator {
 #### 13. Key-Management (Node.js/TypeScript)
 
 **Port:** 8012  
-**Responsabilités:**
-- Gestion cycle de vie clés
-- Distribution clés entre services
+**ResponsabilitÃ©s:**
+- Gestion cycle de vie clÃ©s
+- Distribution clÃ©s entre services
 - Rotation automatique
 
-**Base de données:** PostgreSQL
+**Base de donnÃ©es:** PostgreSQL
 
-**Schéma:**
+**SchÃ©ma:**
 ```sql
 CREATE TABLE crypto_keys (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1247,7 +1120,7 @@ async function checkAndRotateKeys() {
 **Version:** 15  
 **Port:** 5432
 
-**Bases de données:**
+**Bases de donnÃ©es:**
 ```sql
 -- Main database
 CREATE DATABASE pmp_db;
@@ -1263,19 +1136,19 @@ CREATE SCHEMA merchants;   -- Merchant data
 - `cards.virtual_cards`: Cartes virtuelles
 - `transactions.auth_requests`: Demandes d'autorisation
 - `transactions.settlements`: Compensations
-- `security.crypto_keys`: Clés cryptographiques
+- `security.crypto_keys`: ClÃ©s cryptographiques
 - `security.audit_logs`: Logs d'audit
-- `merchants.merchants`: Données marchands
+- `merchants.merchants`: DonnÃ©es marchands
 
 **Indices de performance:**
 ```sql
--- Index sur PAN (recherches fréquentes)
+-- Index sur PAN (recherches frÃ©quentes)
 CREATE INDEX idx_virtual_cards_pan ON cards.virtual_cards(pan);
 
 -- Index sur transactions (tri chronologique)
 CREATE INDEX idx_transactions_created_at ON transactions.auth_requests(created_at DESC);
 
--- Index composite pour recherches filtrées
+-- Index composite pour recherches filtrÃ©es
 CREATE INDEX idx_transactions_status_created ON transactions.auth_requests(status, created_at);
 ```
 
@@ -1302,27 +1175,27 @@ await redis.setex(`auth:${pan}`, 60, JSON.stringify(authResult));
 const lock = await redis.set(`lock:${resource}`, 'locked', 'NX', 'EX', 10);
 ```
 
-**Structure des clés:**
+**Structure des clÃ©s:**
 ```
-session:{userId}                    → User session data
-tx:count:{pan}:{timestamp}          → Transaction velocity
-auth:{pan}                          → Cached authorization
-fraud:score:{txId}                  → Fraud score cache
-lock:{resource}                     → Distributed lock
+session:{userId}                    â†’ User session data
+tx:count:{pan}:{timestamp}          â†’ Transaction velocity
+auth:{pan}                          â†’ Cached authorization
+fraud:score:{txId}                  â†’ Fraud score cache
+lock:{resource}                     â†’ Distributed lock
 ```
 
 ---
 
-## 🛠️ Stack technologique
+## ðŸ› ï¸ Stack technologique
 
 ### Frontend
 | Technologie | Version | Usage |
 |-------------|---------|-------|
-| React | 18.x | Interface Client |
-| Vue.js | 3.x | Interface Marchand |
+| Next.js | 16.x | Portal, tpe-web, user-cards-web, hsm-web |
+| React | 18.x / 19.x | UI shared layer and applications |
 | TypeScript | 5.x | Type safety |
-| TailwindCSS | 3.x | Styling |
-| Vite | 5.x | Build tool |
+| TailwindCSS | 4.x | Styling for Next applications |
+| Vite | 5.x | 3ds-challenge-ui and monitoring-dashboard |
 
 ### Backend
 | Technologie | Version | Usage |
@@ -1335,7 +1208,7 @@ lock:{resource}                     → Distributed lock
 ### Databases
 | Technologie | Version | Usage |
 |-------------|---------|-------|
-### 🛠️ Stack Technologique
+### ðŸ› ï¸ Stack Technologique
 
 | Layer | Technologies |
 | :--- | :--- |
@@ -1347,34 +1220,34 @@ lock:{resource}                     → Distributed lock
 
 ---
 
-## 🔐 Sécurité pédagogique
+## ðŸ” SÃ©curitÃ© pÃ©dagogique
 
-> ⚠️ **Note importante**: Cette plateforme est **pédagogique uniquement**. Elle ne doit jamais être utilisée en production avec de vraies données financières.
+> âš ï¸ **Note importante**: Cette plateforme est **pÃ©dagogique uniquement**. Elle ne doit jamais Ãªtre utilisÃ©e en production avec de vraies donnÃ©es financiÃ¨res.
 
-### Simplifications par rapport à un système réel
+### Simplifications par rapport Ã  un systÃ¨me rÃ©el
 
-| Aspect | Production réelle | Implémentation pédagogique |
+| Aspect | Production rÃ©elle | ImplÃ©mentation pÃ©dagogique |
 |--------|-------------------|----------------------------|
-| **HSM** | Matériel physique certifié (Thales, Utimaco) | Simulateur logiciel |
-| **Clés crypto** | Stockage HSM + key ceremonies | Base de données chiffrée |
-| **3D Secure** | Protocole EMVCo complet | Version simplifiée |
+| **HSM** | MatÃ©riel physique certifiÃ© (Thales, Utimaco) | Simulateur logiciel |
+| **ClÃ©s crypto** | Stockage HSM + key ceremonies | Base de donnÃ©es chiffrÃ©e |
+| **3D Secure** | Protocole EMVCo complet | Version simplifiÃ©e |
 | **PCI DSS** | Certification obligatoire | Non applicable |
-| **Tokenization** | Intégration processeur externe | Simulation locale |
+| **Tokenization** | IntÃ©gration processeur externe | Simulation locale |
 | **EMV Chip** | Cryptogrammes dynamiques | CVV statique |
 
-### Bonnes pratiques implémentées
+### Bonnes pratiques implÃ©mentÃ©es
 
-✅ **Appliquées:**
+âœ… **AppliquÃ©es:**
 - Algorithmes cryptographiques standards (3DES, AES, SHA-256)
 - Format PIN Block ISO 9564-1
-- Messages ISO 8583 simplifiés
+- Messages ISO 8583 simplifiÃ©s
 - Validation Luhn pour PAN
 - Hachage PIN avec bcrypt
 - Logs d'audit complets
 
-❌ **Non implémentées (hors scope pédagogique):**
+âŒ **Non implÃ©mentÃ©es (hors scope pÃ©dagogique):**
 - Certification PCI DSS
-- HSM matériel
+- HSM matÃ©riel
 - 3D Secure 2.0 complet
 - Tokenisation externe
 - Network Tokenization
@@ -1382,9 +1255,9 @@ lock:{resource}                     → Distributed lock
 
 ---
 
-## 🚀 Démarrage rapide
+## ðŸš€ DÃ©marrage rapide
 
-### 1. Préparation de l'environnement
+### 1. PrÃ©paration de l'environnement
 ```bash
 # Cloner le projet
 git clone https://github.com/philbalog13/PMP.git
@@ -1395,23 +1268,43 @@ cp .env.example .env
 ```
 
 ### 2. Lancement de la Plateforme (Docker)
-Deux options :
+Procedure officielle runtime, identique sous Windows et Unix :
 
 ```bash
-# Option A (recommandée) : build + run complet
-docker compose up -d --build
+# One-shot officiel : bootstrap images manquantes + runtime + smokes backend/frontend
+node scripts/runtime-stack.mjs test-all
 
-# Option B (runtime stable) : utilise les images locales sans rebuild
-docker compose -f docker-compose-runtime.yml up -d
+# Variante : demarrer seulement la stack runtime
+node scripts/runtime-stack.mjs up
+
+# Variantes : relancer les smokes sans redemarrage
+node scripts/runtime-stack.mjs smoke
+node scripts/runtime-stack.mjs frontend-smoke
+
+# Export standardise des preuves runtime
+node scripts/runtime-stack.mjs evidence
+
+# Wrappers de compatibilite
+make runtime-test-all
+make runtime-evidence
+powershell -ExecutionPolicy Bypass -File scripts/deploy-runtime-test-all.ps1
 ```
 
-Sur Windows, vous pouvez aussi utiliser `start-docker.ps1` (BuildKit désactivé pour stabilité).
+`scripts/runtime-stack.mjs` est la source de verite. Le `Makefile` et le script PowerShell deleguent maintenant a ce CLI unique.
 
-### 3. Vérification du Système
-Le runtime inclut désormais le simulateur HSM (port 8011) et les services de sécurité.
+### 3. Verification du Systeme
+Le runtime inclut desormais le simulateur HSM (port 8011), l'orchestrateur lab et le proxy lab.
 
-Accédez au dashboard de santé ou lancez les tests automatisés :
+Accedez au dashboard de sante ou lancez les tests automatises :
 - **Health Check**: [http://localhost:8000/health](http://localhost:8000/health)
+- **Smoke UA + CTF (rooms UA + CTF separees)**:
+  ```bash
+  node scripts/runtime-stack.mjs smoke
+  ```
+- **Smoke frontend par application**:
+  ```bash
+  node scripts/runtime-stack.mjs frontend-smoke
+  ```
 - **Tests E2E**: 
   ```bash
   cd tests/e2e
@@ -1419,46 +1312,46 @@ Accédez au dashboard de santé ou lancez les tests automatisés :
   npm test
   ```
 
-**Pour plus de détails sur le déploiement Docker :**
+**Pour plus de dÃ©tails sur le dÃ©ploiement Docker :**
 - Voir [DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md) - Guide complet
-- Voir [DOCKER_IMPROVED.md](DOCKER_IMPROVED.md) - Améliorations sécurité
+- Voir [DOCKER_IMPROVED.md](DOCKER_IMPROVED.md) - AmÃ©liorations sÃ©curitÃ©
 
 
 ---
 
-## 📚 Ressources pédagogiques
+## ðŸ“š Ressources pÃ©dagogiques
 
-### Standards documentés
+### Standards documentÃ©s
 - **ISO 8583**: Format messages financiers
 - **ISO 9564-1**: PIN management
 - **ISO 9797-1**: Message Authentication Code
-- **EMVCo**: Spécifications cartes à puce
-- **PCI DSS**: Security standards (référence)
+- **EMVCo**: SpÃ©cifications cartes Ã  puce
+- **PCI DSS**: Security standards (rÃ©fÃ©rence)
 
-### Scénarios d'apprentissage
+### ScÃ©narios d'apprentissage
 
 1. **Transaction basique**: Comprendre le flux complet
-2. **Gestion fraude**: Détecter patterns suspects
+2. **Gestion fraude**: DÃ©tecter patterns suspects
 3. **Cryptographie**: PIN Block, MAC, signatures
 4. **Architecture**: Microservices, messaging
-5. **Résilience**: Gestion erreurs, timeouts
+5. **RÃ©silience**: Gestion erreurs, timeouts
 
 ---
 
-## 📝 Licence
+## ðŸ“ Licence
 
-Ce projet est sous licence MIT et destiné **exclusivement à l'éducation**. Ne pas utiliser en production.
+Ce projet est sous licence MIT et destinÃ© **exclusivement Ã  l'Ã©ducation**. Ne pas utiliser en production.
 
 ---
 
-## 👥 Contribution
+## ðŸ‘¥ Contribution
 
-Les contributions pédagogiques sont bienvenues ! Merci de:
+Les contributions pÃ©dagogiques sont bienvenues ! Merci de:
 1. Fork le projet
-2. Créer une branche feature
+2. CrÃ©er une branche feature
 3. Documenter vos changements
 4. Soumettre une PR
 
 ---
 
-**Créé avec ❤️ pour l'apprentissage des systèmes de paiement**
+**CrÃ©Ã© avec â¤ï¸ pour l'apprentissage des systÃ¨mes de paiement**

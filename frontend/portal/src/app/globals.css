@@ -1,71 +1,658 @@
 @import "tailwindcss";
+@import "../../../shared/styles/notion-tokens.css";
+@import "../../../shared/styles/notion-utilities.css";
 @import "../../../shared/styles/design-tokens.css";
 @import "../../../shared/styles/themes.css";
+/* ── Banking design system (scoped via [data-bank-theme], 0 conflit Notion) ── */
+@import "../../../shared/styles/bank-tokens.css";
+@import "../../../shared/styles/bank-theme.css";
+@import "../../../shared/styles/bank-utilities.css";
 
-/* 
- * PORTAL SPECIFIC STYLES 
+/*
+ * ═══════════════════════════════════════════════════
+ *   PORTAL — GLOBAL STYLES
+ *   Phase 1 : animations décoratives supprimées
+ *   Conservé : utilitaires de révélation + spine roadmap
+ * ═══════════════════════════════════════════════════
  */
 
+/* ── Base body ──────────────────────────────────── */
 @layer base {
   body {
-    background: radial-gradient(ellipse at top, var(--bg-surface) 0%, var(--bg-deep) 100%);
+    background-color: var(--bg-deep);
     min-height: 100vh;
+    font-family: var(--n-font-sans);
   }
 }
 
-/* Hero gradient effects */
-.hero-gradient {
-  background: radial-gradient(ellipse at 50% 0%, rgba(59, 130, 246, 0.15) 0%, transparent 50%);
+/* ── Gradient text (landing page) ──────────────── */
+.text-gradient-gold {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-/* Card hover animations */
-.feature-card {
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.feature-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 20px 40px -15px var(--primary-glow);
-}
-
-/* Animated background grid */
+/* ── Background grid (landing page) ─────────────── */
 .bg-grid {
   background-image:
-    linear-gradient(rgba(59, 130, 246, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(59, 130, 246, 0.05) 1px, transparent 1px);
-  background-size: 60px 60px;
+    linear-gradient(rgba(99, 102, 241, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99, 102, 241, 0.04) 1px, transparent 1px);
+  background-size: 64px 64px;
 }
 
-/* Floating animation */
-@keyframes floating {
+/* ── Hero gradient (landing page) ───────────────── */
+.hero-gradient {
+  background: radial-gradient(ellipse at 50% 0%, rgba(99, 102, 241, 0.18) 0%, transparent 55%);
+}
 
-  0%,
-  100% {
-    transform: translateY(0px);
+/* ═══════════════════════════════════════════════════
+ *   ANIMATIONS UTILITAIRES — conservées
+ * ═══════════════════════════════════════════════════ */
+
+/* ── Fade up — reveal on load ── */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(24px) scale(0.97); filter: blur(4px); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    filter: blur(0);   }
+}
+.animate-fade-up {
+  animation: fade-up 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ── Fade left / right ── */
+@keyframes fade-left {
+  from { opacity: 0; transform: translateX(-20px); filter: blur(4px); }
+  to   { opacity: 1; transform: translateX(0);     filter: blur(0);   }
+}
+.animate-fade-left {
+  animation: fade-left 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fade-right {
+  from { opacity: 0; transform: translateX(20px); filter: blur(4px); }
+  to   { opacity: 1; transform: translateX(0);    filter: blur(0);   }
+}
+.animate-fade-right {
+  animation: fade-right 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ── Stagger cascade ── */
+.animate-stagger > * { opacity: 0; }
+.animate-stagger > *:nth-child(1) { animation: fade-up 0.55s cubic-bezier(0.16,1,0.3,1) 0.05s forwards; }
+.animate-stagger > *:nth-child(2) { animation: fade-up 0.55s cubic-bezier(0.16,1,0.3,1) 0.12s forwards; }
+.animate-stagger > *:nth-child(3) { animation: fade-up 0.55s cubic-bezier(0.16,1,0.3,1) 0.19s forwards; }
+.animate-stagger > *:nth-child(4) { animation: fade-up 0.55s cubic-bezier(0.16,1,0.3,1) 0.26s forwards; }
+.animate-stagger > *:nth-child(5) { animation: fade-up 0.55s cubic-bezier(0.16,1,0.3,1) 0.33s forwards; }
+.animate-stagger > *:nth-child(6) { animation: fade-up 0.55s cubic-bezier(0.16,1,0.3,1) 0.40s forwards; }
+
+/* ── Scale in — modals / popovers ── */
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); filter: blur(2px); }
+  to   { opacity: 1; transform: scale(1);    filter: blur(0);   }
+}
+.animate-scale-in {
+  animation: scale-in 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+/* ── Spine fill — progress roadmap ── */
+@keyframes spine-fill {
+  from { transform: scaleY(0); opacity: 0; }
+  20%  { opacity: 1; }
+  to   { transform: scaleY(1); opacity: 1; }
+}
+.spine-fill {
+  transform-origin: top center;
+  animation: spine-fill 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both;
+}
+
+/* ── Stat appear — nombres dashboard ── */
+@keyframes stat-appear {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+.stat-appear { animation: stat-appear 0.5s cubic-bezier(0.16,1,0.3,1) 0.1s both; }
+
+/* ── Banner slide ── */
+@keyframes banner-slide {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+.animate-banner { animation: banner-slide 0.4s cubic-bezier(0.16,1,0.3,1) 0.2s both; }
+
+/* ═══════════════════════════════════════════════════
+ *   COMPOSANTS MISSION CIPHER — landing page uniquement
+ *   (ne pas utiliser dans les pages /student/*)
+ * ═══════════════════════════════════════════════════ */
+
+/* Apex card — base (landing page features) */
+.apex-card {
+  background: var(--bg-surface);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s cubic-bezier(0.16,1,0.3,1);
+}
+.apex-card:hover {
+  border-color: rgba(255, 255, 255, 0.14);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.5);
+}
+
+/* Glass panel — landing sections */
+.glass-panel {
+  background: var(--bg-glass);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Noise texture */
+.bg-noise {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+}
+
+/* Roadmap spine (progress pages) */
+.roadmap-spine-bg   { background: rgba(255, 255, 255, 0.05); }
+.roadmap-spine-fill { background: linear-gradient(180deg, #f59e0b 0%, #06b6d4 100%); }
+
+/*
+ * Portal surfaces (login + landing)
+ */
+.portal-auth-root,
+.portal-home-root {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.portal-auth-root {
+  --portal-accent: #2dd4bf;
+  --portal-reward: #a855f7;
+  background:
+    radial-gradient(48rem 24rem at 12% -4%, rgba(45, 212, 191, 0.2), transparent 64%),
+    radial-gradient(52rem 26rem at 92% 112%, rgba(168, 85, 247, 0.17), transparent 62%),
+    linear-gradient(180deg, #080b16 0%, #0b1021 50%, #0e142a 100%);
+}
+
+.portal-auth-root::before,
+.portal-home-root::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+  background-size: 54px 54px;
+  opacity: 0.2;
+  z-index: -1;
+}
+
+.portal-auth-shell {
+  width: min(1180px, 96vw);
+  margin: 0 auto;
+  padding: clamp(18px, 4vw, 36px) 0;
+}
+
+.portal-auth-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: clamp(16px, 2.6vw, 28px);
+  align-items: stretch;
+}
+
+.portal-auth-panel,
+.portal-auth-aside {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 24px;
+  background: linear-gradient(160deg, rgba(15, 23, 42, 0.78) 0%, rgba(15, 23, 42, 0.55) 100%);
+  backdrop-filter: blur(14px);
+}
+
+.portal-auth-panel {
+  padding: clamp(20px, 3vw, 38px);
+}
+
+.portal-auth-aside {
+  padding: clamp(20px, 3vw, 30px);
+  display: none;
+  gap: 16px;
+  align-content: start;
+}
+
+.portal-auth-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+}
+
+.portal-auth-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--portal-accent), var(--portal-reward));
+  box-shadow: 0 16px 38px -18px rgba(45, 212, 191, 0.7);
+}
+
+.portal-auth-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.72);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #cbd5e1;
+  font-weight: 600;
+}
+
+.portal-auth-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: rgba(15, 23, 42, 0.65);
+  padding: 5px;
+}
+
+.portal-auth-tab {
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: all 140ms ease;
+}
+
+.portal-auth-tab[aria-pressed='true'] {
+  background: rgba(15, 23, 42, 0.9);
+  color: #f8fafc;
+  box-shadow: 0 4px 20px -14px rgba(30, 41, 59, 0.95);
+}
+
+.portal-auth-role-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.portal-auth-role-btn {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  text-align: left;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: rgba(15, 23, 42, 0.55);
+  color: #e2e8f0;
+  cursor: pointer;
+  padding: 10px;
+  transition: all 160ms ease;
+}
+
+.portal-auth-role-btn:hover {
+  border-color: rgba(148, 163, 184, 0.4);
+  transform: translateY(-1px);
+}
+
+.portal-auth-role-btn[aria-pressed='true'] {
+  border-color: color-mix(in srgb, var(--portal-role, #2dd4bf) 60%, transparent);
+  background: color-mix(in srgb, var(--portal-role, #2dd4bf) 14%, rgba(15, 23, 42, 0.6));
+  box-shadow: 0 14px 32px -24px color-mix(in srgb, var(--portal-role, #2dd4bf) 78%, transparent);
+}
+
+.portal-auth-role-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--portal-role, #2dd4bf);
+  color: white;
+}
+
+.portal-auth-preset-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.portal-auth-preset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--portal-role, #2dd4bf) 38%, transparent);
+  background: color-mix(in srgb, var(--portal-role, #2dd4bf) 12%, rgba(15, 23, 42, 0.55));
+  color: var(--portal-role, #2dd4bf);
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.portal-auth-message {
+  border-radius: 12px;
+  padding: 11px 14px;
+  font-size: 13px;
+  border: 1px solid transparent;
+}
+
+.portal-auth-message--error {
+  color: #fecaca;
+  background: rgba(127, 29, 29, 0.2);
+  border-color: rgba(248, 113, 113, 0.3);
+}
+
+.portal-auth-message--success {
+  color: #bbf7d0;
+  background: rgba(21, 128, 61, 0.18);
+  border-color: rgba(74, 222, 128, 0.3);
+}
+
+.portal-auth-form {
+  display: grid;
+  gap: 14px;
+}
+
+.portal-auth-field {
+  display: grid;
+  gap: 6px;
+}
+
+.portal-auth-label {
+  font-size: 11px;
+  color: #a8b4cb;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.portal-auth-input-wrap {
+  position: relative;
+}
+
+.portal-auth-input {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.64);
+  color: #f1f5f9;
+  font-size: 14px;
+  padding: 11px 40px;
+  outline: none;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.portal-auth-input::placeholder {
+  color: #7f8ca6;
+}
+
+.portal-auth-input:focus-visible {
+  border-color: color-mix(in srgb, var(--portal-accent) 65%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--portal-accent) 22%, transparent);
+}
+
+.portal-auth-leading,
+.portal-auth-trailing {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #7b8ba9;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.portal-auth-leading {
+  left: 13px;
+}
+
+.portal-auth-trailing {
+  right: 12px;
+}
+
+.portal-auth-toggle {
+  border: none;
+  background: transparent;
+  color: #8fa0bf;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.portal-auth-submit {
+  border: none;
+  border-radius: 12px;
+  padding: 13px 16px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, var(--portal-accent), #0ea5e9);
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 150ms ease, filter 150ms ease, opacity 150ms ease;
+}
+
+.portal-auth-submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+}
+
+.portal-auth-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+  filter: none;
+}
+
+.portal-auth-strength {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.2);
+  overflow: hidden;
+}
+
+.portal-auth-strength-fill {
+  height: 100%;
+  border-radius: inherit;
+  transition: width 180ms ease, background-color 180ms ease;
+}
+
+.portal-auth-info-card {
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.58);
+  padding: 14px;
+}
+
+.portal-auth-link-toggle {
+  background: transparent;
+  border: none;
+  color: #22d3ee;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.portal-home-root {
+  background:
+    radial-gradient(44rem 22rem at 12% -8%, rgba(45, 212, 191, 0.2), transparent 70%),
+    radial-gradient(42rem 18rem at 94% 12%, rgba(59, 130, 246, 0.16), transparent 70%),
+    radial-gradient(48rem 24rem at 50% 112%, rgba(168, 85, 247, 0.14), transparent 72%),
+    linear-gradient(180deg, #070b18 0%, #090f22 52%, #0d1430 100%);
+}
+
+.portal-home-shell {
+  width: min(1320px, 94vw);
+  margin: 0 auto;
+  padding: clamp(84px, 11vw, 120px) 0 clamp(48px, 7vw, 72px);
+  display: grid;
+  gap: clamp(30px, 5vw, 56px);
+}
+
+.portal-home-hero {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+  gap: clamp(18px, 2.8vw, 28px);
+}
+
+.portal-home-surface {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 22px;
+  background: linear-gradient(160deg, rgba(15, 23, 42, 0.76) 0%, rgba(15, 23, 42, 0.54) 100%);
+  backdrop-filter: blur(14px);
+}
+
+.portal-home-section-title {
+  margin: 0;
+  font-size: clamp(1.45rem, 2.7vw, 2.5rem);
+  letter-spacing: -0.02em;
+}
+
+.portal-home-role-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(232px, 1fr));
+  gap: 14px;
+}
+
+.portal-home-role-card {
+  text-decoration: none;
+  color: inherit;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: rgba(15, 23, 42, 0.7);
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.portal-home-role-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(94, 234, 212, 0.5);
+  box-shadow: 0 16px 30px -20px rgba(45, 212, 191, 0.6);
+}
+
+.portal-home-role-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(45, 212, 191, 0.24), rgba(56, 189, 248, 0.22));
+  border: 1px solid rgba(94, 234, 212, 0.3);
+  color: #67e8f9;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.portal-home-flow {
+  display: grid;
+  gap: 14px;
+}
+
+.portal-home-flow-item {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: 12px;
+}
+
+.portal-home-flow-num {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid rgba(94, 234, 212, 0.45);
+  background: rgba(45, 212, 191, 0.14);
+  color: #67e8f9;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.portal-home-cta {
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 24px;
+  background:
+    linear-gradient(145deg, rgba(45, 212, 191, 0.18), rgba(15, 23, 42, 0.64)),
+    rgba(15, 23, 42, 0.62);
+  padding: clamp(22px, 4vw, 42px);
+  text-align: center;
+  display: grid;
+  gap: 12px;
+}
+
+/* Landing-specific contrast tuning for Lighthouse AA */
+.portal-home-root .bk-btn--primary {
+  background: linear-gradient(135deg, #0e7490, #0369a1);
+  border-color: #0e7490;
+  color: #f8fafc;
+  box-shadow: 0 10px 24px -18px rgba(6, 182, 212, 0.9);
+}
+
+.portal-home-root .bk-btn--primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #155e75, #075985);
+  border-color: #155e75;
+}
+
+.portal-home-root .bk-label-upper {
+  color: #d1d5db;
+}
+
+@media (min-width: 1040px) {
+  .portal-auth-grid {
+    grid-template-columns: 1fr 0.86fr;
   }
 
-  50% {
-    transform: translateY(-20px);
+  .portal-auth-aside {
+    display: grid;
   }
 }
 
-.animate-floating {
-  animation: floating 6s ease-in-out infinite;
-}
-
-/* Pulse glow */
-@keyframes pulse-glow {
-
-  0%,
-  100% {
-    box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+@media (max-width: 640px) {
+  .portal-auth-panel {
+    padding: 18px;
+    border-radius: 18px;
   }
 
-  50% {
-    box-shadow: 0 0 40px rgba(59, 130, 246, 0.6);
+  .portal-auth-role-grid {
+    grid-template-columns: 1fr;
   }
 }
 
-.animate-pulse-glow {
-  animation: pulse-glow 3s ease-in-out infinite;
+@media (prefers-reduced-motion: reduce) {
+  .portal-auth-tab,
+  .portal-auth-role-btn,
+  .portal-auth-submit,
+  .portal-home-role-card {
+    transition: none !important;
+  }
+
+  .animate-fade-up,
+  .animate-fade-left,
+  .animate-fade-right,
+  .animate-scale-in,
+  .animate-banner,
+  .animate-stagger > * {
+    animation: none !important;
+  }
 }

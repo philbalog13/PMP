@@ -17,6 +17,7 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,
+    "baseUrl": ".",
     "plugins": [
       {
         "name": "next"
@@ -27,7 +28,8 @@
         "./*"
       ],
       "@shared/*": [
-        "../shared/*"
+        "../shared/*",
+        "./shared/*"
       ]
     }
   },
@@ -39,7 +41,9 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts",
     "../shared/**/*.ts",
-    "../shared/**/*.tsx"
+    "../shared/**/*.tsx",
+    "shared/**/*.ts",
+    "shared/**/*.tsx"
   ],
   "exclude": [
     "node_modules"

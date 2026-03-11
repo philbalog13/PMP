@@ -66,6 +66,9 @@ export const config = {
         tokenizationService: process.env.TOKENIZATION_URL || 'http://localhost:8014'
     },
 
+    keyManagementUrl: process.env.KEY_MANAGEMENT_URL || 'http://localhost:8012',
+    mtlsEnabled: process.env.MTLS_ENABLED === 'true',
+
     circuitBreaker: {
         timeout: 5000,
         errorThresholdPercentage: 50,
@@ -81,6 +84,7 @@ export const config = {
             'http://localhost:3002', // tpe-web
             'http://localhost:3004', // user-cards-web
             'http://localhost:3006',
+            'http://localhost:3101',
             'http://localhost:3082',
             'http://localhost:3088',
             'http://localhost:5173',  // vite dev server
@@ -90,6 +94,7 @@ export const config = {
             'http://192.168.1.14:3002',
             'http://192.168.1.14:3004',
             'http://192.168.1.14:3006',
+            'http://192.168.1.14:3101',
             'http://192.168.1.14:3082',
             'http://192.168.1.14:3088',
         ],

@@ -10,15 +10,12 @@ WORKDIR /app
 
 # Install dependencies (layer caching)
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 
 COPY . .
 
 # Build TypeScript
-RUN npm run build
-
-# Remove dev dependencies
-RUN npm prune --production
+RUN npm run build && npm prune --omit=dev
 
 # Stage 2: Production
 FROM node:20-alpine AS production

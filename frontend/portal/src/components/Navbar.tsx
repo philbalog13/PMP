@@ -157,11 +157,10 @@ export function Navbar() {
     const handleLogout = () => {
         logout();
         setIsMobileMenuOpen(false);
-        window.location.href = '/login';
     };
 
     // Liens de navigation selon le role
-    const navLinks = isAuthenticated && normalizedRole && roleNavLinks[normalizedRole] ? roleNavLinks[normalizedRole] : [
+    const navLinks: NavLink[] = isAuthenticated && normalizedRole && roleNavLinks[normalizedRole] ? roleNavLinks[normalizedRole] : [
         { name: 'Documentation', href: '/documentation', icon: FileText },
         { name: 'Security Labs', href: '/student/ctf', icon: Beaker },
         { name: 'Cursus', href: '/student/cursus', icon: BookOpen },

@@ -6,7 +6,30 @@ import { routingService } from '../../src/services/routing.service';
 import { TransactionResponse, CardNetwork } from '../../src/models';
 
 // Mock axios and routingService
-jest.mock('axios');
+jest.mock('axios', () => {
+    const mockAxiosInstance = {
+        interceptors: {
+            response: {
+                use: jest.fn(),
+            },
+        },
+    };
+
+    const mockAxios = {
+        create: jest.fn(() => mockAxiosInstance),
+        post: jest.fn(),
+        interceptors: {
+            response: {
+                use: jest.fn(),
+            },
+        },
+    };
+
+    return {
+        __esModule: true,
+        default: mockAxios,
+    };
+});
 jest.mock('axios-retry', () => jest.fn());
 jest.mock('../../src/services/routing.service');
 
@@ -51,7 +74,16 @@ describe('Phase 8: Audit & BI Integration', () => {
         // Mocks
         mockedRoutingService.routeBack.mockResolvedValue(routedResponse);
         mockedAxios.post.mockImplementation((url, data) => {
-            // Mock all external calls with success
+            const resolvedUrl = String(url);
+
+            if (resolvedUrl.includes('transaction/process-response')) {
+                return Promise.resolve({ data: routedResponse } as any);
+            }
+
+            if (resolvedUrl.includes('device/format-response')) {
+                return Promise.resolve({ data: tpeResponse } as any);
+            }
+
             return Promise.resolve({ data: {} } as any);
         });
 

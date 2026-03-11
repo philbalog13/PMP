@@ -23,5 +23,8 @@ export const config = {
         'MASTERCARD': ['5425', '5399', '5100', '5200', '5300'],
         'AMEX': ['3782', '3487', '3714', '3787', '3400'],
         'DISCOVER': ['6011', '6500', '6221']
-    }
+    },
+
+    keyManagementUrl: process.env.KEY_MANAGEMENT_URL || 'http://localhost:8012',
+    mtlsEnabled: process.env.MTLS_ENABLED === 'true'
 };

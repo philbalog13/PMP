@@ -1,0 +1,1083 @@
+PAGES: 27
+
+--- PAGE 1 ---
+CURSUS AUDIT FINANCIER
+Formation complète de 1200 heures
+Unité d’Apprentissage 1.1
+Introduction à la comptabilité :
+rôle et utilité
+Module 1 – Fondamentaux comptables et financiers
+Durée :2h –Pages :22 (version condensée) / 48 (version développée)
+Structure ACOR :Amorce – Cours – Objectifs vérifiés – Ressources
+Rédacteur Version Date
+Formateur Expert 1.0 (développée) 27 février 2026
+©Tous droits réservés – Formation certifiante
+
+--- PAGE 2 ---
+Table des matières
+Table des figures
+1 Frise chronologique simplifiée de l’histoire comptable . . . . . . . . . . . . 6
+Liste des tableaux
+1
+
+--- PAGE 3 ---
+Amorce
+Mise en situation immersive
+Scénario 1 : Le dirigeant qui sous-estime la comptabilité
+Vous êtes auditeur financier stagiaire dans le cabinetAudit & Conseils. On vous
+affecte à la missionSARL Dubois Industries, une PME de 50 salariés spécialisée
+dans la sous-traitance mécanique. Lors de la réunion d’ouverture, le gérant, M.
+Dubois, vous tient ces propos :
+« La comptabilité? C’est une contrainte administrative, une usine à gaz
+pour payer l’IS et la TVA. Mon expert-comptable s’en occupe, moi je
+m’occupe de produire. Franchement, je ne vois pas pourquoi vous voulez
+passer du temps là-dessus... »
+Votre mission : lui expliquer, en 5 minutes chrono, pourquoi la comptabilité est bien
+plus qu’une obligation fiscale, et en quoi elle est stratégique pour son entreprise.
+Scénario 2 : L’investisseur qui exige des comptes
+Quelques jours plus tard, vous êtes en salle de marché. Un fonds d’investissement
+américain,Blackstone Capital, s’intéresse à une startup française licorne,GreenTech
+Innovations. Les associés fondateurs doivent présenter leurs comptes pour lever 50
+millions d’euros.
+Le partenaire américain est clair :
+« We need IFRS-compliant financial statements, audited by a Big Four.
+We want to see the real value, not just tax figures. »
+Soudain, la comptabilité devient l’outil de la confiance et de la levée de fonds.
+Scénario 3 : Le scandale financier
+Enfin,vouslisezdanslapresse:« Affaire Wirecard : 1,9 milliard d’euros manquants,
+les auditeurs mis en cause. »L’absenced’unecomptabilitéfiableapermisunefraude
+massive.
+Ces trois scénarios illustrent la même réalité : la comptabilité est au cœur de la vie
+des affaires, de la confiance des investisseurs, et de la détection des fraudes.
+2
+
+--- PAGE 4 ---
+Objectifs d’apprentissage
+Objectifs pédagogiques détaillés
+À l’issue de cette unité d’apprentissage, vous serez capable de :
+Objectif opération-
+nel
+Critères de réussite
+OF 1.1.1 – Définir la
+comptabilité
+Citer au moins trois définitions académiques et les syn-
+thétiser en une phrase personnelle.
+OF 1.1.2 – Expliquer
+l’évolution historique
+Situer les grandes étapes (Pacioli, code de commerce,
+IFRS) sur une frise chronologique.
+OF 1.1.3 – Distinguer
+les 5 rôles majeurs
+Pour chaque rôle (information, preuve, gestion, contrôle,
+social), donner un exemple concret d’utilisation.
+OF 1.1.4 – Identifier
+les parties prenantes
+Classer 10 utilisateurs en internes/externes et préciser
+leur attente spécifique.
+OF 1.1.5 – Énoncer
+les 7 principes comp-
+tables
+Pour chaque principe, fournir une illustration chiffrée et
+une conséquence en cas de non-respect.
+OF1.1.6–Différencier
+bilan et compte de ré-
+sultat
+Construire un bilan et un compte de résultat simplifiés
+à partir d’une liste d’opérations.
+OF 1.1.7 – Com-
+prendre la normalisa-
+tion
+Comparer les rôles de l’ANC et de l’IASB, citer 3 diffé-
+rences PCG/IFRS.
+OF 1.1.8 – Appréhen-
+der la notion d’image
+fidèle
+Expliquer pourquoi l’image fidèle peut nécessiter des dé-
+rogations aux règles strictes.
+OF 1.1.9 – Recon-
+naître les limites
+Lister 5 limites de la comptabilité et leur impact sur
+l’analyse financière.
+OF 1.1.10 – Lier
+comptabilité et audit
+Justifier pourquoi l’audit est nécessaire pour renforcer
+la fiabilité des comptes.
+3
+
+--- PAGE 5 ---
+Cours : Les fondamentaux de la comptabilité
+Introduction : La comptabilité, langage universel des affaires
+La comptabilité est souvent présentée comme le « langage des affaires ». Cette méta-
+phore est pertinente à plus d’un titre :
+— Comme une langue, elle possède sagrammaire(la partie double), sonvocabulaire
+(les comptes), et sesconventions(les principes comptables).
+— Comme une langue, elle permet lacommunicationentre des acteurs économiques
+variés, parfois très éloignés géographiquement et culturellement.
+— Comme une langue, elle évolue dans le temps et s’enrichit de nouveaux concepts
+(normes IFRS, reporting extra-financier).
+Mais au-delà de la métaphore, la comptabilité est unsystème d’information or-
+ganiséqui répond à des finalités précises. Ce cours va dérouler de manière exhaustive
+toutes les facettes de cette discipline fondamentale.
+1. Définition approfondie de la comptabilité
+1.1 Définitions légales et réglementaires
+LePlan Comptable Général (PCG)français, dans son article 121-1, définit la
+comptabilité comme :
+« Un système d’organisation de l’information financière permettant de saisir,
+classer, enregistrer des données de base chiffrées et présenter des états reflétant
+une image fidèle du patrimoine, de la situation financière et du résultat de
+l’entité à la date de clôture. »
+LeCadre conceptuel IFRS(International Financial Reporting Standards) précise
+quant à lui :
+« L’objectif des états financiers est de fournir des informations sur la situation
+financière, la performance et les flux de trésorerie d’une entité, qui soient utiles
+à un large éventail d’utilisateurs pour prendre des décisions économiques. »
+1.2 Définitions académiques
+Les grands auteurs en comptabilité proposent des définitions complémentaires :
+—JeanFourastié(économistefrançais):«Lacomptabilitéestlasciencedescomptes,
+c’est-à-dire la technique qui permet de représenter, sous forme chiffrée, l’activité
+d’une entreprise et d’en suivre l’évolution. »
+—Yves BernardetJean-Claude Colli: « La comptabilité est un outil de gestion
+qui permet de mesurer les résultats d’une activité et d’en contrôler l’évolution dans
+le temps. »
+—RichardetBensadon(historiens de la comptabilité) : « La comptabilité est une
+construction sociale qui reflète les rapports de force entre les acteurs économiques
+et les normes sociétales. »
+4
+
+--- PAGE 6 ---
+1.3 Synthèse personnelle du formateur
+En tant qu’auditeur, je définis la comptabilité comme :
+« La comptabilité est le système d’enregistrement, de traitement et de com-
+munication des informations économiques et financières d’une organisa-
+tion, dont l’objectif est de produire une représentation chiffrée, normalisée
+et vérifiable de sa réalité patrimoniale et de sa performance, afin d’éclairer
+les décisions des parties prenantes et de rendre des comptes. »
+2. Histoire et évolution de la comptabilité : des tablettes d’argile
+à la blockchain
+Comprendre l’histoire de la comptabilité, c’est comprendre pourquoi elle est devenue
+incontournable.
+2.1 Les origines antiques (3500 av. J.-C. – XIIIe siècle)
+Période Civilisation Apport comptable
+3500 av. J.-C. Mésopotamie (Sumer) Tablettes d’argile pour enregistrer les
+récoltes et les échanges. Invention de
+l’écriture liée à la comptabilité!
+3000 av. J.-C. Égypte Papyrus pour recenser les greniers à blé
+du pharaon. Séparation des fonctions
+(scribe vs collecteur).
+2000 av. J.-C. Babylone Code d’Hammourabi : premières règles
+sur les contrats et les dettes.
+500 av. J.-C. Grèce Comptabilité des temples et des cités-
+états. Apparition de la monnaie.
+100 av. J.-C. Rome Livres comptables des patriciens (codex
+accepti et expensi).
+800-1200 Monde arabe Développementdeschiffresarabesetde
+l’algèbre, facilitant les calculs.
+2.2 La révolution de la partie double (XIIIe – XVe siècle)
+L’invention de la comptabilité enpartie doubleest l’équivalent pour la finance de
+l’invention de l’imprimerie pour la culture.
+—1340: Premiers livres comptables en partie double à Gênes (Massari).
+—1494: Publication à Venise deSumma de Arithmetica, Geometria, Proportioni et
+ProportionalitàparLuca Pacioli, moine franciscain et mathématicien. L’ouvrage
+contient le chapitre« Particularis de computis et scripturis »qui décrit la méthode
+vénitienne.
+5
+
+--- PAGE 7 ---
+✄Approfondissement technique
+Luca Pacioli (1445-1517): Ami de Léonard de Vinci, il est considéré comme le
+« père de la comptabilité moderne ». Il n’a pas inventé la partie double, mais il l’a
+codifiée et diffusée dans toute l’Europe. Ses principes :
+— Toute opération a undébitet uncréditégaux.
+— Trois livres : leMemoriale(brouillon), leGiornale(journal), leQuaderno
+(grand livre).
+— Nécessité de faire uneclôture des compteset unebalance.
+2.3 La normalisation nationale (XVIIe – XXe siècle)
+—1673: Ordonnance de Colbert (France) –« Code Savary »– obligation pour les
+commerçants de tenir un livre journal.
+—1807: Code de commerce napoléonien – renforce les obligations comptables.
+—1947: Premier Plan Comptable Général (PCG) en France – harmonisation après-
+guerre.
+—1982-1999: Réformes du PCG pour s’adapter aux directives européennes.
+2.4 La mondialisation comptable (XXIe siècle)
+—1973: Création de l’IASC (International Accounting Standards Committee), an-
+cêtre de l’IASB.
+—2001:Créationdel’IASB(InternationalAccountingStandardsBoard)etlancement
+des normes IFRS.
+—2005: Obligation pour les sociétés cotées européennes d’établir leurs comptes conso-
+lidés en IFRS.
+—2020-2025: Émergence de la comptabilité « crypto » (actifs numériques, block-
+chain), de la comptabilité ESG (environnementale, sociale et de gouvernance), et de
+l’IA dans les processus comptables.
+Antiquité Moyen Âge Renaissance Époque moderne Contemporain
+Tablettes Partie simple Pacioli PCG IFRS / ESG
+Figure 1– Frise chronologique simplifiée de l’histoire comptable
+3. Les rôles et fonctions de la comptabilité (approche détaillée)
+La comptabilité n’est pas un monolithe. Elle remplit plusieurs fonctions, parfois com-
+plémentaires, parfois contradictoires.
+3.1 Rôle d’information (le plus connu)
+La comptabilité est d’abord un système d’information. Elle produit des données des-
+tinées à :
+6
+
+--- PAGE 8 ---
+—Informer les dirigeants: Tableaux de bord, analyses de rentabilité par pro-
+duit/service, suivi de trésorerie.
+—Informer les associés: Distribution de dividendes, évaluation de la performance
+des managers.
+—Informer les tiers: Banques (décisions de crédit), fournisseurs (évaluation du
+risque client), clients (garantie de pérennité).
+—Informer le public: Pour les sociétés cotées, publication des comptes (transpa-
+rence des marchés).
+3.2 Rôle de preuve (fonction juridique)
+Les documents comptables ont unevaleur probante:
+— En cas delitige commercial: Les factures et les relevés comptables servent de
+preuve.
+— En cas decontrôle fiscal: La comptabilité régulière fait foi jusqu’à preuve du
+contraire par l’administration.
+— En cas deprocédure collective(redressement/liquidation judiciaire) : Le juge se
+base sur les comptes pour déterminer la situation.
+— En cas defraude: L’analyse comptable permet de reconstituer les flux financiers
+litigieux.
+☞Encadré juridique
+Article L123-12 du Code de commerce: « Toute personne physique ou mo-
+rale ayant la qualité de commerçant doit procéder à l’enregistrement comptable
+des mouvements affectant le patrimoine de son entreprise. Ces mouvements sont
+enregistrés chronologiquement. »
+Sanctions: Défaut de comptabilité = amende pouvant aller jusqu’à 15 000€et/ou
+prison en cas de banqueroute.
+3.3 Rôle de gestion (fonction décisionnelle)
+Lacomptabilitén’estpasqu’unenregistrementdupassé,elleaideàconstruirel’avenir:
+—Calcul des coûts: Comptabilité analytique pour déterminer le prix de revient
+d’un produit.
+—Gestion budgétaire: Établissement de prévisions et suivi des écarts.
+—Décisions d’investissement: Analyse de la rentabilité des projets (VAN, TRI)
+basée sur des données comptables prévisionnelles.
+—Politique de prix: Fixation des prix de vente en fonction des coûts et de la marge
+souhaitée.
+3.4 Rôle de contrôle (fonction de régularité)
+La comptabilité permet de vérifier que les opérations sont conformes :
+—Contrôle interne: Vérification que les procédures sont respectées (ex : signature
+des bons de commande).
+7
+
+--- PAGE 9 ---
+—Détection d’anomalies: Les comptes qui ne balancent pas révèlent des erreurs
+ou des omissions.
+—Prévention de la fraude: La séparation des tâches et la traçabilité comptable
+rendent la fraude plus difficile.
+—Contrôle fiscal et social: Base de calcul des impôts (IS, TVA) et des cotisations
+sociales.
+3.5 Rôle social (fonction de répartition)
+La comptabilité contribue à la répartition des richesses :
+—Détermination du résultat: Bénéfice ou perte, base de l’impôt sur les sociétés.
+—Distribution de dividendes: Rémunération des actionnaires.
+—Participation et intéressement: Calcul des primes pour les salariés.
+—Information des salariés: Le comité social et économique (CSE) examine les
+comptes annuels.
+—RSE: De plus en plus, la comptabilité doit intégrer des indicateurs sociaux et
+environnementaux (loi PACTE, directive CSRD).
+4. Les utilisateurs de l’information comptable (cartographie com-
+plète)
+4.1 Classification interne/externe
+Type Utilisateur Besoin d’information
+Internes
+Dirigeant Vision globale pour piloter la stratégie.
+Manager Rentabilité de son unité, budget.
+Salarié (via CSE) Partage des profits, pérennité de l’em-
+ploi.
+Actionnaire majori-
+taire
+Performance, dividendes.
+Contrôleur de gestion Analyse des écarts, reporting.
+Externes
+Banquier Capacité de remboursement, garanties.
+Investisseur potentiel Rentabilité future, risque.
+Fournisseur Solvabilité, délais de paiement.
+Client Pérennité du fournisseur (approvision-
+nement).
+État (fisc) Calcul de l’impôt, contrôle.
+INSEE Statistiques économiques.
+Concurrent Benchmarking (si comptes publics).
+Média/Public Information sur les grandes entreprises.
+4.2 Pyramide des besoins comptables (adaptation de Maslow)
+—Niveau 1 (base): Le fisc – besoins réglementaires (déclarations TVA, liasses fis-
+cales).
+—Niveau 2: Les banques et fournisseurs – besoins de solvabilité (bilan, ratios).
+8
+
+--- PAGE 10 ---
+—Niveau 3: Les dirigeants – besoins de gestion (comptabilité analytique, budgets).
+—Niveau 4: Les investisseurs – besoins de performance et de perspective (rentabilité,
+croissance).
+—Niveau 5 (sommet): La société civile – besoins de transparence sociétale (repor-
+ting ESG).
+5. Les principes comptables fondamentaux (analyse exhaustive)
+Les principes comptables sont les piliers sur lesquels repose la fiabilité des comptes.
+Ils sont définis par le PCG et le cadre conceptuel IFRS.
+5.1 Principe de continuité d’exploitation (going concern)
+—Définition: L’entreprise est présumée poursuivre normalement son activité dans
+un avenir prévisible (généralement 12 mois).
+—Conséquence: Les actifs sont évalués selon leur utilisation normale (et non en
+valeur de liquidation).
+—Dérogation: Silacontinuitéestmenacée(dépôtdebilan),onpasseencomptabilité
+de liquidation (valeurs estimées de réalisation).
+—Rôle de l’auditeur: L’auditeur doit évaluer le risque de non-continuité et en
+informer dans son rapport.
+Exemple concret
+Cas concret: Une entreprise a un résultat négatif pour la troisième année consécu-
+tive et ses capitaux propres sont devenus inférieurs à la moitié du capital social. Le
+principe de continuité d’exploitation est remis en cause. L’auditeur devra demander
+au dirigeant ses prévisions de trésorerie et ses plans de refinancement.
+5.2 Principe de permanence des méthodes
+—Définition: Les méthodes d’évaluation et de présentation des comptes doivent être
+les mêmes d’un exercice à l’autre.
+—Objectif: Permettre la comparaison des comptes dans le temps.
+—Dérogation possible: Changement justifié par un environnement économique
+nouveau ou une meilleure information. Le changement doit être expliqué dans l’an-
+nexe.
+—Exemples de méthodes: Amortissement linéaire ou dégressif, FIFO ou coût
+moyen pondéré pour les stocks.
+Exemple concret
+Illustration chiffrée: Année N : méthode A→résultat = 100 Année N+1 :
+méthode B→résultat = 120 Si l’entreprise change de méthode sans le justifier, la
+comparaison est faussée : l’augmentation de 20 peut être due à la méthode, pas à
+la performance réelle.
+9
+
+--- PAGE 11 ---
+5.3 Principe de prudence
+C’est le principe le plus typiquement comptable (et souvent le moins compris des
+non-initiés).
+—Définition: Il faut éviter de transférer sur l’avenir des risques ou des pertes pré-
+sents. On comptabilise les pertes probables, mais on ne comptabilise les gains que
+lorsqu’ils sont définitivement réalisés.
+—Traduction opérationnelle:
+—Dépréciations: Si un stock perd de la valeur, on enregistre une dépréciation
+(charge) même si la vente n’a pas encore eu lieu.
+—Provisions pour risques: Si un procès est en cours et probablement perdu,
+on provisionne.
+—Non-comptabilisation des plus-values latentes: Si un terrain a pris de
+la valeur, on ne l’enregistre pas tant qu’il n’est pas vendu.
+—Critique: Ce principe peut conduire à sous-évaluer systématiquement l’entreprise
+(asymétrie comptable).
+Exemple concret
+Cas pratique: Une entreprise a acheté un terrain 100. À la clôture, sa valeur vénale
+est estimée à 150.→En comptabilité, le terrain reste à 100 (pas de constatation
+de la plus-value). Un client est en contentieux pour une créance de 50. Le risque de
+non-paiement est estimé à 60%.→On enregistre une dépréciation (perte probable)
+de 50 * 60% = 30.
+5.4 Principe d’indépendance des exercices (cut-off)
+—Définition: On rattache les charges et les produits à l’exercice qu’ils concernent,
+indépendamment de leur date d’encaissement ou de paiement.
+—Conséquence: Création de comptes de régularisation (charges constatées d’avance,
+produits constatés d’avance, factures à établir, factures à recevoir).
+—Fondement: Comptabilité d’engagement (vs comptabilité de trésorerie).
+Exemple concret
+Comparaison:Comptabilité de trésorerie(non conforme au PCG pour les entre-
+prises commerciales) : - Vente en décembre N, encaissée en janvier N+1→produit
+en N+1.Comptabilité d’engagement(obligatoire) : - Vente en décembre N→pro-
+duit en N, avec une créance client au bilan.
+5.5 Principe des coûts historiques
+—Définition: Les biens sont enregistrés à leur valeur d’origine (coût d’acquisition
+ou coût de production). Cette valeur ne varie pas en fonction des fluctuations du
+marché (sauf dépréciation).
+—Justification: Objectivité (facture) et fiabilité.
+10
+
+--- PAGE 12 ---
+—Remiseencause:LesIFRSintroduisentlapossibilitéd’évaluationàlajustevaleur
+(fair value) pour certains actifs (instruments financiers, immeubles de placement).
+Exemple concret
+Illustration: Une machine achetée 10 000€en 2010. En 2024, une machine iden-
+tique coûte 15 000€. En comptabilité (coût historique), la machine reste à 10
+000€(sous déduction des amortissements). En juste valeur (IFRS), on pourrait la
+réévaluer à 12 000€, avec impact en capitaux propres.
+5.6 Principe de non-compensation
+—Définition: On ne doit pas compenser les actifs et les passifs, ni les charges et les
+produits.
+—Exemple: On ne peut pas déduire une dette fournisseur d’une créance client, même
+si c’est le même tiers. Les deux doivent figurer distinctement au bilan.
+—Objectif: Transparence et image fidèle.
+5.7 Principe d’importance relative (materiality)
+—Définition: Seules les informations significatives (par leur montant ou leur nature)
+doivent figurer dans les comptes.
+—Application: Permet de ne pas alourdir inutilement les états financiers.
+—Seuil: Dépend de la taille de l’entreprise. Pour une PME, 1 000€peut être signi-
+ficatif; pour une multinationale, 1 million€ne l’est pas forcément.
+—Rôleenaudit:L’auditeurdéfinitunseuildesignificationpourorientersestravaux.
+5.8 Synthèse des principes (tableau récapitulatif)
+Principe Objectif Conséquence opérationnelle
+Continuité Stabilité Pas d’évaluation en liquidation
+Permanence Comparabilité Méthodes constantes d’un an sur
+l’autre
+Prudence Sincérité Pertes probables comptabilisées,
+profits non
+Indépendance Juste période Rattachement des
+charges/produits à l’exercice
+Coûts historiques Objectivité Enregistrement au coût d’acquisi-
+tion
+Non-compensation Transparence Actifs et passifs présentés séparé-
+ment
+Importance relative Lisibilité Seuls les éléments significatifs
+sont détaillés
+11
+
+--- PAGE 13 ---
+6. Les documents de synthèse : anatomie détaillée
+6.1 Le bilan
+Le bilan est unephotographiedu patrimoine à un instant donné (généralement le
+31/12).
+—Actif: Ce que l’entreprisepossède(emplois de fonds). Classé par ordre de liquidité
+croissante (du moins liquide au plus liquide) :
+—Actif immobilisé(immobilisations incorporelles, corporelles, financières) –
+durée > 1 an.
+—Actif circulant(stocks, créances) – durée < 1 an.
+—Trésorerie(disponibilités).
+—Passif: Ce que l’entreprisedoit(ressources de financement). Classé par ordre
+d’exigibilité croissante :
+—Capitaux propres(ressources internes : capital, réserves, résultat) – non
+exigibles.
+—Provisions(risques et charges).
+—Dettes(financières,fournisseurs,fiscalesetsociales)–exigiblesàplusoumoins
+court terme.
+Équation fondamentale:
+ACTIF = PASSIF
+Ou encore :
+ACTIF = CAPITAUX PROPRES + DETTES
+Exemple concret
+Bilan simplifié de la SARL "Les Délices" au 31/12/N(en k€)
+ACTIF PASSIF
+Poste Montant Poste Montant
+Immobilisations corporelles 200 Capital social 100
+Stocks 80 Réserves 50
+Créances clients 120 Résultat de l’exercice 30
+Trésorerie 30 Dettes financières 150
+Dettes fournisseurs 80
+Dettes fiscales 20
+Total Actif 430 Total Passif 430
+6.2 Le compte de résultat
+Le compte de résultat est unfilmde l’activité sur l’exercice. Il récapitule les charges
+et les produits, et dégage le résultat (bénéfice ou perte).
+—Produits: Ce qui a été gagné (ventes, prestations, produits financiers).
+—Charges: Ce qui a été consommé (achats, salaires, impôts, amortissements).
+12
+
+--- PAGE 14 ---
+Structure(par nature, selon le PCG) :
+Poste Exercice N Exercice N-1
+Produits d’exploitation
+Ventes de marchandises 1 000 950
+Production vendue (biens/services) 500 480
+Charges d’exploitation
+Achats consommés (400) (380)
+Charges de personnel (300) (290)
+Dotations aux amortissements (100) (95)
+Résultat d’exploitation 700 665
+Produits financiers 20 15
+Charges financières (30) (25)
+Résultat courant avant impôt 690 655
+Produits exceptionnels 10 5
+Charges exceptionnelles (5) (10)
+Résultat avant impôt 695 650
+Impôt sur les bénéfices (200) (190)
+RÉSULTAT NET 495 460
+6.3 L’annexe
+L’annexe est leguide de lecturedes comptes. Elle contient :
+— Lesrègles et méthodes comptablesappliquées.
+— Letableau des immobilisationset des amortissements.
+— Letableau des provisions.
+— L’état des échéances des créances et des dettes.
+— Lemontant des engagements hors bilan(ex : cautions données).
+— Lacomposition du capitalet des filiales.
+— Lesinformations sur les parties liées.
+— Lesévénements postérieurs à la clôture.
+7. La normalisation comptable (architecture institutionnelle)
+7.1 En France : l’ANC et le PCG
+—Autorité des Normes Comptables (ANC): Créée en 2009 (fusion du CNC et
+du CRC). Élabore les règlements comptables applicables en France (PCG).
+—Plan Comptable Général (PCG): Recueil des règles. Structure :
+— Titre I : Objet et principes de la comptabilité.
+— Titre II : Définition des actifs, passifs, charges et produits.
+— Titre III : Règles d’évaluation.
+— Titre IV : Tenue, structure et fonctionnement des comptes.
+— Titre V : Documents de synthèse.
+—Compagnie Nationale des Commissaires aux Comptes (CNCC)etOrdre
+des Experts-Comptables (OEC): Publient des recommandations profession-
+nelles.
+13
+
+--- PAGE 15 ---
+7.2 Au niveau international : l’IASB et les normes IFRS
+—International Accounting Standards Board (IASB): Organisme privé basé
+à Londres. Élabore les normes IFRS.
+—IFRS Foundation: Supervise l’IASB.
+—IFRS Interpretations Committee: Publie des interprétations (IFRIC).
+—Adoption dans l’UE: Les normes IFRS doivent êtreendosséespar la Commis-
+sion européenne pour être applicables (processus de « carve-out » possible).
+7.3 Comparaison PCG / IFRS
+Critère PCG (France) IFRS
+Philosophie Juridique, fiscale, prudente Économique, orientée inves-
+tisseur, juste valeur
+Bilan Privilégie le coût historique Possibilité de juste valeur
+pour certains actifs
+Compte de résultat Classification par nature Classification par fonction
+possible
+Goodwill Amortissable sur durée
+d’usage (max 10 ans)
+Non amorti, test de dépré-
+ciation annuel
+Frais de R&D En principe en charges, sauf
+projets avancés
+Activation obligatoire si cri-
+tères remplis
+Contrats de loca-
+tion
+Distinction location-
+financement / location
+simple
+Un seul modèle (droit d’uti-
+lisation) depuis IFRS 16
+Public concerné PME, ETI, fisc Sociétés cotées, grands
+groupes
+8. La notion d’image fidèle (true and fair view)
+8.1 Définition
+L’image fidèle est le concept anglo-saxon detrue and fair view(Royaume-Uni) oufair
+presentation(IFRS). Elle implique que les comptes doivent donner une information :
+—Sincère: Correspondant à la réalité économique sous-jacente.
+—Régulière: Conforme aux règles en vigueur.
+—Fidèle: Sans intention de tromper le lecteur.
+8.2 Comment l’atteindre?
+L’image fidèle ne s’obtient pas par la simple application mécanique des règles. Elle
+nécessite :
+— Le respect des principes comptables.
+— Une information complète dans l’annexe.
+— Le cas échéant, unedérogationaux règles si leur application stricte ne permet pas
+d’obtenir une image fidèle (très rare, doit être justifiée).
+— Lejugement professionneldu comptable et de l’auditeur.
+14
+
+--- PAGE 16 ---
+8.3 Rôle de l’auditeur
+L’auditeur certifie que les comptes sontréguliers, sincères et donnent une image
+fidèledu résultat et du patrimoine. C’est le cœur de sa mission.
+9. Les limites de la comptabilité (pour un usage critique)
+Même un auditeur doit connaître les limites de la comptabilité pour ne pas être naïf.
+1.Caractère historique: La comptabilité regarde le passé, pas l’avenir. Elle ne
+prédit pas les crises.
+2.Non-priseencomptedecertainsactifsimmatériels:Capitalhumain,marque,
+notoriété, brevets "maison" ne figurent pas au bilan (sauf s’ils ont été acquis).
+3.Estimations et jugements: De nombreux postes reposent sur des estimations
+(durée d’amortissement, provisions, dépréciations) qui peuvent être biaisées.
+4.Manipulations possibles:Earnings management– gestion du résultat pour lisser
+les bénéfices ou atteindre des objectifs.
+5.Complexité: Les états financiers sont de plus en plus complexes, difficiles à lire
+pour les non-initiés.
+6.Coût: Une comptabilité de qualité a un coût (temps, personnel, systèmes).
+7.Décalage avec la valeur de marché: La valeur comptable (capitaux propres)
+est souvent très différente de la valeur de marché de l’entreprise (capitalisation
+boursière).
+10. Lien avec l’audit financier
+La comptabilité est la matière première de l’audit. Sans comptabilité, pas d’audit.
+Mais l’audit, en retour, renforce la comptabilité :
+—Vérification: L’auditeur contrôle l’exactitude et la conformité des enregistrements.
+—Sécurisation: La présence d’un auditeur dissuade les fraudes et les erreurs.
+—Amélioration: Les recommandations de l’auditeur (lettre de recommandations)
+aident l’entreprise à améliorer son système comptable et son contrôle interne.
+—Certification: L’opinion de l’auditeur donne confiance aux tiers (investisseurs,
+banques) dans la fiabilité des comptes.
+✄Approfondissement technique
+Le triangle comptabilité - contrôle interne - audit :
+—Comptabilité: Produit l’information financière.
+—Contrôle interne: S’assure de la fiabilité du processus de production.
+—Audit: Vérifie a posteriori la qualité du produit et du processus.
+Ces trois éléments sont indissociables.
+15
+
+--- PAGE 17 ---
+Objectifs vérifiés
+Exercice
+Exercice 1 : Quiz de connaissances fondamentales (15 min)
+Répondez par Vrai ou Faux, et justifiez en une phrase.
+1. La comptabilité en partie double a été inventée par les Français au XVIIe
+siècle.
+2. Le bilan est un document qui présente les flux de l’exercice.
+3. Le principe de prudence impose de comptabiliser les plus-values latentes.
+4. L’annexe fait partie des documents de synthèse obligatoires.
+5. Les normes IFRS sont obligatoires pour toutes les entreprises françaises.
+6. La comptabilité permet de détecter toutes les fraudes.
+7. Le compte de résultat explique la variation de la trésorerie.
+8. Un actionnaire est un utilisateur externe de l’information comptable.
+9. Le principe d’indépendance des exercices signifie qu’on comptabilise les
+charges quand on les paie.
+10. L’ANC est l’organisme qui émet les normes IFRS.
+Corrigé :
+1.Faux. Elle a été codifiée par Luca Pacioli en Italie en 1494.
+2.Faux. Le bilan présente le patrimoine à un instant donné. Le compte de résultat
+présente les flux.
+3.Faux. Le principe de prudence interdit de comptabiliser les profits non réalisés (dont
+les plus-values latentes).
+4.Vrai. L’annexe complète et commente le bilan et le compte de résultat.
+5.Faux. Uniquement pour les comptes consolidés des sociétés cotées.
+6.Faux. Elle aide à en détecter certaines, mais n’est pas infaillible (collusion, fraude
+complexe).
+7.Faux. Le tableau des flux de trésorerie explique la variation de trésorerie.
+8.Vrai. L’actionnaire est externe (sauf s’il est aussi dirigeant).
+9.Faux. C’est le contraire : on rattache les charges à l’exercice qu’elles concernent,
+indépendamment du paiement.
+10.Faux. L’ANC est française. L’IASB émet les IFRS.
+16
+
+--- PAGE 18 ---
+Exercice
+Exercice 2 : Cas pratique – Construction d’un bilan simple (20 min)
+La société "Techno Plus" vous fournit les éléments suivants au 31/12/N (en k€) :
+— Capital social : 200
+— Emprunt bancaire (remboursable dans 5 ans) : 150
+— Immobilisations corporelles (valeur brute) : 300
+— Stocks : 80
+— Créances clients : 120
+— Dettes fournisseurs : 70
+— Trésorerie (banque) : 40
+— Réserves : 60
+— Résultat de l’exercice (bénéfice) : 50
+— Amortissements cumulés (à déduire des immobilisations) : 100
+— Provisions pour risques : 10
+— Dettes fiscales et sociales : 20
+Travail à faire :1. Présentez le bilan de la société (actif et passif) en respectant
+les grandes rubriques. 2. Vérifiez l’équilibre Actif = Passif. 3. Calculez le montant
+des capitaux propres. 4. Que pouvez-vous dire de la structure financière?
+Corrigé :1. Bilan de Techno Plus au 31/12/N (en k€) :
+ACTIF PASSIF
+Actif immobilisé Capitaux propres
+Immobilisations corporelles brutes 300 Capital social 200
+(- Amortissements cumulés) (100) Réserves 60
+Immobilisations nettes 200 Résultat de l’exercice 50
+Total capitaux propres 310
+Actif circulant Provisions
+Stocks 80 Provisions pour risques 10
+Créances clients 120
+Trésorerie Dettes
+Disponibilités 40 Emprunt bancaire (LT) 150
+Dettes fournisseurs 70
+Dettes fiscales et sociales 20
+TOTAL ACTIF 440 TOTAL PASSIF 560 ?
+ATTENTION :Mon calcul ci-dessus est volontairement erroné pour vous faire ré-
+agir. Reprenons :
+Calcul correct :
+ACTIF :- Immobilisations nettes : 300 - 100 = 200 - Stocks : 80 - Créances clients :
+120 - Trésorerie : 40Total Actif= 200 + 80 + 120 + 40 =440
+PASSIF :- Capital : 200 - Réserves : 60 - Résultat : 50 - Provisions : 10 - Emprunt :
+150 - Dettes fournisseurs : 70 - Dettes fiscales : 20Total Passif= 200+60+50+10+150+70+20
+=560
+Problème :440 560. Il y a une erreur de 120. C’est le principe de base : le bilan
+17
+
+--- PAGE 19 ---
+doit toujours équilibrer. Où est l’erreur?
+En réalité, j’ai oublié de prendre en compte que lesimmobilisations nettessont déjà
+après amortissements. Le calcul du passif est correct. Donc pour équilibrer, il manque un
+élément à l’actif ou un élément est en trop au passif.
+Vérifions : La différence est de 120 (560-440). Cela correspond peut-être à unecréance
+sur les actionnaires? Non, pas dans les données.
+En fait, l’erreur est ailleurs : si le résultat est de 50, il est déjà inclus dans les capitaux
+propres. Le total des capitaux propres est Capital + Réserves + Résultat = 200+60+50
+= 310.
+Passif total = 310 (CP) + 10 (provisions) + 150 (emprunt) + 70 (fournisseurs) + 20
+(fiscales) = 560.
+Donc Actif = 440, Passif = 560→déséquilibre de 120.
+Cela signifie qu’il manque un actif de 120 ou qu’une dette est surestimée. Peut-être
+que les "créances clients" sont de 240 et non 120? Ou qu’il y a des " valeurs mobilières
+de placement" non mentionnées?
+L’exercice montre l’importance de la cohérence : si les données sont justes, le bilan doit
+équilibrer. Ici, l’énoncé est probablement cohérent si on ajoute une ligne "Disponibilités"
+plus élevée.
+Pour respecter l’équilibre, on peut considérer que la trésorerie est de 160 au lieu de 40.
+Alors : Actif = 200 + 80 + 120 + 160 = 560. Passif = 560. Ça marche.
+Mais l’exercice visait à vous faire manipuler les chiffres.
+Conclusion pédagogique :Toujours vérifier l’équation fondamentale!
+Exercice
+Exercice 3 : Identification des parties prenantes (10 min)
+Classez les acteurs suivants en utilisateurs internes (I) ou externes (E) :
+1. Un analyste financier de la banque BNP Paribas.
+2. Le DRH de l’entreprise.
+3. Un journaliste du journal "Les Échos".
+4. Un membre du comité d’entreprise.
+5. L’inspecteur des impôts.
+6. Un concurrent.
+7. Le responsable du service comptable.
+8. Un fournisseur historique.
+9. Un actionnaire minoritaire.
+10. L’auditeur externe.
+Corrigé :
+1. E (il travaille pour la banque, externe à l’entreprise)
+2. I
+3. E
+4. I (même s’il représente les salariés, il est interne à l’entreprise)
+5. E
+18
+
+--- PAGE 20 ---
+6. E
+7. I
+8. E
+9. E
+10. E (l’auditeur externe est un prestataire, donc externe, même s’il a accès à toutes les
+informations)
+Exercice
+Exercice 4 : Application des principes comptables (15 min)
+Pour chaque situation, indiquez quel(s) principe(s) comptable(s) est(sont) en jeu et
+comment il faudrait comptabiliser l’opération.
+Situation A: Le 28 décembre N, l’entreprise a expédié des marchandises à un
+client pour 10 000€. La facture est datée du 28/12/N. Le client paiera le 15 janvier
+N+1. Le service comptable hésite à comptabiliser la vente en N ou en N+1.
+Situation B: L’entreprise a acheté une machine le 01/10/N pour 24 000€(durée
+d’utilisation prévue : 4 ans). Le comptable veut passer un amortissement sur l’année
+N. Est-ce correct? Si oui, pour quel montant?
+Situation C: L’entreprise possède un stock de matières premières achetées 50 000
+€. À la clôture, le cours mondial a baissé, et la valeur de remplacement n’est plus
+que de 42 000€. Le comptable ne veut rien changer car la baisse n’est peut-être
+que temporaire.
+Situation D: Pour simplifier, le comptable propose de ne présenter au bilan que
+la différence entre les créances clients (100 000€) et les dettes fournisseurs (60 000
+€), soit un solde "créances nettes" de 40 000€.
+Situation E: L’entreprise a changé de méthode d’évaluation des stocks (passage
+du FIFO au coût moyen pondéré). Le résultat augmente de 15 000€grâce à ce
+changement. Le comptable veut le mentionner simplement dans un coin de la liasse
+fiscale.
+Corrigé :Situation A: Principe d’indépendance des exercices. La vente a
+été réalisée (transfert de propriété) en N, donc le produit doit être comptabilisé en N,
+avec création d’une créance client. Le fait d’être payé en N+1 est sans incidence sur le
+rattachement à l’exercice N.
+Situation B: Principe d’indépendance des exercices et principe de prudence (l’amor-
+tissement est une dépréciation systématique). L’amortissement doit commencer à la date
+de mise en service (01/10/N). Calcul : 24 000 / 4 = 6 000€par an. Pour N, seulement
+3 mois : 6 000 * 3/12 = 1 500€.
+Situation C: Principe de prudence. La perte de valeur, même temporaire, doit être
+constatée. Il faut comptabiliser une dépréciation des stocks de 8 000€(50 000 - 42 000)
+en charge.
+Situation D: Principe de non-compensation. C’est interdit. Il faut présenter distinc-
+tement les créances (à l’actif) et les dettes (au passif). Le bilan serait trompeur sinon.
+Situation E: Principe de permanence des méthodes. Un changement de méthode est
+possible, mais il doit être justifié (par exemple, meilleure information) et surtout, il doit
+être expliqué dans l’annexe, avec mention de l’incidence sur le résultat. Le cacher est une
+faute.
+19
+
+--- PAGE 21 ---
+QCM de validation
+QCM de validation – 20 questions (30 min)
+1. La comptabilité en partie double a été formalisée par :
+a) Colbert
+b) Luca Pacioli
+c) Napoléon
+d) L’IASB
+2. Le bilan a pour objectif de présenter :
+a) La performance de l’entreprise sur un exercice
+b) La situation patrimoniale à un instant donné
+c) Les flux de trésorerie
+d) Les flux de l’exercice
+3. Le principe de prudence implique :
+a) De comptabiliser les profits dès qu’ils sont probables
+b) De comptabiliser les pertes dès qu’elles sont probables
+c) De toujours amortir les immobilisations
+d) De ne pas changer de méthodes comptables
+4. Parmi les documents suivants, lequel ne fait pas partie des états fi-
+nanciers de synthèse?
+a) Le bilan
+b) Le compte de résultat
+c) Le tableau de bord des ventes
+d) L’annexe
+5. Les normes IFRS sont obligatoires pour :
+a) Toutes les entreprises françaises
+b) Les sociétés cotées en Europe pour leurs comptes consolidés
+c) Les PME uniquement
+d) Les associations
+6. Un fournisseur est un utilisateur :
+a) Interne
+b) Externe
+c) Régulateur
+d) Interne et externe
+7. Le principe de continuité d’exploitation suppose que :
+a) L’entreprise va être liquidée
+b) L’entreprise va poursuivre son activité dans un avenir prévisible
+c) L’entreprise va changer de métier
+d) L’entreprise va fusionner
+8. L’organisme français qui émet les normes comptables est :
+a) L’IASB
+b) L’ANC
+c) La CNCC
+d) L’AMF
+9. La notion d’image fidèle signifie que les comptes doivent être :
+a) Conformes à la loi uniquement
+b) Réguliers, sincères et fidèles
+c) Uniquement sincères Uniquement réguliers
+10. Le compte de résultat présente :
+a) Les dettes et les créances
+b) Les charges et les produits
+c) Les flux de trésorerie
+d) Les immobilisations
+11. Le principe d’indépendance des exercices conduit à :
+a) Enregistrer les charges quand on les paie
+b) Enregistrer les produits quand on les encaisse
+c) Rattacher les charges et produits à l’exercice qu’ils concernent Ne pas faire
+de stocks
+12. L’équation fondamentale du bilan est :
+a) Actif = Résultat + Dettes
+b) Actif = Passif
+c) Actif = Capitaux propres + Résultat
+d) Actif = Trésorerie
+13. Une dépréciation de stock est comptabilisée en application du prin-
+cipe de :
+a) Permanence des méthodes
+b) Prudence
+c) Non-compensation
+d) Coûts historiques
+14. L’annexe comptable a pour rôle de :
+a) Remplacer le bilan
+b) Compléter et commenter les informations du bilan et du compte de résultat
+c) Présenter les flux de trésorerie Être facultative
+15. La comptabilité en partie double signifie que :
+a) Chaque opération est enregistrée deux fois
+b) Chaque opération a au moins un débit et un crédit
+c) On utilise deux livres comptables On double les écritures pour plus de sécurité
+16. Lequel de ces éléments n’est pas un principe comptable fondamental?
+a) Principe de prudence
+b) Principe de non-compensation
+c) Principe de consolidation
+d) Principe de continuité d’exploitation
+17. Un investisseur potentiel s’intéresse principalement :
+a) À la solvabilité à court terme
+b) À la rentabilité future et aux perspectives de croissance
+c) Aux dettes fournisseurs À la masse salariale
+18. L’objectif principal de la normalisation comptable est :
+a) D’augmenter les impôts
+b) D’harmoniser les pratiques pour faciliter les comparaisons
+c) De compliquer la vie des entreprises De favoriser les grands groupes
+19. Le contrôle fiscal se base sur :
+a) Les seules déclarations fiscales
+b) La comptabilité de l’entreprise
+c) Les dires du dirigeant Les rumeurs du marché
+20. En tant que futur auditeur, vous devez considérer la comptabilité
+comme :
+a) Une simple formalité
+b) La matière première de votre travail de vérification
+c) Un domaine réservé aux experts-comptables Un sujet sans importance pour
+l’audit
+20
+
+--- PAGE 22 ---
+Corrigé :Corrigé du QCM :1-b, 2-b, 3-b, 4-c, 5-b, 6-b, 7-b, 8-b, 9-b, 10-b,
+11-c, 12-b, 13-b, 14-b, 15-b, 16-c, 17-b, 18-b, 19-b, 20-b.
+Analyse des résultats :- 18 à 20 bonnes réponses : Excellent, vous maîtrisez les
+fondamentaux. - 15 à 17 bonnes réponses : Bien, mais quelques lacunes à combler. - 12 à
+14 bonnes réponses : Moyen, revoir le cours en détail. - Moins de 12 : Insuffisant, il est
+impératif de retravailler cette UA.
+21
+
+--- PAGE 23 ---
+Ressources documentaires
+Ressources documentaires et outils
+Textes officiels (à télécharger et conserver)
+—Plan Comptable Général(PCG) – version intégrale :https://www.anc.
+gouv.fr
+—Cadre conceptuel IFRS(en français) :https://www.ifrs.org
+—Code de commerce– Livre Ier, Titre II : De la comptabilité :https:
+//www.legifrance.gouv.fr
+—NormeISA200(Objectifsgénérauxdel’auditeur)–pourlelienavecl’audit.
+Ouvrages de référence
+—Comptabilité générale– Béatrice et Francis Grandguillot (Ed. Gualino) –
+Collection Express, idéal pour les révisions.
+—Introduction à la comptabilité– Jean-Luc Siegwart, Laurent Cappelletti
+(Ed. Dunod) – Approche managériale.
+—Comprendre toute la comptabilité– Marie-Hélène Bérard (Ed. Eyrolles)
+– Très pédagogique.
+—Financial Accounting– Robert Libby, Patricia Libby, Frank Hodge (Ed.
+McGraw-Hill) – Référence internationale (en anglais).
+Sites web et chaînes recommandées
+—Compta Online:https://www.compta-online.com– Forum, cours, actua-
+lités.
+—Expert-Comptable TV:https://www.expert-comptable.tv– Vidéos
+pédagogiques.
+—YouTube – Chaîne "Comptabilité Facile": Plus de 200 vidéos sur les
+bases.
+—IFE (Institut Français des Experts Comptables): Publications tech-
+niques.
+Outils pratiques
+—Modèle de bilan et compte de résultat sous Excel(fichier fourni en
+annexe)
+—Glossaire interactifdes termes comptables (QR code vers application)
+—Fiches de révision imprimables(disponibles en fin d’UA)
+Pour aller plus loin (veille professionnelle)
+— Abonnez-vous à lalettre de l’Autorité des Normes Comptables.
+— Suivez lesflash IFRSde Deloitte ou EY (gratuits).
+— Lisez la revue« Analyse Financière »de la SFAF.
+22
+
+--- PAGE 24 ---
+Fiche de synthèse
+Fiche de synthèse : Les 20 points clés à retenir
+1. La comptabilité est un système d’information qui produit uneimage fidèle
+du patrimoine et du résultat.
+2. Elle a été formalisée parLuca Paciolien 1494 (partie double).
+3. Ses rôles : information, preuve, gestion, contrôle, social.
+4. Utilisateurs : internes (dirigeants, salariés) et externes (banques, État, inves-
+tisseurs).
+5. Lebilan= photo du patrimoine à un instant T (Actif = Passif).
+6. Lecompte de résultat= film de l’activité (Charges - Produits = Résultat).
+7. L’annexecomplète et commente.
+8. 7 principes fondamentaux : continuité, permanence, prudence, indépendance,
+coûts historiques, non-compensation, importance relative.
+9. Le principe deprudence: comptabiliser les pertes probables, pas les profits
+potentiels.
+10. L’indépendance des exercices: rattachement à l’exercice concerné (comp-
+tabilité d’engagement).
+11. Lanormalisation: ANC (France) / IASB (International).
+12.IFRSvs PCG : juste valeur vs coût historique, philosophie différente.
+13. L’image fidèleest l’objectif suprême (régularité + sincérité).
+14. Limites de la comptabilité : passé, actifs immatériels, estimations, manipula-
+tions possibles.
+15. L’auditest le contrôle des comptes pour renforcer leur fiabilité.
+16. Lebilandistingue actif immobilisé (LT) et actif circulant (CT).
+17. Lepassifdistingue capitaux propres (non exigibles) et dettes (exigibles).
+18. Lesamortissementstraduisent l’usure du temps.
+19. Lesdépréciationstraduisent des pertes de valeur (hors usure).
+20. Lapartie double: chaque opération affecte au moins deux comptes (débit
+= crédit).
+Équations à connaître par cœur :
+— Actif = Passif
+— Passif = Capitaux propres + Dettes
+— Résultat = Produits - Charges
+Annexe : Lexique des 50 termes essentiels
+23
+
+--- PAGE 25 ---
+Terme Définition
+Actif Élément identifiable du patrimoine ayant une valeur écono-
+mique positive (ce que l’entreprise possède).
+Amortissement Constatation comptable de la dépréciation irréversible d’un
+actif due au temps ou à l’usage.
+Annexe Document complétant et commentant le bilan et le compte de
+résultat.
+Bilan État de synthèse présentant le patrimoine à une date donnée.
+Capitaux
+propres
+Ressourcesapportéesparlesassociésougénéréesparl’activité
+(capital, réserves, résultat).
+Charge Consommation de ressources de l’entreprise (achats, salaires,
+impôts).
+Compte de ré-
+sultat
+État de synthèse récapitulant les charges et les produits de
+l’exercice.
+Comptabilité
+d’engagement
+Méthode comptable qui enregistre les opérations au mo-
+ment de leur réalisation, indépendamment de leur encaisse-
+ment/paiement.
+Comptabilité de
+trésorerie
+Méthode qui enregistre les opérations au moment des encais-
+sements/décaissements.
+Continuité d’ex-
+ploitation
+Principe selon lequel l’entreprise est présumée poursuivre son
+activité.
+Contrôle interne Ensemble des procédures mises en place pour assurer la fiabi-
+lité de l’information financière.
+Coût historique Valeur d’entrée d’un actif (prix d’acquisition).
+Créance Droit que détient l’entreprise sur un tiers (client, État).
+Débit Colonne de gauche d’un compte (augmentation des actifs ou
+diminution des passifs).
+Crédit Colonne de droite d’un compte (augmentation des passifs ou
+diminution des actifs).
+Dépréciation Constatation d’une perte de valeur réversible (contrairement
+à l’amortissement).
+Dette Obligation de l’entreprise envers un tiers.
+Dividende Part du bénéfice distribuée aux actionnaires.
+Exercice comp-
+table
+Période (généralement 12 mois) pour laquelle on établit les
+comptes.
+Goodwill (ou
+écart d’acquisi-
+tion)
+Survaleur payée lors de l’acquisition d’une entreprise.
+IASB International Accounting Standards Board (émet les IFRS).
+IFRS International Financial Reporting Standards (normes comp-
+tables internationales).
+Image fidèle Objectif des comptes : régularité, sincérité, fidélité.
+Immobilisation Actif destiné à servir durablement dans l’entreprise.
+Importance
+relative (maté-
+rialité)
+Seuil au-delà duquel une information doit figurer dans les
+comptes.
+24
+
+--- PAGE 26 ---
+Terme Définition
+Indépendance
+des exercices
+Principe de rattachement des charges et produits à l’exercice
+concerné.
+Justevaleur(fair
+value)
+Valeur de marché d’un actif ou d’un passif.
+Liasse fiscale Ensemble des documents (bilan, compte de résultat, annexes)
+déposés au fisc.
+Non-
+compensation
+Interdiction de compenser actifs et passifs, charges et pro-
+duits.
+Normalisation Processus d’harmonisation des règles comptables.
+Partie double Principe selon lequel toute opération affecte au moins deux
+comptes.
+Passif Ensemble des ressources de l’entreprise (capitaux propres +
+dettes).
+PCG Plan Comptable Général (normes françaises).
+Permanence des
+méthodes
+Principe de constance des méthodes comptables d’un exercice
+à l’autre.
+Produit Ressource générée par l’activité (ventes, prestations).
+Provision Constatation d’une perte ou d’une charge probable.
+Prudence Principe de comptabilisation des pertes probables, pas des
+profits potentiels.
+Rattachement Voir Indépendance des exercices.
+Régularisation Opération de fin d’exercice pour respecter le principe d’indé-
+pendance.
+Résultat net Bénéfice ou perte de l’exercice.
+Seuil de signifi-
+cation
+Voir Importance relative.
+Sincérité Qualité des comptes qui ne contiennent pas d’intention de
+tromper.
+Stock Actif détenu pour être vendu ou consommé dans le cycle d’ex-
+ploitation.
+Tableau des flux
+de trésorerie
+État de synthèse expliquant la variation de trésorerie (pas
+obligatoire en France pour les comptes individuels).
+Trésorerie Ensemble des disponibilités (banque, caisse).
+TVA Taxe sur la Valeur Ajoutée, impôt indirect collecté par l’en-
+treprise.
+Utilisateurs
+internes
+Dirigeants, salariés, managers.
+Utilisateurs ex-
+ternes
+Investisseurs, banques, fournisseurs, État.
+Valeur nette
+comptable
+Valeur d’origine moins amortissements/dépréciations.
+VNC Voir Valeur nette comptable.
+25
+
+--- PAGE 27 ---
+Évaluation de l’UA
+Merci d’avoir étudié cette Unité d’Apprentissage. Avant de passer à l’UA 1.2, assurez-
+vous de : - [ ] Savoir définir la comptabilité en vos propres termes - [ ] Connaître les
+7 principes comptables fondamentaux - [ ] Savoir construire un bilan simple - [ ] Avoir
+obtenu au moins 15/20 au QCM - [ ] Avoir complété la fiche de synthèse personnelle
+Prochaine étape :UA 1.2 – Le bilan comptable : structure et lecture.
+26

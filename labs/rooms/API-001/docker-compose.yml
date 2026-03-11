@@ -1,0 +1,12 @@
+services:
+  payments-api:
+    build: ./api
+    image: pmp-ctf-api001
+    ports:
+      - "15000:5000"
+    networks:
+      - api001-net
+
+networks:
+  api001-net:
+    driver: bridge

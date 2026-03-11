@@ -1,5 +1,3 @@
-version: '3.8'
-
 # Network configuration
 networks:
   monetic-network:
@@ -137,6 +135,92 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:latest
+    container_name: pmp-docker-socket-proxy
+    restart: unless-stopped
+    environment:
+      - CONTAINERS=1
+      - IMAGES=1
+      - NETWORKS=1
+      - INFO=1
+      - VERSION=1
+      - POST=1
+      - DELETE=1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - monetic-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  lab-orchestrator:
+    build:
+      context: .
+      dockerfile: backend/lab-orchestrator/Dockerfile
+    container_name: pmp-lab-orchestrator
+    restart: unless-stopped
+    environment:
+      - PORT=8098
+      - LAB_ORCHESTRATOR_SECRET=${LAB_ORCHESTRATOR_SECRET}
+      - DOCKER_PROXY_URL=http://docker-socket-proxy:2375
+      - LAB_ENABLE_DOCKER_ACTIONS=${LAB_ENABLE_DOCKER_ACTIONS:-true}
+      - LAB_ACCESS_PROXY_BASE_PATH=${LAB_ACCESS_PROXY_BASE_PATH:-/lab}
+      - LAB_ATTACKBOX_CONTAINER_IMAGE=${LAB_ATTACKBOX_CONTAINER_IMAGE:-pmp-ctf-attackbox}
+      - LAB_CONTROL_NETWORK_NAME=${LAB_CONTROL_NETWORK_NAME:-pmp_monetic-network}
+    ports:
+      - "8098:8098"
+    networks:
+      - monetic-network
+    depends_on:
+      - docker-socket-proxy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8098/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  lab-access-proxy:
+    build:
+      context: .
+      dockerfile: backend/lab-access-proxy/Dockerfile
+    container_name: pmp-lab-access-proxy
+    restart: unless-stopped
+    environment:
+      - PORT=8099
+      - API_GATEWAY_URL=http://api-gateway:8000
+      - LAB_ACCESS_PROXY_BASE_PATH=${LAB_ACCESS_PROXY_BASE_PATH:-/lab}
+      - LAB_INTERNAL_PROXY_SECRET=${LAB_INTERNAL_PROXY_SECRET:-pmp-lab-proxy-internal-2026}
+      - INTERNAL_HSM_SECRET=${INTERNAL_HSM_SECRET}
+      - JWT_SECRET=${JWT_SECRET}
+      - LAB_PROXY_CACHE_TTL_MS=${LAB_PROXY_CACHE_TTL_MS:-15000}
+    ports:
+      - "8099:8099"
+    networks:
+      - monetic-network
+    depends_on:
+      - api-gateway
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8099/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   # ============================================
   # API GATEWAY
   # ============================================
@@ -155,6 +239,22 @@ services:
       - INTERNAL_HSM_SECRET=${INTERNAL_HSM_SECRET}
       - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS}
       - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS}
+      - LAB_MAX_ACTIVE_SESSIONS=${LAB_MAX_ACTIVE_SESSIONS:-20}
+      - LAB_DEFAULT_TTL_MINUTES=${LAB_DEFAULT_TTL_MINUTES:-120}
+      - LAB_EXTENSION_MINUTES=${LAB_EXTENSION_MINUTES:-60}
+      - LAB_MAX_EXTENSIONS=${LAB_MAX_EXTENSIONS:-1}
+      - LAB_MAINTENANCE_INTERVAL_MS=${LAB_MAINTENANCE_INTERVAL_MS:-30000}
+      - LAB_RECONCILE_INTERVAL_MS=${LAB_RECONCILE_INTERVAL_MS:-120000}
+      - LAB_PROVISIONING_TIMEOUT_MINUTES=${LAB_PROVISIONING_TIMEOUT_MINUTES:-10}
+      - LAB_NETWORK_BASE_CIDR=${LAB_NETWORK_BASE_CIDR:-10.60.0.0/16}
+      - LAB_NETWORK_SUBNET_PREFIX=${LAB_NETWORK_SUBNET_PREFIX:-28}
+      - LAB_ORCHESTRATOR_URL=http://lab-orchestrator:8098
+      - LAB_ORCHESTRATOR_SECRET=${LAB_ORCHESTRATOR_SECRET}
+      - LAB_ORCHESTRATOR_PROVISION_TIMEOUT_MS=${LAB_ORCHESTRATOR_PROVISION_TIMEOUT_MS:-45000}
+      - LAB_ORCHESTRATOR_CONTROL_TIMEOUT_MS=${LAB_ORCHESTRATOR_CONTROL_TIMEOUT_MS:-10000}
+      - LAB_ACCESS_PROXY_BASE_PATH=${LAB_ACCESS_PROXY_BASE_PATH:-/lab}
+      - LAB_INTERNAL_PROXY_SECRET=${LAB_INTERNAL_PROXY_SECRET:-pmp-lab-proxy-internal-2026}
+      - UA_DISABLE_LOCKS=${UA_DISABLE_LOCKS:-true}
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - CARD_SERVICE_URL=http://sim-card-service:8001
       - POS_SERVICE_URL=http://sim-pos-service:8002
@@ -162,6 +262,7 @@ services:
       - SIM_CARD_SERVICE_URL=http://sim-card-service:8001
       - SIM_POS_SERVICE_URL=http://sim-pos-service:8002
       - SIM_ACQUIRER_SERVICE_URL=http://sim-acquirer-service:8003
+      - SIM_CLEARING_ENGINE_URL=http://sim-clearing-engine:8016
       - SIM_NETWORK_SWITCH_URL=http://sim-network-switch:8004
       - SIM_ISSUER_SERVICE_URL=http://sim-issuer-service:8005
       - SIM_AUTH_ENGINE_URL=http://sim-auth-engine:8006
@@ -180,6 +281,7 @@ services:
       - ./backend/api-gateway/src:/app/src
       - ./backend/api-gateway/package.json:/app/package.json
       - ./backend/api-gateway/tsconfig.json:/app/tsconfig.json
+      - ./backend/api-gateway/node_modules:/app/node_modules
     command: npm run dev
     networks:
       monetic-network: {}
@@ -193,6 +295,10 @@ services:
       sim-pos-service:
         condition: service_started
       sim-acquirer-service:
+        condition: service_started
+      sim-clearing-engine:
+        condition: service_started
+      lab-orchestrator:
         condition: service_started
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8000/health"]
@@ -316,6 +422,7 @@ services:
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - NETWORK_SWITCH_URL=http://sim-network-switch:8004
       - FRAUD_DETECTION_URL=http://sim-fraud-detection:8007
+      - SIM_CLEARING_ENGINE_URL=http://sim-clearing-engine:8016
     ports:
       - "8003:8003"
     networks:
@@ -325,6 +432,48 @@ services:
       - sim-network-switch
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8003/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    cap_drop:
+      - ALL
+
+  sim-clearing-engine:
+    image: pmp-sim-clearing-engine
+    pull_policy: never
+    container_name: pmp-sim-clearing-engine
+    restart: unless-stopped
+    user: "node:node"
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - PORT=8016
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - KEY_MANAGEMENT_URL=http://key-management:8012
+      - MTLS_ENABLED=false
+    ports:
+      - "8016:8016"
+    networks:
+      - monetic-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      key-management:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8016/health"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -526,6 +675,48 @@ services:
     cap_drop:
       - ALL
 
+  sim-monitoring-service:
+    image: pmp-sim-monitoring-service
+    pull_policy: never
+    container_name: pmp-monitoring-service
+    restart: unless-stopped
+    user: "node:node"
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - PORT=3005
+      - ELASTICSEARCH_HOST=http://elasticsearch:9200
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - KEY_MANAGEMENT_URL=http://key-management:8012
+      - MTLS_ENABLED=false
+      - SERVICE_HEALTH_POLL_MS=${SERVICE_HEALTH_POLL_MS:-15000}
+    ports:
+      - "3005:3005"
+    networks:
+      - monetic-network
+    depends_on:
+      - api-gateway
+      - key-management
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:3005/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    cap_drop:
+      - ALL
+
   # ============================================
   # SECURITY SERVICES
   # ============================================
@@ -618,7 +809,6 @@ services:
     pull_policy: never
     container_name: pmp-key-management
     restart: unless-stopped
-    user: "node:node"
     environment:
       - NODE_ENV=${NODE_ENV}
       - PORT=8012
@@ -663,6 +853,7 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV}
       - PORT=8013
+      - THREEDS_CHALLENGE_URL=http://localhost:3088
       - CTF_FLAG_SECRET=${CTF_FLAG_SECRET:-pmp_ctf_default_secret_change_in_prod}
     ports:
       - "8013:8013"
@@ -690,7 +881,19 @@ services:
         max-file: "3"
     cap_drop:
       - ALL
-      
+
+  3ds-challenge-ui:
+    image: pmp-3ds-challenge-ui
+    pull_policy: never
+    container_name: pmp-3ds-challenge-ui
+    restart: unless-stopped
+    ports:
+      - "3088:3088"
+    networks:
+      - monetic-network
+    depends_on:
+      - acs-simulator
+
   # ============================================
   # FRONTEND SERVICES (Temporarily Disabled)
   # ============================================
@@ -701,8 +904,12 @@ services:
     container_name: pmp-client-interface
     restart: unless-stopped
     environment:
-      - NODE_ENV=${NODE_ENV}
-      - REACT_APP_API_URL=http://localhost:8000
+      - NODE_ENV=production
+      - PORT=3000
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - INTERNAL_API_URL=http://api-gateway:8000
+      - NEXT_PUBLIC_PORTAL_URL=http://localhost:3000
+      - NEXT_PUBLIC_USER_CARDS_URL=http://localhost:3004
     ports:
       - "3001:3000"
     networks:
@@ -710,7 +917,7 @@ services:
     depends_on:
       - api-gateway
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:3000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -720,23 +927,20 @@ services:
     pull_policy: never
     container_name: pmp-portal
     restart: unless-stopped
-    user: root
-    working_dir: /app/frontend/portal
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - PORT=3000
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - INTERNAL_API_URL=http://api-gateway:8000
       - NEXT_PUBLIC_CTF_ATTACKBOX_URL=${NEXT_PUBLIC_CTF_ATTACKBOX_URL:-http://localhost:7681}
+      - INTERNAL_LAB_PROXY_URL=http://lab-access-proxy:8099
     ports:
       - "3000:3000"
-    volumes:
-      - .:/app
-      - /app/frontend/portal/node_modules
-      - ./frontend/shared:/app/frontend/portal/shared
-    command: sh -c "npm install && npm run dev"
     networks:
       - monetic-network
     depends_on:
       - api-gateway
+      - lab-access-proxy
 
   ctf-attackbox:
     build:
@@ -751,8 +955,6 @@ services:
       - CTF_FLAG_SECRET=${CTF_FLAG_SECRET:-pmp_ctf_default_secret_change_in_prod}
     ports:
       - "7681:7681"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       monetic-network: {}
       ctf-target-net:
@@ -784,8 +986,13 @@ services:
     container_name: pmp-user-cards-web
     restart: unless-stopped
     environment:
-      - NODE_ENV=${NODE_ENV}
+      - NODE_ENV=production
       - PORT=3000
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - INTERNAL_API_URL=http://api-gateway:8000
+      - NEXT_PUBLIC_PORTAL_URL=http://localhost:3000
+      - NEXT_PUBLIC_TPE_URL=http://localhost:3001
+      - NEXT_PUBLIC_USER_CARDS_URL=http://localhost:3004
     ports:
       - "3004:3000"
     networks:
@@ -802,6 +1009,13 @@ services:
       - "3082:3000"
     networks:
       - monetic-network
+    depends_on:
+      - sim-monitoring-service
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   hsm-web:
     image: pmp-hsm-web
@@ -809,8 +1023,10 @@ services:
     container_name: pmp-hsm-web
     restart: unless-stopped
     environment:
-      - NODE_ENV=${NODE_ENV}
+      - NODE_ENV=production
       - PORT=3000
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - INTERNAL_API_URL=http://api-gateway:8000
       - NEXT_PUBLIC_PORTAL_URL=http://localhost:3000
     ports:
       - "3006:3000"
@@ -843,6 +1059,7 @@ services:
     depends_on:
       - api-gateway
       - client-interface
+      - lab-access-proxy
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/health"]
       interval: 10s

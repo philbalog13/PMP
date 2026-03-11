@@ -14,7 +14,21 @@ import {
     RoutingDecision,
     BinConfig,
     ResponseCode,
+    ResponseCodes,
 } from '../models';
+
+type IssuerAuthorizationResponse = {
+    transactionId?: string;
+    approved?: boolean;
+    responseCode?: string;
+    responseMessage?: string;
+    message?: string;
+    authorizationCode?: string;
+    balance?: number;
+    cryptogram?: string;
+    _educational?: Record<string, unknown>;
+    [key: string]: unknown;
+};
 
 /**
  * BIN Routing Table (Pedagogical Configuration)
@@ -56,6 +70,37 @@ createCircuitBreaker('issuer-service');
  * Routing Service Class
  */
 export class RoutingService {
+    private normalizeIssuerResponse(
+        issuerResponse: IssuerAuthorizationResponse,
+        transaction: TransactionRequest,
+        routingDecision: RoutingDecision,
+        responseTime: number
+    ): TransactionResponse {
+        const responseCode = typeof issuerResponse.responseCode === 'string' &&
+            Object.prototype.hasOwnProperty.call(ResponseCodes, issuerResponse.responseCode)
+            ? issuerResponse.responseCode as ResponseCode
+            : '96';
+
+        return {
+            stan: transaction.stan,
+            acquirerReferenceNumber: transaction.acquirerReferenceNumber,
+            responseCode,
+            responseMessage: issuerResponse.responseMessage || issuerResponse.message || ResponseCodes[responseCode],
+            authorizationCode: issuerResponse.authorizationCode,
+            networkId: routingDecision.network,
+            issuerRoutingInfo: routingDecision.routingReason,
+            processedAt: new Date().toISOString(),
+            responseTime,
+            additionalData: {
+                approved: issuerResponse.approved,
+                transactionId: issuerResponse.transactionId,
+                balance: issuerResponse.balance,
+                cryptogram: issuerResponse.cryptogram,
+                _educational: issuerResponse._educational,
+            },
+        };
+    }
+
     /**
      * Identify card network from PAN
      */
@@ -174,7 +219,7 @@ export class RoutingService {
                 },
             };
 
-            const response = await executeWithCircuitBreaker<TransactionResponse>(
+            const response = await executeWithCircuitBreaker<IssuerAuthorizationResponse>(
                 'issuer-service',
                 {
                     method: 'POST',
@@ -185,21 +230,22 @@ export class RoutingService {
             );
 
             const responseTime = Date.now() - startTime;
+            const normalizedResponse = this.normalizeIssuerResponse(
+                response.data,
+                transaction,
+                routingDecision,
+                responseTime
+            );
 
             logger.info('Transaction routed successfully', {
                 stan: transaction.stan,
                 pan: this.maskPan(transaction.pan),
                 network: routingDecision.network,
-                responseCode: response.data.responseCode,
+                responseCode: normalizedResponse.responseCode,
                 responseTime,
             });
 
-            return {
-                ...response.data,
-                networkId: routingDecision.network,
-                issuerRoutingInfo: routingDecision.routingReason,
-                responseTime,
-            };
+            return normalizedResponse;
 
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';

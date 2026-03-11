@@ -1,360 +1,398 @@
-'use client';
+﻿'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { useAuth } from '../../auth/useAuth';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 import {
-    BarChart3,
-    TrendingUp,
-    Users,
-    CheckCircle2,
-    XCircle,
-    Award,
-    BookOpen,
-    ChevronRight,
-    RefreshCw
+  Award,
+  BarChart3,
+  BookOpen,
+  RefreshCw,
+  TrendingUp,
+  Users,
 } from 'lucide-react';
+import { useAuth } from '../../auth/useAuth';
+import {
+  NotionBadge,
+  NotionButton,
+  NotionCard,
+  NotionEmptyState,
+  NotionPill,
+  NotionProgress,
+  NotionSkeleton,
+} from '@shared/components/notion';
 
 interface WorkshopStats {
-    workshopId: string;
-    title: string;
-    studentsStarted: number;
-    studentsCompleted: number;
-    avgProgress: number;
-    avgTimeMinutes: number;
+  workshopId: string;
+  title: string;
+  studentsStarted: number;
+  studentsCompleted: number;
+  avgProgress: number;
+  avgTimeMinutes: number;
 }
 
 interface QuizStats {
-    quizId: string;
-    attempts: number;
-    uniqueStudents: number;
-    avgScore: number;
-    passRate: number;
+  quizId: string;
+  attempts: number;
+  uniqueStudents: number;
+  avgScore: number;
+  passRate: number;
 }
 
 interface BadgeDistribution {
-    badgeType: string;
-    name: string;
-    studentsEarned: number;
+  badgeType: string;
+  name: string;
+  studentsEarned: number;
 }
 
 interface LeaderboardEntry {
-    rank: number;
-    id: string;
-    username: string;
-    first_name: string;
-    last_name: string;
-    total_xp: number;
-    badge_count: number;
-    workshops_completed: number;
+  rank: number;
+  id: string;
+  username: string;
+  first_name: string;
+  last_name: string;
+  total_xp: number;
+  badge_count: number;
+  workshops_completed: number;
 }
 
 export default function InstructorAnalyticsPage() {
-    const { isLoading } = useAuth(true);
-    const [workshopStats, setWorkshopStats] = useState<WorkshopStats[]>([]);
-    const [quizStats, setQuizStats] = useState<QuizStats[]>([]);
-    const [badgeStats, setBadgeStats] = useState<BadgeDistribution[]>([]);
-    const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-    const [totalStudents, setTotalStudents] = useState(0);
-    const [dataLoading, setDataLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+  const { isLoading } = useAuth(true);
 
-    const fetchAnalytics = useCallback(async () => {
-        const token = localStorage.getItem('token');
-        if (!token) return;
+  const [workshopStats, setWorkshopStats] = useState<WorkshopStats[]>([]);
+  const [quizStats, setQuizStats] = useState<QuizStats[]>([]);
+  const [badgeStats, setBadgeStats] = useState<BadgeDistribution[]>([]);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [totalStudents, setTotalStudents] = useState(0);
+  const [dataLoading, setDataLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-        try {
-            setError(null);
-            const headers = { Authorization: `Bearer ${token}` };
-            const [cohortRes, leaderboardRes, studentsRes] = await Promise.all([
-                fetch('/api/progress/cohort', { headers }).catch(() => null),
-                fetch('/api/progress/leaderboard?limit=10', { headers }).catch(() => null),
-                fetch('/api/users/students?limit=50', { headers }).catch(() => null),
-            ]);
+  const fetchAnalytics = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
 
-            if (cohortRes?.ok) {
-                const data = await cohortRes.json();
-                const analytics = data.analytics || {};
-                setWorkshopStats(analytics.workshopProgress || []);
-                setQuizStats(analytics.quizPerformance || []);
-                setBadgeStats(analytics.badgeDistribution || []);
-                setTotalStudents(analytics.totalStudents || 0);
-            }
+    try {
+      setError(null);
 
-            if (leaderboardRes?.ok) {
-                const data = await leaderboardRes.json();
-                setLeaderboard(data.leaderboard || []);
-            }
+      const headers = { Authorization: `Bearer ${token}` };
+      const [cohortRes, leaderboardRes, studentsRes] = await Promise.all([
+        fetch('/api/progress/cohort', { headers }).catch(() => null),
+        fetch('/api/progress/leaderboard?limit=10', { headers }).catch(() => null),
+        fetch('/api/users/students?limit=50', { headers }).catch(() => null),
+      ]);
 
-            if (studentsRes?.ok) {
-                const data = await studentsRes.json();
-                const students = data.students || [];
-                if (totalStudents === 0) setTotalStudents(students.length);
-            }
-        } catch (e: any) {
-            const message = e instanceof Error ? e.message : 'Erreur lors du chargement des analytics';
-            setError(message);
-        } finally {
-            setDataLoading(false);
-        }
-    }, [totalStudents]);
+      if (cohortRes?.ok) {
+        const payload = await cohortRes.json();
+        const analytics = payload.analytics || {};
+        setWorkshopStats(analytics.workshopProgress || []);
+        setQuizStats(analytics.quizPerformance || []);
+        setBadgeStats(analytics.badgeDistribution || []);
+        setTotalStudents(analytics.totalStudents || 0);
+      }
 
-    useEffect(() => {
-        if (isLoading) return;
-        fetchAnalytics();
-    }, [isLoading, fetchAnalytics]);
+      if (leaderboardRes?.ok) {
+        const payload = await leaderboardRes.json();
+        setLeaderboard(payload.leaderboard || []);
+      }
 
-    // Computed
-    const avgProgress = workshopStats.length > 0
-        ? Math.round(workshopStats.reduce((s, w) => s + w.avgProgress, 0) / workshopStats.length)
-        : 0;
-    const avgQuizScore = quizStats.length > 0
-        ? Math.round(quizStats.reduce((s, q) => s + q.avgScore, 0) / quizStats.length)
-        : 0;
-    const totalBadges = badgeStats.reduce((s, b) => s + b.studentsEarned, 0);
-
-    if (isLoading || dataLoading) {
-        return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                    <BarChart3 className="animate-bounce w-12 h-12 text-blue-500" />
-                    <span className="text-sm text-slate-500">Chargement des analytics...</span>
-                </div>
-            </div>
-        );
+      if (studentsRes?.ok) {
+        const payload = await studentsRes.json();
+        const students = payload.students || [];
+        if (totalStudents === 0) setTotalStudents(students.length);
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erreur lors du chargement analytics');
+    } finally {
+      setDataLoading(false);
     }
+  }, [totalStudents]);
 
+  useEffect(() => {
+    if (isLoading) return;
+    void fetchAnalytics();
+  }, [isLoading, fetchAnalytics]);
+
+  const metrics = useMemo(() => {
+    const avgProgress =
+      workshopStats.length > 0
+        ? Math.round(workshopStats.reduce((sum, item) => sum + item.avgProgress, 0) / workshopStats.length)
+        : 0;
+
+    const avgQuizScore =
+      quizStats.length > 0 ? Math.round(quizStats.reduce((sum, item) => sum + item.avgScore, 0) / quizStats.length) : 0;
+
+    const totalBadges = badgeStats.reduce((sum, item) => sum + item.studentsEarned, 0);
+
+    return { avgProgress, avgQuizScore, totalBadges };
+  }, [badgeStats, quizStats, workshopStats]);
+
+  if (isLoading || dataLoading) {
     return (
-        <div className="min-h-screen bg-slate-950 pt-24 pb-12">
-            <div className="max-w-7xl mx-auto px-6">
-                {/* Breadcrumb */}
-                <div className="text-xs text-slate-500 mb-6">
-                    <Link href="/instructor" className="hover:text-blue-400">Dashboard</Link>
-                    <ChevronRight size={12} className="inline mx-1" />
-                    <span className="text-blue-400">Analytics</span>
-                </div>
-
-                {/* Header */}
-                <div className="flex items-center justify-between mb-8">
-                    <div>
-                        <h1 className="text-3xl font-bold text-white mb-2">Analytics & Statistiques</h1>
-                        <p className="text-slate-400">
-                            Vue d&apos;ensemble des performances de la cohorte
-                        </p>
-                    </div>
-                    <button
-                        onClick={() => { setDataLoading(true); fetchAnalytics(); }}
-                        className="flex items-center gap-2 px-4 py-2 bg-slate-800 border border-white/10 text-white rounded-xl hover:bg-slate-700"
-                    >
-                        <RefreshCw size={18} />
-                        Actualiser
-                    </button>
-                </div>
-
-                {error && (
-                    <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-sm mb-6">
-                        {error}
-                    </div>
-                )}
-
-                {/* Overview Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                    <div className="bg-gradient-to-br from-blue-500/20 to-indigo-500/10 border border-blue-500/30 rounded-2xl p-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="p-3 bg-blue-500/20 rounded-xl">
-                                <Users className="w-6 h-6 text-blue-400" />
-                            </div>
-                        </div>
-                        <p className="text-sm text-slate-400 mb-1">Étudiants inscrits</p>
-                        <p className="text-2xl font-bold text-white">{totalStudents}</p>
-                    </div>
-
-                    <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
-                        <div className="p-3 bg-emerald-500/20 rounded-xl w-fit mb-4">
-                            <TrendingUp className="w-6 h-6 text-emerald-400" />
-                        </div>
-                        <p className="text-sm text-slate-400 mb-1">Progression moyenne</p>
-                        <p className="text-2xl font-bold text-white">{avgProgress}%</p>
-                    </div>
-
-                    <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
-                        <div className="p-3 bg-purple-500/20 rounded-xl w-fit mb-4">
-                            <BarChart3 className="w-6 h-6 text-purple-400" />
-                        </div>
-                        <p className="text-sm text-slate-400 mb-1">Score moyen quiz</p>
-                        <p className="text-2xl font-bold text-white">{avgQuizScore}%</p>
-                    </div>
-
-                    <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
-                        <div className="p-3 bg-amber-500/20 rounded-xl w-fit mb-4">
-                            <Award className="w-6 h-6 text-amber-400" />
-                        </div>
-                        <p className="text-sm text-slate-400 mb-1">Badges délivrés</p>
-                        <p className="text-2xl font-bold text-white">{totalBadges}</p>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                    {/* Workshop Performance */}
-                    <div className="bg-slate-800/50 border border-white/10 rounded-2xl overflow-hidden">
-                        <div className="p-6 border-b border-white/10">
-                            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                                <BookOpen size={20} className="text-blue-400" />
-                                Performance par Atelier
-                            </h2>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            {workshopStats.length > 0 ? workshopStats.map((workshop) => (
-                                <div key={workshop.workshopId} className="p-4 bg-slate-900/50 rounded-xl">
-                                    <div className="flex items-center justify-between mb-3">
-                                        <h3 className="font-medium text-white truncate">{workshop.title}</h3>
-                                        <span className="text-sm text-slate-400 shrink-0 ml-2">{workshop.studentsStarted} participants</span>
-                                    </div>
-                                    <div className="grid grid-cols-3 gap-4 text-sm">
-                                        <div>
-                                            <p className="text-slate-400 mb-1">Complétion</p>
-                                            <div className="flex items-center gap-2">
-                                                <div className="flex-1 h-2 bg-slate-700 rounded-full overflow-hidden">
-                                                    <div
-                                                        className={`h-full rounded-full ${
-                                                            workshop.avgProgress >= 80 ? 'bg-emerald-500' :
-                                                            workshop.avgProgress >= 60 ? 'bg-amber-500' : 'bg-red-500'
-                                                        }`}
-                                                        style={{ width: `${workshop.avgProgress}%` }}
-                                                    />
-                                                </div>
-                                                <span className="text-white font-medium">{workshop.avgProgress}%</span>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <p className="text-slate-400 mb-1">Terminés</p>
-                                            <p className="text-white font-medium">{workshop.studentsCompleted}/{workshop.studentsStarted}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-slate-400 mb-1">Temps moyen</p>
-                                            <p className="text-white font-medium">{workshop.avgTimeMinutes} min</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            )) : (
-                                <p className="text-sm text-slate-500 text-center py-8">Aucune donnée de progression disponible.</p>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Quiz Performance */}
-                    <div className="bg-slate-800/50 border border-white/10 rounded-2xl overflow-hidden">
-                        <div className="p-6 border-b border-white/10">
-                            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                                <BarChart3 size={20} className="text-purple-400" />
-                                Performance aux Quiz
-                            </h2>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            {quizStats.length > 0 ? quizStats.map((quiz) => (
-                                <div key={quiz.quizId} className="p-4 bg-slate-900/50 rounded-xl">
-                                    <div className="flex items-center justify-between mb-3">
-                                        <h3 className="font-medium text-white">{quiz.quizId}</h3>
-                                        <span className="text-sm text-slate-400">{quiz.attempts} tentatives</span>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4 text-sm">
-                                        <div>
-                                            <p className="text-slate-400 mb-1">Score moyen</p>
-                                            <p className={`text-xl font-bold ${
-                                                quiz.avgScore >= 80 ? 'text-emerald-400' :
-                                                quiz.avgScore >= 60 ? 'text-amber-400' : 'text-red-400'
-                                            }`}>
-                                                {quiz.avgScore}%
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <p className="text-slate-400 mb-1">Taux de réussite</p>
-                                            <p className="text-xl font-bold text-white flex items-center gap-2">
-                                                {quiz.passRate}%
-                                                {quiz.passRate >= 80 ? (
-                                                    <CheckCircle2 size={16} className="text-emerald-400" />
-                                                ) : quiz.passRate < 60 ? (
-                                                    <XCircle size={16} className="text-red-400" />
-                                                ) : null}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <p className="text-xs text-slate-500 mt-2">
-                                        {quiz.uniqueStudents} étudiant{quiz.uniqueStudents !== 1 ? 's' : ''} unique{quiz.uniqueStudents !== 1 ? 's' : ''}
-                                    </p>
-                                </div>
-                            )) : (
-                                <p className="text-sm text-slate-500 text-center py-8">Aucun quiz soumis pour le moment.</p>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Student Rankings */}
-                <div className="bg-slate-800/50 border border-white/10 rounded-2xl overflow-hidden">
-                    <div className="p-6 border-b border-white/10">
-                        <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                            <Award size={20} className="text-amber-400" />
-                            Classement des Étudiants
-                        </h2>
-                    </div>
-                    {leaderboard.length > 0 ? (
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead className="bg-slate-900/50">
-                                    <tr>
-                                        <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Rang</th>
-                                        <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Étudiant</th>
-                                        <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">XP Total</th>
-                                        <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Ateliers</th>
-                                        <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Badges</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-white/5">
-                                    {leaderboard.map((student) => {
-                                        const name = [student.first_name, student.last_name].filter(Boolean).join(' ') || student.username;
-                                        const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-                                        return (
-                                            <tr key={student.id} className="hover:bg-white/5 transition">
-                                                <td className="px-6 py-4">
-                                                    <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                                                        student.rank === 1 ? 'bg-amber-500/20 text-amber-400' :
-                                                        student.rank === 2 ? 'bg-slate-400/20 text-slate-300' :
-                                                        student.rank === 3 ? 'bg-orange-500/20 text-orange-400' :
-                                                        'bg-slate-700 text-slate-400'
-                                                    }`}>
-                                                        {student.rank}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <Link href={`/instructor/students/${student.id}`} className="flex items-center gap-3 hover:text-blue-400 transition-colors">
-                                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs">
-                                                            {initials}
-                                                        </div>
-                                                        <span className="font-medium text-white">{name}</span>
-                                                    </Link>
-                                                </td>
-                                                <td className="px-6 py-4 font-bold text-emerald-400">{student.total_xp.toLocaleString()} XP</td>
-                                                <td className="px-6 py-4 text-slate-300">{student.workshops_completed}/6</td>
-                                                <td className="px-6 py-4">
-                                                    <span className="px-2 py-1 bg-amber-500/20 text-amber-400 rounded-full text-sm">
-                                                        {student.badge_count}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-                    ) : (
-                        <div className="p-12 text-center text-slate-500">
-                            Pas encore de classement disponible.
-                        </div>
-                    )}
-                </div>
-            </div>
+      <div className="n-page-container" style={{ maxWidth: '1200px' }}>
+        <NotionSkeleton type="line" width="220px" height="28px" />
+        <div style={{ marginTop: 'var(--n-space-2)' }}>
+          <NotionSkeleton type="line" width="360px" height="14px" />
         </div>
+        <div
+          style={{
+            marginTop: 'var(--n-space-6)',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+            gap: 'var(--n-space-3)',
+          }}
+        >
+          {[...Array(4)].map((_, index) => (
+            <NotionSkeleton key={index} type="stat" />
+          ))}
+        </div>
+      </div>
     );
+  }
+
+  return (
+    <div className="n-page-container" style={{ maxWidth: '1200px' }}>
+      <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
+        <NotionCard padding="lg">
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: 'var(--n-space-4)',
+              alignItems: 'center',
+            }}
+          >
+            <div>
+              <NotionPill variant="accent" icon={<BarChart3 size={12} />}>
+                Cohorte analytics
+              </NotionPill>
+              <h1
+                style={{
+                  margin: 'var(--n-space-3) 0 var(--n-space-2)',
+                  color: 'var(--n-text-primary)',
+                  fontSize: 'var(--n-text-2xl)',
+                  fontWeight: 'var(--n-weight-bold)',
+                }}
+              >
+                Analytics formateur
+              </h1>
+              <p style={{ margin: 0, color: 'var(--n-text-secondary)', fontSize: 'var(--n-text-sm)' }}>
+                Vue d ensemble sur progression, quiz, badges et ranking etudiants.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <NotionButton variant="secondary" leftIcon={<RefreshCw size={13} />} onClick={() => void fetchAnalytics()}>
+                Rafraichir
+              </NotionButton>
+            </div>
+          </div>
+        </NotionCard>
+      </motion.section>
+
+      {error && (
+        <div
+          style={{
+            marginTop: 'var(--n-space-4)',
+            padding: 'var(--n-space-3) var(--n-space-4)',
+            borderRadius: 'var(--n-radius-sm)',
+            border: '1px solid var(--n-danger-border)',
+            background: 'var(--n-danger-bg)',
+            color: 'var(--n-danger)',
+            fontSize: 'var(--n-text-sm)',
+          }}
+        >
+          {error}
+        </div>
+      )}
+
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.05 }}
+        style={{
+          marginTop: 'var(--n-space-4)',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+          gap: 'var(--n-space-3)',
+        }}
+      >
+        {[
+          { label: 'Etudiants', value: totalStudents, icon: <Users size={14} />, tone: 'var(--n-accent)' },
+          { label: 'Progression moyenne', value: `${metrics.avgProgress}%`, icon: <TrendingUp size={14} />, tone: 'var(--n-success)' },
+          { label: 'Quiz moyen', value: `${metrics.avgQuizScore}%`, icon: <BarChart3 size={14} />, tone: 'var(--n-warning)' },
+          { label: 'Badges delivres', value: metrics.totalBadges, icon: <Award size={14} />, tone: 'var(--n-reward)' },
+        ].map((item) => (
+          <NotionCard key={item.label} padding="md">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ color: 'var(--n-text-tertiary)', fontSize: 'var(--n-text-xs)', textTransform: 'uppercase' }}>{item.label}</span>
+              <span style={{ color: item.tone }}>{item.icon}</span>
+            </div>
+            <div
+              style={{
+                marginTop: 'var(--n-space-2)',
+                color: 'var(--n-text-primary)',
+                fontFamily: 'var(--n-font-mono)',
+                fontSize: 'var(--n-text-lg)',
+                fontWeight: 'var(--n-weight-bold)',
+              }}
+            >
+              {item.value}
+            </div>
+          </NotionCard>
+        ))}
+      </motion.section>
+
+      <div
+        style={{
+          marginTop: 'var(--n-space-4)',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gap: 'var(--n-space-3)',
+        }}
+      >
+        <NotionCard padding="md">
+          <h2 style={{ margin: '0 0 var(--n-space-3)', color: 'var(--n-text-primary)', fontSize: 'var(--n-text-base)' }}>Performance ateliers</h2>
+          {workshopStats.length === 0 ? (
+            <NotionEmptyState
+              icon={<BookOpen size={22} />}
+              title="Aucune donnee atelier"
+              description="La progression ateliers apparaitra ici des premieres activites."
+              size="sm"
+            />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--n-space-2)' }}>
+              {workshopStats.map((workshop) => (
+                <div
+                  key={workshop.workshopId}
+                  style={{
+                    border: '1px solid var(--n-border)',
+                    borderRadius: 'var(--n-radius-sm)',
+                    background: 'var(--n-bg-elevated)',
+                    padding: 'var(--n-space-3)',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--n-space-2)', marginBottom: '6px' }}>
+                    <span style={{ color: 'var(--n-text-primary)', fontSize: 'var(--n-text-sm)', fontWeight: 'var(--n-weight-medium)' }}>{workshop.title}</span>
+                    <span style={{ color: 'var(--n-text-tertiary)', fontSize: 'var(--n-text-xs)' }}>{workshop.avgProgress}%</span>
+                  </div>
+                  <NotionProgress value={workshop.avgProgress} variant={workshop.avgProgress >= 80 ? 'success' : workshop.avgProgress >= 60 ? 'warning' : 'danger'} size="thin" />
+                  <div style={{ marginTop: '6px', display: 'flex', gap: 'var(--n-space-2)', flexWrap: 'wrap' }}>
+                    <NotionPill variant="default">{workshop.studentsCompleted}/{workshop.studentsStarted} termines</NotionPill>
+                    <NotionPill variant="default">{workshop.avgTimeMinutes} min moyen</NotionPill>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </NotionCard>
+
+        <NotionCard padding="md">
+          <h2 style={{ margin: '0 0 var(--n-space-3)', color: 'var(--n-text-primary)', fontSize: 'var(--n-text-base)' }}>Performance quizzes</h2>
+          {quizStats.length === 0 ? (
+            <NotionEmptyState
+              icon={<BarChart3 size={22} />}
+              title="Aucun quiz soumis"
+              description="Les statistiques quiz apparaitront apres les premieres soumissions."
+              size="sm"
+            />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--n-space-2)' }}>
+              {quizStats.map((quiz) => (
+                <div
+                  key={quiz.quizId}
+                  style={{
+                    border: '1px solid var(--n-border)',
+                    borderRadius: 'var(--n-radius-sm)',
+                    background: 'var(--n-bg-elevated)',
+                    padding: 'var(--n-space-3)',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <span style={{ color: 'var(--n-text-primary)', fontSize: 'var(--n-text-sm)', fontWeight: 'var(--n-weight-medium)' }}>{quiz.quizId}</span>
+                    <span style={{ color: 'var(--n-text-tertiary)', fontSize: 'var(--n-text-xs)' }}>{quiz.attempts} tentatives</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--n-space-2)' }}>
+                    <NotionPill variant="accent">Score {quiz.avgScore}%</NotionPill>
+                    <NotionPill variant={quiz.passRate >= 80 ? 'success' : 'warning'}>
+                      Reussite {quiz.passRate}%
+                    </NotionPill>
+                  </div>
+                  <div style={{ marginTop: '6px', color: 'var(--n-text-tertiary)', fontSize: 'var(--n-text-xs)' }}>
+                    {quiz.uniqueStudents} etudiants uniques
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </NotionCard>
+      </div>
+
+      {badgeStats.length > 0 && (
+        <NotionCard padding="md" style={{ marginTop: 'var(--n-space-4)' }}>
+          <h2 style={{ margin: '0 0 var(--n-space-3)', color: 'var(--n-text-primary)', fontSize: 'var(--n-text-base)' }}>Distribution badges</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 'var(--n-space-2)' }}>
+            {badgeStats.map((badge) => (
+              <div
+                key={badge.badgeType}
+                style={{
+                  border: '1px solid var(--n-warning-border)',
+                  borderRadius: 'var(--n-radius-sm)',
+                  background: 'var(--n-warning-bg)',
+                  padding: 'var(--n-space-3)',
+                }}
+              >
+                <div style={{ color: 'var(--n-text-primary)', fontSize: 'var(--n-text-sm)', fontWeight: 'var(--n-weight-medium)' }}>{badge.name}</div>
+                <div style={{ color: 'var(--n-warning)', fontFamily: 'var(--n-font-mono)', fontSize: 'var(--n-text-sm)', marginTop: '4px' }}>
+                  {badge.studentsEarned}
+                </div>
+              </div>
+            ))}
+          </div>
+        </NotionCard>
+      )}
+
+      <NotionCard padding="md" style={{ marginTop: 'var(--n-space-4)' }}>
+        <h2 style={{ margin: '0 0 var(--n-space-3)', color: 'var(--n-text-primary)', fontSize: 'var(--n-text-base)' }}>Classement etudiants</h2>
+
+        {leaderboard.length === 0 ? (
+          <NotionEmptyState
+            icon={<Users size={22} />}
+            title="Pas de classement"
+            description="Le leaderboard apparaitra avec les premiers scores de la cohorte."
+            size="sm"
+          />
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--n-space-2)' }}>
+            {leaderboard.map((student) => {
+              const name = [student.first_name, student.last_name].filter(Boolean).join(' ') || student.username;
+              return (
+                <Link key={student.id} href={`/instructor/students/${student.id}`} style={{ textDecoration: 'none' }}>
+                  <NotionCard variant="hover" padding="md" style={{ height: '100%' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--n-space-2)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--n-space-2)', minWidth: 0 }}>
+                        <NotionBadge variant={student.rank <= 3 ? 'warning' : 'default'} size="sm">
+                          #{student.rank}
+                        </NotionBadge>
+                        <span style={{ color: 'var(--n-text-primary)', fontSize: 'var(--n-text-sm)', fontWeight: 'var(--n-weight-medium)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {name}
+                        </span>
+                      </div>
+                      <span style={{ color: 'var(--n-success)', fontFamily: 'var(--n-font-mono)', fontSize: 'var(--n-text-xs)' }}>
+                        {student.total_xp} XP
+                      </span>
+                    </div>
+                    <div style={{ marginTop: 'var(--n-space-2)', display: 'flex', gap: 'var(--n-space-2)' }}>
+                      <NotionPill variant="default">{student.workshops_completed}/6 ateliers</NotionPill>
+                      <NotionPill variant="warning">{student.badge_count} badges</NotionPill>
+                    </div>
+                  </NotionCard>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </NotionCard>
+    </div>
+  );
 }
 

@@ -34,16 +34,22 @@ logs/
 *.sw?
 
 # Local tooling / assistant config (never commit)
-.claude/settings.local.json
+.claude/
 
 # Local debug artifacts
 login.json
 token.json
 nul
+.tmp_api_logs.txt
+.tmp_thm/
+tmp/
 
 # Test coverage
 coverage/
 test-results/
+
+# Generated local evidence
+docs/test-evidence/*-runtime-evidence/
 
 # Let's Encrypt material (private keys/certs)
 certbot/conf/*

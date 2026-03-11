@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../utils/logger';
+import { sanitizeForLogging } from '../utils/pan-masking';
 
 export interface RequestWithCorrelation extends Request {
     correlationId: string;
@@ -9,7 +10,8 @@ export interface RequestWithCorrelation extends Request {
 
 /**
  * Request logging middleware with correlation ID
- * Adds unique correlation ID to each request for tracing
+ * Adds unique correlation ID to each request for tracing.
+ * PAN masking (ISO 7812) is applied to all logged data per PCI-DSS Req 3.4.
  */
 export const requestLoggerMiddleware = (
     req: RequestWithCorrelation,
@@ -23,12 +25,12 @@ export const requestLoggerMiddleware = (
     // Add correlation ID to response headers
     res.setHeader('X-Correlation-ID', req.correlationId);
 
-    // Log incoming request
+    // Log incoming request — sanitize query params to mask any PANs (PCI-DSS 3.4)
     logger.info('Incoming request', {
         correlationId: req.correlationId,
         method: req.method,
-        path: req.path,
-        query: req.query,
+        path: sanitizeForLogging(req.path) as string,
+        query: sanitizeForLogging(req.query),
         ip: req.ip,
         userAgent: req.headers['user-agent']?.substring(0, 100)
     });
