@@ -1,10 +1,10 @@
-{
+﻿{
     "name": "@pmp/crypto-edu",
     "version": "1.0.0",
     "description": "Educational Cryptography Module for Payment Systems",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
-    "scripts": {
+    "scripts": { "prepare": "npm run build",
         "build": "tsc",
         "test": "jest --passWithNoTests",
         "lint": "tsc --noEmit"
@@ -25,3 +25,5 @@
         "typescript": "^5.3.3"
     }
 }
+
+
